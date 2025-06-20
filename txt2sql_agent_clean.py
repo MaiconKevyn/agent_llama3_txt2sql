@@ -65,7 +65,9 @@ def create_orchestrator_config(args) -> OrchestratorConfig:
         max_query_length=1000,
         enable_query_history=True,
         enable_statistics=True,
-        session_timeout=3600
+        session_timeout=3600,
+        enable_conversational_response=True,  # Enable multi-LLM conversational responses
+        conversational_fallback=True          # Enable fallback if conversational LLM fails
     )
 
 

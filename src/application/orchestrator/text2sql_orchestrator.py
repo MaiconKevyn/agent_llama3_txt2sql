@@ -21,6 +21,10 @@ from ..services.query_processing_service import (
     QueryRequest,
     QueryResult
 )
+from ..services.conversational_response_service import (
+    ConversationalResponseService,
+    ConversationContext
+)
 
 
 @dataclass
@@ -30,6 +34,8 @@ class OrchestratorConfig:
     enable_query_history: bool = True
     enable_statistics: bool = True
     session_timeout: int = 3600  # seconds
+    enable_conversational_response: bool = True
+    conversational_fallback: bool = True
 
 
 class Text2SQLOrchestrator:
@@ -66,6 +72,17 @@ class Text2SQLOrchestrator:
         self._error_service = self._container.get_service(IErrorHandlingService)
         self._query_service = self._container.get_service(IQueryProcessingService)
         
+        # Initialize conversational response service if enabled
+        self._conversational_service = None
+        if self._config.enable_conversational_response:
+            try:
+                self._conversational_service = ConversationalResponseService()
+            except Exception as e:
+                if not self._config.conversational_fallback:
+                    raise
+                # Log warning but continue without conversational service
+                print(f"Warning: Conversational service unavailable: {e}")
+        
         # Session management
         self._session_id = self._generate_session_id()
         self._query_count = 0
@@ -73,6 +90,11 @@ class Text2SQLOrchestrator:
         
         # Validate all services are working
         self._validate_services()
+    
+    @property
+    def container(self) -> DependencyContainer:
+        """Get the dependency container"""
+        return self._container
     
     def start_interactive_session(self) -> None:
         """Start interactive user session"""
@@ -159,7 +181,7 @@ class Text2SQLOrchestrator:
             result = self.process_single_query(user_input)
             
             # Format and display response
-            formatted_response = self._format_query_result(result)
+            formatted_response = self._format_query_result(result, user_input)
             self._ui_service.display_response(formatted_response)
             
         except Exception as e:
@@ -274,13 +296,13 @@ class Text2SQLOrchestrator:
             
             stats_text = f"""📈 Estatísticas da Sessão:
 
-🕐 Duração: {session_duration:.1f} segundos
-🔢 Consultas processadas: {self._query_count}
-✅ Taxa de sucesso: {query_stats.get('success_rate', 0):.1f}%
-⏱️ Tempo médio de execução: {query_stats.get('average_execution_time', 0):.2f}s
-❌ Total de erros: {error_stats.get('total_errors', 0)}
-🆔 ID da sessão: {self._session_id}
-"""
+            🕐 Duração: {session_duration:.1f} segundos
+            🔢 Consultas processadas: {self._query_count}
+            ✅ Taxa de sucesso: {query_stats.get('success_rate', 0):.1f}%
+            ⏱️ Tempo médio de execução: {query_stats.get('average_execution_time', 0):.2f}s
+            ❌ Total de erros: {error_stats.get('total_errors', 0)}
+            🆔 ID da sessão: {self._session_id}
+            """
             
             response = FormattedResponse(
                 content=stats_text,
@@ -301,8 +323,46 @@ class Text2SQLOrchestrator:
         )
         self._ui_service.display_response(response)
     
-    def _format_query_result(self, result: QueryResult) -> FormattedResponse:
-        """Format query result for display"""
+    def _format_query_result(self, result: QueryResult, user_query: str = "") -> FormattedResponse:
+        """Format query result for display with optional conversational response"""
+        
+        # Try to generate conversational response if enabled and available
+        if (self._config.enable_conversational_response and 
+            self._conversational_service and 
+            self._conversational_service.is_conversational_llm_available()):
+            
+            try:
+                conversational_response = self._conversational_service.generate_response(
+                    user_query=user_query,
+                    sql_query=result.sql_query,
+                    sql_results=result.results,
+                    session_id=self._session_id,
+                    error_message=result.error_message or ""
+                )
+                
+                # Use conversational response with enhanced metadata
+                return FormattedResponse(
+                    content=conversational_response.message,
+                    success=result.success,
+                    execution_time=result.execution_time,
+                    metadata={
+                        "sql_query": result.sql_query,
+                        "row_count": result.row_count,
+                        "conversational_response": True,
+                        "response_type": conversational_response.response_type.value,
+                        "confidence_score": conversational_response.confidence_score,
+                        "suggestions": conversational_response.suggestions,
+                        "processing_time": conversational_response.processing_time
+                    }
+                )
+                
+            except Exception as e:
+                # Fallback to basic formatting if conversational response fails
+                if not self._config.conversational_fallback:
+                    raise
+                print(f"Warning: Conversational response failed, using basic format: {e}")
+        
+        # Basic formatting (original logic)
         if result.success:
             # Add sample results if available
             if result.results:
@@ -326,14 +386,18 @@ class Text2SQLOrchestrator:
                 execution_time=result.execution_time,
                 metadata={
                     "sql_query": result.sql_query,
-                    "row_count": result.row_count
+                    "row_count": result.row_count,
+                    "conversational_response": False
                 }
             )
         else:
             return FormattedResponse(
                 content=result.error_message or "Erro desconhecido",
                 success=False,
-                execution_time=result.execution_time
+                execution_time=result.execution_time,
+                metadata={
+                    "conversational_response": False
+                }
             )
     
     def _validate_services(self) -> None:
@@ -359,15 +423,15 @@ class Text2SQLOrchestrator:
     def _display_goodbye(self) -> None:
         """Display goodbye message"""
         goodbye_text = f"""
-🎉 Obrigado por usar o TXT2SQL Claude!
-
-📊 Resumo da sessão:
-   • Consultas processadas: {self._query_count}
-   • ID da sessão: {self._session_id}
-   • Duração: {(datetime.now() - self._session_start_time).total_seconds():.1f}s
-
-Até a próxima! 👋
-"""
+        🎉 Obrigado por usar o TXT2SQL Claude!
+        
+        📊 Resumo da sessão:
+           • Consultas processadas: {self._query_count}
+           • ID da sessão: {self._session_id}
+           • Duração: {(datetime.now() - self._session_start_time).total_seconds():.1f}s
+        
+        Até a próxima! 👋
+        """
         
         response = FormattedResponse(content=goodbye_text, success=True)
         self._ui_service.display_response(response)
@@ -393,4 +457,30 @@ Até a próxima! 👋
             "query_count": self._query_count,
             "duration_seconds": (datetime.now() - self._session_start_time).total_seconds(),
             "container_health": self._container.health_check()
+        }
+    
+    def process_conversational_query(self, query: str) -> Dict[str, Any]:
+        """
+        Process query and return conversational response instead of raw SQL results
+        
+        Args:
+            query: User's natural language question
+            
+        Returns:
+            Dictionary with conversational response and metadata
+        """
+        # Process the query normally
+        result = self.process_single_query(query)
+        
+        # Format with conversational response
+        formatted_response = self._format_query_result(result, query)
+        
+        return {
+            "success": result.success,
+            "question": query,
+            "response": formatted_response.content,
+            "execution_time": formatted_response.execution_time,
+            "error_message": result.error_message if not result.success else None,
+            "metadata": formatted_response.metadata,
+            "timestamp": datetime.now().isoformat()
         }

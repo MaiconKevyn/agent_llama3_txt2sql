@@ -48,13 +48,13 @@ class SQLiteDatabaseConnectionService(IDatabaseConnectionService):
     def get_connection(self) -> SQLDatabase:
         """Get LangChain SQLDatabase connection"""
         if self._connection is None:
-            self._connection = SQLDatabase.from_uri(f"sqlite:///{self._db_path}")
+            self._connection = SQLDatabase.from_uri(f"sqlite:///{self._db_path}?check_same_thread=false")
         return self._connection
     
     def get_raw_connection(self) -> sqlite3.Connection:
         """Get raw SQLite connection for direct queries"""
         if self._raw_connection is None:
-            self._raw_connection = sqlite3.connect(self._db_path)
+            self._raw_connection = sqlite3.connect(self._db_path, check_same_thread=False)
         return self._raw_connection
     
     def close_connection(self) -> None:
@@ -68,10 +68,12 @@ class SQLiteDatabaseConnectionService(IDatabaseConnectionService):
     def test_connection(self) -> bool:
         """Test if database connection is working"""
         try:
-            conn = self.get_raw_connection()
+            # Create a new connection for testing to avoid threading issues
+            conn = sqlite3.connect(self._db_path, check_same_thread=False)
             cursor = conn.cursor()
             cursor.execute("SELECT 1")
             result = cursor.fetchone()
+            conn.close()
             return result is not None
         except Exception:
             return False
