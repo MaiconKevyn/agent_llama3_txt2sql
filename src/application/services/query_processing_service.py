@@ -140,8 +140,19 @@ class ComprehensiveQueryProcessingService(IQueryProcessingService):
             # Extract SQL query from response (if available)
             sql_query = self._extract_sql_from_response(agent_response)
             
+            # Fix case sensitivity issues in SQL query
+            sql_query = self._fix_case_sensitivity_issues(sql_query)
+            
             # Parse results from agent response
             results, row_count = self._parse_agent_results(agent_response)
+            
+            # If the query was fixed for case sensitivity, re-execute the corrected query
+            original_sql = self._extract_sql_from_response(agent_response)
+            if sql_query != original_sql:
+                corrected_result = self.execute_sql_query(sql_query)
+                if corrected_result.success:
+                    results = corrected_result.results
+                    row_count = corrected_result.row_count
             
             execution_time = time.time() - start_time
             
@@ -281,6 +292,19 @@ Pergunta do usuário: {user_query}
 Por favor, gere e execute uma consulta SQL apropriada para responder esta pergunta.
 Seja cuidadoso com nomes de colunas e tipos de dados.
 Use as informações do contexto para gerar consultas precisas.
+
+IMPORTANTE - Regras para nomes de cidades:
+- Para nomes de cidades (CIDADE_RESIDENCIA_PACIENTE), use sempre a capitalização correta
+- Exemplo: CIDADE_RESIDENCIA_PACIENTE = 'Porto Alegre' (não 'porto alegre')
+- Se o usuário digitar uma cidade em minúscula, converta para a capitalização correta
+
+IMPORTANTE - Regras para filtros demográficos:
+- SEXO = 1 significa masculino/homem
+- SEXO = 3 significa feminino/mulher  
+- MORTE = 1 significa que o paciente morreu
+- MORTE = 0 significa que o paciente não morreu
+- Quando perguntarem sobre "homens" use SEXO = 1
+- Quando perguntarem sobre "mulheres" use SEXO = 3
 """
     
     def _extract_sql_from_response(self, response: str) -> str:
@@ -300,10 +324,59 @@ Use as informações do contexto para gerar consultas precisas.
         
         return "SQL query not found in response"
     
+    def _fix_case_sensitivity_issues(self, sql_query: str) -> str:
+        """Fix case sensitivity issues in SQL queries"""
+        if not sql_query or sql_query == "SQL query not found in response":
+            return sql_query
+        
+        # Fix the pattern: CIDADE_RESIDENCIA_PACIENTE = UPPER('city') or LOWER('city')
+        # Convert to: CIDADE_RESIDENCIA_PACIENTE = 'City' (proper case)
+        
+        # Handle UPPER('city') pattern
+        pattern_upper = r"CIDADE_RESIDENCIA_PACIENTE\s*=\s*UPPER\s*\(\s*'([^']+)'\s*\)"
+        def replacement_upper(match):
+            city_name = match.group(1)
+            # Convert to proper case (first letter uppercase)
+            proper_city = city_name.title()
+            return f"CIDADE_RESIDENCIA_PACIENTE = '{proper_city}'"
+        
+        fixed_query = re.sub(pattern_upper, replacement_upper, sql_query, flags=re.IGNORECASE)
+        
+        # Handle LOWER('city') pattern  
+        pattern_lower = r"CIDADE_RESIDENCIA_PACIENTE\s*=\s*LOWER\s*\(\s*'([^']+)'\s*\)"
+        def replacement_lower(match):
+            city_name = match.group(1)
+            # Convert to proper case (first letter uppercase)
+            proper_city = city_name.title()
+            return f"CIDADE_RESIDENCIA_PACIENTE = '{proper_city}'"
+        
+        fixed_query = re.sub(pattern_lower, replacement_lower, fixed_query, flags=re.IGNORECASE)
+        
+        # Handle direct lowercase city names: CIDADE_RESIDENCIA_PACIENTE = 'porto alegre'
+        pattern_direct = r"CIDADE_RESIDENCIA_PACIENTE\s*=\s*'([a-z][^']*?)'"
+        def replacement_direct(match):
+            city_name = match.group(1)
+            # Convert to proper case only if it's all lowercase
+            if city_name.islower():
+                proper_city = city_name.title()
+                return f"CIDADE_RESIDENCIA_PACIENTE = '{proper_city}'"
+            return match.group(0)  # Return original if not all lowercase
+        
+        fixed_query = re.sub(pattern_direct, replacement_direct, fixed_query)
+        
+        return fixed_query
+    
     def _parse_agent_results(self, response: str) -> tuple[List[Dict[str, Any]], int]:
         """Parse results from agent response"""
         # This is a simplified parser - in practice, LangChain agent
         # handles query execution and result formatting
+        
+        # Look for the SQL query result pattern [(number,)]
+        sql_result_pattern = r'\[\((\d+),\)\]'
+        sql_match = re.search(sql_result_pattern, response)
+        if sql_match:
+            result_value = int(sql_match.group(1))
+            return [{"result": result_value}], result_value
         
         # Look for Final Answer in the response (with or without colon)
         if "Final Answer:" in response:

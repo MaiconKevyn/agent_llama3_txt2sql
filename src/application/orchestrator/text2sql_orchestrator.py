@@ -304,8 +304,6 @@ class Text2SQLOrchestrator:
     def _format_query_result(self, result: QueryResult) -> FormattedResponse:
         """Format query result for display"""
         if result.success:
-            content = f"Resultado: {result.row_count} registros encontrados"
-            
             # Add sample results if available
             if result.results:
                 if len(result.results) == 1 and len(result.results[0]) == 1:
@@ -319,6 +317,8 @@ class Text2SQLOrchestrator:
                         content += f"\n\nResultados:\n"
                         for i, row in enumerate(result.results[:5], 1):
                             content += f"{i}. {row}\n"
+            else:
+                content = f"Resultado: {result.row_count} registros encontrados"
             
             return FormattedResponse(
                 content=content,
