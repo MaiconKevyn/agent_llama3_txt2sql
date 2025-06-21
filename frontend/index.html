@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataVisSUS - Assistente Inteligente de Dados em Saúde</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css" type="text/css">
+    <script>
+        // Chrome CSS fallback detection
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                var testEl = document.createElement('div');
+                testEl.className = 'app-container';
+                document.body.appendChild(testEl);
+                var computedStyle = window.getComputedStyle(testEl);
+                if (!computedStyle.backgroundColor || computedStyle.backgroundColor === 'rgba(0, 0, 0, 0)') {
+                    console.warn('CSS not loaded properly, attempting fallback');
+                    var link = document.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.type = 'text/css';
+                    link.href = 'styles.css?v=' + Date.now();
+                    document.head.appendChild(link);
+                }
+                document.body.removeChild(testEl);
+            }, 100);
+        });
+    </script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header Section -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <div class="logo-icon">
+                        <i class="fas fa-heartbeat"></i>
+                    </div>
+                    <div class="logo-text">
+                        <h1>DataVisSUS</h1>
+                        <span class="tagline">Assistente Inteligente para Dados de Saúde</span>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="action-btn" id="schemaBtn" title="Visualizar Esquema do Banco">
+                        <i class="fas fa-database"></i>
+                        <span>Schema</span>
+                    </button>
+                    <button class="action-btn" id="clearBtn" title="Limpar Conversa">
+                        <i class="fas fa-trash-alt"></i>
+                        <span>Limpar</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-section">
+                    <h3>
+                        <i class="fas fa-info-circle"></i>
+                        Sobre o Sistema
+                    </h3>
+                    <div class="feature-list">
+                        <div class="feature-item">
+                            <i class="fas fa-database"></i>
+                            <div>
+                                <strong>Base SUS</strong>
+                                <span>Dados oficiais do Sistema Único de Saúde</span>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <i class="fas fa-brain"></i>
+                            <div>
+                                <strong>IA Avançada</strong>
+                                <span>Processamento de linguagem natural</span>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <i class="fas fa-chart-line"></i>
+                            <div>
+                                <strong>Análise Real</strong>
+                                <span>Consultas em tempo real</span>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <i class="fas fa-shield-alt"></i>
+                            <div>
+                                <strong>Segurança</strong>
+                                <span>Dados protegidos e confiáveis</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>
+                        <i class="fas fa-lightbulb"></i>
+                        Exemplos de Consultas
+                    </h3>
+                    <div class="examples-list">
+                        <button class="example-btn" data-question="Qual é cidade com mais morte de homens?">
+                            <i class="fas fa-map-marker-alt"></i>
+                            Mortalidade masculina por cidade
+                        </button>
+                        <button class="example-btn" data-question="Qual é a idade média das mulheres que morreram?">
+                            <i class="fas fa-female"></i>
+                            Idade média óbitos femininos
+                        </button>
+                        <button class="example-btn" data-question="Qual é a cidade onde mais morrem pessoas com menos de 30 anos?">
+                            <i class="fas fa-chart-bar"></i>
+                            Mortalidade jovem por cidade
+                        </button>
+                        <button class="example-btn" data-question="Quais são os 5 municípios com mais mortes?">
+                            <i class="fas fa-list-ol"></i>
+                            Top 5 municípios mortalidade
+                        </button>
+                        <button class="example-btn" data-question="Quantos leitos de UTI existem em Minas Gerais?">
+                            <i class="fas fa-bed"></i>
+                            Leitos UTI Minas Gerais
+                        </button>
+                        <button class="example-btn" data-question="Qual a média de consultas por especialidade?">
+                            <i class="fas fa-stethoscope"></i>
+                            Consultas por especialidade
+                        </button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Chat Area -->
+            <section class="chat-container">
+                <div class="chat-header">
+                    <div class="chat-title">
+                        <i class="fas fa-comments"></i>
+                        <h2>Central de Consultas</h2>
+                    </div>
+                    <div class="chat-status">
+                        <div class="status-indicator" id="statusIndicator">
+                            <i class="fas fa-circle"></i>
+                            <span id="statusText">Online</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message assistant-message">
+                        <div class="message-avatar">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div class="message-content">
+                            <div class="message-text">
+                                Olá! Sou o assistente inteligente do DataVisSUS. Estou aqui para ajudá-lo a consultar dados de saúde pública de forma simples e intuitiva. 
+                                <br><br>
+                                Faça suas perguntas em linguagem natural sobre dados do SUS, mortalidade, recursos hospitalares, vacinação e muito mais!
+                            </div>
+                            <div class="message-time" id="welcomeTime"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-input-container">
+                    <div class="chat-input">
+                        <div class="input-wrapper">
+                            <textarea 
+                                id="messageInput" 
+                                placeholder="Digite sua pergunta sobre dados de saúde..."
+                                rows="1"></textarea>
+                            <button id="sendBtn" class="send-btn" disabled>
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="loading-content">
+                <div class="loading-spinner">
+                    <i class="fas fa-brain"></i>
+                </div>
+                <p>Processando sua consulta...</p>
+                <div class="loading-bar">
+                    <div class="loading-progress"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Schema Modal -->
+        <div class="modal-overlay" id="schemaModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-database"></i> Esquema do Banco de Dados</h3>
+                    <button class="modal-close" id="closeSchemaModal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <pre id="schemaContent">Carregando esquema...</pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Toast -->
+        <div class="toast error-toast" id="errorToast">
+            <div class="toast-content">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="errorText">Erro ao processar solicitação</span>
+            </div>
+            <button class="toast-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

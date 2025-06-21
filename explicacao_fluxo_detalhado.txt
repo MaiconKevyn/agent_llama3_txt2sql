@@ -1,0 +1,521 @@
+# EXPLICAÇÃO DETALHADA DO FLUXO PRINCIPAL - PROJETO TXT2SQL
+
+Este documento explica cada etapa do diagrama de fluxo principal do projeto TXT2SQL, especificando onde cada passo acontece no código e o que ocorre em cada etapa.
+
+## 📊 MAPEAMENTO COMPLETO DO FLUXO PRINCIPAL
+
+### 1. ENTRADA DO USUÁRIO → PONTOS DE ENTRADA (Etapas A-B)
+**Fluxo:** Usuário faz pergunta → Seleção do ponto de entrada
+
+**ONDE ACONTECE:**
+- **Flask App (Porta 5000):** `/home/maiconkevyn/PycharmProjects/txt2sql_claude/flask_app.py`
+  - **Rota:** `@app.route('/api/query', methods=['POST'])` (linha 230)
+  - **Método:** `query_api()` (linha 231)
+  
+- **FastAPI (Porta 8000):** `/home/maiconkevyn/PycharmProjects/txt2sql_claude/api_server.py`
+  - **Rota:** `@app.post("/query", response_model=QueryResponse)` (linha 245)
+  - **Método:** `query_database(request: QueryRequest)` (linha 246)
+
+**O QUE ACONTECE:**
+- Usuário envia uma pergunta como "Quantos pacientes são homens?" via requisição HTTP POST
+- O endpoint recebe a pergunta em formato JSON: {"question": "Quantos pacientes são homens?"}
+- A aplicação web captura a entrada do usuário e encaminha para o orquestrador
+
+### 2. TEXT2SQL ORCHESTRATOR (Etapa C)
+**Fluxo:** Ponto de entrada → Coordenação central
+
+**ONDE ACONTECE:**
+- **Arquivo:** `/home/maiconkevyn/PycharmProjects/txt2sql_claude/src/application/orchestrator/text2sql_orchestrator.py`
+- **Método Principal:** `process_conversational_query(query: str)` (linha 462)
+- **Método de Processamento:** `process_single_query(query: str)` (linha 135)
+
+**O QUE ACONTECE:**
+```python
+# Exemplo de execução
+def process_conversational_query(self, query: str) -> Dict[str, Any]:
+    # Processa a query normalmente
+    result = self.process_single_query(query)  # Linha 473
+    
+    # Formata com resposta conversacional
+    formatted_response = self._format_query_result(result, query)  # Linha 476
+```
+- O orquestrador coordena todo o fluxo de processamento
+- Gerencia injeção de dependências entre serviços
+- Controla o tempo de execução e metadados
+
+### 3. VALIDAÇÃO E SANITIZAÇÃO (Etapa D)
+**Fluxo:** Orquestrador → Validação de entrada
+
+**ONDE ACONTECE:**
+- **Arquivo:** `/home/maiconkevyn/PycharmProjects/txt2sql_claude/src/application/orchestrator/text2sql_orchestrator.py`
+- **Seção do Código:** linhas 146-151
+
+**O QUE ACONTECE:**
+```python
+# Valida entrada
+if not InputValidator.validate_query_length(query, self._config.max_query_length):
+    raise ValueError(f"Query too long (max {self._config.max_query_length} characters)")
+
+# Sanitiza entrada
+sanitized_query = InputValidator.sanitize_input(query)
+```
+
+**EXEMPLOS DE VALIDAÇÃO:**
+- Verifica se a pergunta não excede 1000 caracteres
+- Remove caracteres especiais que poderiam causar problemas
+- Previne ataques de injeção SQL
+- Normaliza espaços em branco e quebras de linha
+
+### 4. CRIAÇÃO DO QUERYREQUEST (Etapa E)
+**Fluxo:** Validação → Criação de objeto de requisição
+
+**ONDE ACONTECE:**
+- **Arquivo:** `/home/maiconkevyn/PycharmProjects/txt2sql_claude/src/application/orchestrator/text2sql_orchestrator.py`
+- **Seção do Código:** linhas 153-158
+
+**O QUE ACONTECE:**
+```python
+# Cria requisição de query
+request = QueryRequest(
+    user_query=sanitized_query,
+    session_id=self._session_id,
+    timestamp=datetime.now()
+)
+```
+
+**EXEMPLO PRÁTICO:**
+- Para a pergunta "Quantos homens?", cria:
+  - user_query: "Quantos homens?"
+  - session_id: "abc123-uuid"
+  - timestamp: "2025-06-20T11:30:00.000Z"
+
+### 5. QUERY PROCESSING SERVICE (Etapa F)
+**Fluxo:** QueryRequest → Processamento de linguagem natural
+
+**ONDE ACONTECE:**
+- **Arquivo:** `/home/maiconkevyn/PycharmProjects/txt2sql_claude/src/application/services/query_processing_service.py`
+- **Método Principal:** `process_natural_language_query(request: QueryRequest)` (linha 126)
+
+**O QUE ACONTECE:**
+```python
+# Obtém contexto do schema
+schema_context = self._schema_service.get_schema_context()  # Linha 132
+
+# Cria prompt melhorado com contexto do schema
+enhanced_prompt = self._create_enhanced_prompt(request.user_query, schema_context)  # Linha 135
+
+# Processa com agente LangChain
+agent_response = self._agent.run(enhanced_prompt)  # Linha 138
+```
+
+**EXEMPLO PRÁTICO:**
+- Recebe: "Quantos homens?"
+- Prepara o contexto do banco SUS
+- Cria prompt especializado para saúde
+
+### 6. SCHEMA INTROSPECTION SERVICE (Etapa G)
+**Fluxo:** Processamento de query → Contexto do schema do banco
+
+**ONDE ACONTECE:**
+- **Arquivo:** `/home/maiconkevyn/PycharmProjects/txt2sql_claude/src/application/services/schema_introspection_service.py`
+- **Método Principal:** `get_schema_context(self)` (linha 118)
+
+**O QUE ACONTECE:**
+```python
+# Obtém informações da tabela
+sus_table = self.get_table_info("sus_data")  # Linha 124
+
+# Define notas importantes específicas para dados SUS
+important_notes = [
+    "IMPORTANTE: Para consultas baseadas em cidade, use a coluna CIDADE_RESIDENCIA_PACIENTE",
+    "A coluna MUNIC_RES contém códigos numéricos de município, NÃO nomes de cidades",
+    "Use MORTE = 1 para consultas sobre óbitos/mortes",
+    "Códigos de sexo: 1=Masculino, 3=Feminino (padrão SUS)"
+]  # Linhas 127-133
+```
+
+**EXEMPLO PRÁTICO:**
+- Informa que SEXO = 1 significa "masculino"
+- Explica estrutura das tabelas SUS
+- Fornece exemplos de consultas de saúde
+
+### 7. CONTEXTO DO BANCO SUS (Etapa H)
+**Fluxo:** Schema → Regras específicas SUS
+
+**ONDE ACONTECE:**
+- **Arquivo:** Mesmo arquivo da etapa 6
+- **Método:** `_format_context()` (linha 164)
+
+**O QUE ACONTECE:**
+- Adiciona terminologia específica do SUS
+- Fornece exemplos de consultas de saúde comuns
+- Contextualiza significados das colunas para domínio de saúde
+
+**EXEMPLO PRÁTICO:**
+```
+"SEXO = 1 significa paciente masculino/homem"
+"MORTE = 1 significa que o paciente faleceu"
+"CIDADE_RESIDENCIA_PACIENTE contém nomes de cidades"
+```
+
+### 8. PROMPT MELHORADO + REGRAS SUS (Etapa I)
+**Fluxo:** Contexto → Prompt otimizado para LLM
+
+**ONDE ACONTECE:**
+- **Arquivo:** `/home/maiconkevyn/PycharmProjects/txt2sql_claude/src/application/services/query_processing_service.py`
+- **Método:** `_create_enhanced_prompt(user_query, schema_context)` (linha 285)
+
+**O QUE ACONTECE:**
+```python
+enhanced_prompt = f"""
+{schema_context.formatted_context}
+
+Pergunta do usuário: {user_query}
+
+IMPORTANTE - Regras para filtros demográficos:
+- SEXO = 1 significa masculino/homem
+- SEXO = 3 significa feminino/mulher  
+- MORTE = 1 significa que o paciente morreu
+- MORTE = 0 significa que o paciente não morreu
+"""
+```
+
+**EXEMPLO PRÁTICO:**
+- Para "Quantos homens?", o prompt fica:
+- "Pergunta: Quantos homens? REGRA: SEXO = 1 significa masculino"
+
+### 9. LANGCHAIN SQL AGENT (LLM LAYER 1) (Etapa J)
+**Fluxo:** Prompt melhorado → Geração de SQL via LLM
+
+**ONDE ACONTECE:**
+- **Arquivo:** `/home/maiconkevyn/PycharmProjects/txt2sql_claude/src/application/services/query_processing_service.py`
+- **Setup:** `_setup_langchain_agent()` (linha 94)
+- **Execução:** `agent_response = self._agent.run(enhanced_prompt)` (linha 138)
+
+**O QUE ACONTECE:**
+```python
+# Cria agente SQL
+self._agent = create_sql_agent(
+    llm=llm_instance,
+    toolkit=self._toolkit,
+    agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+    verbose=True,
+    handle_parsing_errors=True
+)  # Linhas 114-120
+```
+
+**EXEMPLO PRÁTICO:**
+- Recebe: "Quantos homens? REGRA: SEXO=1 é masculino"
+- Gera SQL: `SELECT COUNT(*) FROM sus_data WHERE SEXO = 1`
+
+### 10. DATABASE SERVICE (Etapa K)
+**Fluxo:** Agente SQL → Execução no banco
+
+**ONDE ACONTECE:**
+- **Arquivo:** `/home/maiconkevyn/PycharmProjects/txt2sql_claude/src/application/services/database_connection_service.py`
+- **Métodos:**
+  - `get_connection()` → Retorna LangChain SQLDatabase (linha 48)
+  - `get_raw_connection()` → Retorna conexão SQLite raw (linha 54)
+
+**O QUE ACONTECE:**
+- Agente LangChain usa conexão SQLDatabase para executar queries
+- Conexão raw disponível para SQL direto
+- Gerencia operações do banco SQLite
+
+### 11. EXECUÇÃO SQL (Etapa L)
+**Fluxo:** Serviço de banco → Resultados SQL brutos
+
+**ONDE ACONTECE:**
+- Conexão do banco executa SQL através do agente LangChain
+
+**O QUE ACONTECE:**
+- Agente gera query SQL (ex: `SELECT COUNT(*) FROM sus_data WHERE SEXO = 1`)
+- Banco executa query e retorna resultados brutos
+- Resultados estão em formato SQLite
+
+**EXEMPLO PRÁTICO:**
+```sql
+SELECT COUNT(*) FROM sus_data WHERE SEXO = 1
+-- Resultado: [{'count': 28}]
+```
+
+### 12. CORREÇÃO CASE SENSITIVITY (Etapa M)
+**Fluxo:** Resultados brutos → Queries SQL corrigidas
+
+**ONDE ACONTECE:**
+- **Arquivo:** `/home/maiconkevyn/PycharmProjects/txt2sql_claude/src/application/services/query_processing_service.py`
+- **Método:** `_fix_case_sensitivity_issues(sql_query)` (linha 327)
+
+**O QUE ACONTECE:**
+```python
+# Corrige o padrão: CIDADE_RESIDENCIA_PACIENTE = UPPER('city') ou LOWER('city')
+# Converte para: CIDADE_RESIDENCIA_PACIENTE = 'City' (case adequado)
+
+pattern_upper = r"CIDADE_RESIDENCIA_PACIENTE\s*=\s*UPPER\s*\(\s*'([^']+)'\s*\)"
+def replacement_upper(match):
+    city_name = match.group(1)
+    proper_city = city_name.title()  # 'porto alegre' → 'Porto Alegre'
+    return f"CIDADE_RESIDENCIA_PACIENTE = '{proper_city}'"
+```
+
+**EXEMPLO PRÁTICO:**
+- Query incorreta: `WHERE CIDADE_RESIDENCIA_PACIENTE = UPPER('porto alegre')`
+- Query corrigida: `WHERE CIDADE_RESIDENCIA_PACIENTE = 'Porto Alegre'`
+
+### 13. PARSE DE RESULTADOS (Etapas N-O)
+**Fluxo:** Queries corrigidas → Objeto QueryResult estruturado
+
+**ONDE ACONTECE:**
+- **Arquivo:** `/home/maiconkevyn/PycharmProjects/txt2sql_claude/src/application/services/query_processing_service.py`
+- **Método:** `_parse_agent_results(response)` (linha 369)
+
+**O QUE ACONTECE:**
+```python
+# Parse dos resultados da resposta do agente
+results, row_count = self._parse_agent_results(agent_response)  # Linha 147
+
+# Cria objeto QueryResult
+query_result = QueryResult(
+    sql_query=sql_query,
+    results=results,
+    success=True,
+    execution_time=execution_time,
+    row_count=row_count,
+    metadata={
+        "agent_response": agent_response,
+        "schema_context_used": True,
+        "langchain_agent": True
+    }
+)  # Linhas 159-170
+```
+
+**EXEMPLO PRÁTICO:**
+- Resultado bruto: `[{'count': 28}]`
+- QueryResult estruturado com metadata, tempo de execução, etc.
+
+### 14. DECISÃO RESPOSTA CONVERSACIONAL (Etapa Q)
+**Fluxo:** QueryResult → Determinação de resposta conversacional
+
+**ONDE ACONTECE:**
+- **Arquivo:** `/home/maiconkevyn/PycharmProjects/txt2sql_claude/src/application/orchestrator/text2sql_orchestrator.py`
+- **Método:** `_format_query_result(result, user_query)` (linha 326)
+
+**O QUE ACONTECE:**
+```python
+if (self._config.enable_conversational_response and 
+    self._conversational_service and 
+    self._conversational_service.is_conversational_llm_available()):
+    # Gera resposta conversacional
+```
+
+**EXEMPLO PRÁTICO:**
+- Se conversational_response=True: vai para resposta amigável
+- Se conversational_response=False: retorna resposta básica
+
+### 15. CONVERSATIONAL RESPONSE SERVICE (Etapa S)
+**Fluxo:** Decisão: Sim → Processamento conversacional
+
+**ONDE ACONTECE:**
+- **Arquivo:** `/home/maiconkevyn/PycharmProjects/txt2sql_claude/src/application/services/conversational_response_service.py`
+- **Método:** `generate_response()` (linha 78)
+
+**O QUE ACONTECE:**
+```python
+conversational_response = self._conversational_service.generate_response(
+    user_query=user_query,
+    sql_query=result.sql_query,
+    sql_results=result.results,
+    session_id=self._session_id,
+    error_message=result.error_message or ""
+)  # Linhas 335-341
+```
+
+**EXEMPLO PRÁTICO:**
+- Pega resultado `{'count': 28}` 
+- Prepara para transformar em resposta amigável
+
+### 16. SUS PROMPT TEMPLATE SERVICE (Etapa T)
+**Fluxo:** Serviço conversacional → Templates especializados SUS
+
+**ONDE ACONTECE:**
+- **Arquivo:** `/home/maiconkevyn/PycharmProjects/txt2sql_claude/src/application/services/sus_prompt_template_service.py`
+- **Métodos:**
+  - `determine_prompt_type()` → Analisa tipo de query (linha 424)
+  - `get_prompt()` → Retorna prompt especializado (linha 345)
+
+**O QUE ACONTECE:**
+```python
+class PromptType(Enum):
+    BASIC_RESPONSE = "basic_response"
+    STATISTICAL_ANALYSIS = "statistical_analysis"
+    COMPARATIVE_ANALYSIS = "comparative_analysis"
+    GEOGRAPHIC_ANALYSIS = "geographic_analysis"
+```
+
+**EXEMPLO PRÁTICO:**
+- "Quantos homens?" → STATISTICAL_ANALYSIS
+- "Compare homens e mulheres" → COMPARATIVE_ANALYSIS
+
+### 17. DETERMINAÇÃO DO TIPO DE ANÁLISE (Etapas U-Y)
+**Fluxo:** Templates SUS → Tipo específico de análise
+
+**ONDE ACONTECE:**
+- **Arquivo:** Mesmo arquivo da etapa 16
+- **Método:** `determine_prompt_type()`
+
+**O QUE ACONTECE:**
+```python
+statistical_keywords = ['média', 'total', 'soma', 'count', 'quantidade']
+comparative_keywords = ['comparar', 'versus', 'diferença', 'maior', 'menor']
+geographic_keywords = ['estado', 'município', 'região', 'cidade']
+
+if any(keyword in query_lower for keyword in statistical_keywords):
+    return PromptType.STATISTICAL_ANALYSIS
+elif any(keyword in query_lower for keyword in comparative_keywords):
+    return PromptType.COMPARATIVE_ANALYSIS
+```
+
+**EXEMPLO PRÁTICO:**
+- "Quantos" → STATISTICAL_ANALYSIS
+- "Qual cidade tem mais" → GEOGRAPHIC_ANALYSIS
+
+### 18. PROMPT ESPECIALIZADO SUS (Etapa Z)
+**Fluxo:** Tipo de análise → Prompt otimizado para SUS
+
+**ONDE ACONTECE:**
+- **Arquivo:** Geração de template com base de conhecimento SUS
+
+**O QUE ACONTECE:**
+```python
+template = """
+ANÁLISE ESTATÍSTICA SOLICITADA: {user_query}
+DADOS OBTIDOS: {sql_results}
+
+Realize análise estatística completa incluindo:
+- Medidas de tendência central
+- Variabilidade dos dados
+- Comparação com padrões esperados
+- Interpretação epidemiológica
+- Recomendações baseadas nos achados
+"""
+```
+
+**EXEMPLO PRÁTICO:**
+- Para "Quantos homens?", gera prompt com contexto epidemiológico
+- Include terminologia médica apropriada
+
+### 19. CONVERSATIONAL LLM (LLM LAYER 2) (Etapa AA)
+**Fluxo:** Prompt especializado → Resposta amigável
+
+**ONDE ACONTECE:**
+- **Arquivo:** `/home/maiconkevyn/PycharmProjects/txt2sql_claude/src/application/services/conversational_llm_service.py`
+- **Método:** `generate_conversational_response()` (linha 68)
+
+**O QUE ACONTECE:**
+```python
+@dataclass
+class ConversationalConfig:
+    model_name: str = "llama3.2:latest"
+    temperature: float = 0.7  # Mais alto para conversação
+    max_tokens: int = 1000
+    timeout: int = 60
+```
+
+**EXEMPLO PRÁTICO:**
+- Usa Llama3.2 com temperatura 0.7 (mais criativo)
+- Especializado em respostas conversacionais
+
+### 20. GERAÇÃO DE RESPOSTA EM PORTUGUÊS (Etapa BB)
+**Fluxo:** LLM conversacional → Resposta de saúde em português
+
+**ONDE ACONTECE:**
+- **Arquivo:** Prompt system com contexto português
+
+**O QUE ACONTECE:**
+```python
+sus_context = """
+Você é um assistente especialista em dados do Sistema Único de Saúde (SUS) brasileiro.
+Sua função é transformar resultados de consultas SQL em respostas conversacionais
+amigáveis e informativas para profissionais de saúde e gestores públicos.
+
+CONHECIMENTO ESPECÍFICO DO SUS:
+- CNES: Cadastro Nacional de Estabelecimentos de Saúde
+- CID: Classificação Internacional de Doenças
+- Terminologia médica em português brasileiro
+"""
+```
+
+**EXEMPLO PRÁTICO:**
+- Entrada: `{'count': 28}`
+- Saída: "Segundo os dados, 28 pacientes do sexo masculino foram registrados no sistema SUS."
+
+### 21. METADADOS E SUGESTÕES (Etapa CC)
+**Fluxo:** Resposta em português → Resposta enriquecida
+
+**ONDE ACONTECE:**
+- **Arquivo:** `/home/maiconkevyn/PycharmProjects/txt2sql_claude/src/application/services/conversational_response_service.py`
+- **Método:** `_generate_suggestions()` (linha 241)
+
+**O QUE ACONTECE:**
+```python
+suggestions.extend([
+    "Gostaria de ver a evolução temporal destes dados?",
+    "Quer comparar com outras regiões?",
+    "Posso mostrar estatísticas detalhadas destes resultados"
+])
+```
+
+**EXEMPLO PRÁTICO:**
+- Adiciona sugestões relacionadas
+- Include metadados como tempo de execução
+- Confidence score da resposta
+
+### 22. RESPOSTA FINAL JSON (Etapa DD)
+**Fluxo:** Resposta enriquecida → Resposta estruturada da API
+
+**ONDE ACONTECE:**
+- **Arquivo:** Múltiplos arquivos contribuem para estrutura final
+
+**O QUE ACONTECE:**
+```json
+{
+  "success": true,
+  "question": "Quantos pacientes são homens?",
+  "response": "Segundo os dados, 28 pacientes do sexo masculino foram registrados no sistema SUS.",
+  "execution_time": 12.34,
+  "metadata": {
+    "conversational_response": true,
+    "response_type": "statistical_analysis",
+    "confidence_score": 0.9,
+    "suggestions": [
+      "Gostaria de ver a distribuição por faixa etária?",
+      "Posso comparar com dados de outras regiões"
+    ]
+  },
+  "timestamp": "2025-06-20T11:30:00.000Z"
+}
+```
+
+## 🔄 ORDEM COMPLETA DE EXECUÇÃO
+
+1. **Ponto de Entrada** (Flask/FastAPI) recebe pergunta do usuário
+2. **Text2SQLOrchestrator** valida e sanitiza entrada
+3. **Objeto QueryRequest** criado com metadados
+4. **QueryProcessingService** coordena o processamento
+5. **SchemaIntrospectionService** fornece contexto do banco SUS
+6. **Prompt melhorado** criado com regras de negócio SUS
+7. **LangChain SQL Agent** (LLM Layer 1) gera SQL
+8. **DatabaseService** executa query SQL
+9. **Correções case sensitivity** aplicadas aos resultados
+10. **Resultados parseados** em formato estruturado
+11. **Decisão conversacional** feita baseada na configuração
+12. **ConversationalResponseService** orquestra resposta amigável
+13. **SUSPromptTemplateService** fornece templates especializados
+14. **Tipo de análise determinado** (estatística, geográfica, etc.)
+15. **Prompt especializado** criado para domínio da saúde
+16. **ConversationalLLM** (LLM Layer 2) gera resposta amigável
+17. **Resposta em português** com terminologia SUS
+18. **Metadados e sugestões** adicionados
+19. **Resposta JSON final** retornada ao usuário
+
+Este fluxo completo garante que resultados SQL brutos sejam transformados em respostas contextuais e amigáveis, especificamente otimizadas para profissionais de saúde brasileiros trabalhando com dados SUS.
