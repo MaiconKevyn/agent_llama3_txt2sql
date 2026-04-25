@@ -1,262 +1,345 @@
-# TXT2SQL — DataVisSUS (GPT-4o-mini + LangGraph)
+# DataVisSUS TXT2SQL Agent
+
+[![Python Version](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
+[![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o--mini-412991.svg)](https://openai.com/)
+[![LangGraph](https://img.shields.io/badge/LangGraph-0.6.6-purple.svg)](https://github.com/langchain-ai/langgraph)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115.13-009688.svg)](https://fastapi.tiangolo.com/)
+[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL%20%2F%20DuckDB-336791.svg)](https://www.postgresql.org/)
+
+> An AI-powered text-to-SQL system for Brazilian public healthcare data (DATASUS/SUS), built with LangGraph, OpenAI, FastAPI, and a dedicated web interface for natural-language analytics over hospital datasets.
+
+## Table of Contents
+- [Overview](#overview)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Technology Stack](#technology-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+  - [Configuration](#configuration)
+  - [Running the Application](#running-the-application)
+- [Usage](#usage)
+- [Evaluation](#evaluation)
+- [System Design](#system-design)
+- [Observability](#observability)
+- [Contributing](#contributing)
+- [License](#license)
+- [Acknowledgments](#acknowledgments)
 
 ## Overview
+**DataVisSUS TXT2SQL Agent** translates natural-language questions into executable SQL for Brazilian healthcare datasets. The system is designed for DATASUS-style analytical workloads and combines query classification, schema selection, guarded SQL generation, validation, repair, execution, and response synthesis inside a LangGraph workflow.
 
-TXT2SQL is a Portuguese natural-language to SQL agent for Brazilian healthcare microdata (DATASUS SIH-RD/SUS). It translates Portuguese questions into executable SQL over a DuckDB warehouse (~37M hospital records, 16 tables) using a stateful LangGraph pipeline and OpenAI GPT-4o-mini. No model fine-tuning is required.
+### Key Capabilities
+- **Natural Language to SQL**: Converts Portuguese or English analytical questions into SQL queries.
+- **Workflow Routing**: Distinguishes between database, conversational, schema, and clarification flows.
+- **Schema-Aware Generation**: Selects relevant tables, loads schema context, and constrains SQL generation accordingly.
+- **Multi-Step Recovery**: Repairs invalid SQL through validation and execution feedback loops.
+- **Multi-Query Planning**: Supports plan gating, query planning, multi-query execution, verification, and result synthesis for more complex requests.
+- **Multiple Interfaces**: CLI, REST API, and web frontend are available in the same repository.
+- **Safety Guardrails**: Blocks non-`SELECT` execution and sanitizes generated SQL before execution.
+- **Evaluation Pipeline**: Includes an agent-vs-baseline benchmark setup with execution accuracy metrics.
 
-**Key capabilities:**
-- Natural-language query processing in Portuguese
-- Query classification: DATABASE, CONVERSATIONAL, SCHEMA, CLARIFICATION routes
-- Heuristic + LLM-based table selection with keyword fast-path (confidence ≥ 0.85 skips LLM)
-- Eight domain-specific SQL generation rules (RULES A–H) for SUS-coded values
-- Static SQL validation via LangChain's SQLDatabaseToolkit before execution
-- Bounded self-repair loop: up to 2 generation retries, 3 validation retries, 15-step global cap
-- Loop-detection guard (terminates if two consecutive repair attempts produce identical SQL)
-- Multi-turn conversation state across dialogue turns
-- Multi-interface: CLI, REST API, web frontend
-- Structured logging, SQL injection prevention, session management
+## Features
+- **LangGraph Pipeline**: Stateful graph-based orchestration with checkpointed conversation memory.
+- **OpenAI Integration**: Uses `gpt-4o-mini` by default for SQL and conversational responses.
+- **Enhanced Table Discovery**: Combines table metadata and selection heuristics to narrow schema context.
+- **Validation and Repair Loop**: Static validation plus retry-driven SQL repair before re-execution.
+- **Session Memory**: Persists interaction history in SQLite for multi-turn usage.
+- **FastAPI Service**: Exposes query, schema, models, and health endpoints.
+- **Web Chat Interface**: Separate Node/Express frontend that connects to the API.
+- **Evaluation Artifacts**: Stores raw evaluation runs, reports, and baseline artifacts for comparison.
 
-**Target use cases:** Healthcare data analysis, medical research queries, hospital administration insights, public health data exploration.
-
----
-
-## Agent Workflow
-
-The pipeline has 9 nodes. All queries enter through `classify_query`; only DATABASE queries traverse the full SQL path.
-
+## Architecture
 ```mermaid
 flowchart TD
-    START([User Question]) --> A[classify_query\nDATABASE / CONVERSATIONAL\nSCHEMA / CLARIFICATION]
+    START([User Query]) --> A[classify_query]
 
-    A -->|DATABASE or SCHEMA| B[list_tables\nheuristic fast-path + LLM selection]
-    A -->|CONVERSATIONAL| P[generate_response]
-    A -->|CLARIFICATION| CL[clarification]
-    A -->|error| P
+    A -->|database| B[list_tables]
+    A -->|schema| B
+    A -->|conversational| R[generate_response]
+    A -->|clarification| C[clarification]
+    A -->|error| R
 
-    B --> C[get_schema\nfetch DDL for selected tables]
+    B --> D[get_schema]
+    D --> E[plan_gate]
 
-    C -->|DATABASE| D[reasoning\nno-op passthrough]
-    C -->|SCHEMA| P
-    C -->|error| P
+    E -->|query_planner| F[query_planner]
+    E -->|reasoning| G[reasoning]
+    E -->|generate_sql| H[generate_sql]
+    E -->|response| R
 
-    D --> E[generate_sql\nRULES A-H + SUS mappings\n+ pre-generation hints]
+    F -->|single| H
+    F -->|complex single| G
+    F -->|multi| I[multi_sql_executor]
 
-    E -->|valid SQL generated| F[validate_sql\nSQLDatabaseToolkit\nstatic check]
-    E -->|retry ≤2| E
-    E -->|max retries| P
+    I --> J[multi_verifier]
+    J -->|approved| K[result_synthesizer]
+    J -->|fallback single| H
 
-    F -->|valid| G[execute_sql\nDuckDB]
-    F -->|syntax / schema error| R[repair_sql\nerror context + column candidates]
-    F -->|retry_validation ≤3| F
-    F -->|max retries| P
+    G --> H
+    H --> L[vote_sql]
+    L --> M[validate_sql]
+    M -->|valid| N[execute_sql]
+    M -->|retry generation| O[repair_sql]
+    M -->|retry validation| M
+    M -->|error| R
 
-    G -->|success| P
-    G -->|syntax / schema error| R
-    G -->|retry_validation| F
-    G -->|retry_execution infrastructure| G
-    G -->|max retries / error| P
+    N -->|success| R
+    N -->|retry generation| O
+    N -->|retry validation| M
+    N -->|retry execution| N
+    N -->|error| R
 
-    R --> F
+    O -->|replan| G
+    O -->|revalidate| M
 
-    P --> END([Final Response\nNL + SQL + result])
-    CL --> END
-
-    DB[("DuckDB Warehouse\nSIH-RD/SUS · ~37M records\n16 tables")] --> G
-    LLM["OpenAI GPT-4o-mini\ntemperature=0"] --> A
-    LLM --> E
-    LLM --> R
-    LLM --> P
-
-    style START fill:#e1f5fe,stroke:#0288d1
-    style END fill:#e8f5e8,stroke:#388e3c
-    style DB fill:#fff3e0,stroke:#f57c00
-    style LLM fill:#f3e5f5,stroke:#7b1fa2
-    style R fill:#fff9c4,stroke:#f9a825
-    style G fill:#ffebee,stroke:#c62828
+    K --> END([Final Response])
+    R --> END
+    C --> END
 ```
 
-**Node responsibilities:**
+## Technology Stack
+| Component | Technology | Purpose |
+|---|---|---|
+| **Language Model** | OpenAI `gpt-4o-mini` | SQL generation and conversational responses |
+| **LLM Framework** | LangChain | LLM orchestration and SQL toolkit integration |
+| **Graph Orchestration** | LangGraph `0.6.6` | Stateful workflow execution |
+| **API Layer** | FastAPI | REST service for queries, schema, health, and models |
+| **Frontend** | Node.js, Express, vanilla JS | Web chat interface for the agent |
+| **Database Access** | SQLAlchemy, psycopg2, LangChain SQLDatabase | SQL execution against PostgreSQL or DuckDB |
+| **Checkpoint Memory** | SQLite | Multi-turn session persistence |
+| **Evaluation** | Custom EX / CM / EM metrics | Benchmarking agent and baseline performance |
+| **Observability** | LangSmith, rotating file logs | Tracing and operational visibility |
 
-| Node | Role |
-|---|---|
-| `classify_query` | Routes query type; heuristic fast-path for clear DATABASE queries |
-| `list_tables` | Lists available tables; keyword-regex fast-path (conf ≥ 0.85) then LLM selection |
-| `get_schema` | Fetches DDL (columns, types, FK) for selected tables |
-| `reasoning` | No-op passthrough; reserved for future pre-generation planning |
-| `generate_sql` | Generates SQL with RULES A–H, SUS value mappings, per-table few-shot examples, and pre-generation hints |
-| `validate_sql` | Static check via LangChain's SQLDatabaseToolkit; column whitelist + similarity scoring |
-| `execute_sql` | Runs query against DuckDB; routes based on error type |
-| `repair_sql` | Rebuilds SQL prompt with error context, column candidates, and similarity-ranked substitutions |
-| `generate_response` | Formats final NL response; also handles all error exits |
-| `clarification` | Returns a clarification prompt for ambiguous or unanswerable queries |
+## Project Structure
+```bash
+txt2sql_refactor_openai_v2/
+├── src/
+│   ├── agent/
+│   │   ├── workflow.py              # LangGraph graph definition and routing
+│   │   ├── orchestrator.py          # Main production orchestrator
+│   │   ├── nodes.py                 # Core workflow node implementations
+│   │   ├── query_planner.py         # Single vs multi-query planning
+│   │   ├── plan_gate.py             # Planner gate before SQL generation
+│   │   ├── validation.py            # SQL validation helpers
+│   │   ├── execution.py             # SQL execution logic
+│   │   ├── result_synthesizer.py    # Multi-query result synthesis
+│   │   └── tools/                   # Enhanced SQL-related tools
+│   ├── application/config/
+│   │   ├── simple_config.py         # App and orchestrator defaults
+│   │   ├── table_descriptions.py    # Table metadata and descriptions
+│   │   └── table_templates.py       # Prompt templates and examples
+│   ├── interfaces/
+│   │   ├── api/main.py              # FastAPI entrypoint
+│   │   └── cli/agent.py             # CLI entrypoint
+│   ├── infrastructure/database/
+│   │   └── connection_service.py    # Database connection services
+│   ├── memory/                      # Example memory/vector store artifacts
+│   └── utils/                       # Logging, SQL safety, classification utils
+├── evaluation/                      # Evaluation runners, metrics, results
+├── baselines/rich_prompt_baseline/  # Single-shot baseline implementation
+├── frontend/                        # Web interface served by Node/Express
+├── docs/                            # Papers, diagrams, reports
+├── tests/                           # Safety and execution tests
+├── requirements.txt                 # Python dependencies
+└── README.md                        # This file
+```
 
----
-
-## Setup
-
+## Getting Started
 ### Prerequisites
-
-- Python 3.11+
-- OpenAI API key (`OPENAI_API_KEY`)
-- DuckDB file with SIH-RD/SUS schema (path in `.env`)
-- Git
-- Node.js 18+ (optional, for web interface)
+- **Python**: 3.11 or higher
+- **Node.js**: 16 or higher for the web frontend
+- **OpenAI API Key**: Required for `gpt-4o-mini`
+- **Database**: PostgreSQL is the default setup; DuckDB URLs are also accepted by the LLM manager
 
 ### Installation
-
+1. **Clone the repository**
 ```bash
-git clone https://github.com/MaiconKevyn/txt2sql_refactor_openai.git
-cd txt2sql_refactor_openai
+git clone <repository-url>
+cd txt2sql_refactor_openai_v2
+```
 
+2. **Create and activate a virtual environment**
+```bash
 python -m venv .venv
-source .venv/bin/activate   # Linux/macOS
-# .venv\Scripts\activate    # Windows
+source .venv/bin/activate
+# Windows: .venv\Scripts\activate
+```
 
+3. **Install Python dependencies**
+```bash
 pip install -r requirements.txt
 ```
 
-### Environment Configuration
+4. **Install frontend dependencies** (optional)
+```bash
+cd frontend
+npm install
+cd ..
+```
+
+### Configuration
+Create a `.env` file in the project root:
 
 ```bash
 cp .env.example .env
 ```
 
-Required variables in `.env`:
+Expected variables:
 
 ```env
-OPENAI_API_KEY=sk-...
+# OpenAI Configuration
+OPENAI_API_KEY=sk-your_openai_key_here
 
-# DuckDB (default)
-DATABASE_PATH=duckdb:////absolute/path/to/sihrd5.duckdb?access_mode=read_only
+# LangSmith Configuration
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=your_langsmith_api_key_here
+LANGCHAIN_PROJECT=txt2sql
 
-# LangSmith tracing (optional)
-LANGSMITH_TRACING=false
-LANGSMITH_API_KEY=
+# Database Configuration
+DATABASE_PATH=postgresql+psycopg2://postgres:your_password@localhost:5432/sihrd5
 ```
 
-### Web Interface (optional)
+The application reads `DATABASE_URL` first when available, and falls back to `DATABASE_PATH`.
 
+### Running the Application
+1. **Run the CLI**
 ```bash
-cd frontend
-npm install
-npm run dev
-# Access at http://localhost:3000
-```
-
----
-
-## Usage
-
-### CLI
-
-```bash
-# Single query
-python src/interfaces/cli/agent.py --query "Quantas mortes ocorreram em 2022?"
-
-# Interactive session
 python src/interfaces/cli/agent.py
-
-# Debug mode (step-by-step workflow trace)
-python src/interfaces/cli/agent.py --query "Quantos hospitais existem?" --debug-steps
-
-# Health check
-python src/interfaces/cli/agent.py --health-check
-
-# Override database path
-python src/interfaces/cli/agent.py --db-url "duckdb:////path/to/db.duckdb?access_mode=read_only" --query "..."
 ```
 
-### API Server
+Single-query mode and debugging examples:
 
+```bash
+python src/interfaces/cli/agent.py --query "Quantas mortes ocorreram em 2022?"
+python src/interfaces/cli/agent.py --query "Quantos hospitais existem?" --debug-steps
+python src/interfaces/cli/agent.py --health-check
+python src/interfaces/cli/agent.py --db-url "postgresql://user:pass@localhost:5432/sihrd5" --query "..."
+```
+
+2. **Run the API**
 ```bash
 python src/interfaces/api/main.py
-# Docs at http://localhost:8000/docs
 ```
 
----
+The API will be available at `http://localhost:8000`, with docs at `http://localhost:8000/docs`.
 
-## Evaluation
+3. **Run the web interface**
+```bash
+cd frontend
+npm start
+```
 
-Both the LangGraph agent and a single-shot rich-prompt baseline are evaluated on the same 81 Portuguese healthcare queries (31 Easy / 29 Medium / 21 Hard) with the same model (GPT-4o-mini, temperature=0) and identical prompts. The baseline uses no LangGraph orchestration, isolating the net architectural contribution.
+The frontend will be available at `http://localhost:3000`.
 
-### Metrics
+## Usage
+### Example Queries
+**1. Mortality counting**
+```text
+Quantas mortes ocorreram em 2022?
+```
 
-| Metric | Description |
-|---|---|
-| **EX** — Execution Accuracy | Query correct if result set matches gold standard (primary metric) |
-| **CM** — Component Matching | Clause-level structural similarity |
-| **EM** — Exact Match | Syntactic match to gold SQL |
+**2. Demographic filtering**
+```text
+Qual é a idade média das mulheres que morreram?
+```
 
-### Latest Results (2026-02-26)
+**3. Infrastructure analysis**
+```text
+Quantos leitos de UTI existem em Minas Gerais?
+```
 
-| System | EX | CM | EM | Latency |
-|---|---|---|---|---|
-| LangGraph Agent | **96.3%** (78/81) | 80.8% | 23.5% | ~8.0 s/query |
-| Rich Prompt Baseline | 88.9% (72/81) | 75.8% | 16.0% | ~5.2 s/query |
-| Δ (Agent − Baseline) | **+7.4 pp** | +5.0 pp | +7.5 pp | +2.8 s |
+**4. Ranking query**
+```text
+Quais foram as 5 cidades com mais mortes?
+```
 
-Completion rate: 100% for both systems (all 81 queries returned a response without pipeline crash).
+### API Endpoints
+- `POST /api/v1/query` or `POST /query`: process a natural-language query
+- `GET /api/v1/schema` or `GET /schema`: inspect table descriptions and schema summary
+- `GET /api/v1/models` or `GET /models`: inspect configured models
+- `GET /api/v1/health` or `GET /health`: check service health
 
-Statistical comparison: exact McNemar's test, $b=7$, $c=1$, $p=0.070$ (marginal; limited power on 81 queries). Wilson 95% CI: agent [89.7%, 98.7%], baseline [80.2%, 94.0%].
-
-### Running Evaluation
+Example request:
 
 ```bash
-# LangGraph agent
-python evaluation/run_dag_evaluation.py
-
-# Single-shot baseline
-python evaluation/run_rich_prompt_baseline.py
+curl -X POST http://localhost:8000/api/v1/query \
+  -H "Content-Type: application/json" \
+  -d '{"query":"Quantas mortes ocorreram em 2022?","include_sql":true}'
 ```
 
-Results are written to `evaluation/results/` (agent) and `baselines/rich_prompt_baseline/artifacts/` (baseline).
-
----
-
-## Key Files
-
-```
-src/agent/
-├── nodes.py          # All 9 node implementations; RULES A–H (~line 695);
-│                     # heuristic table selection (~line 1808);
-│                     # _enhance_sus_schema_context (~line 1681)
-├── workflow.py       # LangGraph graph definition and all routing functions
-├── state.py          # MessagesStateTXT2SQL, retry logic, phase tracking
-└── llm_manager.py    # ChatOpenAI setup (reads OPENAI_API_KEY)
-
-src/application/config/
-├── table_templates.py    # Per-table few-shot examples and generation rules
-└── table_descriptions.py # TABLE_DESCRIPTIONS dict used in table selection
-
-evaluation/
-├── ground_truth.json          # 81 test queries (GT001–GT081)
-├── run_dag_evaluation.py      # Agent evaluation entrypoint
-└── run_rich_prompt_baseline.py
-
-baselines/rich_prompt_baseline/  # Single-shot baseline implementation
-```
-
----
-
-## Tests
-
+### Tests
 ```bash
-# Run all tests
 python -m pytest tests/ -v
-
-# With coverage
 python -m pytest tests/ --cov=src --cov-report=html
 ```
 
-Test suite covers SQL injection prevention (`test_sql_safety.py`) and execution blocking at workflow and manager levels (`test_sql_execution_block.py`). All 16 tests passing.
+The current test suite covers SQL safety and execution blocking scenarios.
 
----
+## Evaluation
+The repository includes two evaluation paths:
+- **LangGraph agent evaluation**: end-to-end workflow benchmark using the orchestrated agent.
+- **Rich prompt baseline**: single-shot baseline for measuring the gain from graph orchestration.
 
-## Logs
+### Metrics
+| Metric | Description |
+|---|---|
+| **EX** | Execution Accuracy, based on result correctness |
+| **CM** | Component Matching, based on SQL structure similarity |
+| **EM** | Exact Match, based on SQL string-level equivalence |
 
+### Running Evaluation
 ```bash
-tail -f logs/txt2sql_orchestrator.log  # Main orchestration
-tail -f logs/txt2sql_nodes.log         # Workflow node execution
-tail -f logs/txt2sql_llm_manager.log   # LLM calls
-tail -f logs/txt2sql_api.log           # API requests
+python evaluation/run_dag_evaluation.py
+python evaluation/run_rich_prompt_baseline.py
+python evaluation/generate_report.py
 ```
+
+### Output Locations
+```bash
+evaluation/results/                       # Agent evaluation outputs and reports
+baselines/rich_prompt_baseline/artifacts/ # Baseline execution artifacts
+```
+
+Ground truth files are stored in `evaluation/ground_truth.json` and `evaluation/ground_truth_v2.json`.
+
+## System Design
+### Query Routing
+The workflow starts with query classification and routes requests into database, schema, conversational, or clarification paths. Database queries continue through schema selection and SQL generation, while conversational or clarification requests bypass SQL execution entirely.
+
+### Plan Gate and Query Planner
+Before generating SQL, the graph decides whether the request should proceed directly, use additional reasoning, or be decomposed into multiple SQL sub-queries. This is the main architectural difference from a simpler single-pass text-to-SQL agent.
+
+### SQL Validation and Repair
+Generated SQL is sanitized and checked before execution. Failures are routed through validation retries, repair nodes, and controlled re-execution to improve robustness without allowing unsafe statements.
+
+### Memory and Sessions
+The orchestrator stores checkpoint data in `data/chatbot_memory.db`, enabling conversation continuity and stateful LangGraph execution across requests.
+
+## Observability
+### Logging
+Main logs are written under `logs/` and `evaluation/logs/`. Useful files include:
+- `logs/orchestrator_v3.log`
+- `evaluation/logs/txt2sql_api.log`
+- `evaluation/logs/txt2sql_cli.log`
+- `evaluation/logs/txt2sql_nodes.log`
+
+### LangSmith
+If `LANGSMITH_TRACING=true` is configured, the application emits traces for workflow execution, which is useful for debugging prompt behavior, retries, and performance bottlenecks.
+
+## Contributing
+Contributions should preserve the current architecture boundaries:
+- Keep orchestration logic inside `src/agent/`.
+- Keep app configuration centralized in `src/application/config/`.
+- Keep interface-specific concerns inside `src/interfaces/`.
+- Update evaluation artifacts or documentation when changing workflow behavior.
+
+For larger behavior changes, validate both the agent path and the baseline path to avoid regressions in benchmark comparability.
+
+## License
+This project is licensed under the **MIT License**.
+
+See [LICENSE](LICENSE) for the full text.
+
+Copyright (c) 2026 Maicon Kevyn
