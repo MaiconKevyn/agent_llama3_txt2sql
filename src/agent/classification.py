@@ -111,8 +111,6 @@ def query_classification_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2S
         if "user_query" not in state:
             state["user_query"] = user_query
 
-        llm_manager = get_llm_manager()
-
         # ------------------------------------------------------------------ #
         # Multi-turn: resolve anaphoric follow-up queries before classifying  #
         # ------------------------------------------------------------------ #
@@ -120,6 +118,7 @@ def query_classification_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2S
         prior_human, prior_ai = _extract_prior_context(messages_history)
 
         if _is_followup(user_query, prior_human):
+            llm_manager = get_llm_manager()
             resolve_messages = [
                 SystemMessage(content=(
                     "Reescreva a PERGUNTA ATUAL como uma pergunta autossuficiente, "
@@ -177,6 +176,7 @@ def query_classification_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2S
             )
             logger.info(reasoning)
         else:
+            llm_manager = get_llm_manager()
             system_prompt = (
                 "Você é um classificador de consultas. Decida a ROTA em {DATABASE, CONVERSATIONAL, SCHEMA}.\n"
                 "Responda APENAS em JSON com campos: {\\\"route\\\":<string>,\\\"confidence\\\":<float>,\\\"reasons\\\":<string>}\n"

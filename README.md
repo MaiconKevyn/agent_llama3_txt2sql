@@ -160,19 +160,24 @@ git clone <repository-url>
 cd txt2sql_refactor_openai_v2
 ```
 
-2. **Create and activate a virtual environment**
+2. **Install Python dependencies (recommended — via `uv`)**
 ```bash
-python -m venv .venv
+# Install uv if needed: https://docs.astral.sh/uv/getting-started/installation/
+uv sync
 source .venv/bin/activate
 # Windows: .venv\Scripts\activate
 ```
 
-3. **Install Python dependencies**
+`uv sync` creates the virtual environment and installs all dependencies from `uv.lock`, guaranteeing a bit-for-bit reproducible environment.
+
+**Alternative — plain pip (fallback)**
 ```bash
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-4. **Install frontend dependencies** (optional)
+3. **Install frontend dependencies** (optional)
 ```bash
 cd frontend
 npm install

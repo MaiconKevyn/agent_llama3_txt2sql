@@ -23,6 +23,7 @@ from .state import (
 )
 from ..utils.logging_config import get_nodes_logger
 from ..utils.sql_safety import is_select_only
+from .failure_taxonomy import TX
 
 logger = get_nodes_logger()
 
@@ -37,6 +38,23 @@ def execute_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
     start_time = time.time()
 
     try:
+        validated_sql = state.get("validated_sql") or state.get("generated_sql")
+
+        if not validated_sql:
+            raise ValueError("No validated SQL query to execute")
+
+        # Block non-SELECT/unsafe SQL before touching the LLM manager or DB
+        ok, reason = is_select_only(validated_sql)
+        if not ok:
+            error_message = f"SQL execution blocked: {reason}"
+            state = add_error(state, error_message, "sql_execution_error", ExecutionPhase.SQL_EXECUTION,
+                              taxonomy=TX.WRONG_FILTER)
+            state["retry_count"] = state.get("retry_count", 0) + 1
+            state["execution_retry_count"] = state.get("execution_retry_count", 0) + 1
+            execution_time = time.time() - start_time
+            state = update_phase(state, ExecutionPhase.SQL_EXECUTION, execution_time)
+            return state
+
         llm_manager = get_llm_manager()
 
         # Low-confidence SQL warning (observability only — does NOT block execution)
@@ -47,22 +65,6 @@ def execute_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 "sql": (state.get("validated_sql") or state.get("generated_sql", ""))[:200],
                 "user_query": state.get("user_query", "")[:100],
             })
-
-        validated_sql = state.get("validated_sql") or state.get("generated_sql")
-
-        if not validated_sql:
-            raise ValueError("No validated SQL query to execute")
-
-        # Block non-SELECT/unsafe SQL
-        ok, reason = is_select_only(validated_sql)
-        if not ok:
-            error_message = f"SQL execution blocked: {reason}"
-            state = add_error(state, error_message, "sql_execution_error", ExecutionPhase.SQL_EXECUTION)
-            state["retry_count"] = state.get("retry_count", 0) + 1
-            state["execution_retry_count"] = state.get("execution_retry_count", 0) + 1
-            execution_time = time.time() - start_time
-            state = update_phase(state, ExecutionPhase.SQL_EXECUTION, execution_time)
-            return state
 
         # Column existence check (skip if DB-validated)
         if state.get("validated_sql") is None:
@@ -82,7 +84,8 @@ def execute_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                         parts.append(f"Coluna/alias ausente {key}{base_info}")
                 msg = "; ".join(parts)
                 error_message = f"SQL validation failed (schema check): {msg}"
-                state = add_error(state, error_message, "sql_validation_error", ExecutionPhase.SQL_VALIDATION)
+                state = add_error(state, error_message, "sql_validation_error", ExecutionPhase.SQL_VALIDATION,
+                                  taxonomy=TX.SCHEMA_ERROR)
                 state["retry_count"] = state.get("retry_count", 0) + 1
                 state["validation_retry_count"] = state.get("validation_retry_count", 0) + 1
                 meta = state.get("response_metadata", {}) or {}
@@ -356,7 +359,8 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         prevs.append(previous_sql)
         if len(prevs) >= 2 and all(_norm(p) == _norm(repaired_sql) for p in prevs):
             diag = "Reparo produziu a mesma SQL das últimas tentativas. Use apenas colunas válidas conforme lista branca e sugestões."
-            state = add_error(state, diag, "sql_repair_error", ExecutionPhase.SQL_REPAIR)
+            state = add_error(state, diag, "sql_repair_error", ExecutionPhase.SQL_REPAIR,
+                              taxonomy=TX.REPAIR_LOOP)
             state["retry_count"] = state.get("max_retries", 3)
             meta["repair_early_exit"] = {
                 "reason": diag,
@@ -403,7 +407,8 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
 
     except Exception as e:
         error_message = f"SQL repair failed: {str(e)}"
-        state = add_error(state, error_message, "sql_repair_error", ExecutionPhase.SQL_GENERATION)
+        state = add_error(state, error_message, "sql_repair_error", ExecutionPhase.SQL_GENERATION,
+                          taxonomy=TX.REPAIR_LOOP)
 
         execution_time = time.time() - start_time
         state = update_phase(state, ExecutionPhase.SQL_REPAIR, execution_time)

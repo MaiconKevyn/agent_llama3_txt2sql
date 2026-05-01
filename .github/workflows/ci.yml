@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: [main, agent_v3]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-test:
+    name: Lint + Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "0.11.8"
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync --extra dev
+
+      - name: Lint (ruff)
+        run: uv run ruff check src/
+
+      - name: Format check (ruff)
+        run: uv run ruff format --check src/
+
+      - name: Unit tests
+        run: |
+          uv run pytest tests/ \
+            --ignore=tests/test_agent_improvements.py \
+            --ignore=tests/test_openai_api_isolated.py \
+            -q
+
+  regression:
+    name: Regression Suite
+    runs-on: ubuntu-latest
+    # Only runs when the PR has the 'eval' label or on pushes to main
+    if: |
+      github.event_name == 'push' && github.ref == 'refs/heads/main' ||
+      contains(github.event.pull_request.labels.*.name, 'eval')
+    needs: lint-and-test
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "0.11.8"
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run regression suite
+        id: regression
+        run: |
+          TS=$(date -u +%Y%m%dT%H%M%S)
+          REPORT="evaluation/results/regression_ci_${TS}.json"
+          uv run python -m evaluation.runners.run_regression \
+            --threshold 0.90 \
+            --output "$REPORT"
+          echo "report=$REPORT" >> "$GITHUB_OUTPUT"
+
+      - name: Post EX summary as PR comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('${{ steps.regression.outputs.report }}'));
+            const tiers = Object.entries(report.by_tier)
+              .map(([t, s]) => `| ${t} | ${(s.ex * 100).toFixed(1)}% | ${s.correct}/${s.total} |`)
+              .join('\n');
+            const body = [
+              `## Regression Results — \`${report.git_sha}\``,
+              '',
+              `**EX overall: ${(report.ex_overall * 100).toFixed(1)}%** (threshold: ${(report.ex_threshold * 100).toFixed(0)}%) — ${report.passed ? '✅ PASS' : '❌ FAIL'}`,
+              '',
+              '| Tier | EX | Correct |',
+              '|------|-----|---------|',
+              tiers,
+              '',
+              `model: \`${report.model_id}\` | prompt: \`${report.prompt_version}\` | sha: \`${report.git_sha}\``,
+            ].join('\n');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });

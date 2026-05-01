@@ -3,6 +3,7 @@ import pytest
 # Skip if langgraph not installed (nodes/state depend on it)
 pytest.importorskip("langgraph")
 
+import src.agent.classification as classification_module
 from src.agent.state import create_initial_messages_state, ExecutionPhase, QueryRoute
 import src.agent.nodes as nodes
 
@@ -35,9 +36,12 @@ class DummyLLMManager:
     def get_bound_llm(self):
         return self._llm
 
+    def invoke_chat(self, messages):
+        return self._llm.invoke(messages)
+
 
 def test_classification_node_database(monkeypatch):
-    monkeypatch.setattr(nodes, "get_llm_manager", lambda: DummyLLMManager())
+    monkeypatch.setattr(classification_module, "get_llm_manager", lambda: DummyLLMManager())
 
     state = create_initial_messages_state("Quantos óbitos ocorreram?", session_id="s1")
     new_state = nodes.query_classification_node(state)
@@ -47,7 +51,7 @@ def test_classification_node_database(monkeypatch):
 
 
 def test_classification_node_conversational(monkeypatch):
-    monkeypatch.setattr(nodes, "get_llm_manager", lambda: DummyLLMManager())
+    monkeypatch.setattr(classification_module, "get_llm_manager", lambda: DummyLLMManager())
 
     state = create_initial_messages_state("O que significa o CID J189?", session_id="s2")
     new_state = nodes.query_classification_node(state)
@@ -57,7 +61,7 @@ def test_classification_node_conversational(monkeypatch):
 
 
 def test_classification_node_schema(monkeypatch):
-    monkeypatch.setattr(nodes, "get_llm_manager", lambda: DummyLLMManager())
+    monkeypatch.setattr(classification_module, "get_llm_manager", lambda: DummyLLMManager())
 
     state = create_initial_messages_state("Quais tabelas existem no banco?", session_id="s3")
     new_state = nodes.query_classification_node(state)
@@ -75,10 +79,14 @@ def test_classification_node_detects_explicit_sql(monkeypatch):
     class Mgr:
         def __init__(self):
             self._llm = ConversationalLLM()
+
         def get_bound_llm(self):
             return self._llm
 
-    monkeypatch.setattr(nodes, "get_llm_manager", lambda: Mgr())
+        def invoke_chat(self, messages):
+            return self._llm.invoke(messages)
+
+    monkeypatch.setattr(classification_module, "get_llm_manager", lambda: Mgr())
 
     state = create_initial_messages_state("```sql\nSELECT 1;\n```", session_id="s4")
     new_state = nodes.query_classification_node(state)

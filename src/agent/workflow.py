@@ -1,11 +1,7 @@
-from typing import Literal
 from langgraph.graph import StateGraph, START, END
 
 from .state import (
     MessagesStateTXT2SQL,
-    QueryRoute,
-    ExecutionPhase,
-    should_retry
 )
 from .nodes import (
     query_classification_node,
@@ -25,6 +21,17 @@ from .plan_gate import plan_gate_node
 from .multi_executor import multi_sql_executor_node
 from .multi_verifier import multi_verifier_node
 from .result_synthesizer import result_synthesizer_node
+from .routing import (
+    route_after_classification,
+    route_after_multi_verifier,
+    route_after_plan_gate,
+    route_after_query_planner,
+    route_after_repair,
+    route_after_schema,
+    route_after_sql_execution,
+    route_after_sql_generation,
+    route_after_sql_validation,
+)
 
 
 def create_langgraph_sql_workflow():
@@ -188,271 +195,6 @@ def create_langgraph_sql_workflow():
     workflow.add_edge("clarification", END)
     
     return workflow
-
-
-# =============================================================================
-# ROUTING FUNCTIONS - Official LangGraph Patterns
-# =============================================================================
-
-def route_after_classification(
-    state: MessagesStateTXT2SQL
-) -> Literal["database", "conversational", "schema", "clarification", "error"]:
-    """
-    Route after query classification following LangGraph patterns
-    
-    This implements the routing logic recommended in the LangGraph SQL Agent tutorial
-    """
-    
-    # Check for classification errors
-    if state.get("current_error") or not state.get("query_route"):
-        return "error"
-    
-    query_route = state["query_route"]
-    classification = state.get("classification")
-    
-    # Check for clarification need
-    if state.get("needs_clarification"):
-        return "clarification"
-    
-    # Route based on classification
-    if query_route == QueryRoute.CONVERSATIONAL:
-        # High-confidence conversational queries go direct to response
-        if classification and classification.confidence_score >= 0.7:
-            return "conversational"
-        else:
-            # Low confidence - treat as database query for safety
-            return "database"
-    
-    elif query_route == QueryRoute.SCHEMA:
-        # Schema queries need table discovery but skip SQL generation
-        return "schema"
-    
-    elif query_route == QueryRoute.DATABASE:
-        # Database queries go through full SQL pipeline
-        return "database"
-    
-    else:
-        # Unknown route - default to database processing
-        return "database"
-
-
-def route_after_schema(
-    state: MessagesStateTXT2SQL
-) -> Literal["plan_gate", "generate_response"]:
-    """
-    Route after schema analysis.
-
-    SCHEMA queries skip SQL generation entirely.
-    All other DATABASE queries go to the deterministic plan gate first.
-    """
-    if state.get("query_route") == QueryRoute.SCHEMA:
-        return "generate_response"
-    return "plan_gate"
-
-
-# Plan types that benefit from CoT pre-planning before SQL generation.
-_COMPLEX_PLAN_TYPES_FOR_COT = {"global_local_avg", "single_cte", "set_intersection", "pivot_compare", "single_window"}
-
-
-def route_after_plan_gate(
-    state: MessagesStateTXT2SQL
-) -> Literal["query_planner", "reasoning", "generate_sql"]:
-    """Route after deterministic plan gate."""
-    if state.get("multi_query_allowed") and not state.get("force_single_query"):
-        return "query_planner"
-    if state.get("plan_type") in _COMPLEX_PLAN_TYPES_FOR_COT:
-        return "reasoning"
-    return "generate_sql"
-
-
-def route_after_query_planner(
-    state: MessagesStateTXT2SQL
-) -> Literal["generate_sql", "reasoning", "multi"]:
-    """
-    Route after query planner based on strategy decision.
-
-    "single" → (reasoning if complex else generate_sql) → validate → execute pipeline.
-    "multi"  → multi_sql_executor → result_synthesizer → END.
-
-    force_single_query=True bypasses multi-query (used in evaluation mode).
-    """
-    if state.get("is_multi_query") and not state.get("force_single_query"):
-        return "multi"
-    if state.get("plan_type") in _COMPLEX_PLAN_TYPES_FOR_COT:
-        return "reasoning"
-    return "generate_sql"
-
-
-def route_after_multi_verifier(
-    state: MessagesStateTXT2SQL
-) -> Literal["result_synthesizer", "generate_sql"]:
-    """Fallback to single-query when multi verification fails."""
-    if state.get("single_fallback_active"):
-        return "generate_sql"
-    return "result_synthesizer"
-
-
-def route_after_sql_generation(
-    state: MessagesStateTXT2SQL
-) -> Literal["validate", "retry", "error"]:
-    """
-    Route after SQL generation with retry logic
-    
-    Following LangGraph retry patterns from the official tutorial
-    """
-    
-    # Emergency stop to avoid loops on generation
-    if state.get("total_workflow_cycles", 0) > 15 or state.get("generation_retry_count", 0) >= 2:
-        return "error"
-
-    generated_sql = state.get("generated_sql")
-    current_error = state.get("current_error")
-    
-    # If SQL was generated successfully, proceed to validation
-    if generated_sql and not current_error:
-        return "validate"
-    
-    # If generation failed, check retry conditions
-    if current_error:
-        error_type = "sql_generation_error"
-        
-        # Check if we should retry (LangGraph pattern)
-        if should_retry(state, error_type):
-            return "retry"
-    
-    # Max retries reached or non-retryable error
-    return "error"
-
-
-def route_after_sql_validation(
-    state: MessagesStateTXT2SQL
-) -> Literal["execute", "retry_generation", "retry_validation", "error"]:
-    """
-    Route after SQL validation with comprehensive retry logic
-    
-    Following LangGraph validation patterns from the official tutorial
-    """
-    
-    # Emergency stop to avoid loops on validation
-    if state.get("total_workflow_cycles", 0) > 15 or state.get("validation_retry_count", 0) >= 3:
-        return "error"
-
-    validated_sql = state.get("validated_sql")
-    current_error = state.get("current_error")
-    
-    # If validation passed, proceed to execution
-    if validated_sql and not current_error:
-        return "execute"
-    
-    # If validation failed, determine retry strategy
-    if current_error:
-        error_type = "sql_validation_error"
-        
-        # Check if we should retry validation
-        if should_retry(state, error_type):
-            
-            # Determine retry type based on error
-            error_message = current_error.lower()
-            
-            if any(keyword in error_message for keyword in ["syntax", "parse", "invalid"]):
-                # Syntax errors need SQL regeneration
-                return "retry_generation"
-            elif any(keyword in error_message for keyword in ["table", "column", "field"]):
-                # Schema errors need SQL regeneration
-                return "retry_generation"
-            else:
-                # Other validation errors - retry validation
-                return "retry_validation"
-    
-    # Max retries reached or non-retryable error
-    return "error"
-
-
-def route_after_repair(
-    state: MessagesStateTXT2SQL
-) -> Literal["reasoning", "validate_sql"]:
-    """
-    Route after SQL repair.
-    
-    If schema was refreshed during repair, we MUST re-plan (reasoning)
-    to avoid using a stale plan with the new schema.
-    """
-    if state.get("schema_refreshed"):
-        return "reasoning"
-    
-    return "validate_sql"
-
-
-def route_after_sql_execution(
-    state: MessagesStateTXT2SQL
-) -> Literal["response", "retry_generation", "retry_validation", "retry_execution", "error"]:
-    """
-    Route after SQL execution with comprehensive retry logic
-
-    Following LangGraph execution patterns from the official tutorial
-    """
-
-    # EMERGENCY STOP: Hard limit on workflow cycles to prevent infinite loops
-    total_cycles = state.get("total_workflow_cycles", 0)
-    if total_cycles > 15:
-        import logging
-        logger = logging.getLogger("txt2sql.workflow")
-        logger.error(f"EMERGENCY STOP: Workflow exceeded 15 cycles. Forcing error exit.")
-        return "error"
-
-    sql_execution_result = state.get("sql_execution_result")
-
-    # If execution succeeded, proceed to response generation
-    if sql_execution_result and sql_execution_result.success:
-        return "response"
-
-    # If execution failed, determine retry strategy
-    current_error = state.get("current_error")
-
-    if current_error:
-        error_type = "sql_execution_error"
-
-        # Check if we should retry
-        if should_retry(state, error_type):
-            # DEBUG LOG (read-only)
-            from src.utils.logging_config import get_logger
-            logger = get_logger(__name__)
-            logger.warning(
-                f"RETRY: count={state.get('retry_count', 0)}/{state.get('max_retries', 3)}, "
-                f"cycles={state.get('total_workflow_cycles', 0)}"
-            )
-            
-            # Determine retry type based on error
-            error_message = current_error.lower()
-            
-            if any(keyword in error_message for keyword in ["syntax", "parse", "invalid sql"]):
-                # SQL syntax errors need regeneration
-                return "retry_generation"
-            elif any(keyword in error_message for keyword in [
-                "table",
-                "column",
-                "not found",
-                "no such",
-                "undefined function",
-                "função",
-                "operator does not exist",
-                "cannot cast",
-                "type mismatch"
-            ]):
-                # Schema errors need regeneration with fresh schema
-                return "retry_generation"
-            elif any(keyword in error_message for keyword in ["timeout", "connection", "database"]):
-                # Infrastructure errors - retry execution
-                return "retry_execution"
-            elif any(keyword in error_message for keyword in ["constraint", "validation"]):
-                # Validation errors - retry validation
-                return "retry_validation"
-            else:
-                # Generic errors - retry generation (repair SQL)
-                return "retry_generation"
-    
-    # Max retries reached or non-retryable error
-    return "error"
 
 
 # =============================================================================

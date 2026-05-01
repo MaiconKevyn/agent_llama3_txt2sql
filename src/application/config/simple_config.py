@@ -53,6 +53,8 @@ class ApplicationConfig:
     # Query classification configuration
     enable_query_classification: bool = True
     query_classification_confidence_threshold: float = 0.7
+    # Prompt versioning (mirrors OrchestratorConfig.prompt_version)
+    prompt_version: str = "v1"
 
 @dataclass
 class OrchestratorConfig:
@@ -65,3 +67,6 @@ class OrchestratorConfig:
     conversational_fallback: bool = True
     enable_query_routing: bool = True
     routing_confidence_threshold: float = 0.7
+    # Prompt versioning — bump when RULES A-O or prompt templates change.
+    # Stored in every evaluation result so runs are comparable across versions.
+    prompt_version: str = "v1"

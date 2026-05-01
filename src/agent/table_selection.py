@@ -17,6 +17,7 @@ from .state import (
     add_error,
 )
 from ..utils.logging_config import get_nodes_logger
+from .failure_taxonomy import TX
 
 logger = get_nodes_logger()
 
@@ -518,7 +519,8 @@ def list_tables_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
 
     except Exception as e:
         error_message = f"Table listing failed: {str(e)}"
-        state = add_error(state, error_message, "table_discovery_error", ExecutionPhase.TABLE_DISCOVERY)
+        state = add_error(state, error_message, "table_discovery_error", ExecutionPhase.TABLE_DISCOVERY,
+                          taxonomy=TX.WRONG_TABLE_SELECTION)
 
         state["available_tables"] = ["sus_data", "cid_detalhado"]
         state["selected_tables"] = ["sus_data"]
