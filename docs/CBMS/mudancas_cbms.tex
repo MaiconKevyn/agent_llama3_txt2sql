@@ -1,0 +1,528 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{parskip}
+\usepackage{titlesec}
+\usepackage{mdframed}
+
+\geometry{margin=2.5cm}
+
+% Cores
+\definecolor{original}{RGB}{255,240,240}
+\definecolor{final}{RGB}{240,255,240}
+\definecolor{codegray}{RGB}{245,245,245}
+\definecolor{trackgray}{RGB}{248,248,248}
+
+% Listings style for LaTeX snippets
+\lstdefinestyle{texsnippet}{
+  language=[LaTeX]TeX,
+  backgroundcolor=\color{codegray},
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  breakatwhitespace=false,
+  frame=single,
+  framesep=4pt,
+  rulecolor=\color{gray!40},
+  keepspaces=true,
+  columns=flexible,
+}
+
+% Environments for original / final blocks
+\newmdenv[
+  backgroundcolor=original,
+  linecolor=red!40,
+  linewidth=1pt,
+  frametitle={\textbf{Parágrafo original}},
+  frametitlebackgroundcolor=red!20,
+  innertopmargin=6pt,
+  innerbottommargin=6pt,
+]{originalblock}
+
+\newmdenv[
+  backgroundcolor=final,
+  linecolor=green!50!black,
+  linewidth=1pt,
+  frametitle={\textbf{Parágrafo final consolidado}},
+  frametitlebackgroundcolor=green!20,
+  innertopmargin=6pt,
+  innerbottommargin=6pt,
+]{finalblock}
+
+\newmdenv[
+  backgroundcolor=trackgray,
+  linecolor=gray!40,
+  linewidth=1pt,
+  frametitle={\textbf{Microalterações rastreadas}},
+  frametitlebackgroundcolor=gray!20,
+  innertopmargin=6pt,
+  innerbottommargin=6pt,
+]{trackblock}
+
+\title{\textbf{Registro de Mudanças: Revisão do Paper CBMS}}
+\author{Maicon Moraes \and Isadora Figueiredo \and Victória Marques \and Duncan Ruiz \and Isabel H.\ Manssour}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section*{Como ler este documento}
+
+Cada seção abaixo corresponde a um parágrafo no paper final. Cada bloco mostra:
+\begin{itemize}
+  \item O \textbf{parágrafo original} antes das revisões;
+  \item O \textbf{parágrafo final consolidado} após todas as mudanças aplicadas;
+  \item As \textbf{microalterações rastreadas}, sempre no formato: \textit{adicionamos / substituímos / reformulamos $\to$ trecho real modificado};
+  \item O \textbf{motivo consolidado} da alteração;
+  \item O \textbf{revisor relacionado}, com indicação explícita de qual revisor levantou o ponto.
+\end{itemize}
+
+\noindent Este formato permite duas leituras simultâneas: uma visão rápida do \textbf{parágrafo final} como aparece no paper, e a compreensão de \textbf{cada pequena mudança} incorporada durante a revisão.
+
+\bigskip\hrule\bigskip
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Claim de determinismo do modelo}
+
+\textbf{Seção no paper:} Proposed Approach — Conversational Agent\\
+\textbf{Revisor:} Revisor 2
+
+\subsubsection*{Motivo consolidado}
+
+Corrigir uma afirmação metodologicamente incorreta: \texttt{temperature=0} reduz a variabilidade de amostragem, mas não garante determinismo no LLM.
+
+\subsubsection*{Comentário do revisor e resposta aplicada}
+
+\begin{quote}
+\textit{``Temperature=0 will minimise randomness of the LLM at predicting the next token but this is far from ensuring deterministic SQL generation. What is more, I would argue that LLMs are by nature non-deterministic.''}
+\hfill\textit{(Revisor 2)}
+\end{quote}
+
+\noindent Resposta aplicada: substituímos \texttt{ensuring deterministic SQL generation} por \texttt{reducing sampling variability in SQL generation but not guaranteeing determinism}.
+
+\begin{originalblock}
+\begin{lstlisting}[style=texsnippet]
+The agent uses GPT-4o-mini~\cite{openai2024gpt4omini} (via OpenAI API) with temperature=0 throughout, ensuring deterministic SQL generation.
+\end{lstlisting}
+\end{originalblock}
+
+\begin{finalblock}
+\begin{lstlisting}[style=texsnippet]
+The agent uses GPT-4o-mini~\cite{openai2024gpt4omini} (via OpenAI API) with temperature=0 throughout, reducing sampling variability in SQL generation but not guaranteeing determinism.
+\end{lstlisting}
+\end{finalblock}
+
+\begin{trackblock}
+\begin{itemize}
+  \item Substituímos $\to$ \texttt{ensuring deterministic SQL generation} $\to$ \texttt{reducing sampling variability in SQL generation but not guaranteeing determinism}
+\end{itemize}
+\end{trackblock}
+
+\bigskip\hrule\bigskip
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Parágrafo do benchmark: distribuição, relação entre tiers e enquadramento como viabilidade inicial}
+
+\textbf{Seção no paper:} Evaluation Methodology\\
+\textbf{Revisores:} Revisor 2 (principal), Revisor 3 (reforço)
+
+\subsubsection*{Motivo consolidado}
+
+Este parágrafo recebeu várias revisões porque os revisores questionaram a forma do benchmark, a relação entre categorias analíticas e tiers de complexidade, e o risco de o texto sugerir validação definitiva para um benchmark ainda inicial.
+
+\subsubsection*{Comentários dos revisores e respostas aplicadas}
+
+\begin{quote}
+\textit{``I would include the distribution of queries by complexity and categories so that the reader can get a better picture of the shape of your ground truth.''}
+\hfill\textit{(Revisor 2)}
+\end{quote}
+
+\noindent Resposta aplicada: adicionamos a distribuição explícita por dimensão analítica: \texttt{118/120 queries contain explicit aggregation, 25/120 include temporal constraints \ldots, 55/120 require at least one JOIN}.
+
+\begin{quote}
+\textit{``The queries distribution in the paper might not match well that of a real-world scenario.''}
+\hfill\textit{(Revisor 2)}
+\end{quote}
+
+\noindent Resposta aplicada: adicionamos a explicação de que as dimensões analíticas são sobrepostas e não determinam sozinhas a dificuldade.
+
+\begin{quote}
+\textit{``The benchmark is still relatively small.''} \hfill\textit{(Revisor 3)}
+\end{quote}
+
+\noindent Resposta aplicada: adicionamos a frase de enquadramento: \textit{``the benchmark should be interpreted as an initial feasibility instrument \ldots not as a definitive validation \ldots''}.
+
+\begin{originalblock}
+\begin{lstlisting}[style=texsnippet]
+We developed a benchmark of 120 NL queries mapped to gold-standard SQL over the SIH-RD/SUS database (2008--2023, Rio Grande do Sul and Maranh\~ao states), manually constructed by the research team. Queries span four analytical dimensions: aggregation, temporal filtering, geographic analysis, and multi-table joins. They are stratified into \textbf{40 Easy}, \textbf{40 Medium}, and \textbf{40 Hard} queries based on structural and semantic complexity.
+\end{lstlisting}
+\end{originalblock}
+
+\begin{finalblock}
+\begin{lstlisting}[style=texsnippet]
+We developed a benchmark of 120 NL queries mapped to gold-standard SQL over the SIH-RD/SUS database (2008--2023, Rio Grande do Sul and Maranh\~ao states), manually constructed by the research team. Queries span four analytical dimensions: aggregation, temporal filtering, geographic analysis, and multi-table joins. These dimensions are intentionally overlapping rather than mutually exclusive: 118/120 queries contain explicit aggregation, 25/120 include temporal constraints or calendar extraction, 31/120 involve geographic filtering or grouping, and 55/120 require at least one JOIN. They are stratified into \textbf{40 Easy}, \textbf{40 Medium}, and \textbf{40 Hard} queries based on structural and semantic complexity; the concentration of JOIN-heavy queries rises from 0/40 in Easy to 20/40 in Medium and 35/40 in Hard, while temporal and geographic reasoning also become more frequent in the harder tiers. Importantly, the analytical dimensions do not determine difficulty by themselves: an aggregation-only question can remain Easy, whereas the combination of aggregation with JOINs, temporal comparison, geographic grouping, or multi-step calculations is what typically pushes a query into Medium or Hard. Accordingly, the benchmark should be interpreted as an initial feasibility instrument for this DATASUS setting, not as a definitive validation of real-world coverage or deployment readiness.
+\end{lstlisting}
+\end{finalblock}
+
+\begin{trackblock}
+\begin{itemize}
+  \item Adicionamos $\to$ \texttt{These dimensions are intentionally overlapping rather than mutually exclusive \ldots}
+  \item Adicionamos $\to$ \texttt{118/120 queries contain explicit aggregation \ldots 55/120 require at least one JOIN}
+  \item Adicionamos $\to$ \texttt{the concentration of JOIN-heavy queries rises from 0/40 in Easy to 20/40 in Medium and 35/40 in Hard}
+  \item Adicionamos $\to$ \texttt{the analytical dimensions do not determine difficulty by themselves \ldots}
+  \item Adicionamos $\to$ \texttt{the benchmark should be interpreted as an initial feasibility instrument \ldots}
+\end{itemize}
+\end{trackblock}
+
+\bigskip\hrule\bigskip
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Parágrafo do baseline controlado}
+
+\textbf{Seção no paper:} Evaluation Methodology\\
+\textbf{Revisores:} Revisor 1 (principal), Revisor 3 (reforço)
+
+\subsubsection*{Motivo consolidado}
+
+Este parágrafo precisava deixar mais claro o que o baseline realmente isola: ele controla o conhecimento de domínio e o modelo, medindo a diferença macro entre pipeline orquestrada e chamada única, mas não explica qual componente interno gerou o ganho.
+
+\subsubsection*{Comentários dos revisores e respostas aplicadas}
+
+\begin{quote}
+\textit{``The experiment effectively isolates the architecture (however without ablation tests to the pipeline components) \ldots''}
+\hfill\textit{(Revisor 1)}
+\end{quote}
+
+\begin{quote}
+\textit{``There is no component ablation to show which stages drive the gain.''}
+\hfill\textit{(Revisor 3)}
+\end{quote}
+
+\noindent Resposta aplicada: adicionamos a distinção entre isolamento no nível da pipeline completa e ausência de isolamento por componente; nomeamos explicitamente os estágios não avaliados individualmente (\texttt{table selection}, \texttt{chain-of-thought planning}, \texttt{validation}, \texttt{self-repair}).
+
+\begin{originalblock}
+\begin{lstlisting}[style=texsnippet]
+To isolate the net architectural contribution of the LangGraph pipeline, we implemented a single-shot prompt baseline using the same GPT-4o-mini model~\cite{openai2024gpt4omini} (temperature=0) and \emph{identical} domain prompts: the same RULES A--O, SUS-aware value mappings, per-table few-shot examples, and full schema context. Unlike the LangGraph agent, the baseline issues a single LLM call per query with no table selection, validation, or repair stages. Any difference in EX between the two systems, therefore, reflects the net effect of multi-step graph orchestration, holding all other factors constant. This design avoids the confound present in many agent evaluations, where the baseline uses weaker prompts than the agent.
+\end{lstlisting}
+\end{originalblock}
+
+\begin{finalblock}
+\begin{lstlisting}[style=texsnippet]
+To isolate the net architectural contribution of the LangGraph pipeline, we implemented a single-shot prompt baseline using the same GPT-4o-mini model~\cite{openai2024gpt4omini} (temperature=0) and \emph{identical} domain prompts: the same RULES A--O, SUS-aware value mappings, per-table few-shot examples, and full schema context. Unlike the LangGraph agent, the baseline issues a single LLM call per query with no table selection, validation, or repair stages. Any difference in EX between the two systems, therefore, reflects the net effect of multi-step graph orchestration at the whole-pipeline level, holding all other factors constant. However, this comparison does not isolate the marginal contribution of internal stages such as table selection, chain-of-thought planning, validation, or self-repair individually. This design avoids the confound present in many agent evaluations, where the baseline uses weaker prompts than the agent.
+\end{lstlisting}
+\end{finalblock}
+
+\begin{trackblock}
+\begin{itemize}
+  \item Reformulamos $\to$ \texttt{reflects the net effect of multi-step graph orchestration} $\to$ acrescentamos \texttt{at the whole-pipeline level}
+  \item Adicionamos $\to$ \texttt{this comparison does not isolate the marginal contribution of internal stages such as table selection, chain-of-thought planning, validation, or self-repair individually}
+\end{itemize}
+\end{trackblock}
+
+\bigskip\hrule\bigskip
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Parágrafo principal de resultados quantitativos}
+
+\textbf{Seção no paper:} Results and Discussion\\
+\textbf{Revisores:} Revisor 1 (principal), Revisor 3 (reforço)
+
+\subsubsection*{Motivo consolidado}
+
+Reformular a leitura estatística do ganho global para deixar claro que o resultado pareado é inconclusivo porque há poucos pares discordantes, e não apenas porque o benchmark é ``pequeno''.
+
+\subsubsection*{Comentários dos revisores e respostas aplicadas}
+
+\begin{quote}
+\textit{``Their results ($p{=}0.289$) are not statistically significant due to the small number of discordant test cases.''}
+\hfill\textit{(Revisor 1)}
+\end{quote}
+
+\noindent Resposta aplicada: adicionamos explicitamente \texttt{only eight discordant queries overall} e \texttt{limited power to detect moderate effects}.
+
+\begin{quote}
+\textit{McNemar result is not statistically significant at conventional thresholds.}
+\hfill\textit{(Revisor 3)}
+\end{quote}
+
+\noindent Resposta aplicada: deslocamos a ênfase de ``3.3 pp advantage'' para ``paired comparison remains statistically inconclusive''.
+
+\begin{originalblock}
+\begin{lstlisting}[style=texsnippet]
+Both systems returned a response for all 120 queries without pipeline crashes or timeouts (completion rate: 100\%). The LangGraph agent achieved 93.3\% EX (112/120), with strong performance across all tiers: Easy 100.0\% (40/40), Medium 97.5\% (39/40), and Hard 82.5\% (33/40). The prompt baseline achieved 90.0\% EX (108/120): Easy 97.5\% (39/40), Medium 100.0\% (40/40), and Hard 72.5\% (29/40), yielding a 3.3~pp overall advantage for the LangGraph agent (McNemar's exact test: $b{=}6$, $c{=}2$, $p{=}0.289$; 95\% Wilson CI: agent [87.4\%, 96.6\%], baseline [83.3\%, 94.2\%]). The advantage is concentrated in the Hard tier ($+$10.0~pp), where multi-table joins, per-group aggregations, and global-vs-local comparisons demand the structured reasoning provided by table selection and chain-of-thought planning. Both discordant cases where the baseline succeeds and the agent fails ($c{=}2$, one Medium, one Hard) reflect table-selection errors that propagate semantically plausible but incorrect queries to execution a failure mode that bypasses syntactic repair and represents the pipeline's dominant observed vulnerability.
+\end{lstlisting}
+\end{originalblock}
+
+\begin{finalblock}
+\begin{lstlisting}[style=texsnippet]
+Both systems returned a response for all 120 queries without pipeline crashes or timeouts (completion rate: 100\%). The LangGraph agent achieved 93.3\% EX (112/120), with strong performance across all tiers: Easy 100.0\% (40/40), Medium 97.5\% (39/40), and Hard 82.5\% (33/40). The prompt baseline achieved 90.0\% EX (108/120): Easy 97.5\% (39/40), Medium 100.0\% (40/40), and Hard 72.5\% (29/40), yielding a 3.3~pp overall advantage for the LangGraph agent. However, the paired comparison remains statistically inconclusive because it is driven by only eight discordant queries overall ($b{=}6$, $c{=}2$, $m{=}8$; McNemar's exact test $p{=}0.289$), which leaves limited power to detect moderate effects even with $n{=}120$ total queries; 95\% Wilson CI: agent [87.4\%, 96.6\%], baseline [83.3\%, 94.2\%]. The advantage is concentrated in the Hard tier ($+$10.0~pp), where multi-table joins, per-group aggregations, and global-vs-local comparisons demand the structured reasoning provided by table selection and chain-of-thought planning. Both discordant cases where the baseline succeeds and the agent fails ($c{=}2$, one Medium, one Hard) reflect table-selection errors that propagate semantically plausible but incorrect queries to execution a failure mode that bypasses syntactic repair and represents the pipeline's dominant observed vulnerability.
+\end{lstlisting}
+\end{finalblock}
+
+\begin{trackblock}
+\begin{itemize}
+  \item Removemos $\to$ a ligação direta entre \texttt{+3.3 pp} e interpretação conclusiva do teste pareado
+  \item Adicionamos $\to$ \texttt{the paired comparison remains statistically inconclusive because it is driven by only eight discordant queries overall}
+  \item Adicionamos $\to$ \texttt{limited power to detect moderate effects even with n=120 total queries}
+\end{itemize}
+\end{trackblock}
+
+\bigskip\hrule\bigskip
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Parágrafo interpretativo dos resultados}
+
+\textbf{Seção no paper:} Results and Discussion\\
+\textbf{Revisores:} Revisor 2 (principal), Revisor 1 (reforço), Revisores 1 \& 3 (enquadramento estatístico)
+
+\subsubsection*{Motivo consolidado}
+
+Este parágrafo concentrou duas correções interpretativas: deixar o argumento estatístico mais preciso e dar mais peso à regressão em Medium como problema prático real.
+
+\subsubsection*{Comentários dos revisores e respostas aplicadas}
+
+\begin{quote}
+\textit{``In most cases, many users will be mostly dealing with queries pertaining to [medium] complexity level for which the presented approach shows a decreased accuracy over the baseline method.''}
+\hfill\textit{(Revisor 2)}
+\end{quote}
+
+\noindent Resposta aplicada: adicionamos a leitura prática da regressão em Medium e a cautela sobre superioridade uniforme.
+
+\begin{quote}
+\textit{``The gain appears in Hard, but there is a loss in Medium.''}
+\hfill\textit{(Revisor 1)}
+\end{quote}
+
+\noindent Resposta aplicada: adicionamos a frase \textit{``the current results do not support a claim of uniform superiority''}.
+
+\begin{originalblock}
+\begin{lstlisting}[style=texsnippet]
+The 3.3 pp overall advantage of the LangGraph agent is informative in its structure. Both systems share \emph{identical} domain knowledge (RULES A--O, SUS value mappings, per-table few-shot examples), so any difference in EX reflects the net effect of graph orchestration: table selection, chain-of-thought planning, static validation, and bounded self-repair. The six discordant queries where the agent succeeds and the baseline fails ($b{=}6$) concentrate in the Hard tier (5 out of 6), confirming that the pipeline's structured reasoning stages add value precisely where query complexity is highest. Among the observed cases where the baseline succeeds and the agent fails ($c{=}2$, one Medium, one Hard), both involve table-selection errors that propagate semantically plausible but incorrect queries to execution without triggering syntactic repair; a systematic failure analysis remains as future work; by tier, the agent's 8 errors concentrate in Hard (7) and Medium (1), and the baseline's 12 in Hard (11) and Easy (1), with 6 Hard queries that neither system answers correctly representing the benchmark's current difficulty ceiling. The $p{=}0.289$ result does not reject $H_0$ at $\alpha{=}0.05$, a consequence of limited statistical power: with only $m{=}b{+}c{=}8$ discordant pairs, the test cannot reliably detect moderate effects regardless of total benchmark size. The Hard-tier gap of $+$10.0~pp is the strongest directional signal and aligns with the design intent of the pipeline: table selection narrows schema context and chain-of-thought planning scaffolds complex multi-step reasoning, both of which matter most for Hard queries.
+\end{lstlisting}
+\end{originalblock}
+
+\begin{finalblock}
+\begin{lstlisting}[style=texsnippet]
+The 3.3 pp overall advantage of the LangGraph agent is informative in its structure. Both systems share \emph{identical} domain knowledge (RULES A--O, SUS value mappings, per-table few-shot examples), so any difference in EX reflects the net effect of graph orchestration: table selection, chain-of-thought planning, static validation, and bounded self-repair. The six discordant queries where the agent succeeds and the baseline fails ($b{=}6$) concentrate in the Hard tier (5 out of 6), confirming that the pipeline's structured reasoning stages add value precisely where query complexity is highest. Among the observed cases where the baseline succeeds and the agent fails ($c{=}2$, one Medium, one Hard), both involve table-selection errors that propagate semantically plausible but incorrect queries to execution without triggering syntactic repair; a systematic failure analysis remains as future work; by tier, the agent's 8 errors concentrate in Hard (7) and Medium (1), and the baseline's 12 in Hard (11) and Easy (1), with 6 Hard queries that neither system answers correctly representing the benchmark's current difficulty ceiling. The key inferential limitation is not only the benchmark's current size, but the fact that the paired test is driven by just $m{=}b{+}c{=}8$ discordant pairs. Under those conditions, $p{=}0.289$ does not justify a superiority claim, but neither does it provide strong evidence against a moderate orchestration effect concentrated in Hard queries. The Hard-tier gap of $+$10.0~pp is the strongest directional signal and aligns with the design intent of the pipeline: table selection narrows schema context and chain-of-thought planning scaffolds complex multi-step reasoning, both of which matter most for Hard queries. However, the Medium-tier regression ($-$2.5~pp) is also practically important: because the overall gain is small, the current results do not support a claim of uniform superiority over a simpler single-shot approach. If real-world usage is dominated by medium-complexity requests, the added orchestration overhead may not be justified until the table-selection failure mode is reduced.
+\end{lstlisting}
+\end{finalblock}
+
+\begin{trackblock}
+\begin{itemize}
+  \item Reformulamos $\to$ \texttt{The p=0.289 result does not reject H0 \ldots} $\to$ \texttt{The key inferential limitation is \ldots just m=b+c=8 discordant pairs}
+  \item Adicionamos $\to$ \texttt{p=0.289 does not justify a superiority claim, but neither does it provide strong evidence against a moderate orchestration effect \ldots}
+  \item Adicionamos $\to$ \texttt{the Medium-tier regression (-2.5 pp) is also practically important}
+  \item Adicionamos $\to$ \texttt{the current results do not support a claim of uniform superiority \ldots}
+  \item Adicionamos $\to$ \texttt{the added orchestration overhead may not be justified until the table-selection failure mode is reduced}
+\end{itemize}
+\end{trackblock}
+
+\bigskip\hrule\bigskip
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Parágrafo de limitações}
+
+\textbf{Seção no paper:} Results and Discussion\\
+\textbf{Revisores:} Revisor 2 (latência/custo), Revisor 1 (enquadramento dos pares discordantes)
+
+\subsubsection*{Motivo consolidado}
+
+Este parágrafo passou a explicitar duas limitações centrais cobradas nos reviews: o gargalo estatístico real do teste pareado e o custo operacional da arquitetura orquestrada.
+
+\subsubsection*{Comentários dos revisores e respostas aplicadas}
+
+\begin{quote}
+\textit{``What is the added latency when using this approach over the single-shot baseline method? \ldots Is it then justified to deploy such a system?''}
+\hfill\textit{(Revisor 2)}
+\end{quote}
+
+\noindent Resposta aplicada: adicionamos uma quarta limitação dedicada a \texttt{latency, token usage, and deployment complexity}.
+
+\begin{quote}
+\textit{``Their results ($p{=}0.289$) are not statistically significant due to the small number of discordant test cases.''}
+\hfill\textit{(Revisor 1)}
+\end{quote}
+
+\noindent Resposta aplicada: substituímos a formulação genérica por uma frase que identifica \texttt{m=8 discordant queries} como gargalo inferencial principal.
+
+\begin{originalblock}
+\begin{lstlisting}[style=texsnippet]
+This evaluation has three principal limitations. First, component-level ablation is absent: the 3.3~pp overall advantage cannot be attributed to individual stages, and the table-selection step is simultaneously a strength (schema disambiguation) and a liability (upstream errors that bypass repair). Second, $p{=}0.289$ reflects low statistical power from $m{=}8$ discordant pairs; a larger benchmark is required for definitive conclusions. Third, the benchmark was constructed entirely by the research team without clinical specialist participation, which may limit query diversity and ecological validity.
+\end{lstlisting}
+\end{originalblock}
+
+\begin{finalblock}
+\begin{lstlisting}[style=texsnippet]
+This evaluation has four principal limitations. First, component-level ablation is absent: the 3.3~pp overall advantage cannot be attributed to individual stages, and the table-selection step is simultaneously a strength (schema disambiguation) and a liability (upstream errors that bypass repair). Second, the main inferential bottleneck is the low number of discordant pairs in the paired comparison: $p{=}0.289$ arises from only $m{=}8$ discordant queries, leaving McNemar's test underpowered for moderate effects even though the benchmark contains 120 total queries. Third, the benchmark was constructed entirely by the research team without clinical specialist participation, which may limit query diversity and ecological validity. Fourth, the study does not quantify the operational overhead of graph orchestration relative to the single-shot baseline: additional LLM/tool stages may increase latency, token usage, and deployment complexity, so the practical cost-benefit of the observed 3.3~pp gain remains to be established.
+\end{lstlisting}
+\end{finalblock}
+
+\begin{trackblock}
+\begin{itemize}
+  \item Alteramos $\to$ \texttt{three principal limitations} $\to$ \texttt{four principal limitations}
+  \item Reformulamos $\to$ \texttt{p=0.289 reflects low statistical power \ldots} $\to$ \texttt{the main inferential bottleneck is the low number of discordant pairs \ldots}
+  \item Adicionamos $\to$ \texttt{the study does not quantify the operational overhead of graph orchestration \ldots latency, token usage, and deployment complexity \ldots}
+\end{itemize}
+\end{trackblock}
+
+\bigskip\hrule\bigskip
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Parágrafo principal da conclusão}
+
+\textbf{Seção no paper:} Conclusion\\
+\textbf{Revisores:} Revisor 2 (principal), Revisor 3 (reforço)
+
+\subsubsection*{Motivo consolidado}
+
+Este parágrafo precisava calibrar melhor a força da conclusão: o resultado é promissor, mas ainda não valida definitivamente o agente para uso rotineiro em cenário real.
+
+\subsubsection*{Comentários dos revisores e respostas aplicadas}
+
+\begin{quote}
+\textit{``The findings of this paper are somewhat limited which may prevent its usage in a real-world scenario or require further development and testing.''}
+\hfill\textit{(Revisor 2)}
+\end{quote}
+
+\noindent Resposta aplicada: adicionamos a frase que qualifica o resultado como \textit{``initial feasibility rather than definitive validation''}.
+
+\begin{quote}
+\textit{``The benchmark is still relatively small.''}
+\hfill\textit{(Revisor 3)}
+\end{quote}
+
+\noindent Resposta aplicada: conectamos a limitação estatística da comparação pareada com o enquadramento prudente da conclusão.
+
+\begin{originalblock}
+\begin{lstlisting}[style=texsnippet]
+We presented a conversational agent that translates Portuguese natural-language queries into executable SQL over SIH-RD/SUS hospital microdata (18 million records), addressing the lack of accessible analytical tools for non-technical healthcare practitioners. The agent is built on a stateful LangGraph pipeline with 15 domain-specific SQL generation rules (RULES A--O), SUS-aware value mappings, iterative validation, and bounded self-repair. On a benchmark of 120 stratified Portuguese healthcare queries, it achieves 93.3\% EX (112/120) with 100\% pipeline completion. A controlled comparison against a single-shot prompt baseline using the same model and prompts (90.0\% EX, 108/120) shows a 3.3~pp overall difference concentrated in the Hard tier ($+$10.0~pp; McNemar $p{=}0.289$; 95\% Wilson CI agent: [87.4\%, 96.6\%], baseline: [83.3\%, 94.2\%]), directionally consistent with the pipeline's design intent but not reaching conventional statistical significance at this benchmark scale. Beyond execution accuracy, the LangGraph architecture provides multi-turn conversational state, loop-detection guards, and guaranteed pipeline completion structural properties that follow from the design but whose practical value in deployed clinical analytics settings remains to be demonstrated in future work.
+\end{lstlisting}
+\end{originalblock}
+
+\begin{finalblock}
+\begin{lstlisting}[style=texsnippet]
+We presented a conversational agent that translates Portuguese natural-language queries into executable SQL over SIH-RD/SUS hospital microdata (18 million records), addressing the lack of accessible analytical tools for non-technical healthcare practitioners. The agent is built on a stateful LangGraph pipeline with 15 domain-specific SQL generation rules (RULES A--O), SUS-aware value mappings, iterative validation, and bounded self-repair. On a benchmark of 120 stratified Portuguese healthcare queries, it achieves 93.3\% EX (112/120) with 100\% pipeline completion. A controlled comparison against a single-shot prompt baseline using the same model and prompts (90.0\% EX, 108/120) shows a 3.3~pp overall difference concentrated in the Hard tier ($+$10.0~pp; McNemar $p{=}0.289$ from $m{=}8$ discordant pairs; 95\% Wilson CI agent: [87.4\%, 96.6\%], baseline: [83.3\%, 94.2\%]), directionally consistent with the pipeline's design intent but statistically underpowered for definitive paired inference at the current benchmark scale. These results therefore support initial feasibility rather than definitive validation of the agent for routine real-world healthcare analytics. Beyond execution accuracy, the LangGraph architecture provides multi-turn conversational state, loop-detection guards, and guaranteed pipeline completion structural properties that follow from the design but whose practical value in deployed clinical analytics settings remains to be demonstrated in future work.
+\end{lstlisting}
+\end{finalblock}
+
+\begin{trackblock}
+\begin{itemize}
+  \item Adicionamos $\to$ \texttt{McNemar p=0.289 from m=8 discordant pairs}
+  \item Substituímos $\to$ \texttt{not reaching conventional statistical significance at this benchmark scale} $\to$ \texttt{statistically underpowered for definitive paired inference at the current benchmark scale}
+  \item Adicionamos $\to$ \texttt{These results therefore support initial feasibility rather than definitive validation \ldots}
+\end{itemize}
+\end{trackblock}
+
+\bigskip\hrule\bigskip
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Parágrafo de contribuições e claim do artefato público}
+
+\textbf{Seção no paper:} Conclusion\\
+\textbf{Revisores:} Revisores 1 \& 3 (nível de isolamento), Revisor 2 (claim do repositório)
+
+\subsubsection*{Motivo consolidado}
+
+Este parágrafo precisou ser calibrado em duas frentes: a contribuição experimental do baseline controlado e a claim sobre disponibilidade/reprodutibilidade do artefato público.
+
+\subsubsection*{Comentários dos revisores e respostas aplicadas}
+
+\begin{quote}
+\textit{``The experiment effectively isolates the architecture (however without ablation tests to the pipeline components).''}
+\hfill\textit{(Revisores 1 \& 3)}
+\end{quote}
+
+\noindent Resposta aplicada: reformulamos \texttt{isolating the net effect} para \texttt{partially isolating the net effect \ldots at the system level}.
+
+\begin{quote}
+\textit{``A GitHub repository is disclosed but it does not contain the full implementation.''}
+\hfill\textit{(Revisor 2)}
+\end{quote}
+
+\noindent Resposta aplicada: removemos a claim forte de \texttt{supporting reproducibility} e substituímos por \texttt{enabling inspection of the artifact}.
+
+\begin{originalblock}
+\begin{lstlisting}[style=texsnippet]
+The key contributions of this work are: (1)~\textbf{Domain knowledge engineering for DATASUS SIH-RD}: fifteen SQL generation rules and SUS-aware value mappings derived from schema analysis, embedded in a 9-stage LangGraph pipeline that enables natural-language analytical querying over 18 million records without SQL expertise or model fine-tuning; (2)~\textbf{A domain-specific benchmark}: 120 manually crafted Portuguese queries stratified by complexity (Easy/Medium/Hard) with gold-standard SQL, constituting, to our knowledge, the first formal Text-to-SQL evaluation on SIH-RD/SUS microdata; and (3)~\textbf{A controlled evaluation design}: a single-shot baseline sharing identical model, rules, and prompts with the LangGraph agent, isolating the net effect of graph orchestration and yielding a directional 3.3~pp overall advantage concentrated in the Hard tier ($+$10.0~pp), alongside robustness properties that stateless prompting cannot provide by design. The framework and evaluation benchmark are publicly available\footnote{\url{https://github.com/DAVINTLAB/datasus-conversational-agent/}.}, supporting reproducibility and extension to other public health information systems.
+\end{lstlisting}
+\end{originalblock}
+
+\begin{finalblock}
+\begin{lstlisting}[style=texsnippet]
+The key contributions of this work are: (1)~\textbf{Domain knowledge engineering for DATASUS SIH-RD}: fifteen SQL generation rules and SUS-aware value mappings derived from schema analysis, embedded in a 9-stage LangGraph pipeline that enables natural-language analytical querying over 18 million records without SQL expertise or model fine-tuning; (2)~\textbf{A domain-specific benchmark}: 120 manually crafted Portuguese queries stratified by complexity (Easy/Medium/Hard) with gold-standard SQL, constituting, to our knowledge, the first formal Text-to-SQL evaluation on SIH-RD/SUS microdata; and (3)~\textbf{A controlled evaluation design}: a single-shot baseline sharing identical model, rules, and prompts with the LangGraph agent, partially isolating the net effect of graph orchestration at the system level and yielding a directional 3.3~pp overall advantage concentrated in the Hard tier ($+$10.0~pp), while leaving component-level contributions for future ablation. A companion repository containing the current implementation and benchmark materials is publicly available\footnote{\url{https://github.com/DAVINTLAB/datasus-conversational-agent/}.}, enabling inspection of the artifact and extension to other public health information systems.
+\end{lstlisting}
+\end{finalblock}
+
+\begin{trackblock}
+\begin{itemize}
+  \item Reformulamos $\to$ \texttt{isolating the net effect of graph orchestration} $\to$ \texttt{partially isolating the net effect of graph orchestration at the system level}
+  \item Adicionamos $\to$ \texttt{while leaving component-level contributions for future ablation}
+  \item Substituímos $\to$ \texttt{The framework and evaluation benchmark are publicly available \ldots supporting reproducibility} $\to$ \texttt{A companion repository \ldots enabling inspection of the artifact}
+\end{itemize}
+\end{trackblock}
+
+\bigskip\hrule\bigskip
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Parágrafo de trabalhos futuros}
+
+\textbf{Seção no paper:} Conclusion\\
+\textbf{Revisores:} Revisor 1 (baseline sem regras de domínio), Revisor 2 (comparações mais amplas), Revisores 1 \& 3 (prioridade de ablação)
+
+\subsubsection*{Motivo consolidado}
+
+Este parágrafo acumulou três ajustes sucessivos: reduzir inferência indevida sobre o papel das regras de domínio, separar duas agendas experimentais diferentes e priorizar explicitamente os dois próximos experimentos mais importantes.
+
+\subsubsection*{Comentários dos revisores e respostas aplicadas}
+
+\begin{quote}
+\textit{``It would be valuable to see how the single shot prompt compares to a plain, zero-shot model to help clarify how much the author's domain engineering improved the baseline's 90\% accuracy score.''}
+\hfill\textit{(Revisor 1)}
+\end{quote}
+
+\noindent Resposta aplicada: removemos a formulação que assumia peso dominante das regras de domínio; introduzimos um \textit{simpler internal baseline that removes the current domain-rule scaffolding}.
+
+\begin{quote}
+\textit{``Limited comparison with other Text-to-SQL approaches \ldots a more profound analysis with Text-to-SQL state of the art.''}
+\hfill\textit{(Revisor 2)}
+\end{quote}
+
+\noindent Resposta aplicada: separamos isso em um item de agenda distinto com \texttt{broader Text-to-SQL comparisons}.
+
+\begin{quote}
+\textit{``There is no component ablation to show which stages drive the gain.''}
+\hfill\textit{(Revisores 1 \& 3)}
+\end{quote}
+
+\noindent Resposta aplicada: demos prioridade explícita a \texttt{stage-level ablation} e ao baseline sem regras como os dois principais próximos experimentos.
+
+\begin{originalblock}
+\begin{lstlisting}[style=texsnippet]
+Future work includes: stage-level ablation to isolate the individual contributions of table selection, chain-of-thought planning, and self-repair (the current design attributes the Hard-tier gap to their combined effect, but cannot disaggregate them); systematic error characterization of the 8 agent errors and 12 baseline errors by stage and query type to directly inform targeted improvements; benchmark validation with clinical specialists to improve validity; investigation of fine-tuning as an alternative to prompt engineering for domain-rule encoding, given that prompt-based rules already account for the bulk of the 90\% baseline performance; and evaluation of open-source models (e.g., LLaMA) to reduce dependence on proprietary APIs in privacy-sensitive healthcare deployments.
+\end{lstlisting}
+\end{originalblock}
+
+\begin{finalblock}
+\begin{lstlisting}[style=texsnippet]
+Future work should prioritize two experiments first: stage-level ablation to isolate the individual contributions of table selection, chain-of-thought planning, and self-repair (the current design attributes the Hard-tier gap to their combined effect, but cannot disaggregate them); and a simpler internal baseline that removes the current domain-rule scaffolding, to measure how much of the observed performance comes from prompt-based domain engineering versus orchestration. After these two priorities, the next steps are systematic error characterization of the 8 agent errors and 12 baseline errors by stage and query type to directly inform targeted improvements; benchmark validation with clinical specialists to improve validity; and broader Text-to-SQL comparisons, including open-source models (e.g., LLaMA) and alternative system designs, to position the DATASUS results relative to the wider literature and reduce dependence on proprietary APIs in privacy-sensitive healthcare deployments.
+\end{lstlisting}
+\end{finalblock}
+
+\begin{trackblock}
+\begin{itemize}
+  \item Removemos $\to$ a inferência \texttt{prompt-based rules already account for the bulk of the 90\% baseline performance}
+  \item Adicionamos $\to$ \texttt{a simpler internal baseline that removes the current domain-rule scaffolding \ldots}
+  \item Adicionamos $\to$ \texttt{broader Text-to-SQL comparisons, including open-source models \ldots}
+  \item Reformulamos a ordem $\to$ \texttt{Future work should prioritize two experiments first \ldots}
+  \item Adicionamos $\to$ \texttt{After these two priorities, the next steps are \ldots}
+\end{itemize}
+\end{trackblock}
+
+\end{document}
