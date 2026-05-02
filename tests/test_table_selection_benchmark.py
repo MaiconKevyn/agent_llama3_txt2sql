@@ -2,7 +2,7 @@ import pytest
 
 pytest.importorskip("langchain_core")
 
-from evaluation.table_selection_benchmark import score_table_selection
+from evaluation.table_selection.benchmark import score_table_selection
 from src.agent import table_selection as ts
 from src.application.prompts.table_selection.catalog import (
     get_available_description_variants,

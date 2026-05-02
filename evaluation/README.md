@@ -158,7 +158,9 @@ python evaluation/generate_report.py
 ### Output Files
 
 ```
-evaluation/results/
+evaluation/agent/results/
+evaluation/ablation/results/
+evaluation/table_selection/results/
 ├── dag_evaluation_YYYYMMDD_HHMMSS.json      # Raw data
 ├── dag_evaluation_report_YYYYMMDD_HHMMSS.txt # Summary
 ├── EVALUATION_REPORT.txt                     # Full analysis
