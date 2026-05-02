@@ -14,7 +14,7 @@ python -m evaluation.runners.run_regression --max-queries 10
 python -m evaluation.runners.run_regression --tier hard
 
 # Save JSON report
-python -m evaluation.runners.run_regression --output evaluation/results/regression_<ts>.json
+python -m evaluation.runners.run_regression --output evaluation/agent/results/regression_<ts>.json
 
 Exit code: 0 if EX >= threshold (default 0.90), 1 otherwise.
 """
@@ -251,7 +251,7 @@ def main() -> None:
     if args.output is None:
         ts = datetime.utcnow().strftime("%Y%m%dT%H%M%S")
         tier_suffix = f"_{args.tier}" if args.tier else ""
-        args.output = str(ROOT / f"evaluation/results/regression{tier_suffix}_{ts}.json")
+        args.output = str(ROOT / f"evaluation/agent/results/regression{tier_suffix}_{ts}.json")
 
     report = run_regression(
         max_queries=args.max_queries,

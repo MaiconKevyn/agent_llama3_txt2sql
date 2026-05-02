@@ -24,7 +24,7 @@ try:
 except ImportError:
     pass
 
-from evaluation.table_selection_benchmark import (  # noqa: E402
+from evaluation.table_selection.benchmark import (  # noqa: E402
     DEFAULT_GOLD_PATH,
     load_table_selection_gold,
     score_table_selection,
@@ -346,7 +346,11 @@ def main() -> None:
 
     output_dir = Path(
         args.output
-        or ROOT / "evaluation" / "results" / f"table_selection_{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
+        or ROOT
+        / "evaluation"
+        / "table_selection"
+        / "results"
+        / f"table_selection_{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}"
     )
     output_dir.mkdir(parents=True, exist_ok=True)
 

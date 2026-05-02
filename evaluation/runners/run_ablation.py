@@ -15,7 +15,7 @@ python -m evaluation.runners.run_ablation --variants V0 V2 V3
 python -m evaluation.runners.run_ablation --max-queries 5
 
 # Custom output directory
-python -m evaluation.runners.run_ablation --output evaluation/results/ablation_custom/
+python -m evaluation.runners.run_ablation --output evaluation/ablation/results/ablation_custom/
 
 Exit code: 0 always (results written to disk regardless).
 """
@@ -407,7 +407,11 @@ def run_ablation(
     git_sha = _git_sha()
 
     ts_tag = datetime.utcnow().strftime("%Y%m%dT%H%M%S")
-    out_dir = Path(output_dir) if output_dir else ROOT / f"evaluation/results/ablation_{ts_tag}"
+    out_dir = (
+        Path(output_dir)
+        if output_dir
+        else ROOT / "evaluation" / "ablation" / "results" / f"ablation_{ts_tag}"
+    )
     out_dir.mkdir(parents=True, exist_ok=True)
 
     selected_specs = (

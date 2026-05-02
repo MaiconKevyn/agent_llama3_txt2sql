@@ -295,7 +295,9 @@ python evaluation/generate_report.py
 
 ### Output Locations
 ```bash
-evaluation/results/                       # Agent eval, regression, and ablation outputs
+evaluation/agent/results/                 # Agent regression / general evaluation outputs
+evaluation/ablation/results/              # Ablation outputs
+evaluation/table_selection/results/       # Table-selection benchmark outputs
 baselines/rich_prompt_baseline/artifacts/ # Baseline artifacts
 evaluation/logs/                          # Evaluation runner logs
 ```
