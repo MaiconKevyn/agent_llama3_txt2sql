@@ -131,7 +131,6 @@ class MessagesStateTXT2SQL(TypedDict):
     generated_sql: Optional[str]
     validated_sql: Optional[str]
     sql_execution_result: Optional[SQLExecutionResult]
-    sql_candidates: Optional[List[Dict[str, Any]]]
     tool_calls: List[ToolCallResult]
     pending_tool_calls: List[Dict[str, Any]]
     final_response: Optional[str]

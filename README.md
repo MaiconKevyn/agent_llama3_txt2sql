@@ -25,7 +25,7 @@ Text-to-SQL for Brazilian public healthcare analytics, built around a LangGraph 
 - [License](#license)
 
 ## Overview
-The agent translates natural-language questions into SQL for DATASUS-style analytical workloads. The current pipeline combines query classification, table discovery, schema enrichment, planning, SQL generation, optional self-consistency voting, validation, repair, execution, and response synthesis inside a stateful LangGraph workflow.
+The agent translates natural-language questions into SQL for DATASUS-style analytical workloads. The current pipeline combines query classification, table discovery, schema enrichment, planning, SQL generation, validation, repair, execution, and response synthesis inside a stateful LangGraph workflow.
 
 ## Features
 - Natural language to SQL in Portuguese or English.
@@ -66,8 +66,7 @@ flowchart TD
     J -->|fallback single| H
 
     G --> H
-    H --> L[vote_sql]
-    L --> M[validate_sql]
+    H --> M[validate_sql]
     M -->|valid| N[execute_sql]
     M -->|retry generation| O[repair_sql]
     M -->|retry validation| M
@@ -107,7 +106,7 @@ txt2sql_refactor_openai_v2/
 │   ├── agent/
 │   │   ├── workflow.py              # LangGraph workflow definition
 │   │   ├── orchestrator.py          # Main production orchestrator
-│   │   ├── sql_generation.py        # SQL generation and vote_sql node
+│   │   ├── sql_generation.py        # SQL generation and reasoning helpers
 │   │   ├── validation.py            # SQL validation and repair helpers
 │   │   ├── execution.py             # SQL execution logic
 │   │   ├── query_planner.py         # Single vs multi-query planning

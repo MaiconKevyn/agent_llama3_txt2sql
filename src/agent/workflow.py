@@ -12,7 +12,6 @@ from .nodes import (
     execute_sql_node,
     generate_response_node,
     clarification_node,
-    vote_sql_node,
 )
 from .query_planner import query_planner_node
 from .plan_gate import plan_gate_node
@@ -42,7 +41,7 @@ def create_langgraph_sql_workflow(config=None):
 
     Full pipeline (all flags False):
       START → classify → list_tables → get_schema → plan_gate →
-      [query_planner?] → [reasoning?] → generate_sql → [vote_sql?] →
+      [query_planner?] → [reasoning?] → generate_sql →
       [validate_sql?] → execute_sql → [repair_sql?] → generate_response → END
     """
     from ..application.config.simple_config import OrchestratorConfig
@@ -67,8 +66,6 @@ def create_langgraph_sql_workflow(config=None):
     # ── Optional nodes (controlled by ablation flags) ─────────────────────────
     if not cfg.disable_cot_reasoning:
         workflow.add_node("reasoning", reasoning_node)
-    if not cfg.disable_self_consistency:
-        workflow.add_node("vote_sql", vote_sql_node)
     if not cfg.disable_validation:
         workflow.add_node("validate_sql", validate_sql_node)
     if not cfg.disable_repair:
@@ -131,9 +128,7 @@ def create_langgraph_sql_workflow(config=None):
     workflow.add_edge("result_synthesizer", END)
 
     # ── generate_sql → next (skip disabled nodes) ─────────────────────────────
-    if not cfg.disable_self_consistency:
-        _after_generate = "vote_sql"
-    elif not cfg.disable_validation:
+    if not cfg.disable_validation:
         _after_generate = "validate_sql"
     else:
         _after_generate = "execute_sql"
@@ -143,11 +138,6 @@ def create_langgraph_sql_workflow(config=None):
         route_after_sql_generation,
         {"validate": _after_generate, "retry": "generate_sql", "error": "generate_response"},
     )
-
-    # ── vote_sql → next ───────────────────────────────────────────────────────
-    if not cfg.disable_self_consistency:
-        _after_vote = "execute_sql" if cfg.disable_validation else "validate_sql"
-        workflow.add_edge("vote_sql", _after_vote)
 
     # ── validate_sql routing ──────────────────────────────────────────────────
     if not cfg.disable_validation:

@@ -4,7 +4,7 @@ pytest.importorskip("langchain_core")
 pytest.importorskip("langchain_openai")
 
 from src.agent.prompt_builder import build_pregeneration_hints
-from src.agent.sql_generation import SQLOutput, N_SQL_CANDIDATES
+from src.agent.sql_generation import SQLOutput
 from src.agent.sql_generation import _build_pregeneration_hints
 
 
@@ -18,8 +18,7 @@ def test_sql_generation_module_split_preserves_hint_behavior():
     assert compat == direct
 
 
-def test_sql_output_schema_and_self_consistency_constants_available():
+def test_sql_output_schema_available():
     model = SQLOutput(sql="select 1", reasoning="ok", confidence=0.5)
 
     assert model.sql == "select 1"
-    assert N_SQL_CANDIDATES == 3

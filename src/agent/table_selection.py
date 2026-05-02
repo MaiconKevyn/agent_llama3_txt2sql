@@ -9,9 +9,26 @@ from langchain_core.messages import HumanMessage
 from .llm_manager import OpenAILLMManager, get_llm_manager
 from .state_models import MessagesStateTXT2SQL, ExecutionPhase, ToolCallResult, TX
 from .state_helpers import add_ai_message, add_tool_call_result, update_phase, add_error
+from ..application.prompts.table_selection.catalog import (
+    render_table_description_lines,
+    render_table_selection_prompt,
+    resolve_table_selection_strategy,
+)
 from ..utils.logging_config import get_nodes_logger
 
 logger = get_nodes_logger()
+
+
+TABLE_SELECTION_MODE_FULL_CASCADE = "full_cascade"
+TABLE_SELECTION_MODE_HEURISTIC_ONLY = "heuristic_only"
+TABLE_SELECTION_MODE_EMBEDDING_ONLY = "embedding_only"
+TABLE_SELECTION_MODE_HEURISTIC_EMBEDDING_ONLY = "heuristic_embedding_only"
+TABLE_SELECTION_MODE_LLM_ONLY = "llm_only"
+TABLE_SELECTION_MODE_LLM_DISABLED_FALLBACK = "llm_disabled_current_fallback"
+
+DEFAULT_TABLE_SELECTION_MODE = TABLE_SELECTION_MODE_FULL_CASCADE
+DEFAULT_TABLE_DESCRIPTION_VARIANT = "current"
+DEFAULT_TABLE_SELECTION_PROMPT_VARIANT = "current"
 
 
 # ---------------------------------------------------------------------------
@@ -75,12 +92,196 @@ def _heuristic_table_selection(
 # Stage 3: LLM selection
 # ---------------------------------------------------------------------------
 
+
+def _build_table_description_lines(
+    available_tables: List[str],
+    description_variant: str = DEFAULT_TABLE_DESCRIPTION_VARIANT,
+) -> List[str]:
+    """Format available tables into prompt-friendly description lines."""
+    return render_table_description_lines(
+        available_tables,
+        description_variant=description_variant,
+    )
+
+
+def _build_llm_selection_prompt(
+    user_query: str,
+    available_tables: List[str],
+    description_variant: str = DEFAULT_TABLE_DESCRIPTION_VARIANT,
+    prompt_variant: str = DEFAULT_TABLE_SELECTION_PROMPT_VARIANT,
+) -> str:
+    """Build the prompt for the LLM fallback stage."""
+    return render_table_selection_prompt(
+        user_query=user_query,
+        available_tables=available_tables,
+        description_variant=description_variant,
+        prompt_variant=prompt_variant,
+    )
+
+
+def _run_embedding_table_selection(
+    user_query: str,
+    available_tables: List[str],
+) -> Tuple[List[str], float]:
+    """Run stage 2 embedding selector."""
+    from .table_selector import get_embedding_selector
+
+    return get_embedding_selector().select(
+        user_query,
+        available_tables=available_tables,
+        threshold=0.50,
+        top_k=3,
+    )
+
+
+def _run_llm_table_selection(
+    user_query: str,
+    available_tables: List[str],
+    llm_manager: Any,
+    description_variant: str = DEFAULT_TABLE_DESCRIPTION_VARIANT,
+    prompt_variant: str = DEFAULT_TABLE_SELECTION_PROMPT_VARIANT,
+) -> Dict[str, Any]:
+    """Run stage 3 LLM selector and return parsing details."""
+    selection_prompt = _build_llm_selection_prompt(
+        user_query=user_query,
+        available_tables=available_tables,
+        description_variant=description_variant,
+        prompt_variant=prompt_variant,
+    )
+    response = llm_manager.invoke_chat([HumanMessage(content=selection_prompt)])
+    raw_response = response.content.strip() if hasattr(response, "content") else str(response)
+    parsed_tables = _parse_llm_table_selection(raw_response, available_tables)
+    return {
+        "prompt": selection_prompt,
+        "raw_response": raw_response,
+        "parsed_tables": parsed_tables,
+    }
+
+
+def select_tables_with_debug(
+    user_query: str,
+    available_tables: List[str],
+    llm_manager: Optional[Any] = None,
+    mode: str = DEFAULT_TABLE_SELECTION_MODE,
+    description_variant: str = DEFAULT_TABLE_DESCRIPTION_VARIANT,
+    prompt_variant: str = DEFAULT_TABLE_SELECTION_PROMPT_VARIANT,
+) -> Dict[str, Any]:
+    """Select tables and expose stage-by-stage telemetry for benchmarking."""
+    debug: Dict[str, Any] = {
+        "mode": mode,
+        "description_variant": description_variant,
+        "prompt_variant": prompt_variant,
+        "heuristic": {"selected_tables": [], "confidence": 0.0},
+        "embedding": {"selected_tables": [], "confidence": 0.0},
+        "llm": {"parsed_tables": [], "raw_response": "", "prompt": ""},
+        "fallback": {"selected_tables": []},
+        "stage_used": "none",
+        "raw_selected_tables": [],
+        "validated_selected_tables": [],
+        "error": "",
+    }
+
+    def _finalize(raw_tables: List[str], stage_used: str) -> Dict[str, Any]:
+        validated = _validate_table_selection(user_query, raw_tables, available_tables)
+        debug["stage_used"] = stage_used
+        debug["raw_selected_tables"] = list(raw_tables)
+        debug["validated_selected_tables"] = validated
+        return debug
+
+    try:
+        logger.info("Intelligent table selection started", extra={"mode": mode})
+
+        if mode in (
+            TABLE_SELECTION_MODE_FULL_CASCADE,
+            TABLE_SELECTION_MODE_HEURISTIC_ONLY,
+            TABLE_SELECTION_MODE_HEURISTIC_EMBEDDING_ONLY,
+            TABLE_SELECTION_MODE_LLM_DISABLED_FALLBACK,
+        ):
+            heur_tables, heur_confidence = _heuristic_table_selection(user_query, available_tables)
+            debug["heuristic"] = {
+                "selected_tables": list(heur_tables),
+                "confidence": heur_confidence,
+            }
+            if heur_confidence >= 0.85 and heur_tables:
+                logger.info("Heuristic table selection", extra={"tables": heur_tables, "conf": heur_confidence})
+                return _finalize(heur_tables, "heuristic")
+            if mode == TABLE_SELECTION_MODE_HEURISTIC_ONLY:
+                return _finalize(heur_tables, "heuristic")
+
+        if mode in (
+            TABLE_SELECTION_MODE_FULL_CASCADE,
+            TABLE_SELECTION_MODE_EMBEDDING_ONLY,
+            TABLE_SELECTION_MODE_HEURISTIC_EMBEDDING_ONLY,
+            TABLE_SELECTION_MODE_LLM_DISABLED_FALLBACK,
+        ):
+            try:
+                emb_tables, emb_confidence = _run_embedding_table_selection(user_query, available_tables)
+                debug["embedding"] = {
+                    "selected_tables": list(emb_tables),
+                    "confidence": emb_confidence,
+                }
+                if emb_confidence >= 0.50 and emb_tables:
+                    logger.info(
+                        "Embedding table selection",
+                        extra={"tables": emb_tables, "conf": round(emb_confidence, 3)},
+                    )
+                    return _finalize(emb_tables, "embedding")
+            except Exception as exc:
+                debug["embedding"]["error"] = str(exc)
+                logger.warning("Embedding stage failed", extra={"error": str(exc)})
+            if mode == TABLE_SELECTION_MODE_EMBEDDING_ONLY:
+                return _finalize(debug["embedding"]["selected_tables"], "embedding")
+            if mode == TABLE_SELECTION_MODE_HEURISTIC_EMBEDDING_ONLY:
+                return _finalize(debug["embedding"]["selected_tables"], "embedding")
+
+        if mode == TABLE_SELECTION_MODE_LLM_DISABLED_FALLBACK:
+            fallback = _get_intelligent_fallback(user_query, available_tables)
+            debug["fallback"]["selected_tables"] = list(fallback)
+            logger.info("table_selection: LLM stage disabled by mode — using intelligent fallback")
+            return _finalize(fallback, "fallback")
+
+        if mode in (TABLE_SELECTION_MODE_FULL_CASCADE, TABLE_SELECTION_MODE_LLM_ONLY):
+            if llm_manager is None:
+                raise ValueError("llm_manager is required for LLM-based table selection modes")
+            llm_debug = _run_llm_table_selection(
+                user_query=user_query,
+                available_tables=available_tables,
+                llm_manager=llm_manager,
+                description_variant=description_variant,
+                prompt_variant=prompt_variant,
+            )
+            debug["llm"] = llm_debug
+            logger.info("LLM table selection response", extra={"raw_response": llm_debug["raw_response"][:200]})
+
+            parsed_tables = llm_debug["parsed_tables"]
+            if parsed_tables:
+                return _finalize(parsed_tables, "llm")
+
+            fallback = _get_intelligent_fallback(user_query, available_tables)
+            debug["fallback"]["selected_tables"] = list(fallback)
+            logger.warning("No valid tables selected by LLM, using fallback")
+            return _finalize(fallback, "fallback_after_llm")
+
+        raise ValueError(f"Unsupported table selection mode: {mode}")
+
+    except Exception as e:
+        debug["error"] = str(e)
+        logger.error("Table selection failed", extra={"error": str(e), "mode": mode})
+        debug["raw_selected_tables"] = list(available_tables)
+        debug["validated_selected_tables"] = list(available_tables)
+        debug["stage_used"] = "error"
+        return debug
+
+
 def _select_relevant_tables(
     user_query: str,
     tool_result: str,
     available_tables: List[str],
     llm_manager: OpenAILLMManager,
     disable_llm_stage: bool = False,
+    mode: Optional[str] = None,
+    description_variant: str = DEFAULT_TABLE_DESCRIPTION_VARIANT,
+    prompt_variant: str = DEFAULT_TABLE_SELECTION_PROMPT_VARIANT,
 ) -> Tuple[List[str], List[str]]:
     """
     3-stage table selection cascade:
@@ -90,156 +291,29 @@ def _select_relevant_tables(
 
     Returns (validated_tables, raw_tables).
     """
-    try:
-        logger.info("Intelligent table selection started")
+    resolved_mode = mode or (
+        TABLE_SELECTION_MODE_LLM_DISABLED_FALLBACK
+        if disable_llm_stage
+        else TABLE_SELECTION_MODE_FULL_CASCADE
+    )
+    debug = select_tables_with_debug(
+        user_query=user_query,
+        available_tables=available_tables,
+        llm_manager=llm_manager,
+        mode=resolved_mode,
+        description_variant=description_variant,
+        prompt_variant=prompt_variant,
+    )
 
-        # Stage 1: heuristic fast-path
-        heur_tables, heur_confidence = _heuristic_table_selection(user_query, available_tables)
-        if heur_confidence >= 0.85 and heur_tables:
-            logger.info(
-                f"Heuristic table selection: {heur_tables} (conf={heur_confidence})"
-            )
-            validated = _validate_table_selection(user_query, heur_tables, available_tables)
-            return validated, heur_tables
-
-        # Stage 2: embedding similarity fast-path (skips LLM when confident)
-        try:
-            from .table_selector import get_embedding_selector
-            emb_tables, emb_confidence = get_embedding_selector().select(
-                user_query, available_tables=available_tables, threshold=0.50, top_k=3
-            )
-            if emb_confidence >= 0.50 and emb_tables:
-                logger.info(
-                    "Embedding table selection",
-                    extra={"tables": emb_tables, "conf": round(emb_confidence, 3)},
-                )
-                validated = _validate_table_selection(user_query, emb_tables, available_tables)
-                return validated, emb_tables
-        except Exception as _emb_exc:
-            logger.warning("Embedding stage failed, proceeding to LLM", extra={"error": str(_emb_exc)})
-
-        # Stage 3: LLM selection (skipped in ablation variant no_table_selection_llm)
-        if disable_llm_stage:
-            logger.info("table_selection: LLM stage disabled by ablation flag — using first available tables")
-            fallback = _get_intelligent_fallback(user_query, available_tables)
-            validated = _validate_table_selection(user_query, fallback, available_tables)
-            return validated, fallback
-
-        logger.info("Heuristic + embedding inconclusive — falling back to LLM table selection")
-
-        from ..application.config.table_descriptions import TABLE_DESCRIPTIONS
-
-        table_desc_lines = []
-        for table_name in available_tables:
-            if table_name in TABLE_DESCRIPTIONS:
-                desc = TABLE_DESCRIPTIONS[table_name]
-                title = desc.get("title", table_name)
-                purpose = desc.get("purpose", "")
-                use_cases = desc.get("use_cases", [])
-                critical_notes = desc.get("critical_notes", [])
-
-                line = f"- {table_name}: {title}"
-                if purpose:
-                    line += f" | {purpose}"
-                if use_cases:
-                    line += f" | Use for: {', '.join(use_cases[:2])}"
-                if critical_notes:
-                    line += f" | {'; '.join(critical_notes[:2])}"
-
-                table_desc_lines.append(line)
-            else:
-                table_desc_lines.append(f"- {table_name}: Database table")
-
-        selection_prompt = f"""POSTGRESQL TABLE SELECTION - Brazilian SUS Healthcare System
-
-AVAILABLE TABLES:
-{chr(10).join(table_desc_lines)}
-
-CRITICAL SELECTION RULES FOR sihrd5 DATABASE:
-====================================================
-
- CORE QUERIES - Primary Table Selection:
-• internacoes: ALWAYS use for patient counts, hospitalization queries, deaths (MORTE boolean), VDRL (IND_VDRL boolean)
-• atendimentos: Use when asking about procedures performed per hospitalization (junction table)
-
- LOOKUP TABLES - Always join when names/descriptions needed:
-• cid: Join when need disease/diagnosis NAMES (table renamed from cid10 — use cid, NOT cid10!)
-• procedimentos: Join when need procedure NAMES (always via atendimentos junction table)
-• hospital: Join when need hospital/facility information
-• municipios: Join when need city/municipality NAMES or geographic data
-
- SPECIALIZED ANALYSIS — socioeconomico is the ONLY source for these metrics:
-• socioeconomico: Use for "população", "mortalidade infantil", "IDHM", "bolsa família", "envelhecimento",
-  "saneamento", "dados do IBGE", "dados socioeconômicos" — ALWAYS filter by metrica column.
-  NEVER use internacoes for "taxa de mortalidade infantil" — that comes from socioeconomico!
-  Example: WHERE metrica = 'mortalidade_infantil_1ano' OR metrica = 'populacao_total' OR metrica = 'idhm'
-• instrucao: Lookup for education level descriptions (JOIN with internacoes.INSTRU)
-• vincprev: Lookup for social security type descriptions (JOIN with internacoes.VINCPREV)
-• especialidade: Lookup for medical specialty descriptions (JOIN with internacoes.ESPEC)
-• raca_cor: Lookup for race/color descriptions (JOIN with internacoes.RACA_COR)
-
- DISAMBIGUATION RULES:
-• "taxa de mortalidade" / "mortalidade hospitalar" / "percentual de óbitos" in hospitalization context →
-  calculate from internacoes: COUNT(MORTE=true)/COUNT(*). DO NOT use socioeconomico.
-• "mortalidade infantil" / "taxa de mortalidade infantil" → socioeconomico with metrica='mortalidade_infantil_1ano'
-• "municípios de residência" / "onde os pacientes moram" → internacoes.MUNIC_RES → municipios
-• "municípios que atendem" / "por localização do hospital" / "média por município (hospital)" →
-  hospital.MUNIC_MOV → municipios (requires BOTH hospital AND municipios tables)
-
- TABLES THAT NO LONGER EXIST (DO NOT SELECT):
-• mortes: REMOVED — use internacoes WHERE "MORTE" = true
-• cid10: RENAMED to cid — use cid
-• dado_ibge: REPLACED by socioeconomico
-• uti_detalhes: REMOVED — use internacoes."VAL_UTI" > 0 to identify ICU admissions
-• condicoes_especificas: REMOVED — use internacoes WHERE "IND_VDRL" = true
-• obstetricos: REMOVED — use internacoes.INSC_PN, GESTRICO, CONTRACEP1, CONTRACEP2
-• cbor, infehosp, diagnosticos_secundarios: REMOVED from sihrd5
-
- SELECTION LOGIC:
-1. Start with internacoes for most patient/hospitalization queries
-2. For deaths/mortality: use internacoes with WHERE "MORTE" = true (no separate mortes table)
-3. For procedures: add atendimentos + procedimentos (junction pattern)
-4. Add lookup tables (cid, hospital, municipios) when descriptions are needed
-5. For socioeconomic data: use socioeconomico (not dado_ibge)
-
-USER QUERY: "{user_query}"
-
-IMPORTANT: Respond with ONLY the table names separated by commas. No explanation or reasoning.
-
-TABLES:"""
-
-        response = llm_manager.invoke_chat([HumanMessage(content=selection_prompt)])
-
-        selected_tables_str = response.content.strip() if hasattr(response, 'content') else str(response)
-
-        logger.info(f"LLM table selection response: {selected_tables_str}")
-
-        selected_tables = _parse_llm_table_selection(selected_tables_str, available_tables)
-        raw_selected_tables = list(selected_tables)
-
-        logger.info(f"Tables after parsing: {selected_tables}")
-
-        selected_tables = _validate_table_selection(user_query, selected_tables, available_tables)
-
-        logger.info(f"Tables after validation: {selected_tables}")
-
-        if not selected_tables:
-            logger.warning("No valid tables selected, using fallback")
-            selected_tables = _get_intelligent_fallback(user_query, available_tables)
-
-        logger.info("Table selection completed", extra={
-            "query": user_query[:100],
-            "available": available_tables,
-            "selected": selected_tables,
-            "raw_selected": raw_selected_tables,
-            "type": "Single table" if len(selected_tables) == 1 else "Multi-table",
-        })
-
-        return selected_tables, raw_selected_tables
-
-    except Exception as e:
-        logger.error("Table selection failed", extra={"error": str(e)})
-        return available_tables, available_tables
+    logger.info("Table selection completed", extra={
+        "query": user_query[:100],
+        "available": available_tables,
+        "selected": debug["validated_selected_tables"],
+        "raw_selected": debug["raw_selected_tables"],
+        "stage_used": debug["stage_used"],
+        "type": "Single table" if len(debug["validated_selected_tables"]) == 1 else "Multi-table",
+    })
+    return debug["validated_selected_tables"], debug["raw_selected_tables"]
 
 
 # ---------------------------------------------------------------------------
@@ -400,6 +474,42 @@ def _validate_table_selection(
             validated_tables.append('procedimentos')
             logger.info("Added 'procedimentos' - required for atendimentos junction")
 
+    # Rule 7: sex filters/grouping usually come directly from internacoes.
+    # Keep `sexo` only when the query explicitly asks for the label/description itself.
+    if 'sexo' in validated_tables and 'internacoes' in validated_tables:
+        needs_sex_label = any(
+            phrase in query_lower
+            for phrase in [
+                'descrição do sexo',
+                'descricao do sexo',
+                'nome do sexo',
+                'rótulo do sexo',
+                'rotulo do sexo',
+                'label do sexo',
+            ]
+        )
+        if not needs_sex_label:
+            validated_tables.remove('sexo')
+            logger.info("Removed 'sexo' - internacoes already supports sex filter/grouping")
+
+    # Rule 8: municipality-of-care questions require hospital geography, not residence geography.
+    is_care_municipality_query = (
+        re.search(r'munic[ií]p', query_lower) is not None
+        and (
+            re.search(r'atend\w+', query_lower) is not None
+            or 'localização do hospital' in query_lower
+            or 'localizacao do hospital' in query_lower
+            or 'hospital' in query_lower
+        )
+    )
+    if is_care_municipality_query:
+        if 'hospital' not in validated_tables and 'hospital' in available_tables:
+            validated_tables.append('hospital')
+            logger.info("Added 'hospital' for municipality-of-care query")
+        if 'municipios' not in validated_tables and 'municipios' in available_tables:
+            validated_tables.append('municipios')
+            logger.info("Added 'municipios' for municipality-of-care query")
+
     if validated_tables != selected_tables:
         logger.debug("Table validation completed", extra={
             "original": selected_tables,
@@ -473,12 +583,28 @@ def list_tables_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         state["available_tables"] = tables
 
         ablation_flags = state.get("ablation_flags") or {}
+        strategy = resolve_table_selection_strategy(
+            preset_name=ablation_flags.get("table_selection_preset"),
+            mode=ablation_flags.get("table_selection_mode"),
+            description_variant=ablation_flags.get("table_selection_description_variant"),
+            prompt_variant=ablation_flags.get("table_selection_prompt_variant"),
+        )
+        selection_mode = strategy["mode"]
+        if (
+            selection_mode == DEFAULT_TABLE_SELECTION_MODE
+            and ablation_flags.get("disable_table_selection_llm", False)
+        ):
+            selection_mode = TABLE_SELECTION_MODE_LLM_DISABLED_FALLBACK
+
         selected_tables, raw_selected_tables = _select_relevant_tables(
             user_query=state["user_query"],
             tool_result=tool_result,
             available_tables=tables,
             llm_manager=llm_manager,
-            disable_llm_stage=ablation_flags.get("disable_table_selection_llm", False),
+            disable_llm_stage=(selection_mode == TABLE_SELECTION_MODE_LLM_DISABLED_FALLBACK),
+            mode=selection_mode,
+            description_variant=strategy["description_variant"],
+            prompt_variant=strategy["prompt_variant"],
         )
 
         state["selected_tables"] = selected_tables
@@ -487,6 +613,10 @@ def list_tables_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             meta.update({
                 "raw_selected_tables": raw_selected_tables,
                 "validated_selected_tables": selected_tables,
+                "table_selection_preset": strategy["preset_name"],
+                "table_selection_mode": selection_mode,
+                "table_selection_description_variant": strategy["description_variant"],
+                "table_selection_prompt_variant": strategy["prompt_variant"],
             })
             state["response_metadata"] = meta
         except Exception:

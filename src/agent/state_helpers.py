@@ -47,7 +47,6 @@ def create_initial_messages_state(
         generated_sql=None,
         validated_sql=None,
         sql_execution_result=None,
-        sql_candidates=None,
         tool_calls=[],
         pending_tool_calls=[],
         final_response=None,
