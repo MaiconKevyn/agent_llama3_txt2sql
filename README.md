@@ -23,7 +23,6 @@
 - [Evaluation](#evaluation)
 - [System Design](#system-design)
 - [Observability](#observability)
-- [Contributing](#contributing)
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
 
@@ -332,15 +331,6 @@ Main logs are written under `logs/` and `evaluation/logs/`. Useful files include
 
 ### LangSmith
 If `LANGSMITH_TRACING=true` is configured, the application emits traces for workflow execution, which is useful for debugging prompt behavior, retries, and performance bottlenecks.
-
-## Contributing
-Contributions should preserve the current architecture boundaries:
-- Keep orchestration logic inside `src/agent/`.
-- Keep app configuration centralized in `src/application/config/`.
-- Keep interface-specific concerns inside `src/interfaces/`.
-- Update evaluation artifacts or documentation when changing workflow behavior.
-
-For larger behavior changes, validate both the agent path and the baseline path to avoid regressions in benchmark comparability.
 
 ## License
 This project is licensed under the **MIT License**.
