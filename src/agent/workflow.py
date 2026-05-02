@@ -1,8 +1,6 @@
 from langgraph.graph import StateGraph, START, END
 
-from .state import (
-    MessagesStateTXT2SQL,
-)
+from .state_models import MessagesStateTXT2SQL
 from .nodes import (
     query_classification_node,
     list_tables_node,
@@ -34,53 +32,51 @@ from .routing import (
 )
 
 
-def create_langgraph_sql_workflow():
+def create_langgraph_sql_workflow(config=None):
     """
-    Create LangGraph SQL workflow following official tutorial patterns
-    
-    This implements the exact structure recommended in the LangGraph SQL Agent tutorial:
-    - MessagesState as primary state
-    - Tool-based conditional routing
-    - Proper error handling and retries
-    - Memory checkpointing support
-    
-    Workflow Structure:
-    START → classify → [route based on classification]
-    
-    Routes:
-    1. DATABASE: classify → list_tables → get_schema → generate_sql → validate_sql → execute_sql → response
-    2. CONVERSATIONAL: classify → response (direct)
-    3. SCHEMA: classify → list_tables → response
-    
-    With retry mechanisms and error handling at each step.
+    Create LangGraph SQL workflow.
+
+    When *config* (an OrchestratorConfig) is provided, ablation flags are
+    respected: nodes for disabled components are simply omitted from the graph
+    and their edges are rewired to the next enabled node.
+
+    Full pipeline (all flags False):
+      START → classify → list_tables → get_schema → plan_gate →
+      [query_planner?] → [reasoning?] → generate_sql → [vote_sql?] →
+      [validate_sql?] → execute_sql → [repair_sql?] → generate_response → END
     """
-    
-    # Create StateGraph with MessagesState
+    from ..application.config.simple_config import OrchestratorConfig
+    cfg = config or OrchestratorConfig()
+
     workflow = StateGraph(MessagesStateTXT2SQL)
-    
-    # Add all nodes
+
+    # ── Core nodes (always present) ──────────────────────────────────────────
     workflow.add_node("classify_query", query_classification_node)
     workflow.add_node("list_tables", list_tables_node)
     workflow.add_node("get_schema", get_schema_node)
     workflow.add_node("plan_gate", plan_gate_node)
     workflow.add_node("query_planner", query_planner_node)
-    workflow.add_node("reasoning", reasoning_node)
     workflow.add_node("generate_sql", generate_sql_node)
-    workflow.add_node("vote_sql", vote_sql_node)
-    workflow.add_node("repair_sql", repair_sql_node)
-    workflow.add_node("validate_sql", validate_sql_node)
     workflow.add_node("execute_sql", execute_sql_node)
     workflow.add_node("generate_response", generate_response_node)
     workflow.add_node("clarification", clarification_node)
-    # Multi-query path
     workflow.add_node("multi_sql_executor", multi_sql_executor_node)
     workflow.add_node("multi_verifier", multi_verifier_node)
     workflow.add_node("result_synthesizer", result_synthesizer_node)
-    
-    # Entry point
+
+    # ── Optional nodes (controlled by ablation flags) ─────────────────────────
+    if not cfg.disable_cot_reasoning:
+        workflow.add_node("reasoning", reasoning_node)
+    if not cfg.disable_self_consistency:
+        workflow.add_node("vote_sql", vote_sql_node)
+    if not cfg.disable_validation:
+        workflow.add_node("validate_sql", validate_sql_node)
+    if not cfg.disable_repair:
+        workflow.add_node("repair_sql", repair_sql_node)
+
+    # ── Entry point ───────────────────────────────────────────────────────────
     workflow.add_edge(START, "classify_query")
-    
-    # Classification routing (official LangGraph pattern)
+
     workflow.add_conditional_edges(
         "classify_query",
         route_after_classification,
@@ -89,111 +85,112 @@ def create_langgraph_sql_workflow():
             "conversational": "generate_response",
             "schema": "list_tables",
             "clarification": "clarification",
-            "error": "generate_response"
-        }
+            "error": "generate_response",
+        },
     )
-    
-    # Database workflow path
-    workflow.add_edge("list_tables", "get_schema")
 
-    # After schema: go to query planner or direct response (SCHEMA queries)
+    workflow.add_edge("list_tables", "get_schema")
     workflow.add_conditional_edges(
         "get_schema",
         route_after_schema,
-        {
-            "plan_gate": "plan_gate",
-            "generate_response": "generate_response",
-        }
+        {"plan_gate": "plan_gate", "generate_response": "generate_response"},
     )
 
+    # ── plan_gate: bypass reasoning when disabled ─────────────────────────────
+    _reasoning_target = "generate_sql" if cfg.disable_cot_reasoning else "reasoning"
     workflow.add_conditional_edges(
         "plan_gate",
         route_after_plan_gate,
         {
             "query_planner": "query_planner",
-            "reasoning": "reasoning",
+            "reasoning": _reasoning_target,
             "generate_sql": "generate_sql",
-        }
+        },
     )
 
-    # Query planner decides single vs multi path
     workflow.add_conditional_edges(
         "query_planner",
         route_after_query_planner,
         {
-            "generate_sql": "generate_sql",      # single-query: existing pipeline
-            "reasoning": "reasoning",             # complex single-query: CoT before generation
-            "multi": "multi_sql_executor",        # multi-query: new path
-        }
+            "generate_sql": "generate_sql",
+            "reasoning": _reasoning_target,
+            "multi": "multi_sql_executor",
+        },
     )
 
-    # Multi-query path
+    if not cfg.disable_cot_reasoning:
+        workflow.add_edge("reasoning", "generate_sql")
+
+    # ── Multi-query path ──────────────────────────────────────────────────────
     workflow.add_edge("multi_sql_executor", "multi_verifier")
     workflow.add_conditional_edges(
         "multi_verifier",
         route_after_multi_verifier,
-        {
-            "result_synthesizer": "result_synthesizer",
-            "generate_sql": "generate_sql",
-        }
+        {"result_synthesizer": "result_synthesizer", "generate_sql": "generate_sql"},
     )
     workflow.add_edge("result_synthesizer", END)
 
-    workflow.add_edge("reasoning", "generate_sql")
-    
-    # Conditional repair routing (re-planning support)
-    workflow.add_conditional_edges(
-        "repair_sql",
-        route_after_repair,
-        {
-            "reasoning": "reasoning",
-            "validate_sql": "validate_sql"
-        }
-    )
+    # ── generate_sql → next (skip disabled nodes) ─────────────────────────────
+    if not cfg.disable_self_consistency:
+        _after_generate = "vote_sql"
+    elif not cfg.disable_validation:
+        _after_generate = "validate_sql"
+    else:
+        _after_generate = "execute_sql"
 
-    # SQL generation with retry (LangGraph pattern)
-    # On success: generate_sql → vote_sql (majority voting) → validate_sql
     workflow.add_conditional_edges(
         "generate_sql",
         route_after_sql_generation,
-        {
-            "validate": "vote_sql",
-            "retry": "generate_sql",
-            "error": "generate_response"
-        }
+        {"validate": _after_generate, "retry": "generate_sql", "error": "generate_response"},
     )
-    workflow.add_edge("vote_sql", "validate_sql")
-    
-    # SQL validation with retry (LangGraph pattern)
-    workflow.add_conditional_edges(
-        "validate_sql",
-        route_after_sql_validation,
-        {
-            "execute": "execute_sql",
-            # Route regeneration requests through repair_sql to leverage error context
-            "retry_generation": "repair_sql",
-            "retry_validation": "validate_sql",
-            "error": "generate_response"
-        }
-    )
-    
-    # SQL execution with retry (LangGraph pattern)
+
+    # ── vote_sql → next ───────────────────────────────────────────────────────
+    if not cfg.disable_self_consistency:
+        _after_vote = "execute_sql" if cfg.disable_validation else "validate_sql"
+        workflow.add_edge("vote_sql", _after_vote)
+
+    # ── validate_sql routing ──────────────────────────────────────────────────
+    if not cfg.disable_validation:
+        _val_on_retry = "generate_response" if cfg.disable_repair else "repair_sql"
+        workflow.add_conditional_edges(
+            "validate_sql",
+            route_after_sql_validation,
+            {
+                "execute": "execute_sql",
+                "retry_generation": _val_on_retry,
+                "retry_validation": "validate_sql",
+                "error": "generate_response",
+            },
+        )
+
+    # ── repair_sql routing ────────────────────────────────────────────────────
+    if not cfg.disable_repair:
+        _after_repair_val = "execute_sql" if cfg.disable_validation else "validate_sql"
+        _after_repair_cot = "generate_sql" if cfg.disable_cot_reasoning else "reasoning"
+        workflow.add_conditional_edges(
+            "repair_sql",
+            route_after_repair,
+            {"reasoning": _after_repair_cot, "validate_sql": _after_repair_val},
+        )
+
+    # ── execute_sql routing ───────────────────────────────────────────────────
+    _exec_on_retry_gen = "generate_response" if cfg.disable_repair else "repair_sql"
+    _exec_on_retry_val = "execute_sql" if cfg.disable_validation else "validate_sql"
     workflow.add_conditional_edges(
         "execute_sql",
         route_after_sql_execution,
         {
             "response": "generate_response",
-            "retry_generation": "repair_sql",
-            "retry_validation": "validate_sql", 
+            "retry_generation": _exec_on_retry_gen,
+            "retry_validation": _exec_on_retry_val,
             "retry_execution": "execute_sql",
-            "error": "generate_response"
-        }
+            "error": "generate_response",
+        },
     )
-    
-    # Final response
+
     workflow.add_edge("generate_response", END)
     workflow.add_edge("clarification", END)
-    
+
     return workflow
 
 
@@ -298,6 +295,7 @@ def execute_sql_workflow(
     max_retries: int = 3,
     llm_manager = None,
     force_single_query: bool = True,
+    ablation_flags: dict = None,
 ) -> dict:
     """
     Execute SQL workflow with proper error handling and adaptive recursion limit
@@ -315,7 +313,7 @@ def execute_sql_workflow(
 
     try:
         # Import here to avoid circular dependencies
-        from .state import create_initial_messages_state, state_to_legacy_format
+        from .state_helpers import create_initial_messages_state, state_to_legacy_format
 
         # Create initial state
         if session_id is None:
@@ -325,6 +323,7 @@ def execute_sql_workflow(
             user_query=user_query,
             session_id=session_id,
             force_single_query=force_single_query,
+            ablation_flags=ablation_flags or {},
         )
 
         config = config or {}
@@ -356,12 +355,15 @@ def execute_sql_workflow(
         # Set max_retries for early stopping
         initial_state["max_retries"] = max_retries
 
-        # Execute workflow
-        final_state = workflow.invoke(initial_state, config=config)
-        
+        # Execute workflow with cost tracking
+        from .cost_tracker import QueryCostTracker
+        with QueryCostTracker() as cost:
+            final_state = workflow.invoke(initial_state, config=config)
+
         # Convert to legacy format for API compatibility
         result = state_to_legacy_format(final_state)
-        
+        result["cost"] = cost.as_dict()
+
         return result
         
     except Exception as e:
@@ -406,8 +408,8 @@ def stream_sql_workflow(
     
     try:
         # Import here to avoid circular dependencies
-        from .state import create_initial_messages_state
-        
+        from .state_helpers import create_initial_messages_state
+
         # Create initial state
         if session_id is None:
             session_id = f"session_{hash(user_query) % 10000}"

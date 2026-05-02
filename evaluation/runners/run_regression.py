@@ -34,6 +34,12 @@ from typing import Any, Dict, List, Optional
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv(ROOT / ".env")
+except ImportError:
+    pass
+
 
 def _git_sha() -> str:
     try:

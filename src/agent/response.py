@@ -4,15 +4,8 @@ import time
 from typing import Any, Dict, List
 
 from .llm_manager import get_llm_manager
-from .state import (
-    MessagesStateTXT2SQL,
-    QueryRoute,
-    ExecutionPhase,
-    add_ai_message,
-    update_phase,
-    add_error,
-    clean_conversation_messages,
-)
+from .state_models import MessagesStateTXT2SQL, QueryRoute, ExecutionPhase
+from .state_helpers import add_ai_message, update_phase, add_error, clean_conversation_messages
 from ..utils.logging_config import get_nodes_logger
 
 logger = get_nodes_logger()
@@ -204,3 +197,16 @@ def _generate_fallback_response(user_query: str, results_text: str, row_count: i
         return f"Resultado: {results_text}"
     else:
         return f"Encontrados {row_count} resultados:\n{results_text}"
+
+
+def clarification_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
+    """Fallback clarification response when intent cannot be determined."""
+    prompt = (
+        "Não consegui entender totalmente sua pergunta. "
+        "Por favor, reformule adicionando contexto (tabelas, filtros, período)."
+    )
+    state = add_ai_message(state, prompt)
+    state["final_response"] = prompt
+    state["completed"] = True
+    state = update_phase(state, ExecutionPhase.RESPONSE_FORMATTING, 0.0)
+    return state

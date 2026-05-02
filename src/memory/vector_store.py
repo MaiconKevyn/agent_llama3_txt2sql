@@ -1,13 +1,11 @@
-import os
 import logging
-import json
-from typing import List, Dict, Any, Optional
+
 import chromadb
 from chromadb.utils import embedding_functions
-from sentence_transformers import SentenceTransformer
 
 # Configure logger
 logger = logging.getLogger(__name__)
+
 
 class VectorStoreManager:
     """
@@ -53,7 +51,7 @@ class VectorStoreManager:
             logger.error(f"Failed to initialize VectorStoreManager: {e}")
             raise
 
-    def add_examples(self, examples: List[Dict[str, str]]):
+    def add_examples(self, examples: list[dict[str, str]]):
         """
         Add examples to the vector store.
         
@@ -88,7 +86,7 @@ class VectorStoreManager:
             logger.error(f"Failed to add examples: {e}")
             raise
 
-    def search_examples(self, query: str, k: int = 3) -> List[Dict[str, str]]:
+    def search_examples(self, query: str, k: int = 3) -> list[dict[str, str]]:
         """
         Search for similar examples.
         

@@ -7,17 +7,9 @@ from typing import Any, Dict, List, Optional, Tuple
 from langchain_core.messages import HumanMessage
 
 from .llm_manager import OpenAILLMManager, get_llm_manager
-from .state import (
-    MessagesStateTXT2SQL,
-    ExecutionPhase,
-    ToolCallResult,
-    add_ai_message,
-    add_tool_call_result,
-    update_phase,
-    add_error,
-)
+from .state_models import MessagesStateTXT2SQL, ExecutionPhase, ToolCallResult, TX
+from .state_helpers import add_ai_message, add_tool_call_result, update_phase, add_error
 from ..utils.logging_config import get_nodes_logger
-from .failure_taxonomy import TX
 
 logger = get_nodes_logger()
 
@@ -88,12 +80,13 @@ def _select_relevant_tables(
     tool_result: str,
     available_tables: List[str],
     llm_manager: OpenAILLMManager,
+    disable_llm_stage: bool = False,
 ) -> Tuple[List[str], List[str]]:
     """
     3-stage table selection cascade:
       Stage 1: heuristic (instant)
       Stage 2: embedding similarity (< 10 ms)
-      Stage 3: LLM (fallback for ambiguous queries)
+      Stage 3: LLM (fallback for ambiguous queries — skipped when disable_llm_stage=True)
 
     Returns (validated_tables, raw_tables).
     """
@@ -125,7 +118,13 @@ def _select_relevant_tables(
         except Exception as _emb_exc:
             logger.warning("Embedding stage failed, proceeding to LLM", extra={"error": str(_emb_exc)})
 
-        # Stage 3: LLM selection (only for genuinely ambiguous queries)
+        # Stage 3: LLM selection (skipped in ablation variant no_table_selection_llm)
+        if disable_llm_stage:
+            logger.info("table_selection: LLM stage disabled by ablation flag — using first available tables")
+            fallback = _get_intelligent_fallback(user_query, available_tables)
+            validated = _validate_table_selection(user_query, fallback, available_tables)
+            return validated, fallback
+
         logger.info("Heuristic + embedding inconclusive — falling back to LLM table selection")
 
         from ..application.config.table_descriptions import TABLE_DESCRIPTIONS
@@ -473,11 +472,13 @@ def list_tables_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
 
         state["available_tables"] = tables
 
+        ablation_flags = state.get("ablation_flags") or {}
         selected_tables, raw_selected_tables = _select_relevant_tables(
             user_query=state["user_query"],
             tool_result=tool_result,
             available_tables=tables,
             llm_manager=llm_manager,
+            disable_llm_stage=ablation_flags.get("disable_table_selection_llm", False),
         )
 
         state["selected_tables"] = selected_tables

@@ -151,16 +151,6 @@
     "notes": "Reference lookup in cid table (renamed from cid10). Result: 'Tuberc respirat c/conf bacteriol e histolog'"
   },
   {
-    "id": "GT016",
-    "difficulty": "easy",
-    "question": "Quantos casos de VDRL positivo foram registrados?",
-    "query": "SELECT COUNT(*) AS vdrl_positivo FROM internacoes WHERE \"IND_VDRL\" = true;",
-    "tables": [
-      "internacoes"
-    ],
-    "notes": "CRITICAL: condicoes_especificas absorbed into internacoes. IND_VDRL is a boolean column. Result: ~2.45M"
-  },
-  {
     "id": "GT017",
     "difficulty": "easy",
     "question": "Qual o tempo médio de permanência hospitalar?",
@@ -191,16 +181,6 @@
       "municipios"
     ],
     "notes": "CRITICAL: obstetricos table absorbed. ESPEC = 2 identifies obstetric cases. Result: São Luís, Porto Alegre, Imperatriz, Pelotas, Canoas"
-  },
-  {
-    "id": "GT020",
-    "difficulty": "easy",
-    "question": "Quantas internações resultaram em óbito?",
-    "query": "SELECT COUNT(*) AS internacoes_com_obito FROM internacoes WHERE \"MORTE\" = true;",
-    "tables": [
-      "internacoes"
-    ],
-    "notes": "CRITICAL: mortes table absorbed into internacoes. Use MORTE boolean column directly. Result: ~765,627"
   },
   {
     "id": "GT021",
@@ -441,16 +421,6 @@
     "notes": "CRITICAL: uti_detalhes absorbed. VAL_UTI column is in internacoes directly. Filter VAL_UTI > 0 for UTI records only. Result: Menor ~10625.78, Adulto ~7756.06, Idoso ~7628.91"
   },
   {
-    "id": "GT045",
-    "difficulty": "medium",
-    "question": "Quantos casos tiveram VDRL positivo e evoluíram para óbito?",
-    "query": "SELECT COUNT(*) AS vdrl_positivo_obito FROM internacoes WHERE \"IND_VDRL\" = true AND \"MORTE\" = true;",
-    "tables": [
-      "internacoes"
-    ],
-    "notes": "CRITICAL: condicoes_especificas and mortes both absorbed into internacoes. Both are boolean columns. Result: 822"
-  },
-  {
     "id": "GT046",
     "difficulty": "medium",
     "question": "Qual a evolução de internações para cada ano?",
@@ -551,7 +521,7 @@
     "tables": [
       "internacoes"
     ],
-    "notes": "Simple filtering - records with race/ethnicity data"
+    "notes": "All 18M records have RACA_COR populated (never NULL, never code 0). Codes: 1=BRANCA, 2=PRETA, 3=PARDA, 4=AMARELA, 5=INDIGENA, 99=SEM INFORMACAO. IS NOT NULL returns 18M because code 99 (SEM INFORMACAO) also counts as populated. To count only records with identified race: WHERE \"RACA_COR\" NOT IN (0, 99) → 13,618,889."
   },
   {
     "id": "GT056",
@@ -836,7 +806,7 @@
   {
     "id": "GT082",
     "difficulty": "hard",
-    "question": "Quais são os 3 diagnósticos principais mais comuns entre pacientes com mais de 60 anos no estado de MS e no estado do RS?",
+    "question": "Quais são os 3 diagnósticos principais mais comuns entre pacientes com mais de 60 anos no estado de MA e no estado do RS?",
     "query": "SELECT estado, \"CD_DESCRICAO\", total FROM (SELECT mu.estado, c.\"CD_DESCRICAO\", COUNT(*) AS total, ROW_NUMBER() OVER (PARTITION BY mu.estado ORDER BY COUNT(*) DESC) AS rn FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.codigo_6d JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"IDADE\" > 60 AND mu.estado IN ('MA', 'RS') GROUP BY mu.estado, c.\"CD_DESCRICAO\") sub WHERE rn <= 3 ORDER BY estado, rn;",
     "tables": [
       "internacoes",

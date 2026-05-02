@@ -1,24 +1,22 @@
 """
 nodes.py — thin re-export facade.
 
-All logic has been moved to focused sub-modules for maintainability.
-This module re-exports every public symbol so that workflow.py and
-orchestrator.py continue to work without modification.
+All logic lives in focused sub-modules. This module re-exports every public
+symbol so that workflow.py and orchestrator.py continue to work unchanged.
 
 Pipeline execution order (see workflow.py for the full graph):
-  1. classification.py   — classifica a query (DATABASE / CONVERSATIONAL / SCHEMA)
-  2. table_selection.py  — descobre e seleciona tabelas (heurística → embedding → LLM)
-  3. schema_node.py      — busca o schema das tabelas selecionadas (com cache)
-  4. sql_generation.py   — gera o SQL (RULES A-H + few-shots + pre-generation hints)
-  5. validation.py       — valida o SQL (DB EXPLAIN + checks semânticos)
-  6. execution.py        — executa o SQL; em erro, repair_sql_node corrige e re-executa
-  7. response.py         — formata a resposta final em português natural
+  1. classification.py   — classify query (DATABASE / CONVERSATIONAL / SCHEMA)
+  2. table_selection.py  — discover and select tables (heuristic → embedding → LLM)
+  3. schema_node.py      — fetch schema for selected tables (cached)
+  4. sql_generation.py   — CoT planning, generate SQL, self-consistency, voting
+  5. validation.py       — validate SQL (DB EXPLAIN + semantic checks)
+  6. execution.py        — execute SQL; repair_sql_node corrects on error
+  7. response.py         — format final response in natural Portuguese
 
-Utilitários compartilhados (não são nós do pipeline):
-  schema_utils.py        — parsing de schema, verificação de colunas, sugestões
-  table_selector.py      — EmbeddingTableSelector (Stage 2 da seleção de tabelas)
-  llm_manager.py         — OpenAILLMManager + singleton get/set_global_llm_manager
-  nodes_misc.py          — reasoning_node e clarification_node (passthrough stubs)
+Shared utilities (not pipeline nodes):
+  schema_utils.py        — schema parsing, column checks, suggestions
+  table_selector.py      — EmbeddingTableSelector (Stage 2 of table selection)
+  llm_manager.py         — OpenAILLMManager + get/set_global_llm_manager singleton
 """
 
 # LLM manager singleton (used by orchestrator)
@@ -28,13 +26,16 @@ from .llm_manager import get_llm_manager, set_global_llm_manager, OpenAILLMManag
 from .classification import query_classification_node  # noqa: F401  # step 1
 from .table_selection import list_tables_node          # noqa: F401  # step 2
 from .schema_node import get_schema_node               # noqa: F401  # step 3
-from .sql_generation import generate_sql_node, SQLOutput  # noqa: F401  # step 4
+from .sql_generation import (                          # noqa: F401  # step 4
+    generate_sql_node,
+    reasoning_node,
+    vote_sql_node,
+    SQLOutput,
+)
 from .validation import validate_sql_node              # noqa: F401  # step 5
 from .execution import execute_sql_node, repair_sql_node  # noqa: F401  # step 6
-from .response import generate_response_node           # noqa: F401  # step 7
-from .nodes_misc import reasoning_node, clarification_node  # noqa: F401
-from .vote_sql import vote_sql_node                    # noqa: F401  # step 4b (voting)
-from .plan_gate import plan_gate_node                 # noqa: F401
+from .response import generate_response_node, clarification_node  # noqa: F401  # step 7
+from .plan_gate import plan_gate_node                  # noqa: F401
 
 # Internal helpers exposed for backward compatibility (tests, evaluation scripts)
 from .schema_utils import (  # noqa: F401

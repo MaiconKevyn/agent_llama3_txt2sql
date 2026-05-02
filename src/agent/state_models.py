@@ -166,6 +166,54 @@ class MessagesStateTXT2SQL(TypedDict):
     final_sql_query: Optional[str]
     failure_taxonomy: List[str]
     final_result_rows: Optional[List]
+    ablation_flags: Dict[str, bool]
+
+
+class TX:
+    """Taxonomy string constants for SQL error classification."""
+
+    SCHEMA_ERROR = "schema_error"
+    SYNTAX_ERROR = "syntax_error"
+    MISSING_JOIN = "missing_join"
+    WRONG_TABLE_SELECTION = "wrong_table_selection"
+    WRONG_VALUE_MAPPING = "wrong_value_mapping"
+    WRONG_AGGREGATION = "wrong_aggregation"
+    WRONG_WINDOW = "wrong_window"
+    WRONG_FILTER = "wrong_filter"
+    NULL_SEMANTICS = "null_semantics"
+    COT_DRIFT = "cot_drift"
+    REPAIR_LOOP = "repair_loop"
+    INFRA_ERROR = "infra_error"
+
+
+_TYPE_TO_TAXONOMY: dict[str, str] = {
+    "sql_execution_error": TX.SYNTAX_ERROR,
+    "sql_validation_error": TX.WRONG_FILTER,
+    "sql_generation_error": TX.SYNTAX_ERROR,
+    "sql_repair_error": TX.REPAIR_LOOP,
+    "table_discovery_error": TX.WRONG_TABLE_SELECTION,
+    "classification_error": TX.COT_DRIFT,
+}
+
+_EXECUTION_ERROR_HINTS: list[tuple[str, str]] = [
+    ("does not exist", TX.SCHEMA_ERROR),
+    ("não existe", TX.SCHEMA_ERROR),
+    ("column", TX.SCHEMA_ERROR),
+    ("coluna", TX.SCHEMA_ERROR),
+    ("relation", TX.SCHEMA_ERROR),
+    ("syntax error", TX.SYNTAX_ERROR),
+    ("parse error", TX.SYNTAX_ERROR),
+    ("blocked", TX.WRONG_FILTER),
+]
+
+
+def classify_sql_error(error_type: str, error_message: str = "") -> str:
+    """Return the most specific taxonomy category for a given error."""
+    msg_lower = error_message.lower()
+    for hint, category in _EXECUTION_ERROR_HINTS:
+        if hint in msg_lower:
+            return category
+    return _TYPE_TO_TAXONOMY.get(error_type, TX.INFRA_ERROR)
 
 
 __all__ = [
@@ -177,4 +225,6 @@ __all__ = [
     "SQLExecutionResult",
     "SubQuery",
     "ToolCallResult",
+    "TX",
+    "classify_sql_error",
 ]

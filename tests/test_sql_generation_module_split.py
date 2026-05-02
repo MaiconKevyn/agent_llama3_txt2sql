@@ -4,8 +4,7 @@ pytest.importorskip("langchain_core")
 pytest.importorskip("langchain_openai")
 
 from src.agent.prompt_builder import build_pregeneration_hints
-from src.agent.schemas import SQLOutput
-from src.agent.self_consistency import N_SQL_CANDIDATES
+from src.agent.sql_generation import SQLOutput, N_SQL_CANDIDATES
 from src.agent.sql_generation import _build_pregeneration_hints
 
 

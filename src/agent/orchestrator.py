@@ -16,17 +16,24 @@ from .orchestrator_support import (
     build_application_config,
     build_factory_app_config,
     build_health_report,
-    build_langsmith_config,
     build_orchestrator_error_result,
-    build_tracing_context,
+    build_workflow_config,
     initialize_orchestrator_runtime,
     resolve_database_url,
 )
+from .mlflow_tracker import log_query_run
 from ..utils.logging_setup import LoggingSetup
 from ..application.config.simple_config import ApplicationConfig, OrchestratorConfig
 
-# Load environment variables for LangSmith tracing
 load_dotenv()
+
+
+def _orch_config_to_flags(cfg: OrchestratorConfig) -> dict:
+    """Return ablation flag fields from OrchestratorConfig as a plain dict."""
+    if cfg is None:
+        return {}
+    import dataclasses
+    return {k: v for k, v in dataclasses.asdict(cfg).items()}
 
 
 @dataclass
@@ -99,6 +106,7 @@ class LangGraphOrchestrator:
                 self.environment,
                 self.logger,
                 self._create_model_config,
+                orchestrator_config=self.orchestrator_config,
             )
         except Exception as e:
             self.logger.error("Failed to initialize LangGraph Orchestrator", extra={"error": str(e)})
@@ -189,125 +197,103 @@ class LangGraphOrchestrator:
         session_id: str = None,
         streaming: bool = False,
         config: dict = None,
-        run_name: str = None,
-        tags: List[str] = None,
-        metadata: Dict[str, Any] = None,
         force_single_query: bool = False,
     ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
-        """
-        Process a user query using the LangGraph workflow
-        
+        """Process a user query using the LangGraph workflow.
+
         Args:
             user_query: User's natural language question
-            session_id: Optional session identifier
+            session_id: Optional session identifier for checkpointing
             streaming: Whether to return streaming results
-            config: Additional configuration
-            run_name: Custom name for LangSmith trace
-            tags: Tags for filtering in LangSmith
-            metadata: Additional metadata for LangSmith trace
-            
+            config: Additional LangGraph config (merged with workflow defaults)
+            force_single_query: Skip multi-query planner
+
         Returns:
             Query result dictionary or list of streaming updates
         """
         start_time = time.time()
         query_number = self._metrics.begin_query()
-        
-        # Generate session ID if not provided
+
         if session_id is None:
             session_id = f"session_{int(time.time() * 1000) % 100000}"
-        
-            # Log query start
-            self.logger.info(f"Query started", extra={
-                "query_id": query_number,
-                "session_id": session_id,
-                "user_query": user_query[:100] + "..." if len(user_query) > 100 else user_query,
-                "streaming": streaming,
-                "model": f"openai/{self._current_model.model_name}"
-            })
-        
+
+        self.logger.info("Query started", extra={
+            "query_id": query_number,
+            "session_id": session_id,
+            "user_query": user_query[:100] + "..." if len(user_query) > 100 else user_query,
+            "streaming": streaming,
+            "model": f"openai/{self._current_model.model_name}",
+        })
+
         try:
-            langsmith_config = build_langsmith_config(
-                config=config,
-                session_id=session_id,
-                query_number=query_number,
-                current_model_metadata=self._current_model_metadata(),
-                environment=self.environment,
-                run_name=run_name,
-                tags=tags,
-                metadata=metadata,
-            )
-            
+            workflow_config = build_workflow_config(config=config, session_id=session_id)
+
             if streaming:
-                # Return streaming results
                 results = []
                 for update in stream_sql_workflow(
                     workflow=self._workflow,
                     user_query=user_query,
                     session_id=session_id,
-                    config=langsmith_config
+                    config=workflow_config,
                 ):
                     results.append(update)
-                
-                # Calculate execution time
                 execution_time = time.time() - start_time
                 self._metrics.record_streaming_success(execution_time)
-                
                 return results
-                
-            else:
-                # Execute workflow normally
-                result = execute_sql_workflow(
-                    workflow=self._workflow,
-                    user_query=user_query,
-                    session_id=session_id,
-                    config=langsmith_config,
-                    force_single_query=force_single_query,
-                )
-                
-                # Calculate execution time
-                execution_time = time.time() - start_time
-                
-                # Update result with actual execution time
-                result["execution_time"] = execution_time
-                self._metrics.record_result(
-                    user_query,
-                    result,
-                    execution_time,
-                    model_id=f"{self._current_model.provider}/{self._current_model.model_name}",
-                )
-                
-                # Track success/failure
-                if result.get("success", False):
-                    self.logger.info("Query completed successfully", extra={
-                        "query_id": query_number,
-                        "session_id": session_id,
-                        "execution_time": execution_time,
-                        "sql_query": result.get("sql_query", "")[:100] + "..." if result.get("sql_query") and len(result.get("sql_query", "")) > 100 else result.get("sql_query", ""),
-                        "row_count": len(result.get("results", []))
-                    })
-                else:
-                    self.logger.error("Query failed", extra={
-                        "query_id": query_number,
-                        "session_id": session_id,
-                        "execution_time": execution_time,
-                        "error_message": result.get("error_message", "Unknown error")
-                    })
-                
-                # Enhance result with orchestrator metadata
-                result["metadata"] = result.get("metadata", {})
-                result["metadata"].update({
-                    "orchestrator_v3": True,
-                    "current_model": self._current_model_metadata(),
-                    "environment": self.environment,
+
+            result = execute_sql_workflow(
+                workflow=self._workflow,
+                user_query=user_query,
+                session_id=session_id,
+                config=workflow_config,
+                force_single_query=force_single_query,
+                ablation_flags=_orch_config_to_flags(self.orchestrator_config),
+            )
+
+            execution_time = time.time() - start_time
+            result["execution_time"] = execution_time
+            self._metrics.record_result(
+                user_query,
+                result,
+                execution_time,
+                model_id=f"{self._current_model.provider}/{self._current_model.model_name}",
+            )
+
+            if result.get("success", False):
+                self.logger.info("Query completed successfully", extra={
+                    "query_id": query_number,
                     "session_id": session_id,
-                    "query_number": query_number,
-                    "orchestrator_execution_time": execution_time
+                    "execution_time": execution_time,
+                    "row_count": len(result.get("results", [])),
                 })
-                
-                return result
-                
+            else:
+                self.logger.error("Query failed", extra={
+                    "query_id": query_number,
+                    "session_id": session_id,
+                    "execution_time": execution_time,
+                    "error_message": result.get("error_message", "Unknown error"),
+                })
+
+            log_query_run(
+                result=result,
+                session_id=session_id,
+                model=self._current_model.model_name,
+                environment=self.environment,
+                query=user_query,
+            )
+
+            result["metadata"] = result.get("metadata", {})
+            result["metadata"].update({
+                "orchestrator_v3": True,
+                "current_model": self._current_model_metadata(),
+                "environment": self.environment,
+                "session_id": session_id,
+                "query_number": query_number,
+                "orchestrator_execution_time": execution_time,
+            })
+            return result
+
         except Exception as e:
-            # Handle orchestrator-level errors
             execution_time = time.time() - start_time
             self._metrics.record_exception(execution_time)
             return build_orchestrator_error_result(
@@ -393,13 +379,13 @@ class LangGraphOrchestrator:
         project_name: str = "txt2sql-agent"
     ) -> Dict[str, Any]:
         """
-        Process a query with enhanced LangSmith tracing
+        Process a query with enriched tracing metadata.
         
         Args:
             user_query: User's natural language question
             session_id: Optional session identifier  
             run_name: Custom name for the trace
-            project_name: LangSmith project name
+            project_name: Logical project name stored in tracing metadata
             
         Returns:
             Query result with enhanced tracing metadata

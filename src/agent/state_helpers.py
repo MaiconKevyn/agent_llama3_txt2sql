@@ -25,6 +25,7 @@ def create_initial_messages_state(
     session_id: str,
     max_retries: int = 5,
     force_single_query: bool = False,
+    ablation_flags: Dict[str, bool] | None = None,
 ) -> MessagesStateTXT2SQL:
     """Create the initial LangGraph messages state."""
     initial_message = HumanMessage(content=user_query)
@@ -81,6 +82,7 @@ def create_initial_messages_state(
         final_sql_query=None,
         failure_taxonomy=[],
         final_result_rows=None,
+        ablation_flags=ablation_flags or {},
     )
 
 
@@ -158,7 +160,7 @@ def add_error(
     If *taxonomy* is None the category is inferred from *error_type* and
     *error_message* via ``classify_sql_error``.
     """
-    from .failure_taxonomy import classify_sql_error  # lazy to avoid circular import
+    from .state_models import classify_sql_error
 
     resolved_taxonomy = taxonomy or classify_sql_error(error_type, error_message)
 

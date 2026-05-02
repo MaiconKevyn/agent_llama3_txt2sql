@@ -4,14 +4,8 @@ import re
 import time
 from typing import Tuple
 
-from .state import (
-    ExecutionPhase,
-    MessagesStateTXT2SQL,
-    QueryPlan,
-    SubQuery,
-    add_ai_message,
-    update_phase,
-)
+from .state_models import ExecutionPhase, MessagesStateTXT2SQL, QueryPlan, SubQuery
+from .state_helpers import add_ai_message, update_phase
 from ..utils.logging_config import get_nodes_logger
 
 logger = get_nodes_logger()

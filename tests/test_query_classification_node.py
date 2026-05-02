@@ -4,7 +4,8 @@ import pytest
 pytest.importorskip("langgraph")
 
 import src.agent.classification as classification_module
-from src.agent.state import create_initial_messages_state, ExecutionPhase, QueryRoute
+from src.agent.state_helpers import create_initial_messages_state
+from src.agent.state_models import ExecutionPhase, QueryRoute
 import src.agent.nodes as nodes
 
 

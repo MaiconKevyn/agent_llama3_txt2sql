@@ -2,9 +2,8 @@ from src.agent.orchestrator_support import (
     AVAILABLE_OPENAI_MODELS,
     build_application_config,
     build_health_report,
-    build_langsmith_config,
     build_orchestrator_error_result,
-    build_tracing_context,
+    build_workflow_config,
 )
 from src.application.config.simple_config import ApplicationConfig
 
@@ -36,37 +35,24 @@ def test_build_application_config_preserves_base_settings():
     assert updated.llm_timeout == 45
 
 
-def test_build_langsmith_config_merges_defaults_and_user_metadata():
-    config = build_langsmith_config(
-        config={"metadata": {"source": "test"}},
-        session_id="session-1",
-        query_number=7,
-        current_model_metadata={"provider": "openai", "model_name": "gpt-4o-mini"},
-        environment="testing",
-        run_name="custom-run",
-        tags=["tag-a"],
+def test_build_workflow_config_sets_thread_id():
+    config = build_workflow_config(
+        config={"recursion_limit": 50},
+        session_id="session-42",
     )
 
-    assert config["run_name"] == "custom-run"
-    assert config["tags"] == ["tag-a"]
-    assert config["configurable"]["thread_id"] == "session-1"
-    assert config["metadata"]["source"] == "test"
-    assert config["metadata"]["query_number"] == 7
+    assert config["configurable"]["thread_id"] == "session-42"
+    assert config["recursion_limit"] == 50
 
 
-def test_build_tracing_context_and_health_report():
-    run_name, tags, metadata = build_tracing_context(
-        user_query="Quantas internações ocorreram em 2020?",
-        project_name="txt2sql-agent",
-        current_model_metadata={"provider": "openai", "model_name": "gpt-4o-mini"},
-        environment="development",
-        query_number=9,
-    )
+def test_build_workflow_config_no_extra_config():
+    config = build_workflow_config(config=None, session_id="abc")
 
-    assert run_name == "txt2sql_query_9"
-    assert "langgraph-v3" in tags
-    assert metadata["project"] == "txt2sql-agent"
+    assert config["configurable"]["thread_id"] == "abc"
+    assert set(config.keys()) == {"configurable"}
 
+
+def test_build_health_report():
     report = build_health_report(
         environment="development",
         current_model_metadata={"provider": "openai", "model_name": "gpt-4o-mini"},

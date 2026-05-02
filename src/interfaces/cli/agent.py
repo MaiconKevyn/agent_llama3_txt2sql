@@ -1,27 +1,18 @@
-import sys
+from __future__ import annotations
+
 import argparse
-from typing import Optional
-from dotenv import load_dotenv
 import os
+import sys
+import traceback
+
+from dotenv import load_dotenv
 
 # Add project root to path
 project_root = os.path.join(os.path.dirname(__file__), '..', '..', '..')
 sys.path.append(project_root)
 
-# Load environment variables for LangSmith tracing
+# Load environment variables from the local .env file
 load_dotenv()
-
-# Import the clean architecture components
-from src.application.config.simple_config import (
-    ApplicationConfig,
-    OrchestratorConfig,
-    InterfaceType
-)
-# Import TXT2SQL Agent orchestrator
-from src.agent.orchestrator import (
-    LangGraphOrchestrator
-)
-from src.utils.logging_config import get_cli_logger
 
 
 def _print_llm_configuration(orchestrator: LangGraphOrchestrator):
@@ -52,6 +43,8 @@ def _print_llm_configuration(orchestrator: LangGraphOrchestrator):
 
 def create_app_config(args) -> ApplicationConfig:
     """Create application configuration from command line arguments"""
+    from src.application.config.simple_config import ApplicationConfig, InterfaceType
+
     # Use defaults from ApplicationConfig and override with command line args when explicitly provided
     config = ApplicationConfig()
     
@@ -77,6 +70,8 @@ def create_app_config(args) -> ApplicationConfig:
 
 def create_orchestrator_config(args) -> OrchestratorConfig:
     """Create orchestrator configuration from command line arguments"""
+    from src.application.config.simple_config import OrchestratorConfig
+
     return OrchestratorConfig(
         max_query_length=1000,
         enable_query_history=True,
@@ -89,6 +84,8 @@ def create_orchestrator_config(args) -> OrchestratorConfig:
 
 def debug_query_execution(orchestrator, user_query: str):
     # Initialize logger
+    from src.utils.logging_config import get_cli_logger
+
     logger = get_cli_logger()
     """
     Execute query with detailed step-by-step debugging
@@ -131,15 +128,7 @@ def debug_query_execution(orchestrator, user_query: str):
             }
         }
         
-        # Create proper initial state
-        from src.agent.state import create_initial_messages_state
-        
-        initial_state = create_initial_messages_state(
-            user_query=user_query,
-            session_id=f"debug_{hash(user_query) % 10000}"
-        )
-        
-        # Use process_query with streaming to maintain LangSmith integration
+        # Use streaming process_query to preserve workflow metadata in debug mode
         session_id = f"debug_{hash(user_query) % 10000}"
         results = orchestrator.process_query(
             user_query=user_query,
@@ -199,9 +188,9 @@ def debug_query_execution(orchestrator, user_query: str):
                     
                     if selected:
                         if "atendimentos" in selected:
-                            print(f"     Great! Selected 'atendimentos' junction for procedure queries")
+                            print("     Great! Selected 'atendimentos' junction for procedure queries")
                         if "procedimentos" in selected:
-                            print(f"     Great! Selected 'procedimentos' table for procedure queries")
+                            print("     Great! Selected 'procedimentos' table for procedure queries")
                 
                 # 3. Schema Node
                 elif node_name == "get_schema":
@@ -227,18 +216,18 @@ def debug_query_execution(orchestrator, user_query: str):
                     step_data["data"]["sql"] = sql
                     step_data["data"]["tables_used"] = selected_tables
                     
-                    print(f" SQL Generated:")
+                    print(" SQL Generated:")
                     print(f"     Query: {sql}")
                     print(f"      Using tables: {selected_tables}")
                     
                     # Validate SQL quality
                     if sql:
                         if "COUNT(*)" in sql.upper():
-                            print(f"     Count query detected")
+                            print("     Count query detected")
                         if any(table in sql.lower() for table in ["atendimentos", "procedimentos", "cid"]):
-                            print(f"     Using specialized healthcare tables")
+                            print("     Using specialized healthcare tables")
                         if "SELECT *" in sql.upper():
-                            print(f"      Warning: SELECT * detected (might be inefficient)")
+                            print("      Warning: SELECT * detected (might be inefficient)")
                 
                 # 5. SQL Validation Node
                 elif node_name == "validate_sql":
@@ -249,9 +238,9 @@ def debug_query_execution(orchestrator, user_query: str):
                     step_data["data"]["validated_sql"] = validated_sql
                     step_data["data"]["errors"] = validation_errors
                     
-                    print(f" SQL Validation:")
+                    print(" SQL Validation:")
                     if validated_sql:
-                        print(f"     Validation passed")
+                        print("     Validation passed")
                         print(f"     Validated SQL: {validated_sql}")
                     
                     if validation_errors:
@@ -278,9 +267,9 @@ def debug_query_execution(orchestrator, user_query: str):
                     }
                     step_data["data"]["execution"] = debug_data["execution_results"]
                     
-                    print(f" SQL Execution:")
+                    print(" SQL Execution:")
                     if success:
-                        print(f"     Execution successful")
+                        print("     Execution successful")
                         print(f"     Results: {len(results)} rows returned")
                         if results:
                             print(f"     First row: {results[0]}")
@@ -315,7 +304,7 @@ def debug_query_execution(orchestrator, user_query: str):
                     step_data["data"]["response"] = question
                     step_data["data"]["success"] = success
                     
-                    print(f" Clarification Request:")
+                    print(" Clarification Request:")
                     print(f"     Question: {question}")
                     print(f"     Success: {success}")
 
@@ -331,7 +320,7 @@ def debug_query_execution(orchestrator, user_query: str):
                     step_data["data"]["success"] = success
                     step_data["data"]["completed"] = completed
                     
-                    print(f" Response Generation:")
+                    print(" Response Generation:")
                     print(f"     Final response: {response}")
                     print(f"     Success: {success}")
                     print(f"     Completed: {completed}")
@@ -352,7 +341,7 @@ def debug_query_execution(orchestrator, user_query: str):
         # Final summary
         total_time = time.time() - debug_data["start_time"]
         
-        print(f"\n DEBUG SUMMARY")
+        print("\n DEBUG SUMMARY")
         print("=" * 70)
         print(f" Query: {debug_data['question']}")
         print(f" Classification: {debug_data['classification']}")
@@ -368,16 +357,17 @@ def debug_query_execution(orchestrator, user_query: str):
         
     except KeyboardInterrupt:
         logger.info("Debug session interrupted by user")
-        print(f"\n\n Debug interrupted by user")
+        print("\n\n Debug interrupted by user")
     except Exception as e:
         logger.error("Debug execution error", extra={"error": str(e)})
         print(f"\n Debug error: {str(e)}")
-        import traceback
         traceback.print_exc()
 
 
 def start_interactive_debug_session(orchestrator):
     # Initialize logger
+    from src.utils.logging_config import get_cli_logger
+
     logger = get_cli_logger()
     """
     Start interactive session with debug mode enabled
@@ -418,6 +408,9 @@ def start_interactive_debug_session(orchestrator):
 
 def main():
     # Initialize logger
+    from src.agent.orchestrator import LangGraphOrchestrator
+    from src.utils.logging_config import get_cli_logger
+
     logger = get_cli_logger()
     """Main entry point with clean architecture"""
     parser = argparse.ArgumentParser(
@@ -605,11 +598,11 @@ Domínio: Healthcare brasileiro (internações, procedimentos, diagnósticos)
             
             if health_status['status'] != 'healthy':
                 logger.warning("System health check failed", extra={"status": health_status['status']})
-                print(f"\n Sistema não está completamente saudável")
+                print("\n Sistema não está completamente saudável")
                 sys.exit(1)
             else:
                 logger.info("System health check passed")
-                print(f"\n Sistema funcionando perfeitamente!")
+                print("\n Sistema funcionando perfeitamente!")
             return
         
         # Workflow visualization mode
@@ -659,7 +652,7 @@ Domínio: Healthcare brasileiro (internações, procedimentos, diagnósticos)
                 # Debug mode with detailed step-by-step workflow
                 debug_query_execution(orchestrator, args.query)
             else:
-                # Normal mode with LangSmith tracing
+                # Normal mode with workflow metadata attached to the query run
                 logger.info("Processing single query", extra={"query": args.query})
                 print(f" Processando consulta: {args.query}")
                 if args.show_models:

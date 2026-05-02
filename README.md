@@ -2,11 +2,11 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o--mini-412991.svg)](https://openai.com/)
-[![LangGraph](https://img.shields.io/badge/LangGraph-0.6.6-purple.svg)](https://github.com/langchain-ai/langgraph)
+[![LangGraph](https://img.shields.io/badge/LangGraph-1.1.10%2B-purple.svg)](https://github.com/langchain-ai/langgraph)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115.13-009688.svg)](https://fastapi.tiangolo.com/)
 [![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL%20%2F%20DuckDB-336791.svg)](https://www.postgresql.org/)
 
-> An AI-powered text-to-SQL system for Brazilian public healthcare data (DATASUS/SUS), built with LangGraph, OpenAI, FastAPI, and a dedicated web interface for natural-language analytics over hospital datasets.
+Text-to-SQL for Brazilian public healthcare analytics, built around a LangGraph workflow with OpenAI models, FastAPI, a CLI, and a lightweight web frontend.
 
 ## Table of Contents
 - [Overview](#overview)
@@ -21,33 +21,22 @@
   - [Running the Application](#running-the-application)
 - [Usage](#usage)
 - [Evaluation](#evaluation)
-- [System Design](#system-design)
 - [Observability](#observability)
 - [License](#license)
-- [Acknowledgments](#acknowledgments)
 
 ## Overview
-**DataVisSUS TXT2SQL Agent** translates natural-language questions into executable SQL for Brazilian healthcare datasets. The system is designed for DATASUS-style analytical workloads and combines query classification, schema selection, guarded SQL generation, validation, repair, execution, and response synthesis inside a LangGraph workflow.
-
-### Key Capabilities
-- **Natural Language to SQL**: Converts Portuguese or English analytical questions into SQL queries.
-- **Workflow Routing**: Distinguishes between database, conversational, schema, and clarification flows.
-- **Schema-Aware Generation**: Selects relevant tables, loads schema context, and constrains SQL generation accordingly.
-- **Multi-Step Recovery**: Repairs invalid SQL through validation and execution feedback loops.
-- **Multi-Query Planning**: Supports plan gating, query planning, multi-query execution, verification, and result synthesis for more complex requests.
-- **Multiple Interfaces**: CLI, REST API, and web frontend are available in the same repository.
-- **Safety Guardrails**: Blocks non-`SELECT` execution and sanitizes generated SQL before execution.
-- **Evaluation Pipeline**: Includes an agent-vs-baseline benchmark setup with execution accuracy metrics.
+The agent translates natural-language questions into SQL for DATASUS-style analytical workloads. The current pipeline combines query classification, table discovery, schema enrichment, planning, SQL generation, optional self-consistency voting, validation, repair, execution, and response synthesis inside a stateful LangGraph workflow.
 
 ## Features
-- **LangGraph Pipeline**: Stateful graph-based orchestration with checkpointed conversation memory.
-- **OpenAI Integration**: Uses `gpt-4o-mini` by default for SQL and conversational responses.
-- **Enhanced Table Discovery**: Combines table metadata and selection heuristics to narrow schema context.
-- **Validation and Repair Loop**: Static validation plus retry-driven SQL repair before re-execution.
-- **Session Memory**: Persists interaction history in SQLite for multi-turn usage.
-- **FastAPI Service**: Exposes query, schema, models, and health endpoints.
-- **Web Chat Interface**: Separate Node/Express frontend that connects to the API.
-- **Evaluation Artifacts**: Stores raw evaluation runs, reports, and baseline artifacts for comparison.
+- Natural language to SQL in Portuguese or English.
+- Query routing for database, conversational, schema, and clarification paths.
+- Schema-aware SQL generation with SUS-specific table metadata.
+- Multi-step recovery through validation and execution feedback loops.
+- Multi-query planning and synthesis for more complex analytical requests.
+- Multiple interfaces in one repository: CLI, REST API, and web frontend.
+- Execution safety guardrails that block non-`SELECT` SQL.
+- Built-in evaluation, regression, and ablation runners.
+- Optional MLflow tracking for query runs and ablation experiments.
 
 ## Architecture
 ```mermaid
@@ -101,82 +90,85 @@ flowchart TD
 ## Technology Stack
 | Component | Technology | Purpose |
 |---|---|---|
-| **Language Model** | OpenAI `gpt-4o-mini` | SQL generation and conversational responses |
-| **LLM Framework** | LangChain | LLM orchestration and SQL toolkit integration |
-| **Graph Orchestration** | LangGraph `0.6.6` | Stateful workflow execution |
-| **API Layer** | FastAPI | REST service for queries, schema, health, and models |
-| **Frontend** | Node.js, Express, vanilla JS | Web chat interface for the agent |
-| **Database Access** | SQLAlchemy, psycopg2, LangChain SQLDatabase | SQL execution against PostgreSQL or DuckDB |
-| **Checkpoint Memory** | SQLite | Multi-turn session persistence |
-| **Evaluation** | Custom EX / CM / EM metrics | Benchmarking agent and baseline performance |
-| **Observability** | LangSmith, rotating file logs | Tracing and operational visibility |
+| Language model | OpenAI `gpt-4o-mini` by default | SQL generation and conversational responses |
+| LLM framework | LangChain | Model/tool integration and SQL toolkit support |
+| Graph orchestration | LangGraph `>=1.1.10` | Stateful workflow execution |
+| API layer | FastAPI | REST endpoints for query, schema, models, and health |
+| Frontend | Node.js, Express, vanilla JS | Web chat interface |
+| Database access | SQLAlchemy, psycopg2, LangChain SQLDatabase | SQL execution against PostgreSQL; DuckDB URLs are also accepted |
+| Session memory | `langgraph-checkpoint-sqlite` + SQLite | Session checkpoint persistence in `data/chatbot_memory.db` |
+| Evaluation | Custom EX / CM / EM metrics | Benchmarking, regression, and ablation analysis |
+| Observability | Rotating file logs, optional MLflow | Operational visibility and experiment tracking |
 
 ## Project Structure
 ```bash
 txt2sql_refactor_openai_v2/
 ├── src/
 │   ├── agent/
-│   │   ├── workflow.py              # LangGraph graph definition and routing
+│   │   ├── workflow.py              # LangGraph workflow definition
 │   │   ├── orchestrator.py          # Main production orchestrator
-│   │   ├── nodes.py                 # Core workflow node implementations
-│   │   ├── query_planner.py         # Single vs multi-query planning
-│   │   ├── plan_gate.py             # Planner gate before SQL generation
-│   │   ├── validation.py            # SQL validation helpers
+│   │   ├── sql_generation.py        # SQL generation and vote_sql node
+│   │   ├── validation.py            # SQL validation and repair helpers
 │   │   ├── execution.py             # SQL execution logic
+│   │   ├── query_planner.py         # Single vs multi-query planning
 │   │   ├── result_synthesizer.py    # Multi-query result synthesis
-│   │   └── tools/                   # Enhanced SQL-related tools
-│   ├── application/config/
-│   │   ├── simple_config.py         # App and orchestrator defaults
-│   │   ├── table_descriptions.py    # Table metadata and descriptions
-│   │   └── table_templates.py       # Prompt templates and examples
+│   │   └── mlflow_tracker.py        # Optional MLflow integration
+│   ├── application/config/          # App config and SUS table metadata
 │   ├── interfaces/
 │   │   ├── api/main.py              # FastAPI entrypoint
 │   │   └── cli/agent.py             # CLI entrypoint
-│   ├── infrastructure/database/
-│   │   └── connection_service.py    # Database connection services
+│   ├── infrastructure/database/     # Database connection services
 │   ├── memory/                      # Example memory/vector store artifacts
 │   └── utils/                       # Logging, SQL safety, classification utils
-├── evaluation/                      # Evaluation runners, metrics, results
 ├── baselines/rich_prompt_baseline/  # Single-shot baseline implementation
+├── evaluation/                      # Evaluation runners, metrics, reports
 ├── frontend/                        # Web interface served by Node/Express
-├── docs/                            # Papers, diagrams, reports
-├── tests/                           # Safety and execution tests
-├── requirements.txt                 # Python dependencies
-└── README.md                        # This file
+├── data/                            # Runtime SQLite checkpoint database
+├── logs/                            # Application logs
+├── mlruns/                          # Local MLflow artifacts when enabled
+├── docs/                            # Migration notes and reports
+├── tests/                           # Unit tests
+├── pyproject.toml                   # Canonical Python dependency spec
+├── uv.lock                          # Locked dependency graph for uv
+└── README.md
 ```
 
 ## Getting Started
 ### Prerequisites
-- **Python**: 3.11 or higher
-- **Node.js**: 16 or higher for the web frontend
-- **OpenAI API Key**: Required for `gpt-4o-mini`
-- **Database**: PostgreSQL is the default setup; DuckDB URLs are also accepted by the LLM manager
+- Python 3.11 or higher
+- Node.js 16 or higher for the frontend
+- An OpenAI API key
+- A PostgreSQL database URL for normal usage
+
+DuckDB URLs are also accepted by the connection layer, but PostgreSQL is the primary deployment path used by the current CLI, API, and evaluation flows.
 
 ### Installation
-1. **Clone the repository**
+1. Clone the repository.
+
 ```bash
 git clone <repository-url>
 cd txt2sql_refactor_openai_v2
 ```
 
-2. **Install Python dependencies (recommended — via `uv`)**
+2. Install Python dependencies.
+
+Recommended:
+
 ```bash
-# Install uv if needed: https://docs.astral.sh/uv/getting-started/installation/
-uv sync
+uv sync --extra dev
 source .venv/bin/activate
-# Windows: .venv\Scripts\activate
 ```
 
-`uv sync` creates the virtual environment and installs all dependencies from `uv.lock`, guaranteeing a bit-for-bit reproducible environment.
+Fallback:
 
-**Alternative — plain pip (fallback)**
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-3. **Install frontend dependencies** (optional)
+3. Install frontend dependencies if you want the web UI.
+
 ```bash
 cd frontend
 npm install
@@ -184,36 +176,39 @@ cd ..
 ```
 
 ### Configuration
-Create a `.env` file in the project root:
+Copy the example environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-Expected variables:
+Typical variables:
 
 ```env
-# OpenAI Configuration
+# Required
 OPENAI_API_KEY=sk-your_openai_key_here
 
-# LangSmith Configuration
-LANGSMITH_TRACING=true
-LANGSMITH_API_KEY=your_langsmith_api_key_here
-LANGCHAIN_PROJECT=txt2sql
+# Database
+DATABASE_URL=postgresql+psycopg2://postgres:your_password@localhost:5432/sihrd5
 
-# Database Configuration
+# Optional fallback if DATABASE_URL is not set
 DATABASE_PATH=postgresql+psycopg2://postgres:your_password@localhost:5432/sihrd5
+
+# Optional MLflow tracking
+MLFLOW_TRACKING_URI=sqlite:///mlflow.db
+MLFLOW_EXPERIMENT=txt2sql-agent
 ```
 
-The application reads `DATABASE_URL` first when available, and falls back to `DATABASE_PATH`.
+The application prefers `DATABASE_URL` and falls back to `DATABASE_PATH`.
 
 ### Running the Application
-1. **Run the CLI**
+Run the CLI:
+
 ```bash
 python src/interfaces/cli/agent.py
 ```
 
-Single-query mode and debugging examples:
+Single-query and debug examples:
 
 ```bash
 python src/interfaces/cli/agent.py --query "Quantas mortes ocorreram em 2022?"
@@ -222,48 +217,37 @@ python src/interfaces/cli/agent.py --health-check
 python src/interfaces/cli/agent.py --db-url "postgresql://user:pass@localhost:5432/sihrd5" --query "..."
 ```
 
-2. **Run the API**
+Run the API:
+
 ```bash
 python src/interfaces/api/main.py
 ```
 
-The API will be available at `http://localhost:8000`, with docs at `http://localhost:8000/docs`.
+The API is exposed on `http://localhost:8000`, with docs at `http://localhost:8000/docs`.
 
-3. **Run the web interface**
+Run the web interface:
+
 ```bash
 cd frontend
 npm start
 ```
 
-The frontend will be available at `http://localhost:3000`.
+The frontend is exposed on `http://localhost:3000`.
 
 ## Usage
 ### Example Queries
-**1. Mortality counting**
 ```text
 Quantas mortes ocorreram em 2022?
-```
-
-**2. Demographic filtering**
-```text
-Qual é a idade média das mulheres que morreram?
-```
-
-**3. Infrastructure analysis**
-```text
+Qual e a idade media das mulheres que morreram?
 Quantos leitos de UTI existem em Minas Gerais?
-```
-
-**4. Ranking query**
-```text
 Quais foram as 5 cidades com mais mortes?
 ```
 
 ### API Endpoints
-- `POST /api/v1/query` or `POST /query`: process a natural-language query
-- `GET /api/v1/schema` or `GET /schema`: inspect table descriptions and schema summary
-- `GET /api/v1/models` or `GET /models`: inspect configured models
-- `GET /api/v1/health` or `GET /health`: check service health
+- `POST /api/v1/query` or `POST /query`
+- `GET /api/v1/schema` or `GET /schema`
+- `GET /api/v1/models` or `GET /models`
+- `GET /api/v1/health` or `GET /health`
 
 Example request:
 
@@ -273,68 +257,68 @@ curl -X POST http://localhost:8000/api/v1/query \
   -d '{"query":"Quantas mortes ocorreram em 2022?","include_sql":true}'
 ```
 
-### Tests
+### Tests and Local Quality Checks
+The CI job `Lint + Unit Tests` currently runs:
+
 ```bash
-python -m pytest tests/ -v
-python -m pytest tests/ --cov=src --cov-report=html
+uv run ruff check src/
+uv run ruff format --check src/
+uv run pytest tests/ \
+  --ignore=tests/test_agent_improvements.py \
+  --ignore=tests/test_openai_api_isolated.py \
+  -q
 ```
 
-The current test suite covers SQL safety and execution blocking scenarios.
+The test suite covers routing, orchestration support, SQL safety, execution blocking, CLI session behavior, logging, and MLflow helpers.
 
 ## Evaluation
-The repository includes two evaluation paths:
-- **LangGraph agent evaluation**: end-to-end workflow benchmark using the orchestrated agent.
-- **Rich prompt baseline**: single-shot baseline for measuring the gain from graph orchestration.
+The repository includes four complementary evaluation paths:
+- End-to-end DAG evaluation of the LangGraph agent
+- Rich prompt baseline evaluation
+- Regression runs for CI or targeted benchmark checks
+- Ablation runs to measure the impact of specific pipeline components
 
 ### Metrics
 | Metric | Description |
 |---|---|
-| **EX** | Execution Accuracy, based on result correctness |
-| **CM** | Component Matching, based on SQL structure similarity |
-| **EM** | Exact Match, based on SQL string-level equivalence |
+| EX | Execution Accuracy, based on result correctness |
+| CM | Component Matching, based on SQL structure similarity |
+| EM | Exact Match, based on SQL string-level equivalence |
 
 ### Running Evaluation
 ```bash
 python evaluation/run_dag_evaluation.py
 python evaluation/run_rich_prompt_baseline.py
+python -m evaluation.runners.run_regression --threshold 0.90
+python -m evaluation.runners.run_ablation
 python evaluation/generate_report.py
 ```
 
 ### Output Locations
 ```bash
-evaluation/results/                       # Agent evaluation outputs and reports
-baselines/rich_prompt_baseline/artifacts/ # Baseline execution artifacts
+evaluation/results/                       # Agent eval, regression, and ablation outputs
+baselines/rich_prompt_baseline/artifacts/ # Baseline artifacts
+evaluation/logs/                          # Evaluation runner logs
 ```
 
-Ground truth files are stored in `evaluation/ground_truth.json` and `evaluation/ground_truth_v2.json`.
-
-## System Design
-### Query Routing
-The workflow starts with query classification and routes requests into database, schema, conversational, or clarification paths. Database queries continue through schema selection and SQL generation, while conversational or clarification requests bypass SQL execution entirely.
-
-### Plan Gate and Query Planner
-Before generating SQL, the graph decides whether the request should proceed directly, use additional reasoning, or be decomposed into multiple SQL sub-queries. This is the main architectural difference from a simpler single-pass text-to-SQL agent.
-
-### SQL Validation and Repair
-Generated SQL is sanitized and checked before execution. Failures are routed through validation retries, repair nodes, and controlled re-execution to improve robustness without allowing unsafe statements.
-
-### Memory and Sessions
-The orchestrator stores checkpoint data in `data/chatbot_memory.db`, enabling conversation continuity and stateful LangGraph execution across requests.
+Ground-truth datasets are stored in `evaluation/ground_truth.json`, `evaluation/ground_truth_v2.json`, and `evaluation/regression_set.json`.
 
 ## Observability
 ### Logging
-Main logs are written under `logs/` and `evaluation/logs/`. Useful files include:
+Runtime logs are written under `logs/` and `evaluation/logs/`. Common files include:
 - `logs/orchestrator_v3.log`
-- `evaluation/logs/txt2sql_api.log`
-- `evaluation/logs/txt2sql_cli.log`
-- `evaluation/logs/txt2sql_nodes.log`
+- `logs/txt2sql_api.log`
+- `logs/txt2sql_cli.log`
+- `logs/txt2sql_nodes.log`
+- `evaluation/logs/txt2sql_orchestrator.log`
 
-### LangSmith
-If `LANGSMITH_TRACING=true` is configured, the application emits traces for workflow execution, which is useful for debugging prompt behavior, retries, and performance bottlenecks.
+### MLflow
+The project no longer uses LangSmith.
+
+When `MLFLOW_TRACKING_URI` is configured, the agent can log query runs and ablation experiments through `src/agent/mlflow_tracker.py`. Tracking is optional and the application remains operational when MLflow is not configured.
+
+### Session Memory
+LangGraph checkpoints are persisted with SQLite in `data/chatbot_memory.db`, enabling multi-turn session continuity across requests.
 
 ## License
-This project is licensed under the **MIT License**.
-
-See [LICENSE](LICENSE) for the full text.
-
-Copyright (c) 2026 Maicon Kevyn
+This project is licensed under the MIT License.

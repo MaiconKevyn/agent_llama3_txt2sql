@@ -70,3 +70,16 @@ class OrchestratorConfig:
     # Prompt versioning — bump when RULES A-O or prompt templates change.
     # Stored in every evaluation result so runs are comparable across versions.
     prompt_version: str = "v1"
+
+    # ------------------------------------------------------------------
+    # Ablation flags — all default False (= full pipeline).
+    # Set to True to disable that component for the ablation study.
+    # ------------------------------------------------------------------
+    disable_self_consistency: bool = False      # skip generate_sql_candidates + vote_sql_node
+    disable_cot_reasoning: bool = False         # skip reasoning_node (CoT planning)
+    disable_validation: bool = False            # skip validate_sql_node (7 semantic rules)
+    disable_repair: bool = False                # skip repair_sql_node (retry on execution error)
+    disable_table_selection_llm: bool = False   # stop at embedding stage; skip LLM stage 3
+    disable_schema_enrichment: bool = False     # skip _enhance_sus_schema_context
+    disable_rules: bool = False                 # omit RULES A-O from system prompt
+    ablation_variant: str = "full_pipeline"     # recorded in every eval result
