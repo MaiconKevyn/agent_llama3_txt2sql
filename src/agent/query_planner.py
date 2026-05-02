@@ -8,14 +8,8 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from .llm_manager import get_llm_manager
 from .plan_gate import MULTI_ELIGIBLE_PLAN_TYPES, _build_single_plan
-from .state import (
-    ExecutionPhase,
-    MessagesStateTXT2SQL,
-    QueryPlan,
-    SubQuery,
-    add_ai_message,
-    update_phase,
-)
+from .state_models import ExecutionPhase, MessagesStateTXT2SQL, QueryPlan, SubQuery
+from .state_helpers import add_ai_message, update_phase
 from ..utils.logging_config import get_nodes_logger
 
 logger = get_nodes_logger()

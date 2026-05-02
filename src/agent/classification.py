@@ -6,16 +6,8 @@ from typing import Optional, Tuple
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 
 from .llm_manager import OpenAILLMManager, get_llm_manager
-from .state import (
-    MessagesStateTXT2SQL,
-    QueryRoute,
-    ExecutionPhase,
-    QueryClassification,
-    add_ai_message,
-    update_phase,
-    add_error,
-    clean_conversation_messages,
-)
+from .state_models import MessagesStateTXT2SQL, QueryRoute, ExecutionPhase, QueryClassification
+from .state_helpers import add_ai_message, update_phase, add_error, clean_conversation_messages
 from ..utils.logging_config import get_nodes_logger
 from ..utils.classification import (
     detect_sql_snippets,

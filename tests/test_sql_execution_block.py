@@ -2,7 +2,8 @@ import pytest
 
 pytest.importorskip("langgraph")
 
-from src.agent.state import create_initial_messages_state, ExecutionPhase
+from src.agent.state_helpers import create_initial_messages_state
+from src.agent.state_models import ExecutionPhase
 
 
 def test_execute_sql_node_blocks_non_select(monkeypatch):

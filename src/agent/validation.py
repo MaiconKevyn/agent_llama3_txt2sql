@@ -4,15 +4,8 @@ import re
 import time
 
 from .llm_manager import get_llm_manager
-from .state import (
-    MessagesStateTXT2SQL,
-    ExecutionPhase,
-    ToolCallResult,
-    add_ai_message,
-    add_tool_call_result,
-    update_phase,
-    add_error,
-)
+from .state_models import MessagesStateTXT2SQL, ExecutionPhase, ToolCallResult
+from .state_helpers import add_ai_message, add_tool_call_result, update_phase, add_error
 from ..utils.logging_config import get_nodes_logger
 
 logger = get_nodes_logger()

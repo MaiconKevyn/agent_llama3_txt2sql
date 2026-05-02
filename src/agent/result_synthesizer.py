@@ -6,13 +6,8 @@ from typing import Any, Dict, List
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from .llm_manager import get_llm_manager
-from .state import (
-    ExecutionPhase,
-    MessagesStateTXT2SQL,
-    add_ai_message,
-    add_error,
-    update_phase,
-)
+from .state_models import ExecutionPhase, MessagesStateTXT2SQL
+from .state_helpers import add_ai_message, add_error, update_phase
 from ..utils.logging_config import get_nodes_logger
 
 logger = get_nodes_logger()

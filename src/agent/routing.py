@@ -1,12 +1,8 @@
 import logging
 from typing import Literal
 
-from .state import (
-    ExecutionPhase,
-    MessagesStateTXT2SQL,
-    QueryRoute,
-    should_retry,
-)
+from .state_models import ExecutionPhase, MessagesStateTXT2SQL, QueryRoute
+from .state_helpers import should_retry
 
 
 COMPLEX_PLAN_TYPES_FOR_COT = {

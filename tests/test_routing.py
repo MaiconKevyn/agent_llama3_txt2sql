@@ -16,7 +16,7 @@ from src.agent.routing import (
     route_after_sql_generation,
     route_after_sql_validation,
 )
-from src.agent.state import QueryRoute
+from src.agent.state_models import QueryRoute
 
 
 def test_route_after_classification_handles_conversational_threshold():

@@ -258,27 +258,8 @@ def build_pregeneration_hints(selected_tables: List[str], user_query: str) -> st
     )
 
 
-def build_sql_generation_messages(
-    user_query: str,
-    schema_context: str,
-    selected_tables: List[str],
-) -> tuple:
-    """Build the formatted messages and pre-generation hints for SQL generation."""
-    schema_context = _enhance_sus_schema_context(schema_context)
-
-    if len(selected_tables) > 1:
-        table_rules = build_multi_table_prompt(selected_tables)
-    else:
-        table_rules = build_table_specific_prompt(selected_tables)
-
-    pregeneration_hints = build_pregeneration_hints(selected_tables, user_query)
-    if pregeneration_hints:
-        table_rules = pregeneration_hints + "\n" + table_rules
-
-    sql_prompt_template = ChatPromptTemplate.from_messages([
-        ("system", """You are a PostgreSQL expert assistant for Brazilian healthcare (SIH-RS) data analysis.
-
-        ══════════════════════════════════════════════════════════
+# RULES A-O extracted as a constant so ablation can omit them cleanly.
+_SQL_RULES_AO = """        ══════════════════════════════════════════════════════════
         CRITICAL RULES — READ THESE FIRST, THEY OVERRIDE ALL ELSE
         ══════════════════════════════════════════════════════════
 
@@ -400,17 +381,43 @@ def build_sql_generation_messages(
         Category (no specific name) → WHERE "DIAG_PRINC" LIKE 'J%' (J=Respiratory, I=Cardiovascular, C=Cancer, K=Digestive)
         For cause of death by disease → JOIN cid ON i."CID_MORTE"=c."CID" (see RULE B)
 
-        ══════════════════════════════════════════════════════════
+        ══════════════════════════════════════════════════════════"""
 
-        CORE: Use double quotes for all columns: "COLUMN_NAME". Return ONLY the SQL query.
 
-        DATABASE SCHEMA:
-        {schema_context}"""),
+def build_sql_generation_messages(
+    user_query: str,
+    schema_context: str,
+    selected_tables: List[str],
+    ablation_flags: dict | None = None,
+) -> tuple:
+    """Build the formatted messages and pre-generation hints for SQL generation."""
+    flags = ablation_flags or {}
+
+    if not flags.get("disable_schema_enrichment"):
+        schema_context = _enhance_sus_schema_context(schema_context)
+
+    rules_section = "" if flags.get("disable_rules") else _SQL_RULES_AO
+
+    if len(selected_tables) > 1:
+        table_rules = build_multi_table_prompt(selected_tables)
+    else:
+        table_rules = build_table_specific_prompt(selected_tables)
+
+    pregeneration_hints = build_pregeneration_hints(selected_tables, user_query)
+    if pregeneration_hints:
+        table_rules = pregeneration_hints + "\n" + table_rules
+
+    sql_prompt_template = ChatPromptTemplate.from_messages([
+        ("system", "You are a PostgreSQL expert assistant for Brazilian healthcare (SIH-RS) data analysis.\n\n"
+                   "{rules_section}\n\n"
+                   "        CORE: Use double quotes for all columns: \"COLUMN_NAME\". Return ONLY the SQL query.\n\n"
+                   "        DATABASE SCHEMA:\n        {schema_context}"),
         ("system", "{table_specific_rules}"),
         ("human", "USER QUERY: {user_query}\n\nGenerate the SQL query:"),
     ])
 
     formatted_messages = sql_prompt_template.format_messages(
+        rules_section=rules_section,
         schema_context=schema_context,
         table_specific_rules=table_rules,
         user_query=user_query,

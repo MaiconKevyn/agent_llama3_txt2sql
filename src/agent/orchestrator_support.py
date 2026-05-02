@@ -43,16 +43,13 @@ def initialize_orchestrator_runtime(
     environment: str,
     logger,
     model_config_factory,
+    orchestrator_config=None,
 ) -> Tuple[Any, Any, sqlite3.Connection, Any, Any]:
     """Initialize workflow runtime components used by the orchestrator."""
     from langgraph.checkpoint.sqlite import SqliteSaver
 
     from .llm_manager import OpenAILLMManager
-    from .workflow import (
-        create_development_sql_agent,
-        create_production_sql_agent,
-        create_testing_sql_agent,
-    )
+    from .workflow import create_langgraph_sql_workflow
 
     llm_manager = OpenAILLMManager(app_config)
 
@@ -68,12 +65,9 @@ def initialize_orchestrator_runtime(
     memory_conn = sqlite3.connect("data/chatbot_memory.db", check_same_thread=False)
     memory = SqliteSaver(memory_conn)
 
-    workflow_factory = {
-        "production": create_production_sql_agent,
-        "development": create_development_sql_agent,
-        "testing": create_testing_sql_agent,
-    }.get(environment, create_production_sql_agent)
-    workflow = workflow_factory(checkpointer=memory)
+    workflow = create_langgraph_sql_workflow(config=orchestrator_config).compile(
+        checkpointer=memory
+    )
 
     current_model = model_config_factory(
         model_name=app_config.llm_model,
@@ -93,69 +87,21 @@ def initialize_orchestrator_runtime(
     return workflow, memory, memory_conn, llm_manager, current_model
 
 
-def build_langsmith_config(
+def build_workflow_config(
     *,
     config: Optional[dict],
     session_id: str,
-    query_number: int,
-    current_model_metadata: Dict[str, Any],
-    environment: str,
-    run_name: Optional[str] = None,
-    tags: Optional[List[str]] = None,
-    metadata: Optional[Dict[str, Any]] = None,
 ) -> dict:
-    """Build the LangSmith config used for workflow execution."""
-    langsmith_config = dict(config or {})
-    if run_name:
-        langsmith_config["run_name"] = run_name
-    if tags:
-        langsmith_config["tags"] = tags
-    if metadata:
-        langsmith_config["metadata"] = metadata
+    """Build the LangGraph workflow config.
 
-    if "configurable" not in langsmith_config:
-        langsmith_config["configurable"] = {}
-    langsmith_config["configurable"]["thread_id"] = session_id
-
-    default_metadata = {
-        "session_id": session_id,
-        "query_number": query_number,
-        "model_provider": current_model_metadata["provider"],
-        "model_name": current_model_metadata["model_name"],
-        "environment": environment,
-    }
-    if "metadata" in langsmith_config:
-        langsmith_config["metadata"].update(default_metadata)
-    else:
-        langsmith_config["metadata"] = default_metadata
-
-    return langsmith_config
-
-
-def build_tracing_context(
-    *,
-    user_query: str,
-    project_name: str,
-    current_model_metadata: Dict[str, Any],
-    environment: str,
-    query_number: int,
-) -> Tuple[str, List[str], Dict[str, Any]]:
-    """Build run name, tags and metadata for traced execution."""
-    run_name = f"txt2sql_query_{query_number}"
-    tags = [
-        f"model:{current_model_metadata['model_name']}",
-        f"provider:{current_model_metadata['provider']}",
-        f"env:{environment}",
-        "txt2sql",
-        "langgraph-v3",
-    ]
-    metadata = {
-        "project": project_name,
-        "orchestrator_version": "3.0",
-        "user_query_length": len(user_query),
-        "user_query_preview": user_query[:100] + "..." if len(user_query) > 100 else user_query,
-    }
-    return run_name, tags, metadata
+    Provides the ``configurable.thread_id`` required by SqliteSaver for
+    session checkpointing.  Any caller-supplied config keys are preserved.
+    """
+    workflow_config = dict(config or {})
+    if "configurable" not in workflow_config:
+        workflow_config["configurable"] = {}
+    workflow_config["configurable"]["thread_id"] = session_id
+    return workflow_config
 
 
 def build_orchestrator_error_result(
@@ -256,9 +202,8 @@ __all__ = [
     "build_application_config",
     "build_factory_app_config",
     "build_health_report",
-    "build_langsmith_config",
     "build_orchestrator_error_result",
-    "build_tracing_context",
+    "build_workflow_config",
     "initialize_orchestrator_runtime",
     "resolve_database_url",
 ]

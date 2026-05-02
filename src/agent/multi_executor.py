@@ -8,15 +8,8 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from .llm_manager import get_llm_manager
 from .sql_generation import SQLOutput, build_sql_generation_messages
-from .state import (
-    ExecutionPhase,
-    MessagesStateTXT2SQL,
-    QueryPlan,
-    SubQuery,
-    add_ai_message,
-    add_error,
-    update_phase,
-)
+from .state_models import ExecutionPhase, MessagesStateTXT2SQL, QueryPlan, SubQuery
+from .state_helpers import add_ai_message, add_error, update_phase
 from .table_selection import _select_relevant_tables
 from .validation import check_semantic_rules
 from ..utils.logging_config import get_nodes_logger

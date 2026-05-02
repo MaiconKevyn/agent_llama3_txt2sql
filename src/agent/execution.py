@@ -10,20 +10,10 @@ from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from .llm_manager import get_llm_manager
 from .schema_utils import _check_columns_against_schema
 from .schema_node import _should_refresh_schema, _refresh_schema_context
-from .state import (
-    MessagesStateTXT2SQL,
-    ExecutionPhase,
-    ToolCallResult,
-    SQLExecutionResult,
-    add_ai_message,
-    add_tool_message,
-    add_tool_call_result,
-    update_phase,
-    add_error,
-)
+from .state_models import MessagesStateTXT2SQL, ExecutionPhase, ToolCallResult, SQLExecutionResult, TX
+from .state_helpers import add_ai_message, add_tool_message, add_tool_call_result, update_phase, add_error
 from ..utils.logging_config import get_nodes_logger
 from ..utils.sql_safety import is_select_only
-from .failure_taxonomy import TX
 
 logger = get_nodes_logger()
 
