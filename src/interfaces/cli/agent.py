@@ -78,7 +78,11 @@ def create_orchestrator_config(args) -> OrchestratorConfig:
         enable_statistics=True,
         session_timeout=3600,
         enable_conversational_response=True,  # Enable multi-LLM conversational responses
-        conversational_fallback=True          # Enable fallback if conversational LLM fails
+        conversational_fallback=True,         # Enable fallback if conversational LLM fails
+        table_selection_preset=args.table_selection_preset,
+        table_selection_mode=args.table_selection_mode,
+        table_selection_description_variant=args.table_selection_description_variant,
+        table_selection_prompt_variant=args.table_selection_prompt_variant,
     )
 
 
@@ -514,6 +518,43 @@ def main():
         "--debug-steps", 
         action="store_true",
         help="Mostrar estados detalhados de cada step do workflow durante execução"
+    )
+    from src.application.prompts.table_selection.catalog import (
+        get_available_description_variants,
+        get_available_prompt_variants,
+        get_available_table_selection_presets,
+    )
+
+    parser.add_argument(
+        "--table-selection-preset",
+        default="llm_best",
+        choices=get_available_table_selection_presets(),
+        help="Preset nomeado do selector de tabelas usado pelo agente.",
+    )
+    parser.add_argument(
+        "--table-selection-mode",
+        default="full_cascade",
+        choices=[
+            "full_cascade",
+            "heuristic_only",
+            "embedding_only",
+            "heuristic_embedding_only",
+            "llm_only",
+            "llm_disabled_current_fallback",
+        ],
+        help="Modo do selector de tabelas para a execução atual.",
+    )
+    parser.add_argument(
+        "--table-selection-description-variant",
+        default="current",
+        choices=get_available_description_variants(),
+        help="Variante das descrições de tabelas usada no fallback/selector com LLM.",
+    )
+    parser.add_argument(
+        "--table-selection-prompt-variant",
+        default="current",
+        choices=get_available_prompt_variants(),
+        help="Variante do prompt usada no selector com LLM.",
     )
     
     args = parser.parse_args()

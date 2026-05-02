@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Ablation runner — evaluates 9 pipeline variants (V0–V8) over the 40-query
+Ablation runner — evaluates the configured pipeline variants over the 40-query
 regression set and produces a paired comparison against the full pipeline.
 
 Usage
@@ -9,7 +9,7 @@ Usage
 python -m evaluation.runners.run_ablation
 
 # Specific variants only
-python -m evaluation.runners.run_ablation --variants V0 V1 V2
+python -m evaluation.runners.run_ablation --variants V0 V2 V3
 
 # Smoke-test: 5 queries per variant
 python -m evaluation.runners.run_ablation --max-queries 5
@@ -63,12 +63,6 @@ VARIANTS: List[VariantSpec] = [
         name="full_pipeline",
         description="Full pipeline — baseline (all components enabled)",
         flags={},
-    ),
-    VariantSpec(
-        id="V1",
-        name="no_self_consistency",
-        description="Remove generate_sql_candidates + vote_sql_node",
-        flags={"disable_self_consistency": True},
     ),
     VariantSpec(
         id="V2",
@@ -603,13 +597,13 @@ def run_ablation(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="TXT2SQL ablation runner (V0–V8)")
+    parser = argparse.ArgumentParser(description="TXT2SQL ablation runner")
     parser.add_argument(
         "--variants",
         nargs="+",
         default=None,
         metavar="ID",
-        help="Variant IDs to run (e.g. V0 V1 V2). Default: all.",
+        help="Variant IDs to run (e.g. V0 V2 V3). Default: all.",
     )
     parser.add_argument("--max-queries", type=int, default=None)
     parser.add_argument("--tier", choices=["easy", "medium", "hard"], default=None)

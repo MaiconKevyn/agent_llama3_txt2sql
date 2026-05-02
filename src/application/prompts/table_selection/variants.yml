@@ -1,0 +1,362 @@
+metadata:
+  role_hints:
+    internacoes: "FACT | 1 row per AIH | use for counts, deaths, costs, ICU, dates, age, sex, race, education, residence municipality, and hospital CNES"
+    atendimentos: "JUNCTION DETAIL | 1 row per procedure occurrence | use only when the question is about procedures performed"
+    procedimentos: "LOOKUP | procedure names/codes | add only together with atendimentos when the question needs procedure identity"
+    cid: "LOOKUP | diagnosis / cause-of-death names | add only when the question needs disease names/descriptions"
+    hospital: "LOOKUP | hospital attributes and MUNIC_MOV | add only for hospital attributes or hospital location"
+    municipios: "DIMENSION | city/state names | add when the question needs municipality/state names or geography"
+    socioeconomico: "FACT CONTEXT | municipality-year metric table | use only for socioeconomics / infant mortality / population / IDHM with metrica filter"
+    tempo: "DATE DIMENSION | auxiliary only | usually DO NOT SELECT; prefer EXTRACT() over internacoes dates"
+    sexo: "LOOKUP | label only | add only if the output must show Masculino/Feminino labels"
+    raca_cor: "LOOKUP | label only | add only if the output must show raça/cor labels"
+    instrucao: "LOOKUP | label only | add only if the output must show education labels"
+    especialidade: "LOOKUP | label only | add only if the output must show specialty labels"
+  grain_hints:
+    internacoes: "grain=1 row per hospitalization (AIH)"
+    atendimentos: "grain=1 row per procedure occurrence inside a hospitalization"
+    procedimentos: "grain=1 row per procedure code"
+    cid: "grain=1 row per CID-10 code"
+    hospital: "grain=1 row per hospital"
+    municipios: "grain=1 row per municipality"
+    socioeconomico: "grain=1 row per municipio x ano x metrica"
+    tempo: "grain=1 row per date"
+    sexo: "grain=1 row per sex code"
+    raca_cor: "grain=1 row per race/color code"
+    instrucao: "grain=1 row per education code"
+    especialidade: "grain=1 row per specialty code"
+  do_not_use_hints:
+    internacoes: "do_not_add_extra_lookups unless the output needs human-readable labels or external geography/metrics"
+    atendimentos: "do_not_use unless the question is about procedures performed"
+    procedimentos: "do_not_use without atendimentos"
+    cid: "do_not_use unless disease/cause names or textual diagnosis matching are required"
+    hospital: "do_not_use unless hospital attributes or hospital location are required"
+    municipios: "do_not_use unless city/state names or geographic grouping/filtering are required"
+    socioeconomico: "do_not_use for hospitalization mortality/cost/ICU queries; use only for municipal indicators with metrica"
+    tempo: "do_not_use for year/month/weekend filters when EXTRACT(...) from internacoes is enough"
+    sexo: "do_not_use if sexo code/filtering from internacoes is enough"
+    raca_cor: "do_not_use if race code/filtering from internacoes is enough"
+    instrucao: "do_not_use if instruction code/filtering from internacoes is enough"
+    especialidade: "do_not_use if specialty code/filtering from internacoes is enough"
+
+presets:
+  default:
+    mode: full_cascade
+    description_variant: current
+    prompt_variant: current
+  llm_best:
+    mode: llm_only
+    description_variant: role_guardrails
+    prompt_variant: decision_checklist
+  llm_protocol:
+    mode: llm_only
+    description_variant: role_guardrails
+    prompt_variant: selection_protocol
+  schema_contract_protocol:
+    mode: llm_only
+    description_variant: schema_contract
+    prompt_variant: selection_protocol
+
+description_variants:
+  current:
+    line_template: "- {table_name}: {title}{purpose_section}{use_cases_section}{critical_notes_section}"
+    sections:
+      purpose:
+        source: purpose
+        template: " | {value}"
+      use_cases:
+        source: use_cases
+        template: " | Use for: {items}"
+        max_items: 2
+      critical_notes:
+        source: critical_notes
+        template: " | {items}"
+        max_items: 2
+  minimal:
+    line_template: "- {table_name}: {title}{purpose_section}"
+    sections:
+      purpose:
+        source: purpose
+        template: " | {value}"
+  use_cases:
+    line_template: "- {table_name}: {title}{use_cases_section}{avoid_section}"
+    sections:
+      use_cases:
+        source: use_cases
+        template: " | Use for: {items}"
+        max_items: 3
+      avoid:
+        source: critical_notes
+        template: " | Avoid: {items}"
+        max_items: 1
+  role_guardrails:
+    line_template: "- {table_name}: {role_hint}{use_cases_section}{guardrail_section}"
+    sections:
+      use_cases:
+        source: use_cases
+        template: " | Typical use: {items}"
+        max_items: 2
+      guardrail:
+        source: critical_notes
+        template: " | Guardrail: {items}"
+        max_items: 1
+  join_paths:
+    line_template: "- {table_name}: {title}{purpose_section}{join_section}{caution_section}"
+    sections:
+      purpose:
+        source: purpose
+        template: " | {value}"
+      join:
+        source: join_hint
+        template: " | Join path: {value}"
+      caution:
+        source: critical_notes
+        template: " | Key caution: {items}"
+        max_items: 1
+  schema_contract:
+    line_template: "- {table_name}: role={role_hint}{grain_section}{join_section}{add_when_section}{do_not_use_section}"
+    sections:
+      grain:
+        source: grain_hint
+        template: " | {value}"
+      join:
+        source: join_hint
+        template: " | {value}"
+      add_when:
+        source: use_cases
+        template: " | add_when={items}"
+        max_items: 2
+      do_not_use:
+        source: do_not_use_hint
+        template: " | {value}"
+
+prompt_variants:
+  compact:
+    template: |
+      POSTGRESQL TABLE SELECTION - Brazilian SUS Healthcare System
+
+      AVAILABLE TABLES:
+      {table_descriptions}
+
+      RULES:
+      - Use internacoes for most hospitalization, death, cost, length-of-stay, demographic, and ICU questions.
+      - Use socioeconomico only for IDHM, bolsa família, saneamento, população, envelhecimento, and taxa de mortalidade infantil.
+      - Use atendimentos + procedimentos for procedure-volume or procedure-name questions.
+      - Add cid, hospital, municipios, instrucao, vincprev, especialidade, or raca_cor only when names/descriptions or geographic context are needed.
+      - Never select removed tables such as mortes, cid10, dado_ibge, or uti_detalhes.
+
+      USER QUERY: "{user_query}"
+
+      Respond with ONLY the table names separated by commas.
+
+      TABLES:
+  minimal:
+    template: |
+      AVAILABLE TABLES:
+      {table_descriptions}
+
+      USER QUERY: "{user_query}"
+
+      Return ONLY the minimal set of table names needed, comma-separated.
+
+      TABLES:
+  anti_overselection:
+    template: |
+      POSTGRESQL TABLE SELECTION - choose the SMALLEST sufficient table set
+
+      AVAILABLE TABLES:
+      {table_descriptions}
+
+      SELECTION CHECKLIST:
+      1. Start with the smallest valid set. Do not add tables just because they are semantically related.
+      2. `internacoes` already contains: MORTE, VAL_UTI, VAL_TOT, DT_INTER, DT_SAIDA, NASC, IDADE, SEXO, RACA_COR, INSTRU, ESPEC, MUNIC_RES, CNES.
+      3. Add `tempo` only if the question explicitly requires the date dimension itself. For year/month/weekend filters, prefer `EXTRACT(...)` on `internacoes`.
+      4. Add demographic lookups (`sexo`, `raca_cor`, `instrucao`, `especialidade`) only if the output needs human-readable labels. Do not add them for filtering/grouping when the code already exists in `internacoes`.
+      5. Add `hospital` only for hospital attributes or to reach hospital municipality via `MUNIC_MOV`.
+      6. Add `municipios` only when the question needs city/state names or a geographic filter that is not already answerable by raw codes.
+      7. Add `atendimentos` + `procedimentos` only for procedure identity/volume questions.
+      8. Add `socioeconomico` only for population, IDHM, bolsa família, saneamento, envelhecimento, or infant mortality metrics.
+      9. For municipality questions, distinguish:
+         - patient residence -> `internacoes.MUNIC_RES` + `municipios`
+         - hospital location -> `internacoes.CNES` -> `hospital.MUNIC_MOV` + `municipios`
+
+      USER QUERY: "{user_query}"
+
+      Respond with ONLY the minimal set of table names separated by commas.
+
+      TABLES:
+  decision_checklist:
+    template: |
+      POSTGRESQL TABLE SELECTION - healthcare warehouse decision checklist
+
+      AVAILABLE TABLES:
+      {table_descriptions}
+
+      DECIDE IN THIS ORDER:
+      - If the query is about admissions, deaths, ICU, costs, age, sex, race, education, birth year, weekends, or general hospitalization trends, start with `internacoes`.
+      - If the query asks for a disease/procedure/specialty/race/education NAME or DESCRIPTION, add the matching lookup table.
+      - If the query is about procedures performed, use `atendimentos` + `procedimentos`; otherwise do not add them.
+      - If the query is about infant mortality, population, IDHM, bolsa família, or other municipal indicators, use `socioeconomico` with `metrica`.
+      - If the query needs municipality or state names:
+        - use `internacoes` + `municipios` for patient residence (`MUNIC_RES`)
+        - use `internacoes` + `hospital` + `municipios` for hospital location (`MUNIC_MOV`)
+      - Prefer NOT adding extra tables when `internacoes` already has the needed code/measure.
+      - Avoid `tempo` unless the date dimension itself is explicitly necessary.
+
+      USER QUERY: "{user_query}"
+
+      Return ONLY the table names, comma-separated.
+
+      TABLES:
+  selection_protocol:
+    template: |
+      POSTGRESQL TABLE SELECTION - schema contract protocol
+
+      AVAILABLE TABLES:
+      {table_descriptions}
+
+      OBJECTIVE:
+      Select the minimal sufficient table set that fully supports the query. Favor correctness by schema role, grain, and join path over semantic association.
+
+      DATABASE INVARIANTS:
+      - `internacoes` is the primary fact table for admissions, deaths, ICU, costs, dates, age, sex, race, education, residence municipality code, and hospital CNES.
+      - Lookup tables (`sexo`, `raca_cor`, `instrucao`, `especialidade`, `cid`, `procedimentos`) are added only when the query needs labels/descriptions or text matching over those descriptions.
+      - `atendimentos` is not a generic admissions table; it exists only to connect admissions to performed procedures.
+      - `tempo` is an auxiliary date dimension; for year/month/weekend filters prefer `EXTRACT(...)` from `internacoes`.
+      - `hospital` is for hospital attributes or hospital location (`MUNIC_MOV`), not for generic hospitalization counts.
+      - `municipios` is for city/state names or geographic grouping/filtering.
+      - `socioeconomico` is a separate municipal indicator fact table and requires `metrica`; do not use it for hospital mortality, ICU, or hospitalization cost queries.
+
+      DECISION PROTOCOL:
+      1. Identify the target fact grain of the question.
+      2. Choose the smallest fact table set that contains the metric and base filters.
+      3. Add a lookup/dimension table only if one of these unmet requirements remains:
+         - human-readable label/description in output
+         - text search over disease/procedure descriptions
+         - municipality/state name or geographic grouping
+         - hospital attributes/location
+         - external municipal indicator
+      4. Before finalizing, remove any table whose information is already available in previously selected tables.
+
+      MANDATORY DISTINCTIONS:
+      - patient residence geography -> `internacoes.MUNIC_RES` + `municipios`
+      - hospital geography -> `internacoes.CNES` + `hospital.MUNIC_MOV` + `municipios`
+      - sex/race/education/specialty code filters -> usually `internacoes` only
+      - sex/race/education/specialty labels in output -> add corresponding lookup
+      - procedure volume or procedure identity -> `atendimentos` + `procedimentos`
+      - disease/cause names -> add `cid`
+
+      SELF-CHECK BEFORE ANSWERING:
+      - Is every selected table necessary?
+      - Did I avoid `tempo` unless the date dimension itself is required?
+      - Did I avoid demographic lookups when `internacoes` already has the needed code/filter?
+      - Did I avoid `hospital` unless hospital attributes/location are explicitly needed?
+      - Did I avoid `socioeconomico` unless the query asks for municipal indicators?
+
+      USER QUERY: "{user_query}"
+
+      Respond with ONLY the final table names separated by commas. No explanation.
+
+      TABLES:
+  decision_protocol:
+    template: |
+      POSTGRESQL TABLE SELECTION - minimal schema decision protocol
+
+      AVAILABLE TABLES:
+      {table_descriptions}
+
+      OBJECTIVE:
+      Return the smallest table set that is fully sufficient to answer the query correctly.
+
+      NON-NEGOTIABLE DATABASE INVARIANTS:
+      - `internacoes` is the main fact table for admissions, deaths, ICU, costs, dates, age, sex, race, education, residence municipality code, and hospital CNES.
+      - Lookup tables (`sexo`, `raca_cor`, `instrucao`, `especialidade`, `cid`, `procedimentos`) are only for labels/descriptions or text matching over those descriptions.
+      - `atendimentos` is only to connect hospitalizations to performed procedures; do not use it for generic admission analytics.
+      - `tempo` is auxiliary; for year/month/weekend filters prefer `EXTRACT(...)` from `internacoes`.
+      - `hospital` is only for hospital attributes or hospital location via `MUNIC_MOV`.
+      - `municipios` is only for city/state names or geography-based grouping/filtering.
+      - `socioeconomico` is a separate municipal indicator fact table. Use it only for population, IDHM, bolsa família, saneamento, envelhecimento, or infant mortality metrics, usually with `metrica`.
+
+      DECISION CHECKLIST:
+      1. Identify the main metric and the fact grain of the question.
+      2. Start with the smallest fact table that already contains that metric.
+      3. Add another fact table only if the metric cannot be answered from the current fact table.
+      4. Add a lookup/dimension table only if one unmet need remains:
+         - human-readable label/description in output
+         - text search over disease/procedure descriptions
+         - municipality/state name or geography grouping
+         - hospital attribute or hospital location
+         - external municipal indicator
+      5. Before finalizing, remove every table whose information is already available from the others.
+
+      MANDATORY DISTINCTIONS:
+      - patient residence geography -> `internacoes.MUNIC_RES` + `municipios`
+      - hospital geography -> `internacoes.CNES` + `hospital.MUNIC_MOV` + `municipios`
+      - sex/race/education/specialty code filters -> usually `internacoes` only
+      - sex/race/education/specialty labels in output -> add corresponding lookup
+      - procedure volume or procedure identity -> `atendimentos` + `procedimentos`
+      - disease/cause names or descriptions -> add `cid`
+      - infant mortality or municipal indicators -> `socioeconomico`, not `internacoes`
+
+      SELF-CHECK BEFORE ANSWERING:
+      - Did I choose the smallest sufficient set?
+      - Did I avoid `tempo` unless the date dimension itself is required?
+      - Did I avoid demographic lookups when `internacoes` already has the needed code/filter?
+      - Did I avoid `hospital` unless hospital attributes/location are explicitly needed?
+      - Did I avoid `socioeconomico` unless the query asks for municipal indicators?
+
+      USER QUERY: "{user_query}"
+
+      Respond with ONLY the final table names separated by commas. No explanation.
+
+      TABLES:
+  current:
+    template: |
+      POSTGRESQL TABLE SELECTION - Brazilian SUS Healthcare System
+
+      AVAILABLE TABLES:
+      {table_descriptions}
+
+      CRITICAL SELECTION RULES FOR sihrd5 DATABASE:
+      ====================================================
+
+       CORE QUERIES - Primary Table Selection:
+      • internacoes: ALWAYS use for patient counts, hospitalization queries, deaths (MORTE boolean), VDRL (IND_VDRL boolean)
+      • atendimentos: Use when asking about procedures performed per hospitalization (junction table)
+
+       LOOKUP TABLES - Always join when names/descriptions needed:
+      • cid: Join when need disease/diagnosis NAMES (table renamed from cid10 — use cid, NOT cid10!)
+      • procedimentos: Join when need procedure NAMES (always via atendimentos junction table)
+      • hospital: Join when need hospital/facility information
+      • municipios: Join when need city/municipality NAMES or geographic data
+
+       SPECIALIZED ANALYSIS — socioeconomico is the ONLY source for these metrics:
+      • socioeconomico: Use for "população", "mortalidade infantil", "IDHM", "bolsa família", "envelhecimento",
+        "saneamento", "dados do IBGE", "dados socioeconômicos" — ALWAYS filter by metrica column.
+        NEVER use internacoes for "taxa de mortalidade infantil" — that comes from socioeconomico!
+        Example: WHERE metrica = 'mortalidade_infantil_1ano' OR metrica = 'populacao_total' OR metrica = 'idhm'
+      • instrucao: Lookup for education level descriptions (JOIN with internacoes.INSTRU)
+      • vincprev: Lookup for social security type descriptions (JOIN with internacoes.VINCPREV)
+      • especialidade: Lookup for medical specialty descriptions (JOIN with internacoes.ESPEC)
+      • raca_cor: Lookup for race/color descriptions (JOIN with internacoes.RACA_COR)
+
+       DISAMBIGUATION RULES:
+      • "taxa de mortalidade" / "mortalidade hospitalar" / "percentual de óbitos" in hospitalization context →
+        calculate from internacoes: COUNT(MORTE=true)/COUNT(*). DO NOT use socioeconomico.
+      • "mortalidade infantil" / "taxa de mortalidade infantil" → socioeconomico with metrica='mortalidade_infantil_1ano'
+      • "municípios de residência" / "onde os pacientes moram" → internacoes.MUNIC_RES → municipios
+      • "municípios que atendem" / "por localização do hospital" / "média por município (hospital)" →
+        hospital.MUNIC_MOV → municipios (requires BOTH hospital AND municipios tables)
+
+       IMPORTANT RULES:
+      • For years/months/weekends, DO NOT select `tempo` unless the calendar dimension itself is explicitly required.
+        Prefer EXTRACT(YEAR|MONTH|DOW ...) from `internacoes.DT_INTER` / `internacoes.DT_SAIDA`.
+      • `atendimentos` NEVER means generic atendimento count. It only exists to bridge hospitalization facts to procedure occurrences.
+      • If a code/filter already exists inside `internacoes`, do not add the lookup table unless the output needs the label/description.
+      • Never select removed tables such as mortes, cid10, dado_ibge, or uti_detalhes.
+
+      USER QUERY: "{user_query}"
+
+      Respond with ONLY the table names separated by commas.
+
+      TABLES:

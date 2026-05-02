@@ -8,7 +8,7 @@ Pipeline execution order (see workflow.py for the full graph):
   1. classification.py   — classify query (DATABASE / CONVERSATIONAL / SCHEMA)
   2. table_selection.py  — discover and select tables (heuristic → embedding → LLM)
   3. schema_node.py      — fetch schema for selected tables (cached)
-  4. sql_generation.py   — CoT planning, generate SQL, self-consistency, voting
+  4. sql_generation.py   — CoT planning and SQL generation
   5. validation.py       — validate SQL (DB EXPLAIN + semantic checks)
   6. execution.py        — execute SQL; repair_sql_node corrects on error
   7. response.py         — format final response in natural Portuguese
@@ -29,7 +29,6 @@ from .schema_node import get_schema_node               # noqa: F401  # step 3
 from .sql_generation import (                          # noqa: F401  # step 4
     generate_sql_node,
     reasoning_node,
-    vote_sql_node,
     SQLOutput,
 )
 from .validation import validate_sql_node              # noqa: F401  # step 5
@@ -76,7 +75,6 @@ __all__ = [
     "execute_sql_node",
     "generate_response_node",
     "clarification_node",
-    "vote_sql_node",
     "plan_gate_node",
     "get_llm_manager",
     "set_global_llm_manager",
