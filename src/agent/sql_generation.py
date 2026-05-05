@@ -108,6 +108,7 @@ def generate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         user_query = state["user_query"]
         schema_context = state.get("schema_context", "")
         selected_tables = state.get("selected_tables", [])
+        semantic_plan = state.get("semantic_plan")
 
         reasoning_plan = state.get("reasoning_plan")
         if reasoning_plan:
@@ -116,6 +117,18 @@ def generate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 f"[PLANO DE RACIOCÍNIO PRÉ-GERADO]\n"
                 f"{reasoning_plan}\n"
                 f"Siga este plano ao gerar o SQL."
+            )
+        if semantic_plan:
+            try:
+                from ..semantic.plan_schema import SemanticPlan
+
+                semantic_prompt = SemanticPlan.model_validate(semantic_plan).to_prompt_block()
+            except Exception:
+                semantic_prompt = f"[SEMANTIC PLAN - SQL MUST SATISFY]\n{semantic_plan}"
+            user_query = (
+                f"{user_query}\n\n"
+                f"{semantic_prompt}\n"
+                "Antes de escrever a SQL, preserve métricas, dimensões, filtros, granularidade e shape desse plano."
             )
 
         logger.info("Tables selected for SQL generation", extra={"tables": selected_tables})

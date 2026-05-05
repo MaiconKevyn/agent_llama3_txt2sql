@@ -2,6 +2,7 @@ import pytest
 
 pytest.importorskip("langchain_core")
 pytest.importorskip("langchain_openai")
+pytest.importorskip("langchain_community")
 
 from src.agent.prompt_builder import build_pregeneration_hints
 from src.agent.sql_generation import SQLOutput

@@ -82,6 +82,7 @@ def create_initial_messages_state(
         failure_taxonomy=[],
         final_result_rows=None,
         ablation_flags=ablation_flags or {},
+        semantic_plan=None,
     )
 
 
@@ -364,6 +365,7 @@ def state_to_legacy_format(state: MessagesStateTXT2SQL) -> Dict[str, Any]:
                 "final_sql_query": state.get("final_sql_query"),
                 "failure_taxonomy": state.get("failure_taxonomy", []),
             },
+            "semantic_plan": state.get("semantic_plan"),
             **state.get("response_metadata", {}),
         },
     }

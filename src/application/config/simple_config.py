@@ -82,7 +82,7 @@ class OrchestratorConfig:
     disable_schema_enrichment: bool = False     # skip _enhance_sus_schema_context
     disable_rules: bool = False                 # omit RULES A-O from system prompt
     table_selection_preset: str = "llm_best"    # preferred named selector preset from prompt catalog
-    table_selection_mode: str = "full_cascade"  # optional override over preset: full_cascade | heuristic_only | embedding_only | heuristic_embedding_only | llm_only | llm_disabled_current_fallback
-    table_selection_description_variant: str = "current"  # optional override over preset; see prompts/table_selection/variants.yml
-    table_selection_prompt_variant: str = "current"  # optional override over preset; see prompts/table_selection/variants.yml
+    table_selection_mode: Optional[str] = None  # optional override over preset: full_cascade | heuristic_only | embedding_only | heuristic_embedding_only | llm_only | llm_disabled_current_fallback
+    table_selection_description_variant: Optional[str] = None  # optional override over preset; see prompts/table_selection/variants.yml
+    table_selection_prompt_variant: Optional[str] = None  # optional override over preset; see prompts/table_selection/variants.yml
     ablation_variant: str = "full_pipeline"     # recorded in every eval result

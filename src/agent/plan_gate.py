@@ -6,6 +6,7 @@ from typing import Tuple
 
 from .state_models import ExecutionPhase, MessagesStateTXT2SQL, QueryPlan, SubQuery
 from .state_helpers import add_ai_message, update_phase
+from ..semantic.planner import build_semantic_plan
 from ..utils.logging_config import get_nodes_logger
 
 logger = get_nodes_logger()
@@ -145,6 +146,9 @@ def plan_gate_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
     else:
         state["query_plan"] = None
         state["is_multi_query"] = False
+
+    semantic_plan = build_semantic_plan(user_query)
+    state["semantic_plan"] = semantic_plan.model_dump(exclude_none=True)
 
     logger.info("Plan gate classified query", extra={
         "plan_type": plan_type,

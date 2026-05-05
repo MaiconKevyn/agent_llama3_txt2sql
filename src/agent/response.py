@@ -135,11 +135,16 @@ def _generate_formatted_response(
         4. Formate números adequadamente (1.234 não 1234)
         5. NÃO adicione explicações extras, disclaimers ou ofertas de ajuda
         6. NÃO mencione SQL, tabelas ou detalhes técnicos
+        7. Preserve identificadores exatamente como aparecem no resultado (ex.: CNES 2772299);
+           não troque códigos por rótulos inventados como "Hospital 1"
+        8. Se o resultado estiver truncado, resuma apenas os valores visíveis e não invente totalizações
+        9. Para listas longas, mostre no máximo 10 itens e mantenha a ordenação do resultado
 
         EXEMPLOS:
         Pergunta: "Quantos pacientes existem?" → "Existem 24.485 pacientes cadastrados."
         Pergunta: "Qual cidade com mais mortes de homens?" → "A cidade onde morreram mais homens foi Ijuí, com 212 mortes."
         Pergunta: "Quantas mulheres?" → "Existem 15.234 pacientes do sexo feminino."
+        Pergunta: "Quais hospitais têm mais internações?" e resultado [(2772299, 109261)] → "O CNES 2772299 tem 109.261 internações."
 
         Resposta concisa:"""
 

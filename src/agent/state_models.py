@@ -166,6 +166,7 @@ class MessagesStateTXT2SQL(TypedDict):
     failure_taxonomy: List[str]
     final_result_rows: Optional[List]
     ablation_flags: Dict[str, bool]
+    semantic_plan: Optional[Dict[str, Any]]
 
 
 class TX:
