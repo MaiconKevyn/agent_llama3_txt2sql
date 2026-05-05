@@ -1,9 +1,11 @@
 import pytest
 
 pytest.importorskip("langchain_core")
+pytest.importorskip("langchain_community")
 
 from evaluation.table_selection.benchmark import score_table_selection
 from src.agent import table_selection as ts
+from src.application.config.simple_config import OrchestratorConfig
 from src.application.prompts.table_selection.catalog import (
     get_available_description_variants,
     get_available_prompt_variants,
@@ -180,3 +182,18 @@ def test_table_selection_strategy_resolves_named_preset_and_allows_overrides():
     assert overridden["mode"] == "llm_only"
     assert overridden["description_variant"] == "role_guardrails"
     assert overridden["prompt_variant"] == "selection_protocol"
+
+
+def test_orchestrator_config_defaults_do_not_mask_table_selection_preset():
+    cfg = OrchestratorConfig()
+    strategy = resolve_table_selection_strategy(
+        preset_name=cfg.table_selection_preset,
+        mode=cfg.table_selection_mode,
+        description_variant=cfg.table_selection_description_variant,
+        prompt_variant=cfg.table_selection_prompt_variant,
+    )
+
+    assert strategy["preset_name"] == "llm_best"
+    assert strategy["mode"] == "llm_only"
+    assert strategy["description_variant"] == "role_guardrails"
+    assert strategy["prompt_variant"] == "decision_checklist"

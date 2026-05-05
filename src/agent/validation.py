@@ -6,6 +6,7 @@ import time
 from .llm_manager import get_llm_manager
 from .state_models import MessagesStateTXT2SQL, ExecutionPhase, ToolCallResult
 from .state_helpers import add_ai_message, add_tool_call_result, update_phase, add_error
+from ..semantic.validators import validate_sql_against_semantic_plan
 from ..utils.logging_config import get_nodes_logger
 
 logger = get_nodes_logger()
@@ -194,6 +195,15 @@ def validate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 validation_passed = False
                 validation_message = sem_message
                 logger.warning("Semantic rule rejected query: %s", sem_message[:120])
+
+        if validation_passed and generated_sql:
+            plan_passed, plan_message = validate_sql_against_semantic_plan(
+                state.get("semantic_plan"), generated_sql
+            )
+            if not plan_passed:
+                validation_passed = False
+                validation_message = plan_message
+                logger.warning("Semantic plan rejected query: %s", (plan_message or "")[:120])
 
         # Update state
         if validation_passed:

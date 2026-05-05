@@ -139,9 +139,6 @@ def debug_query_execution(orchestrator, user_query: str):
             session_id=session_id,
             streaming=True,
             config=config,
-            run_name=f"debug_query_{session_id}",
-            tags=["debug", "cli_agent"],
-            metadata={"debug_mode": True, "script": "src/interfaces/cli/agent.py"}
         )
         
         # Process streaming results
@@ -170,7 +167,7 @@ def debug_query_execution(orchestrator, user_query: str):
                     print(f" Classification: {route_str}")
                     print(f" Confidence: {confidence}")
                     if route:
-                        print(f"   Next: {'SQL Pipeline' if route_str == 'DATABASE' else 'Direct Response'}")
+                        print(f"   Next: {'SQL Pipeline' if route_str.lower() == 'database' else 'Direct Response'}")
                         if classification:
                             print(f"   Reasoning: {classification.reasoning}")
                             print(f"   Requires Tools: {classification.requires_tools}")
@@ -210,8 +207,25 @@ def debug_query_execution(orchestrator, user_query: str):
                     # Show partial schema for debug
                     if schema_context and len(schema_context) > 100:
                         print(f"     Schema preview: {schema_context[:100]}...")
+
+                # 4. Semantic Plan Gate
+                elif node_name == "plan_gate":
+                    plan_type = node_state.get("plan_type", "N/A")
+                    semantic_plan = node_state.get("semantic_plan")
+                    plan_dump = (
+                        semantic_plan.model_dump(exclude_none=True)
+                        if hasattr(semantic_plan, "model_dump")
+                        else semantic_plan
+                    )
+
+                    step_data["data"]["plan_type"] = plan_type
+                    step_data["data"]["semantic_plan"] = plan_dump
+
+                    print(" Semantic Plan:")
+                    print(f"     Plan type: {plan_type}")
+                    print(f"     Contract: {plan_dump}")
                 
-                # 4. SQL Generation Node
+                # 5. SQL Generation Node
                 elif node_name == "generate_sql":
                     sql = node_state.get("generated_sql", "")
                     selected_tables = node_state.get("selected_tables", [])
@@ -533,7 +547,7 @@ def main():
     )
     parser.add_argument(
         "--table-selection-mode",
-        default="full_cascade",
+        default=None,
         choices=[
             "full_cascade",
             "heuristic_only",
@@ -546,13 +560,13 @@ def main():
     )
     parser.add_argument(
         "--table-selection-description-variant",
-        default="current",
+        default=None,
         choices=get_available_description_variants(),
         help="Variante das descrições de tabelas usada no fallback/selector com LLM.",
     )
     parser.add_argument(
         "--table-selection-prompt-variant",
-        default="current",
+        default=None,
         choices=get_available_prompt_variants(),
         help="Variante do prompt usada no selector com LLM.",
     )
@@ -703,9 +717,6 @@ Domínio: Healthcare brasileiro (internações, procedimentos, diagnósticos)
                     user_query=args.query,
                     session_id=session_id,
                     streaming=False,
-                    run_name=f"cli_query_{session_id}",
-                    tags=["production", "cli"],
-                    metadata={"script": "src/interfaces/cli/agent.py", "mode": "single_query"}
                 )
                 
                 if result["success"]:
