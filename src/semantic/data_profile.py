@@ -40,6 +40,24 @@ class TableProfile(BaseModel):
     columns: dict[str, ColumnProfile] = Field(default_factory=dict)
 
 
+class SemanticProfile(BaseModel):
+    """Persisted profile snapshot for semantic planning and validation."""
+
+    generated_at: str | None = None
+    source: str | None = None
+    catalog_version: int | None = None
+    tables: dict[str, TableProfile] = Field(default_factory=dict)
+
+    def add_column(self, profile: ColumnProfile) -> None:
+        table_profile = self.tables.setdefault(
+            profile.table,
+            TableProfile(table=profile.table, row_count=profile.row_count),
+        )
+        if table_profile.row_count is None:
+            table_profile.row_count = profile.row_count
+        table_profile.columns[profile.column] = profile
+
+
 class ProfileQuerySet(BaseModel):
     table: str
     column: str

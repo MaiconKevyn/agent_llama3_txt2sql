@@ -267,6 +267,21 @@ def validate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         if validation_passed:
             state["validated_sql"] = generated_sql
             state["current_error"] = None
+            meta = state.get("response_metadata", {}) or {}
+            repair_history = meta.get("repair_attempts", [])
+            if repair_history:
+                repair_history[-1]["post_repair_validation"] = {
+                    "passed": True,
+                    "message": None,
+                }
+                meta["repair_attempts"] = repair_history
+                semantic_repair = meta.get("semantic_repair", {})
+                if semantic_repair:
+                    semantic_repair["post_repair_category"] = None
+                    semantic_repair["post_repair_message"] = None
+                    semantic_repair["validation_passed_after_repair"] = True
+                    meta["semantic_repair"] = semantic_repair
+                state["response_metadata"] = meta
             ai_response = f"SQL query validated successfully: {generated_sql}"
         else:
             semantic_error = build_semantic_error_record(validation_message)
@@ -285,6 +300,20 @@ def validate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 "severity": semantic_error.severity,
                 "message": semantic_error.message,
             }
+            repair_history = meta.get("repair_attempts", [])
+            if repair_history:
+                repair_history[-1]["post_repair_validation"] = {
+                    "passed": False,
+                    "message": semantic_error.message,
+                    "category": semantic_error.category.value,
+                }
+                meta["repair_attempts"] = repair_history
+                semantic_repair = meta.get("semantic_repair", {})
+                if semantic_repair:
+                    semantic_repair["post_repair_category"] = semantic_error.category.value
+                    semantic_repair["post_repair_message"] = semantic_error.message
+                    semantic_repair["validation_passed_after_repair"] = False
+                    meta["semantic_repair"] = semantic_repair
             state["response_metadata"] = meta
             errs = state.get("validation_errors", []) or []
             errs.append(validation_message)

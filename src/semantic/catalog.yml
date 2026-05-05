@@ -8,94 +8,211 @@ metrics:
   total_internacoes:
     label: Total de internacoes
     grain: internacao
+    metric_type: event_count
     expression_type: count
     expression: COUNT(*)
     denominator_scope: null
+    default_scope: rows_matching_question_filters
     required_filters: []
+    forbidden_filters: []
+    null_policy: []
+    aliases:
+      - quantidade de internacoes
+      - numero de internacoes
+      - total de registros
 
   total_obitos:
     label: Total de obitos
     grain: internacao
+    metric_type: event_count
     expression_type: count
     expression: SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END)
     denominator_scope: null
+    default_scope: rows_matching_non_outcome_filters
     required_filters: []
+    forbidden_filters:
+      - WHERE i."MORTE" = true when metric is used as numerator of a rate
+    null_policy: []
+    aliases:
+      - mortes
+      - obitos
+      - registros com morte
 
   taxa_mortalidade:
     label: Taxa de mortalidade
     grain: internacao
+    metric_type: derived_rate
     expression_type: rate
     numerator: SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END)
     denominator: COUNT(*)
     denominator_scope: all_rows_matching_non_outcome_filters
+    default_scope: same_group_and_non_outcome_filters
     required_filters: []
+    forbidden_filters:
+      - WHERE i."MORTE" = true
+      - filtering denominator by outcome
+    null_policy: []
     rules:
       - rate_denominator_must_preserve_full_scope
+    aliases:
+      - mortalidade
+      - taxa de obito
+      - percentual de obitos
 
   custo_medio_uti:
     label: Custo medio de UTI
     grain: internacao
+    metric_type: event_average
     expression_type: avg
     expression: AVG(i."VAL_UTI")
     denominator_scope: rows_with_uti_cost
+    default_scope: rows_matching_question_filters_with_uti_cost
     required_filters:
       - i."VAL_UTI" > 0
+    forbidden_filters: []
+    null_policy:
+      - ignore_null_numeric_values_in_avg
+    aliases:
+      - valor medio de uti
+      - media de custo de uti
+      - custo medio da uti
 
 dimensions:
   estado_residencia:
     label: Estado de residencia do paciente
     source: municipios.estado
+    grain: internacao
     joins:
+      - internacoes.MUNIC_RES -> municipios.codigo_6d
+    join_path:
       - internacoes.MUNIC_RES -> municipios.codigo_6d
     default_for:
       - por estado
       - estado do paciente
       - residencia
+    aliases:
+      - uf de residencia
+      - estado de residencia
+      - estado do paciente
+    null_policy:
+      - preserve_unknown_residence_when_requested
+
+  estado_hospital:
+    label: Estado onde o hospital esta localizado
+    source: municipios.estado
+    grain: internacao
+    joins:
+      - internacoes.CNES -> hospital.CNES
+      - hospital.MUNIC_MOV -> municipios.codigo_6d
+    join_path:
+      - internacoes.CNES -> hospital.CNES
+      - hospital.MUNIC_MOV -> municipios.codigo_6d
+    default_for:
+      - estado do hospital
+      - hospitais por estado
+      - localizacao do hospital por estado
+    aliases:
+      - uf do hospital
+      - estado do estabelecimento
+      - estado de atendimento
+    null_policy:
+      - preserve_unknown_hospital_location_when_requested
 
   municipio_residencia:
     label: Municipio de residencia do paciente
     source: municipios.nome
+    grain: internacao
     joins:
+      - internacoes.MUNIC_RES -> municipios.codigo_6d
+    join_path:
       - internacoes.MUNIC_RES -> municipios.codigo_6d
     default_for:
       - por municipio
       - municipio do paciente
       - residencia
+    aliases:
+      - cidade de residencia
+      - municipio de residencia
+      - municipio do paciente
+    null_policy:
+      - preserve_unknown_residence_when_requested
 
   municipio_hospital:
     label: Municipio onde o hospital esta localizado
     source: municipios.nome
+    grain: internacao
     joins:
+      - internacoes.CNES -> hospital.CNES
+      - hospital.MUNIC_MOV -> municipios.codigo_6d
+    join_path:
       - internacoes.CNES -> hospital.CNES
       - hospital.MUNIC_MOV -> municipios.codigo_6d
     default_for:
       - municipio do hospital
       - municipios que atendem
       - localizacao do hospital
+    aliases:
+      - localizacao do hospital
+      - cidade do hospital
+      - municipio de atendimento
+    null_policy:
+      - preserve_unknown_hospital_location_when_requested
 
   hospital:
     label: Hospital/estabelecimento
     source: internacoes.CNES
+    grain: internacao
     joins:
       - internacoes.CNES -> hospital.CNES
+    join_path:
+      - internacoes.CNES -> hospital.CNES
+    aliases:
+      - estabelecimento
+      - cnes
+      - hospital
+    null_policy: []
     output_policy: preserve_cnes_identifier
 
   procedimento:
     label: Procedimento realizado
     source: procedimentos.NOME_PROC
+    grain: procedimento_ocorrencia
     joins:
       - internacoes.N_AIH -> atendimentos.N_AIH
       - atendimentos.PROC_REA -> procedimentos.PROC_REA
+    join_path:
+      - internacoes.N_AIH -> atendimentos.N_AIH
+      - atendimentos.PROC_REA -> procedimentos.PROC_REA
+    aliases:
+      - procedimento
+      - procedimento realizado
+      - procedimento sus
+    null_policy: []
 
   sexo:
     label: Sexo do paciente
     source: internacoes.SEXO
+    grain: internacao
     joins: []
+    join_path: []
+    aliases:
+      - sexo
+      - homens
+      - mulheres
+    null_policy:
+      - preserve_unknown_bucket_when_requested
 
   ano_internacao:
     label: Ano da internacao
     source: EXTRACT(YEAR FROM internacoes.DT_INTER)
+    grain: internacao
     joins: []
+    join_path: []
+    aliases:
+      - ano
+      - anual
+      - ano da internacao
+    null_policy: []
 
 macros:
   top_n_per_group:

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 
+from .contract_validator import validate_sql_contract
 from .plan_schema import SemanticPlan
 from .sql_inspector import SQLInspector
 
@@ -60,27 +61,33 @@ def validate_sql_against_semantic_plan(
             )
 
     if answer_shape.requires_group_by:
-        for dim in answer_shape.required_dimensions:
-            if dim in {"faixa_etaria", "mes"}:
-                continue
-            if dim in {
-                "estado",
-                "municipio",
-                "hospital",
-                "especialidade",
-                "diagnostico",
-                "procedimento",
-                "sexo",
-                "ano",
-            }:
-                if not inspector.has_group_by():
-                    return False, (
-                        f"SEMANTIC PLAN ERROR: The plan requires grouping by {dim}, but SQL has no GROUP BY."
-                    )
-                if not _has_group_by_dimension(inspector, dim):
-                    return False, (
-                        f"SEMANTIC PLAN ERROR: The plan requires grouping by {dim}, but SQL GROUP BY does not include that dimension."
-                    )
+        absence_antijoin = (
+            "absence_condition_requires_antijoin_or_aggregate_zero" in plan.constraints
+            and inspector.has_absence_pattern()
+            and not inspector.has_group_by()
+        )
+        if not absence_antijoin:
+            for dim in answer_shape.required_dimensions:
+                if dim in {"faixa_etaria", "mes"}:
+                    continue
+                if dim in {
+                    "estado",
+                    "municipio",
+                    "hospital",
+                    "especialidade",
+                    "diagnostico",
+                    "procedimento",
+                    "sexo",
+                    "ano",
+                }:
+                    if not inspector.has_group_by():
+                        return False, (
+                            f"SEMANTIC PLAN ERROR: The plan requires grouping by {dim}, but SQL has no GROUP BY."
+                        )
+                    if not _has_group_by_dimension(inspector, dim):
+                        return False, (
+                            f"SEMANTIC PLAN ERROR: The plan requires grouping by {dim}, but SQL GROUP BY does not include that dimension."
+                        )
 
     if "rate_denominator_must_preserve_full_scope" in plan.constraints:
         mortality_metric = any(metric.name == "taxa_mortalidade" for metric in plan.metrics)
@@ -119,5 +126,33 @@ def validate_sql_against_semantic_plan(
             return False, "SEMANTIC PLAN ERROR: Time-series plan lacks a temporal output dimension."
         if not inspector.has_group_by():
             return False, "SEMANTIC PLAN ERROR: Time-series SQL must group by a temporal dimension."
+        if _has_unrequested_nonzero_metric_filter(inspector):
+            return False, (
+                "SEMANTIC PLAN ERROR: Time-series SQL filters metric values to non-zero rows, "
+                "but the plan does not request dropping zero-valued periods or groups."
+            )
+
+    contract_result = validate_sql_contract(plan, sql)
+    if not contract_result.passed:
+        return False, contract_result.errors[0]
 
     return True, None
+
+
+def _has_unrequested_nonzero_metric_filter(inspector: SQLInspector) -> bool:
+    predicate_text = " ".join(
+        [
+            inspector.clause_lower("WHERE"),
+            inspector.clause_lower("HAVING"),
+            inspector.clause_lower("QUALIFY"),
+        ]
+    )
+    if not predicate_text:
+        return False
+    return bool(
+        re.search(
+            r"\b(?:[a-z_][\w]*\.)?(?:taxa|taxa_mortalidade|metric_value)\b\s*(?:>|>=)\s*0(?:\.0+)?\b",
+            predicate_text,
+            re.I,
+        )
+    )

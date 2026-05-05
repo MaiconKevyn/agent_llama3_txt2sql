@@ -12,6 +12,7 @@ from ..utils.sql_safety import is_select_only
 from .llm_manager import get_llm_manager
 from .schema_node import _refresh_schema_context, _should_refresh_schema
 from .schema_utils import _check_columns_against_schema
+from .semantic_repair import build_semantic_repair_context
 from .state_helpers import (
     add_ai_message,
     add_error,
@@ -28,6 +29,22 @@ from .state_models import (
 )
 
 logger = get_nodes_logger()
+
+
+def _remove_unrequested_nonzero_metric_filter(sql: str) -> str:
+    metric_predicate = (
+        r"(?:[a-z_][\w]*\.)?(?:taxa|taxa_mortalidade|metric_value)\s*(?:>|>=)\s*0(?:\.0+)?"
+    )
+    repaired = re.sub(
+        rf"\s+WHERE\s+{metric_predicate}\s+(ORDER\s+BY|GROUP\s+BY|LIMIT|QUALIFY|HAVING)\b",
+        r" \1",
+        sql,
+        flags=re.I,
+    )
+    repaired = re.sub(rf"\s+WHERE\s+{metric_predicate}\s*;?\s*$", ";", repaired, flags=re.I)
+    repaired = re.sub(rf"\s+AND\s+{metric_predicate}\b", "", repaired, flags=re.I)
+    repaired = re.sub(rf"\s+WHERE\s+{metric_predicate}\s+AND\s+", " WHERE ", repaired, flags=re.I)
+    return re.sub(r"\s+", " ", repaired).strip()
 
 
 def _parse_tool_result_rows(tool_result_str: str) -> list[dict]:
@@ -321,6 +338,51 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             error_message = "Erro desconhecido ao executar a consulta."
 
         user_query = state.get("user_query", "")
+        semantic_repair_context = build_semantic_repair_context(
+            error_message,
+            state.get("semantic_plan"),
+        )
+        if "filters metric values to non-zero rows" in error_message.lower():
+            deterministic_sql = _remove_unrequested_nonzero_metric_filter(previous_sql)
+            if deterministic_sql and deterministic_sql != previous_sql:
+                metadata = state.get("response_metadata", {}) or {}
+                repair_history = metadata.get("repair_attempts", [])
+                repair_history.append(
+                    {
+                        "previous_sql": previous_sql,
+                        "error_message": error_message,
+                        "semantic_category": semantic_repair_context.error.category.value,
+                        "semantic_guidance": semantic_repair_context.guidance.title,
+                        "violated_contract": semantic_repair_context.violated_contract,
+                        "repair_strategy": "remove_unrequested_nonzero_metric_filter",
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                )
+                metadata["repair_attempts"] = repair_history
+                metadata["semantic_repair"] = {
+                    "original_category": semantic_repair_context.error.category.value,
+                    "original_message": semantic_repair_context.error.message,
+                    "guidance_title": semantic_repair_context.guidance.title,
+                    "strategy": "deterministic",
+                }
+                state["response_metadata"] = metadata
+                state["generated_sql"] = deterministic_sql
+                state["current_error"] = None
+                state = add_ai_message(
+                    state,
+                    "Reparo semantico aplicado: removido filtro de metrica nao solicitado.",
+                )
+                execution_time = time.time() - start_time
+                state = update_phase(state, ExecutionPhase.SQL_REPAIR, execution_time)
+                logger.info(
+                    "Deterministic semantic SQL repair completed",
+                    extra={
+                        "strategy": "remove_unrequested_nonzero_metric_filter",
+                        "previous_sql": previous_sql[:200],
+                        "repaired_sql": deterministic_sql[:200],
+                    },
+                )
+                return state
 
         if _should_refresh_schema(error_message):
             refreshed = _refresh_schema_context(state, error_message, llm_manager)
@@ -362,6 +424,7 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             if cands:
                 suggestion_lines.append(f"{key} → candidatos: {', '.join(cands)}")
         suggestions_text = "\n".join(suggestion_lines) if suggestion_lines else "(sem sugestões)"
+        semantic_directive_text = semantic_repair_context.prompt_block
 
         system_prompt = (
             "Você é um especialista em PostgreSQL responsável por corrigir consultas SQL para o banco SUS. "
@@ -380,6 +443,7 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             f"Tabelas selecionadas: {', '.join(selected_tables) if selected_tables else 'N/D'}\n\n"
             f"Lista branca de colunas por alias/tabela:\n{whitelist_text}\n\n"
             f"Sugestões de substituição de colunas ausentes:\n{suggestions_text}\n\n"
+            f"{semantic_directive_text}\n\n"
             f"Schema disponível:\n{schema_context}\n\n"
             "Reescreva a consulta corrigindo o problema identificado, usando SOMENTE colunas da lista branca e as sugestões quando necessário."
         )
@@ -430,10 +494,20 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             {
                 "previous_sql": previous_sql,
                 "error_message": error_message,
+                "semantic_category": semantic_repair_context.error.category.value,
+                "semantic_guidance": semantic_repair_context.guidance.title,
+                "violated_contract": semantic_repair_context.violated_contract,
+                "repair_strategy": "llm_guided",
                 "timestamp": datetime.now().isoformat(),
             }
         )
         metadata["repair_attempts"] = repair_history
+        metadata["semantic_repair"] = {
+            "original_category": semantic_repair_context.error.category.value,
+            "original_message": semantic_repair_context.error.message,
+            "guidance_title": semantic_repair_context.guidance.title,
+            "strategy": "llm_guided",
+        }
         state["response_metadata"] = metadata
 
         state["generated_sql"] = repaired_sql

@@ -23,19 +23,28 @@ class CatalogMetric(BaseModel):
     label: str
     grain: str
     expression_type: str
+    metric_type: str = "event"
     expression: str | None = None
     numerator: str | None = None
     denominator: str | None = None
     denominator_scope: str | None = None
+    default_scope: str | None = None
     required_filters: list[str] = Field(default_factory=list)
+    forbidden_filters: list[str] = Field(default_factory=list)
+    null_policy: list[str] = Field(default_factory=list)
     rules: list[str] = Field(default_factory=list)
+    aliases: list[str] = Field(default_factory=list)
 
 
 class CatalogDimension(BaseModel):
     label: str
     source: str
+    grain: str | None = None
     joins: list[str] = Field(default_factory=list)
+    join_path: list[str] = Field(default_factory=list)
     default_for: list[str] = Field(default_factory=list)
+    aliases: list[str] = Field(default_factory=list)
+    null_policy: list[str] = Field(default_factory=list)
     output_policy: str | None = None
 
 

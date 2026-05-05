@@ -13,6 +13,7 @@ class SemanticErrorCategory(StrEnum):
     ABSENCE_CONDITION = "absence_condition"
     UNKNOWN_BUCKET = "unknown_bucket"
     GROUPING_DIMENSION = "grouping_dimension"
+    JOIN_PATH = "join_path"
     TEMPORAL_GRAIN = "temporal_grain"
     SQL_VALIDITY = "sql_validity"
     UNKNOWN = "unknown"
@@ -39,6 +40,7 @@ _CATEGORY_MARKERS: list[tuple[SemanticErrorCategory, tuple[str, ...]]] = [
         ("unknown/no-information", "coalesce", "unmatched rows"),
     ),
     (SemanticErrorCategory.GROUPING_DIMENSION, ("grouping by", "group by does not include")),
+    (SemanticErrorCategory.JOIN_PATH, ("join path", "catalog edge", "missing join")),
     (SemanticErrorCategory.TEMPORAL_GRAIN, ("time-series", "temporal dimension")),
     (SemanticErrorCategory.SQL_VALIDITY, ("syntax", "invalid sql", "sql execution blocked")),
 ]

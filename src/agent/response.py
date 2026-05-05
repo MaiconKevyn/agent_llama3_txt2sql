@@ -1,12 +1,12 @@
 """Response generation node and formatting helpers."""
 
 import time
-from typing import Any, Dict, List
+from typing import Any
 
-from .llm_manager import get_llm_manager
-from .state_models import MessagesStateTXT2SQL, QueryRoute, ExecutionPhase
-from .state_helpers import add_ai_message, update_phase, add_error, clean_conversation_messages
 from ..utils.logging_config import get_nodes_logger
+from .llm_manager import get_llm_manager
+from .state_helpers import add_ai_message, add_error, clean_conversation_messages, update_phase
+from .state_models import ExecutionPhase, MessagesStateTXT2SQL, QueryRoute
 
 logger = get_nodes_logger()
 
@@ -64,7 +64,9 @@ def generate_response_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
 
     except Exception as e:
         error_message = f"Response generation failed: {str(e)}"
-        state = add_error(state, error_message, "response_generation_error", ExecutionPhase.RESPONSE_FORMATTING)
+        state = add_error(
+            state, error_message, "response_generation_error", ExecutionPhase.RESPONSE_FORMATTING
+        )
 
         state["final_response"] = f"Erro interno: {error_message}"
         state["success"] = False
@@ -80,7 +82,7 @@ def _generate_formatted_response(
     llm_manager,
     user_query: str,
     sql_query: str,
-    results: List[Dict[str, Any]],
+    results: list[dict[str, Any]],
     row_count: int,
 ) -> str:
     """
@@ -93,7 +95,7 @@ def _generate_formatted_response(
         if row_count == 0:
             return "Nenhum resultado encontrado para sua consulta."
 
-        MAX_RESULTS_TO_SHOW = 10
+        MAX_RESULTS_TO_SHOW = 50
         MAX_RESULT_STRING_LENGTH = 1000
         MAX_TOTAL_RESULTS_LENGTH = 5000
 
@@ -102,30 +104,47 @@ def _generate_formatted_response(
             result_value = results[0].get("result", "")
             result_str = str(result_value)
             if len(result_str) > MAX_RESULT_STRING_LENGTH:
-                results_text = result_str[:MAX_RESULT_STRING_LENGTH] + f"... (resultado truncado, {len(result_str)} caracteres total)"
+                results_text = (
+                    result_str[:MAX_RESULT_STRING_LENGTH]
+                    + f"... (resultado truncado, {len(result_str)} caracteres total)"
+                )
             else:
                 results_text = result_str
         else:
             results_to_show = min(len(results), MAX_RESULTS_TO_SHOW)
+            is_partial_result = row_count > results_to_show
             for i, result in enumerate(results[:results_to_show], 1):
-                result_value = result.get('result', '')
+                result_value = result.get("result", "")
                 result_str = str(result_value)
                 if len(result_str) > MAX_RESULT_STRING_LENGTH:
                     result_str = result_str[:MAX_RESULT_STRING_LENGTH] + "..."
                 line = f"{i}. {result_str}\n"
                 if len(results_text) + len(line) > MAX_TOTAL_RESULTS_LENGTH:
-                    results_text += "... (saída truncada para evitar resposta excessivamente longa)\n"
+                    results_text += (
+                        "... (saída truncada para evitar resposta excessivamente longa)\n"
+                    )
                     break
                 results_text += line
-            if row_count > results_to_show:
-                results_text += f"... (mostrando {results_to_show} de {row_count} resultados)"
+            if is_partial_result:
+                results_text += (
+                    f"... (AMOSTRA PARCIAL: mostrando {results_to_show} de {row_count} resultados; "
+                    "nao apresente como lista completa)"
+                )
+        result_scope_note = (
+            f"Resultado parcial: foram enviados {min(row_count, MAX_RESULTS_TO_SHOW)} de {row_count} registros."
+            if row_count > MAX_RESULTS_TO_SHOW
+            else f"Resultado completo: foram enviados todos os {row_count} registros."
+        )
 
         if len(results_text) > MAX_TOTAL_RESULTS_LENGTH:
-            results_text = results_text[:MAX_TOTAL_RESULTS_LENGTH] + "... (resposta truncada por segurança)"
+            results_text = (
+                results_text[:MAX_TOTAL_RESULTS_LENGTH] + "... (resposta truncada por segurança)"
+            )
 
         formatting_prompt = f"""Transforme o resultado técnico em uma resposta natural e concisa em português.
 
         Pergunta: "{user_query}"
+        Escopo do resultado: {result_scope_note}
         Resultado: {results_text}
 
         REGRAS IMPORTANTES:
@@ -137,8 +156,9 @@ def _generate_formatted_response(
         6. NÃO mencione SQL, tabelas ou detalhes técnicos
         7. Preserve identificadores exatamente como aparecem no resultado (ex.: CNES 2772299);
            não troque códigos por rótulos inventados como "Hospital 1"
-        8. Se o resultado estiver truncado, resuma apenas os valores visíveis e não invente totalizações
-        9. Para listas longas, mostre no máximo 10 itens e mantenha a ordenação do resultado
+        8. Se o resultado estiver truncado, diga explicitamente que é uma amostra parcial e não invente totalizações
+        9. Para listas completas pequenas, preserve todos os grupos presentes no resultado
+        10. Se o escopo disser "Resultado completo", NÃO diga que é amostra parcial
 
         EXEMPLOS:
         Pergunta: "Quantos pacientes existem?" → "Existem 24.485 pacientes cadastrados."
@@ -159,7 +179,10 @@ def _generate_formatted_response(
 
             MAX_FINAL_RESPONSE_LENGTH = 2000
             if len(formatted_response) > MAX_FINAL_RESPONSE_LENGTH:
-                formatted_response = formatted_response[:MAX_FINAL_RESPONSE_LENGTH] + "... (resposta limitada por segurança)"
+                formatted_response = (
+                    formatted_response[:MAX_FINAL_RESPONSE_LENGTH]
+                    + "... (resposta limitada por segurança)"
+                )
 
             if len(formatted_response) < 10 or "erro" in formatted_response.lower():
                 return _generate_fallback_response(user_query, results_text, row_count)
@@ -170,7 +193,9 @@ def _generate_formatted_response(
 
     except Exception as e:
         logger.error("Response formatting failed", extra={"error": str(e)})
-        return _generate_fallback_response(user_query, results_text if 'results_text' in dir() else str(results), row_count)
+        return _generate_fallback_response(
+            user_query, results_text if "results_text" in dir() else str(results), row_count
+        )
 
 
 def _generate_fallback_response(user_query: str, results_text: str, row_count: int) -> str:
@@ -186,6 +211,7 @@ def _generate_fallback_response(user_query: str, results_text: str, row_count: i
         if results_text.strip().startswith("[('") and results_text.strip().endswith("')]"):
             try:
                 import ast
+
                 parsed = ast.literal_eval(results_text.strip())
                 if isinstance(parsed, list) and len(parsed) > 0 and isinstance(parsed[0], tuple):
                     if len(parsed[0]) == 2:

@@ -139,7 +139,7 @@ class SQLInspector:
         )
         has_aggregate_zero = bool(
             re.search(
-                r"\bsum\s*\(\s*case\s+when[\s\S]*\)\s*(?:=|<=)\s*0\b",
+                r"\b(?:sum|count)\s*\(\s*case\s+when[\s\S]*?\)\s*(?:=|<=)\s*0\b",
                 self.clause_lower("HAVING") or self.text_lower,
                 re.I,
             )

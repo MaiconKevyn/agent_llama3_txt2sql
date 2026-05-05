@@ -16,6 +16,7 @@ from .plan_schema import (
     SemanticMetric,
     SemanticPlan,
 )
+from .profile_store import SemanticProfileStore
 
 _UF_RE = re.compile(
     r"\b(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)\b",
@@ -67,7 +68,7 @@ def _infer_dimensions(query_lower: str) -> list[SemanticDimension]:
             "cid.CD_DESCRICAO",
             ["diagnóstico", "diagnostico", "cid", "doença", "doenca"],
         ),
-        ("procedimento", "procedimentos.NOME_PROC", ["procedimento"]),
+        ("procedimento", "procedimentos.NOME_PROC", ["procedimento", "procedimentos"]),
         ("sexo", "internacoes.SEXO", ["sexo", "homens", "mulheres", "masculino", "feminino"]),
         ("raca_cor", "internacoes.RACA_COR", ["raça", "raca", "cor"]),
         ("instrucao", "internacoes.INSTRU", ["instrução", "instrucao", "escolaridade"]),
@@ -163,7 +164,10 @@ def _infer_filters(query: str, query_lower: str) -> list[SemanticFilter]:
     return filters
 
 
-def build_semantic_plan(user_query: str) -> SemanticPlan:
+def build_semantic_plan(
+    user_query: str,
+    profile_store: SemanticProfileStore | None = None,
+) -> SemanticPlan:
     """Build a generic semantic contract for a user question."""
     query = user_query or ""
     q = query.lower()
@@ -319,7 +323,7 @@ def build_semantic_plan(user_query: str) -> SemanticPlan:
     elif "procedimento" in q:
         base_grain = "procedimento_ocorrencia"
 
-    return SemanticPlan(
+    plan = SemanticPlan(
         intent=intent,
         base_grain=base_grain,
         metrics=metrics,
@@ -329,3 +333,105 @@ def build_semantic_plan(user_query: str) -> SemanticPlan:
         constraints=constraints,
         null_policy=null_policy,
     )
+    if profile_store is not None:
+        _enrich_plan_with_profile(plan, query, profile_store)
+    return plan
+
+
+_DIMENSION_PROFILE_COLUMNS = {
+    "estado": ("municipios", "estado"),
+    "hospital": ("internacoes", "CNES"),
+    "procedimento": ("atendimentos", "PROC_REA"),
+    "sexo": ("internacoes", "SEXO"),
+    "raca_cor": ("internacoes", "RACA_COR"),
+    "ano": ("internacoes", "DT_INTER"),
+    "mes": ("internacoes", "DT_INTER"),
+}
+
+
+def _enrich_plan_with_profile(
+    plan: SemanticPlan,
+    user_query: str,
+    profile_store: SemanticProfileStore,
+) -> None:
+    q = user_query.lower()
+
+    if any(dim.name in {"ano", "mes"} for dim in plan.dimensions) or _contains_any(
+        q, ["ano", "anual", "mensal", "mês", "mes", "evolução", "evolucao"]
+    ):
+        temporal_range = profile_store.temporal_range("internacoes", "DT_INTER")
+        if temporal_range:
+            min_value, max_value = temporal_range
+            plan.ambiguities.append(
+                f"profile_temporal_coverage: internacoes.DT_INTER ranges from {min_value} to {max_value}"
+            )
+            _append_temporal_filter_warnings(plan, min_value, max_value)
+
+    for dim in plan.dimensions:
+        column_ref = _DIMENSION_PROFILE_COLUMNS.get(dim.name)
+        if not column_ref:
+            continue
+        table, column = column_ref
+        column_profile = profile_store.get_column(table, column)
+        if column_profile is None:
+            continue
+        if column_profile.kind == "identifier" or profile_store.high_cardinality(table, column):
+            plan.ambiguities.append(
+                f"profile_cardinality: {dim.name} uses high-cardinality identifier {table}.{column}"
+            )
+        null_rate = profile_store.null_rate(table, column)
+        if null_rate and null_rate > 0:
+            plan.ambiguities.append(
+                f"profile_nulls: {table}.{column} has null_rate={null_rate:.3f}"
+            )
+
+    if plan.answer_shape.include_unknown_bucket and not plan.null_policy:
+        plan.null_policy.append("include_unknown_bucket_with_left_join_or_coalesce")
+
+    if "sexo" in plan.answer_shape.required_dimensions:
+        _add_domain_hint(plan, profile_store, "internacoes", "SEXO")
+
+
+def _append_temporal_filter_warnings(
+    plan: SemanticPlan,
+    min_value: str | None,
+    max_value: str | None,
+) -> None:
+    if not min_value or not max_value:
+        return
+    min_year = _extract_year(min_value)
+    max_year = _extract_year(max_value)
+    if min_year is None or max_year is None:
+        return
+    for semantic_filter in plan.filters:
+        if semantic_filter.field != "ano":
+            continue
+        for value in semantic_filter.values:
+            try:
+                year = int(value)
+            except ValueError:
+                continue
+            if year < min_year or year > max_year:
+                plan.ambiguities.append(
+                    f"profile_temporal_filter_out_of_range: ano={year} outside {min_year}-{max_year}"
+                )
+
+
+def _add_domain_hint(
+    plan: SemanticPlan,
+    profile_store: SemanticProfileStore,
+    table: str,
+    column: str,
+) -> None:
+    profile = profile_store.get_column(table, column)
+    if profile is None or not profile.top_values:
+        return
+    values = [str(item.get("value")) for item in profile.top_values[:5]]
+    plan.ambiguities.append(f"profile_domain_values: {table}.{column} common_values={values}")
+
+
+def _extract_year(value: str) -> int | None:
+    match = re.search(r"\b(?:19|20)\d{2}\b", value)
+    if not match:
+        return None
+    return int(match.group(0))

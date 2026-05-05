@@ -59,3 +59,19 @@ def test_parse_tool_result_rows_keeps_multiline_fallback():
     rows = _parse_tool_result_rows("first row\nsecond row")
 
     assert rows == [{"result": "first row"}, {"result": "second row"}]
+
+
+def test_remove_unrequested_nonzero_metric_filter_preserves_order_by():
+    from src.agent.execution import _remove_unrequested_nonzero_metric_filter
+
+    sql = (
+        "SELECT tm.estado, tm.ano, tm.taxa "
+        "FROM taxa_mortalidade tm "
+        "WHERE tm.taxa > 0 "
+        "ORDER BY tm.estado, tm.ano;"
+    )
+
+    repaired = _remove_unrequested_nonzero_metric_filter(sql)
+
+    assert "taxa > 0" not in repaired
+    assert "ORDER BY tm.estado, tm.ano" in repaired

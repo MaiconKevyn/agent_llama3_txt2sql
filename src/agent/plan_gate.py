@@ -4,6 +4,7 @@ import re
 import time
 
 from ..semantic.planner import build_semantic_plan
+from ..semantic.profile_store import load_profile_store
 from ..utils.logging_config import get_nodes_logger
 from .state_helpers import add_ai_message, update_phase
 from .state_models import ExecutionPhase, MessagesStateTXT2SQL, QueryPlan, SubQuery
@@ -158,7 +159,7 @@ def plan_gate_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         state["query_plan"] = None
         state["is_multi_query"] = False
 
-    semantic_plan = build_semantic_plan(user_query)
+    semantic_plan = build_semantic_plan(user_query, profile_store=load_profile_store())
     semantic_plan_dump = semantic_plan.model_dump(exclude_none=True)
     state["semantic_plan"] = semantic_plan_dump
     meta = state.get("response_metadata", {}) or {}

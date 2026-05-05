@@ -290,6 +290,27 @@ def test_semantic_validator_does_not_treat_conditional_numerator_as_filtered_den
     assert passed, message
 
 
+def test_semantic_validator_rejects_unrequested_nonzero_filter_in_time_series():
+    plan = build_semantic_plan("Qual a evolução anual da taxa de mortalidade por estado?")
+    sql = """
+        WITH taxa_mortalidade AS (
+            SELECT mu.estado, EXTRACT(YEAR FROM i."DT_INTER") AS ano,
+                   SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa
+            FROM internacoes i
+            JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d
+            GROUP BY mu.estado, ano
+        )
+        SELECT estado, ano, taxa
+        FROM taxa_mortalidade tm
+        WHERE tm.taxa > 0
+    """
+
+    passed, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert not passed
+    assert "non-zero" in (message or "")
+
+
 def test_semantic_validator_rejects_group_by_missing_required_dimension():
     plan = build_semantic_plan("Qual a evolução anual da taxa de mortalidade por estado?")
     sql = """
@@ -353,6 +374,41 @@ def test_semantic_validator_accepts_aggregate_zero_absence_condition():
            AND SUM(CASE WHEN "VAL_UTI" > 0 THEN 1 ELSE 0 END) = 0
         ORDER BY total DESC
         LIMIT 10
+    """
+
+    passed, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert passed, message
+
+
+def test_semantic_validator_accepts_count_case_zero_absence_condition_by_dimension():
+    plan = build_semantic_plan("Quais hospitais nunca registraram cobrança de UTI por estado?")
+    sql = """
+        SELECT mu.estado, h."CNES"
+        FROM hospital h
+        JOIN internacoes i ON h."CNES" = i."CNES"
+        JOIN municipios mu ON h."MUNIC_MOV" = mu.codigo_6d
+        GROUP BY mu.estado, h."CNES"
+        HAVING COUNT(CASE WHEN i."VAL_UTI" > 0 THEN 1 END) = 0
+        ORDER BY mu.estado, h."CNES"
+    """
+
+    passed, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert passed, message
+
+
+def test_semantic_validator_accepts_absence_not_exists_without_group_by():
+    plan = build_semantic_plan("Quais hospitais nunca registraram cobrança de UTI?")
+    sql = """
+        SELECT h."CNES"
+        FROM hospital h
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM internacoes i
+            WHERE i."CNES" = h."CNES"
+              AND i."VAL_UTI" > 0
+        )
     """
 
     passed, message = validate_sql_against_semantic_plan(plan, sql)
