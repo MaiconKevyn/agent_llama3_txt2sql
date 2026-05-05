@@ -1,21 +1,52 @@
 """SQL execution and repair nodes."""
 
+import ast
 import re
 import time
 from datetime import datetime
-from typing import List
 
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 
-from .llm_manager import get_llm_manager
-from .schema_utils import _check_columns_against_schema
-from .schema_node import _should_refresh_schema, _refresh_schema_context
-from .state_models import MessagesStateTXT2SQL, ExecutionPhase, ToolCallResult, SQLExecutionResult, TX
-from .state_helpers import add_ai_message, add_tool_message, add_tool_call_result, update_phase, add_error
 from ..utils.logging_config import get_nodes_logger
 from ..utils.sql_safety import is_select_only
+from .llm_manager import get_llm_manager
+from .schema_node import _refresh_schema_context, _should_refresh_schema
+from .schema_utils import _check_columns_against_schema
+from .state_helpers import (
+    add_ai_message,
+    add_error,
+    add_tool_call_result,
+    add_tool_message,
+    update_phase,
+)
+from .state_models import (
+    TX,
+    ExecutionPhase,
+    MessagesStateTXT2SQL,
+    SQLExecutionResult,
+    ToolCallResult,
+)
 
 logger = get_nodes_logger()
+
+
+def _parse_tool_result_rows(tool_result_str: str) -> list[dict]:
+    """Parse LangChain SQL tool output into row-level result records."""
+    text = tool_result_str.strip()
+    if not text:
+        return []
+
+    try:
+        parsed = ast.literal_eval(text)
+    except (SyntaxError, ValueError):
+        parsed = None
+
+    if isinstance(parsed, list):
+        return [{"result": row} for row in parsed]
+    if isinstance(parsed, tuple):
+        return [{"result": parsed}]
+
+    return [{"result": line.strip()} for line in text.split("\n") if line.strip()]
 
 
 def execute_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
@@ -37,8 +68,13 @@ def execute_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         ok, reason = is_select_only(validated_sql)
         if not ok:
             error_message = f"SQL execution blocked: {reason}"
-            state = add_error(state, error_message, "sql_execution_error", ExecutionPhase.SQL_EXECUTION,
-                              taxonomy=TX.WRONG_FILTER)
+            state = add_error(
+                state,
+                error_message,
+                "sql_execution_error",
+                ExecutionPhase.SQL_EXECUTION,
+                taxonomy=TX.WRONG_FILTER,
+            )
             state["retry_count"] = state.get("retry_count", 0) + 1
             state["execution_retry_count"] = state.get("execution_retry_count", 0) + 1
             execution_time = time.time() - start_time
@@ -50,11 +86,14 @@ def execute_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         # Low-confidence SQL warning (observability only — does NOT block execution)
         confidence = state.get("response_metadata", {}).get("sql_generation_confidence")
         if confidence is not None and confidence < 0.5:
-            logger.warning("Low-confidence SQL about to execute", extra={
-                "confidence": confidence,
-                "sql": (state.get("validated_sql") or state.get("generated_sql", ""))[:200],
-                "user_query": state.get("user_query", "")[:100],
-            })
+            logger.warning(
+                "Low-confidence SQL about to execute",
+                extra={
+                    "confidence": confidence,
+                    "sql": (state.get("validated_sql") or state.get("generated_sql", ""))[:200],
+                    "user_query": state.get("user_query", "")[:100],
+                },
+            )
 
         # Column existence check (skip if DB-validated)
         if state.get("validated_sql") is None:
@@ -69,13 +108,20 @@ def execute_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                     cand = sugg.get(key, [])
                     base_info = f" na tabela {base}" if base else ""
                     if cand:
-                        parts.append(f"Coluna ausente {key}{base_info}; candidatos: {', '.join(cand)}")
+                        parts.append(
+                            f"Coluna ausente {key}{base_info}; candidatos: {', '.join(cand)}"
+                        )
                     else:
                         parts.append(f"Coluna/alias ausente {key}{base_info}")
                 msg = "; ".join(parts)
                 error_message = f"SQL validation failed (schema check): {msg}"
-                state = add_error(state, error_message, "sql_validation_error", ExecutionPhase.SQL_VALIDATION,
-                                  taxonomy=TX.SCHEMA_ERROR)
+                state = add_error(
+                    state,
+                    error_message,
+                    "sql_validation_error",
+                    ExecutionPhase.SQL_VALIDATION,
+                    taxonomy=TX.SCHEMA_ERROR,
+                )
                 state["retry_count"] = state.get("retry_count", 0) + 1
                 state["validation_retry_count"] = state.get("validation_retry_count", 0) + 1
                 meta = state.get("response_metadata", {}) or {}
@@ -128,10 +174,8 @@ def execute_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 error_message = tool_result_str
                 logger.error("SQL tool returned error", extra={"error_in_result": tool_result_str})
             else:
-                for line in tool_result_str.split('\n'):
-                    if line.strip():
-                        results.append({"result": line.strip()})
-                        row_count += 1
+                results = _parse_tool_result_rows(tool_result_str)
+                row_count = len(results)
 
         sql_execution_result = SQLExecutionResult(
             success=execution_success,
@@ -146,7 +190,9 @@ def execute_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         state["sql_execution_result"] = sql_execution_result
 
         if not execution_success:
-            state = add_error(state, error_message, "sql_execution_error", ExecutionPhase.SQL_EXECUTION)
+            state = add_error(
+                state, error_message, "sql_execution_error", ExecutionPhase.SQL_EXECUTION
+            )
             state["retry_count"] = state.get("retry_count", 0) + 1
             state["execution_retry_count"] = state.get("execution_retry_count", 0) + 1
 
@@ -162,10 +208,13 @@ def execute_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             ai_response = f"SQL execution failed: {error_message}"
             state = add_ai_message(state, ai_response)
 
-            logger.error("SQL execution failed with tool error", extra={
-                "sql": validated_sql[:200],
-                "error": error_message,
-            })
+            logger.error(
+                "SQL execution failed with tool error",
+                extra={
+                    "sql": validated_sql[:200],
+                    "error": error_message,
+                },
+            )
 
             execution_time = time.time() - start_time
             state = update_phase(state, ExecutionPhase.SQL_EXECUTION, execution_time)
@@ -191,28 +240,34 @@ def execute_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         state["retry_count"] = 0
 
         execution_time = time.time() - start_time
-        logger.info("Query executed successfully", extra={
-            "sql": validated_sql[:200],
-            "row_count": row_count,
-            "execution_time": execution_time,
-        })
+        logger.info(
+            "Query executed successfully",
+            extra={
+                "sql": validated_sql[:200],
+                "row_count": row_count,
+                "execution_time": execution_time,
+            },
+        )
         state = update_phase(state, ExecutionPhase.SQL_EXECUTION, execution_time)
 
         return state
 
     except Exception as e:
         error_message = f"SQL execution failed: {str(e)}"
-        logger.error("SQL execution failed", extra={
-            "sql": validated_sql if 'validated_sql' in dir() else "",
-            "error": str(e),
-        })
+        logger.error(
+            "SQL execution failed",
+            extra={
+                "sql": validated_sql if "validated_sql" in dir() else "",
+                "error": str(e),
+            },
+        )
         state = add_error(state, error_message, "sql_execution_error", ExecutionPhase.SQL_EXECUTION)
         state["retry_count"] = state.get("retry_count", 0) + 1
         state["execution_retry_count"] = state.get("execution_retry_count", 0) + 1
 
         sql_execution_result = SQLExecutionResult(
             success=False,
-            sql_query=validated_sql if 'validated_sql' in dir() else "",
+            sql_query=validated_sql if "validated_sql" in dir() else "",
             results=[],
             row_count=0,
             execution_time=time.time() - start_time,
@@ -250,10 +305,13 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             raise ValueError("No SQL available for repair")
 
         error_message = state.get("current_error") or ""
-        logger.info("Repair node triggered", extra={
-            "previous_sql": previous_sql[:200],
-            "current_error": error_message,
-        })
+        logger.info(
+            "Repair node triggered",
+            extra={
+                "previous_sql": previous_sql[:200],
+                "current_error": error_message,
+            },
+        )
         for msg in reversed(state.get("messages", [])):
             if isinstance(msg, ToolMessage) and getattr(msg, "name", "") == "sql_db_query":
                 error_message = msg.content
@@ -311,7 +369,7 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             "corrija os JOINs usando chaves que existam em ambas as tabelas. "
             "CRÍTICO — ASPAS DUPLAS: em PostgreSQL TODOS os nomes de colunas DEVEM usar aspas duplas. "
             "Se o erro mencionar 'coluna X não existe', quase sempre é falta de aspas duplas — adicione-as: "
-            "c.cd_descricao → c.\"CD_DESCRICAO\"; c.cid → c.\"CID\"; alias.coluna → alias.\"COLUNA\". "
+            'c.cd_descricao → c."CD_DESCRICAO"; c.cid → c."CID"; alias.coluna → alias."COLUNA". '
             "Responda apenas com a SQL válida, sem comentários, markdown ou texto adicional."
         )
 
@@ -326,10 +384,12 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             "Reescreva a consulta corrigindo o problema identificado, usando SOMENTE colunas da lista branca e as sugestões quando necessário."
         )
 
-        response = llm_manager.invoke_chat([
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=human_prompt),
-        ])
+        response = llm_manager.invoke_chat(
+            [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=human_prompt),
+            ]
+        )
 
         repaired_sql = response.content.strip() if hasattr(response, "content") else str(response)
         repaired_sql = llm_manager._clean_sql_query(repaired_sql)
@@ -349,8 +409,9 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         prevs.append(previous_sql)
         if len(prevs) >= 2 and all(_norm(p) == _norm(repaired_sql) for p in prevs):
             diag = "Reparo produziu a mesma SQL das últimas tentativas. Use apenas colunas válidas conforme lista branca e sugestões."
-            state = add_error(state, diag, "sql_repair_error", ExecutionPhase.SQL_REPAIR,
-                              taxonomy=TX.REPAIR_LOOP)
+            state = add_error(
+                state, diag, "sql_repair_error", ExecutionPhase.SQL_REPAIR, taxonomy=TX.REPAIR_LOOP
+            )
             state["retry_count"] = state.get("max_retries", 3)
             meta["repair_early_exit"] = {
                 "reason": diag,
@@ -365,11 +426,13 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         # Record repair attempt
         metadata = state.get("response_metadata", {}) or {}
         repair_history = metadata.get("repair_attempts", [])
-        repair_history.append({
-            "previous_sql": previous_sql,
-            "error_message": error_message,
-            "timestamp": datetime.now().isoformat(),
-        })
+        repair_history.append(
+            {
+                "previous_sql": previous_sql,
+                "error_message": error_message,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
         metadata["repair_attempts"] = repair_history
         state["response_metadata"] = metadata
 
@@ -382,33 +445,44 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         state = update_phase(state, ExecutionPhase.SQL_REPAIR, execution_time)
 
         attempt_number = len(repair_history)
-        logger.info("SQL repair completed", extra={
-            "status": "success",
-            "attempt_number": attempt_number,
-            "user_query": user_query[:100],
-            "error_message": error_message[:200],
-            "previous_sql": previous_sql[:200],
-            "repaired_sql": repaired_sql[:200],
-            "selected_tables": selected_tables,
-            "execution_time": execution_time,
-        })
+        logger.info(
+            "SQL repair completed",
+            extra={
+                "status": "success",
+                "attempt_number": attempt_number,
+                "user_query": user_query[:100],
+                "error_message": error_message[:200],
+                "previous_sql": previous_sql[:200],
+                "repaired_sql": repaired_sql[:200],
+                "selected_tables": selected_tables,
+                "execution_time": execution_time,
+            },
+        )
 
         return state
 
     except Exception as e:
         error_message = f"SQL repair failed: {str(e)}"
-        state = add_error(state, error_message, "sql_repair_error", ExecutionPhase.SQL_GENERATION,
-                          taxonomy=TX.REPAIR_LOOP)
+        state = add_error(
+            state,
+            error_message,
+            "sql_repair_error",
+            ExecutionPhase.SQL_GENERATION,
+            taxonomy=TX.REPAIR_LOOP,
+        )
 
         execution_time = time.time() - start_time
         state = update_phase(state, ExecutionPhase.SQL_REPAIR, execution_time)
 
-        logger.warning("SQL repair failed", extra={
-            "status": "failure",
-            "error": str(e),
-            "user_query": state.get("user_query", "")[:100],
-            "previous_sql": state.get("generated_sql", "")[:200],
-            "execution_time": execution_time,
-        })
+        logger.warning(
+            "SQL repair failed",
+            extra={
+                "status": "failure",
+                "error": str(e),
+                "user_query": state.get("user_query", "")[:100],
+                "previous_sql": state.get("generated_sql", "")[:200],
+                "execution_time": execution_time,
+            },
+        )
 
         return state

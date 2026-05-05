@@ -1,0 +1,164 @@
+version: 1
+description: >
+  Generic semantic layer for the SUS Text-to-SQL agent. Entries describe
+  reusable metrics, dimensions, macros, and rules without referencing benchmark
+  questions or expected answers.
+
+metrics:
+  total_internacoes:
+    label: Total de internacoes
+    grain: internacao
+    expression_type: count
+    expression: COUNT(*)
+    denominator_scope: null
+    required_filters: []
+
+  total_obitos:
+    label: Total de obitos
+    grain: internacao
+    expression_type: count
+    expression: SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END)
+    denominator_scope: null
+    required_filters: []
+
+  taxa_mortalidade:
+    label: Taxa de mortalidade
+    grain: internacao
+    expression_type: rate
+    numerator: SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END)
+    denominator: COUNT(*)
+    denominator_scope: all_rows_matching_non_outcome_filters
+    required_filters: []
+    rules:
+      - rate_denominator_must_preserve_full_scope
+
+  custo_medio_uti:
+    label: Custo medio de UTI
+    grain: internacao
+    expression_type: avg
+    expression: AVG(i."VAL_UTI")
+    denominator_scope: rows_with_uti_cost
+    required_filters:
+      - i."VAL_UTI" > 0
+
+dimensions:
+  estado_residencia:
+    label: Estado de residencia do paciente
+    source: municipios.estado
+    joins:
+      - internacoes.MUNIC_RES -> municipios.codigo_6d
+    default_for:
+      - por estado
+      - estado do paciente
+      - residencia
+
+  municipio_residencia:
+    label: Municipio de residencia do paciente
+    source: municipios.nome
+    joins:
+      - internacoes.MUNIC_RES -> municipios.codigo_6d
+    default_for:
+      - por municipio
+      - municipio do paciente
+      - residencia
+
+  municipio_hospital:
+    label: Municipio onde o hospital esta localizado
+    source: municipios.nome
+    joins:
+      - internacoes.CNES -> hospital.CNES
+      - hospital.MUNIC_MOV -> municipios.codigo_6d
+    default_for:
+      - municipio do hospital
+      - municipios que atendem
+      - localizacao do hospital
+
+  hospital:
+    label: Hospital/estabelecimento
+    source: internacoes.CNES
+    joins:
+      - internacoes.CNES -> hospital.CNES
+    output_policy: preserve_cnes_identifier
+
+  procedimento:
+    label: Procedimento realizado
+    source: procedimentos.NOME_PROC
+    joins:
+      - internacoes.N_AIH -> atendimentos.N_AIH
+      - atendimentos.PROC_REA -> procedimentos.PROC_REA
+
+  sexo:
+    label: Sexo do paciente
+    source: internacoes.SEXO
+    joins: []
+
+  ano_internacao:
+    label: Ano da internacao
+    source: EXTRACT(YEAR FROM internacoes.DT_INTER)
+    joins: []
+
+macros:
+  top_n_per_group:
+    description: Ranking por grupo usando janela particionada.
+    required_sql_features:
+      - window_function
+      - partition_by
+      - rank_filter
+    template: |
+      SELECT *
+      FROM (
+          SELECT
+              {group_columns},
+              {entity_column},
+              {metric_expression} AS metric_value,
+              ROW_NUMBER() OVER (
+                  PARTITION BY {group_columns}
+                  ORDER BY {metric_expression} DESC
+              ) AS semantic_rank
+          FROM {from_clause}
+          {where_clause}
+          GROUP BY {group_columns}, {entity_column}
+      ) ranked
+      WHERE semantic_rank <= {top_n}
+
+  mortality_rate:
+    description: Taxa de mortalidade preservando denominador completo.
+    required_sql_features:
+      - conditional_aggregation
+      - full_denominator_scope
+    template: |
+      SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*)
+
+  absence_by_entity:
+    description: Entidades sem ocorrencia de uma condicao.
+    required_sql_features:
+      - not_exists_or_aggregate_zero
+    template: |
+      GROUP BY {entity_column}
+      HAVING COUNT(*) > {minimum_count}
+         AND SUM(CASE WHEN {absence_condition} THEN 1 ELSE 0 END) = 0
+
+rules:
+  rate_denominator_must_preserve_full_scope:
+    severity: error
+    description: >
+      Taxas devem manter o denominador com todas as linhas do escopo. O desfecho
+      deve aparecer em agregacao condicional, nao no WHERE.
+
+  top_n_per_group_requires_window_partition:
+    severity: error
+    description: >
+      Top-N por grupo deve usar ROW_NUMBER, RANK ou DENSE_RANK com PARTITION BY
+      na dimensao do grupo.
+
+  absence_condition_requires_antijoin_or_aggregate_zero:
+    severity: error
+    description: >
+      Perguntas com nunca, sem registro ou nenhuma ocorrencia devem usar anti-join
+      ou agregacao com soma zero.
+
+  include_unknown_bucket_with_left_join_or_coalesce:
+    severity: error
+    description: >
+      Perguntas que pedem sem informacao devem preservar linhas sem correspondencia
+      usando LEFT JOIN e bucket explicito via COALESCE ou CASE.

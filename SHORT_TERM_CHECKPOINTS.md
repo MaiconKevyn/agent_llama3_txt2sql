@@ -271,16 +271,42 @@ Resultado observado:
 
 ## Pendencias tecnicas para proximo ciclo
 
-Status: pendente
+Status: concluido
 
-- [ ] Trocar validadores textuais por validacao baseada em AST SQL.
-- [ ] Criar camada semantica declarativa versionada com metricas, dimensoes, regras e macros SQL.
-- [ ] Adicionar data profiling para cardinalidade, nulos, dominios de codigos e ranges temporais.
-- [ ] Criar avaliacao por taxonomia de erro semantico, nao apenas execution accuracy.
-- [ ] Adicionar semantic equivalence checks para SQLs diferentes com mesma intencao.
-- [ ] Criar conjunto de testes adversariais fora do ground truth atual.
-- [ ] Persistir telemetria do `semantic_plan`, SQL validada, constraints aplicadas e motivos de rejeicao.
-- [ ] Melhorar parsing de resultados do executor para evitar `row_count = 1` quando o retorno vem como string contendo varias tuplas.
+- [x] Trocar validadores textuais por validacao baseada em AST SQL.
+  - Implementado um `SQLInspector` com `sqlparse` opcional e fallback textual.
+  - O validador agora inspeciona clausulas `WHERE`, `GROUP BY`, `HAVING` e `QUALIFY` em vez de depender apenas de regex sobre a SQL inteira.
+  - Ganhos imediatos: aceita aliases de ranking diferentes de `rn`, evita falso positivo de denominador quando `MORTE=true` aparece apenas em agregacao condicional, rejeita `GROUP BY` sem dimensao exigida e aceita bucket desconhecido com `CASE`.
+- [x] Criar camada semantica declarativa versionada com metricas, dimensoes, regras e macros SQL.
+  - Criado `src/semantic/catalog.yml` com versao, metricas, dimensoes, macros e regras reutilizaveis.
+  - Criado loader tipado em `src/semantic/catalog.py`.
+  - A geracao SQL passa a receber contexto do catalogo relacionado ao `SemanticPlan`, incluindo regras como preservacao de denominador e top-N por grupo.
+  - O catalogo e generico e nao contem IDs de benchmark nem respostas esperadas.
+- [x] Adicionar data profiling para cardinalidade, nulos, dominios de codigos e ranges temporais.
+  - Criado `src/semantic/data_profile.py` com modelos tipados de perfil de coluna/tabela.
+  - Criado gerador de queries de profiling para `row_count`, `null_count`, `distinct_count`, `MIN/MAX` e top valores categoricos.
+  - Adicionado conjunto padrao de specs para colunas semanticas centrais: `MORTE`, `VAL_UTI`, `DT_INTER`, `SEXO`, `RACA_COR`, `CNES`, `MUNIC_RES`, `PROC_REA`, `estado` e `MUNIC_MOV`.
+  - A execucao dos perfis contra o banco ainda deve ser ligada a um runner persistente no proximo ciclo.
+- [x] Criar avaliacao por taxonomia de erro semantico, nao apenas execution accuracy.
+  - Criado `src/semantic/error_taxonomy.py` com categorias estaveis: `top_n_scope`, `rate_denominator`, `absence_condition`, `unknown_bucket`, `grouping_dimension`, `temporal_grain`, `sql_validity` e `unknown`.
+  - O node de validacao agora grava `failure_taxonomy` quando uma SQL falha na validacao.
+  - Isso permite decompor falhas hard por classe semantica, em vez de olhar apenas EX agregado.
+- [x] Adicionar semantic equivalence checks para SQLs diferentes com mesma intencao.
+  - Criado `src/semantic/equivalence.py` com assinatura estrutural de SQL.
+  - A assinatura captura tabelas, clausulas canonicas, window partition, numerador condicional de mortalidade, padrao de ausencia e bucket desconhecido.
+  - Isso permite comparar SQLs com aliases/formatacao diferentes sem exigir match textual exato.
+- [x] Criar conjunto de testes adversariais fora do ground truth atual.
+  - Criado `tests/test_semantic_adversarial.py`.
+  - Casos cobertos: top-N por grupo com `LIMIT` global, taxa com filtro de desfecho no `WHERE`, anti-condicao como filtro negativo simples e bucket desconhecido com `CASE + LEFT JOIN`.
+  - Os testes nao usam IDs de ground truth nem valores esperados do benchmark.
+- [x] Persistir telemetria do `semantic_plan`, SQL validada, constraints aplicadas e motivos de rejeicao.
+  - `plan_gate` grava `semantic_plan`, `semantic_constraints` e `semantic_null_policy` em `response_metadata`.
+  - `validation` grava `semantic_validation` com status, constraints, null policy e mensagem.
+  - Falhas de validacao recebem `semantic_error` em metadata e categoria em `failure_taxonomy`.
+- [x] Melhorar parsing de resultados do executor para evitar `row_count = 1` quando o retorno vem como string contendo varias tuplas.
+  - Criado parser em `src/agent/execution.py` usando `ast.literal_eval` para listas/tuplas retornadas como string pelo SQL tool.
+  - O executor agora calcula `row_count` pela quantidade real de tuplas quando o retorno vem como `[(...), (...)]`.
+  - Mantido fallback para saidas multiline textuais.
 
 ## Estado atual
 
