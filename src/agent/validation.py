@@ -3,11 +3,12 @@
 import re
 import time
 
-from .llm_manager import get_llm_manager
-from .state_models import MessagesStateTXT2SQL, ExecutionPhase, ToolCallResult
-from .state_helpers import add_ai_message, add_tool_call_result, update_phase, add_error
+from ..semantic.error_taxonomy import build_semantic_error_record
 from ..semantic.validators import validate_sql_against_semantic_plan
 from ..utils.logging_config import get_nodes_logger
+from .llm_manager import get_llm_manager
+from .state_helpers import add_ai_message, add_error, add_tool_call_result, update_phase
+from .state_models import ExecutionPhase, MessagesStateTXT2SQL, ToolCallResult
 
 logger = get_nodes_logger()
 
@@ -25,10 +26,10 @@ def check_semantic_rules(user_query: str, generated_sql: str):
         return True, None
 
     sql_lower = generated_sql.lower()
-    user_query_lower = (user_query or '').lower()
+    user_query_lower = (user_query or "").lower()
 
     # Semantic: socioeconomico requires metrica filter
-    if 'socioeconomico' in sql_lower and 'metrica' not in sql_lower:
+    if "socioeconomico" in sql_lower and "metrica" not in sql_lower:
         return False, (
             "SEMANTIC ERROR: Query uses 'socioeconomico' table but is missing a "
             "WHERE metrica = '...' filter. The socioeconomico table is long-format "
@@ -46,46 +47,66 @@ def check_semantic_rules(user_query: str, generated_sql: str):
         )
 
     # Semantic: tempo table cartesian explosion
-    if re.search(r'\bjoin\s+tempo\b', generated_sql, re.I):
-        has_proper_equijoin = bool(re.search(
-            r'on\s+\w+\."DT_INTER"\s*=\s*\w+\."data"',
-            generated_sql, re.I,
-        ))
+    if re.search(r"\bjoin\s+tempo\b", generated_sql, re.I):
+        has_proper_equijoin = bool(
+            re.search(
+                r'on\s+\w+\."DT_INTER"\s*=\s*\w+\."data"',
+                generated_sql,
+                re.I,
+            )
+        )
         if not has_proper_equijoin:
             return False, (
                 "TEMPO TABLE ERROR: Non-equijoin on tempo table detected "
-                "(e.g., ON EXTRACT(YEAR FROM \"DT_INTER\") = t.ano or ON t.mes BETWEEN ...). "
+                '(e.g., ON EXTRACT(YEAR FROM "DT_INTER") = t.ano or ON t.mes BETWEEN ...). '
                 "This creates a CARTESIAN PRODUCT multiplying rows by hundreds or thousands! "
                 "SOLUTION: Remove the JOIN tempo entirely. Use EXTRACT() directly without any JOIN: "
-                "✅ WHERE EXTRACT(YEAR FROM \"DT_INTER\") = 2015 "
-                "✅ WHERE EXTRACT(MONTH FROM \"DT_INTER\") IN (6, 7, 8) "
-                "✅ WHERE EXTRACT(MONTH FROM \"DT_INTER\") BETWEEN 6 AND 8"
+                '✅ WHERE EXTRACT(YEAR FROM "DT_INTER") = 2015 '
+                '✅ WHERE EXTRACT(MONTH FROM "DT_INTER") IN (6, 7, 8) '
+                '✅ WHERE EXTRACT(MONTH FROM "DT_INTER") BETWEEN 6 AND 8'
             )
 
     # Semantic: spurious VAL_UTI on obstetric query
     espec_2 = bool(re.search(r'"ESPEC"\s*=\s*2\b', generated_sql))
     val_uti = bool(re.search(r'"VAL_UTI"\s*>\s*0', generated_sql))
     if espec_2 and val_uti:
-        uti_mentioned = any(k in user_query_lower for k in [
-            'uti', 'unidade de terapia', 'custo de uti', 'valor de uti', 'custo uti', 'icú'
-        ])
+        uti_mentioned = any(
+            k in user_query_lower
+            for k in [
+                "uti",
+                "unidade de terapia",
+                "custo de uti",
+                "valor de uti",
+                "custo uti",
+                "icú",
+            ]
+        )
         if not uti_mentioned:
             return False, (
                 "ERROR: Added 'VAL_UTI > 0' to an obstetric query when UTI was not mentioned. "
-                "Obstetric = WHERE \"ESPEC\" = 2 ONLY (no UTI filter needed here). "
-                "REMOVE the AND \"VAL_UTI\" > 0 condition from this query. "
+                'Obstetric = WHERE "ESPEC" = 2 ONLY (no UTI filter needed here). '
+                'REMOVE the AND "VAL_UTI" > 0 condition from this query. '
                 "Only add VAL_UTI > 0 when the question explicitly asks about UTI/ICU."
             )
 
     # Semantic: "quantos" in question but SQL returns a list of rows, not a COUNT
-    count_question = any(t in user_query_lower for t in [
-        'quantos ', 'quantas ', 'número de ', 'total de hospitais',
-        'total de municípios', 'total de procedimentos', 'quantidade de '
-    ])
+    count_question = any(
+        t in user_query_lower
+        for t in [
+            "quantos ",
+            "quantas ",
+            "número de ",
+            "total de hospitais",
+            "total de municípios",
+            "total de procedimentos",
+            "quantidade de ",
+        ]
+    )
     if count_question:
-        outer_select = re.sub(r'\bWITH\b.*?\)\s*SELECT', 'SELECT', generated_sql,
-                              flags=re.I | re.DOTALL)
-        has_count_outer = bool(re.search(r'\bCOUNT\s*\(', outer_select, re.I))
+        outer_select = re.sub(
+            r"\bWITH\b.*?\)\s*SELECT", "SELECT", generated_sql, flags=re.I | re.DOTALL
+        )
+        has_count_outer = bool(re.search(r"\bCOUNT\s*\(", outer_select, re.I))
         if not has_count_outer:
             return False, (
                 "SEMANTIC ERROR: A pergunta pede QUANTIDADE ('quantos'/'quantas') mas a query "
@@ -95,7 +116,7 @@ def check_semantic_rules(user_query: str, generated_sql: str):
             )
 
     # Semantic: NOT IN with non-trivial subquery — suggest NOT EXISTS
-    if re.search(r'\bNOT\s+IN\s*\(\s*SELECT\b', generated_sql, re.I):
+    if re.search(r"\bNOT\s+IN\s*\(\s*SELECT\b", generated_sql, re.I):
         return False, (
             "ANTI-JOIN WARNING: NOT IN with a subquery is unsafe when the subquery may return NULL "
             "values (all rows are filtered out). "
@@ -105,17 +126,37 @@ def check_semantic_rules(user_query: str, generated_sql: str):
         )
 
     # Semantic: "por estado" / "por especialidade" ranking without PARTITION BY
-    per_group_question = any(t in user_query_lower for t in [
-        'por estado', 'em cada estado', 'de cada estado',
-        'por especialidade', 'em cada especialidade',
-        'por hospital', 'em cada hospital',
-    ])
-    has_partition = bool(re.search(r'\bPARTITION\s+BY\b', generated_sql, re.I))
-    has_limit = bool(re.search(r'\bLIMIT\s+\d+\b', generated_sql, re.I))
-    top_n_question = any(t in user_query_lower for t in [
-        'maior', 'menor', 'principal', 'principais', 'top', 'mais alto', 'mais baixo',
-        'mais comum', 'mais frequente', '3 hospital', '3 municip', '3 diagnós'
-    ])
+    per_group_question = any(
+        t in user_query_lower
+        for t in [
+            "por estado",
+            "em cada estado",
+            "de cada estado",
+            "por especialidade",
+            "em cada especialidade",
+            "por hospital",
+            "em cada hospital",
+        ]
+    )
+    has_partition = bool(re.search(r"\bPARTITION\s+BY\b", generated_sql, re.I))
+    has_limit = bool(re.search(r"\bLIMIT\s+\d+\b", generated_sql, re.I))
+    top_n_question = any(
+        t in user_query_lower
+        for t in [
+            "maior",
+            "menor",
+            "principal",
+            "principais",
+            "top",
+            "mais alto",
+            "mais baixo",
+            "mais comum",
+            "mais frequente",
+            "3 hospital",
+            "3 municip",
+            "3 diagnós",
+        ]
+    )
     if per_group_question and top_n_question and has_limit and not has_partition:
         return False, (
             "SEMANTIC ERROR: A pergunta pede top-N POR GRUPO (por estado/especialidade/hospital) "
@@ -128,9 +169,18 @@ def check_semantic_rules(user_query: str, generated_sql: str):
     # Semantic: spurious MORTE = false
     has_morte_false = bool(re.search(r'"MORTE"\s*=\s*(false|FALSE)\b', generated_sql))
     if has_morte_false:
-        discharge_asked = any(k in user_query_lower for k in [
-            'alta', 'sobrevivente', 'não morreram', 'sem óbito', 'recuper', 'vivos', 'saíram vivos'
-        ])
+        discharge_asked = any(
+            k in user_query_lower
+            for k in [
+                "alta",
+                "sobrevivente",
+                "não morreram",
+                "sem óbito",
+                "recuper",
+                "vivos",
+                "saíram vivos",
+            ]
+        )
         if not discharge_asked:
             return False, (
                 "ERROR: Added 'MORTE = false' filter but the question does not ask specifically "
@@ -189,7 +239,7 @@ def validate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         # Semantic rules (pure logic — no LLM/DB required)
         if validation_passed and generated_sql:
             sem_passed, sem_message = check_semantic_rules(
-                state.get('user_query') or '', generated_sql
+                state.get("user_query") or "", generated_sql
             )
             if not sem_passed:
                 validation_passed = False
@@ -200,6 +250,14 @@ def validate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             plan_passed, plan_message = validate_sql_against_semantic_plan(
                 state.get("semantic_plan"), generated_sql
             )
+            meta = state.get("response_metadata", {}) or {}
+            meta["semantic_validation"] = {
+                "passed": plan_passed,
+                "constraints": (state.get("semantic_plan") or {}).get("constraints", []),
+                "null_policy": (state.get("semantic_plan") or {}).get("null_policy", []),
+                "message": plan_message,
+            }
+            state["response_metadata"] = meta
             if not plan_passed:
                 validation_passed = False
                 validation_message = plan_message
@@ -209,11 +267,54 @@ def validate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         if validation_passed:
             state["validated_sql"] = generated_sql
             state["current_error"] = None
+            meta = state.get("response_metadata", {}) or {}
+            repair_history = meta.get("repair_attempts", [])
+            if repair_history:
+                repair_history[-1]["post_repair_validation"] = {
+                    "passed": True,
+                    "message": None,
+                }
+                meta["repair_attempts"] = repair_history
+                semantic_repair = meta.get("semantic_repair", {})
+                if semantic_repair:
+                    semantic_repair["post_repair_category"] = None
+                    semantic_repair["post_repair_message"] = None
+                    semantic_repair["validation_passed_after_repair"] = True
+                    meta["semantic_repair"] = semantic_repair
+                state["response_metadata"] = meta
             ai_response = f"SQL query validated successfully: {generated_sql}"
         else:
-            state = add_error(state, validation_message, "sql_validation_error", ExecutionPhase.SQL_VALIDATION)
+            semantic_error = build_semantic_error_record(validation_message)
+            state = add_error(
+                state,
+                validation_message,
+                "sql_validation_error",
+                ExecutionPhase.SQL_VALIDATION,
+                taxonomy=semantic_error.category.value,
+            )
             state["retry_count"] = state.get("retry_count", 0) + 1
             state["validation_retry_count"] = state.get("validation_retry_count", 0) + 1
+            meta = state.get("response_metadata", {}) or {}
+            meta["semantic_error"] = {
+                "category": semantic_error.category.value,
+                "severity": semantic_error.severity,
+                "message": semantic_error.message,
+            }
+            repair_history = meta.get("repair_attempts", [])
+            if repair_history:
+                repair_history[-1]["post_repair_validation"] = {
+                    "passed": False,
+                    "message": semantic_error.message,
+                    "category": semantic_error.category.value,
+                }
+                meta["repair_attempts"] = repair_history
+                semantic_repair = meta.get("semantic_repair", {})
+                if semantic_repair:
+                    semantic_repair["post_repair_category"] = semantic_error.category.value
+                    semantic_repair["post_repair_message"] = semantic_error.message
+                    semantic_repair["validation_passed_after_repair"] = False
+                    meta["semantic_repair"] = semantic_repair
+            state["response_metadata"] = meta
             errs = state.get("validation_errors", []) or []
             errs.append(validation_message)
             state["validation_errors"] = errs
@@ -226,7 +327,8 @@ def validate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 tool_name="sql_db_query_checker",
                 tool_input={"query": generated_sql},
                 tool_output=checker_msg or validation_message,
-                success=(checker_msg is None) or (
+                success=(checker_msg is None)
+                or (
                     "error" not in (checker_msg or "").lower()
                     and "invalid" not in (checker_msg or "").lower()
                 ),
@@ -241,7 +343,9 @@ def validate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
 
     except Exception as e:
         error_message = f"SQL validation failed: {str(e)}"
-        state = add_error(state, error_message, "sql_validation_error", ExecutionPhase.SQL_VALIDATION)
+        state = add_error(
+            state, error_message, "sql_validation_error", ExecutionPhase.SQL_VALIDATION
+        )
         state["retry_count"] = state.get("retry_count", 0) + 1
         state["validation_retry_count"] = state.get("validation_retry_count", 0) + 1
 

@@ -8,24 +8,29 @@ from __future__ import annotations
 
 import re
 
+from .contract_validator import validate_sql_contract
 from .plan_schema import SemanticPlan
+from .sql_inspector import SQLInspector
 
 
-def _has_group_by_dimension(sql_lower: str, dimension: str) -> bool:
+def _has_group_by_dimension(inspector: SQLInspector, dimension: str) -> bool:
+    group_by_lower = inspector.clause_lower("GROUP BY")
     patterns = {
-        "estado": [r"group\s+by[\s\S]*estado", r"group\s+by[\s\S]*mu\.estado", r"group\s+by[\s\S]*m\.estado"],
-        "municipio": [r"group\s+by[\s\S]*(?:nome|municipio|município)"],
-        "hospital": [r"group\s+by[\s\S]*(?:cnes|\"CNES\")".lower()],
-        "especialidade": [r"group\s+by[\s\S]*descri[cç][aã]o", r"group\s+by[\s\S]*espec"],
-        "diagnostico": [r"group\s+by[\s\S]*(?:cd_descricao|\"CD_DESCRICAO\"|diag_princ|cid)".lower()],
-        "procedimento": [r"group\s+by[\s\S]*(?:nome_proc|\"NOME_PROC\"|proc_rea)".lower()],
-        "sexo": [r"group\s+by[\s\S]*sexo"],
-        "ano": [r"group\s+by[\s\S]*(?:extract\s*\(\s*year|ano)"],
+        "estado": [r"\bestado\b", r"\bmu\.estado\b", r"\bm\.estado\b"],
+        "municipio": [r"\b(?:nome|municipio|município)\b"],
+        "hospital": [r"\b(?:cnes|\"cnes\")\b"],
+        "especialidade": [r"\bdescri[cç][aã]o\b", r"\bespec\b"],
+        "diagnostico": [r"\b(?:cd_descricao|\"cd_descricao\"|diag_princ|cid)\b"],
+        "procedimento": [r"\b(?:nome_proc|\"nome_proc\"|proc_rea)\b"],
+        "sexo": [r"\bsexo\b"],
+        "ano": [r"\b(?:extract\s*\(\s*year|ano)\b"],
     }
-    return any(re.search(pattern, sql_lower, re.I) for pattern in patterns.get(dimension, []))
+    return any(re.search(pattern, group_by_lower, re.I) for pattern in patterns.get(dimension, []))
 
 
-def validate_sql_against_semantic_plan(plan: SemanticPlan | dict | None, sql: str) -> tuple[bool, str | None]:
+def validate_sql_against_semantic_plan(
+    plan: SemanticPlan | dict | None, sql: str
+) -> tuple[bool, str | None]:
     """Return whether SQL satisfies the generic semantic plan constraints."""
     if not plan or not sql:
         return True, None
@@ -33,66 +38,84 @@ def validate_sql_against_semantic_plan(plan: SemanticPlan | dict | None, sql: st
     if isinstance(plan, dict):
         plan = SemanticPlan.model_validate(plan)
 
-    sql_lower = sql.lower()
+    inspector = SQLInspector.from_sql(sql)
+    sql_lower = inspector.text_lower
     answer_shape = plan.answer_shape
 
     if answer_shape.top_n_scope == "per_group":
-        if not re.search(r"\brow_number\s*\(\s*\)\s+over\s*\(", sql_lower, re.I):
+        if not re.search(
+            r"\b(?:row_number|rank|dense_rank)\s*\(\s*\)\s+over\s*\(", sql_lower, re.I
+        ):
             return False, (
                 "SEMANTIC PLAN ERROR: The plan requires top-N per group, but SQL does not use "
-                "ROW_NUMBER() OVER (...). Use a window function partitioned by the group dimension."
+                "ROW_NUMBER()/RANK() OVER (...). Use a window function partitioned by the group dimension."
             )
-        if not re.search(r"\bpartition\s+by\b", sql_lower, re.I):
+        if not inspector.has_window_partition():
             return False, (
                 "SEMANTIC PLAN ERROR: The plan requires top-N per group, but SQL has no PARTITION BY."
             )
-        if answer_shape.top_n is not None:
-            rn_pattern = rf"\brn\s*(?:<=|<)\s*{answer_shape.top_n + 1 if answer_shape.top_n else answer_shape.top_n}\b|\brn\s*<=\s*{answer_shape.top_n}\b|\brn\s*=\s*1\b"
-            if not re.search(rn_pattern, sql_lower, re.I):
-                return False, (
-                    "SEMANTIC PLAN ERROR: SQL uses a per-group window but does not constrain the "
-                    f"rank to the requested top_n={answer_shape.top_n}."
-                )
+        if not inspector.constrains_rank(answer_shape.top_n):
+            return False, (
+                "SEMANTIC PLAN ERROR: SQL uses a per-group window but does not constrain the "
+                f"rank to the requested top_n={answer_shape.top_n}."
+            )
 
     if answer_shape.requires_group_by:
-        for dim in answer_shape.required_dimensions:
-            if dim in {"faixa_etaria", "mes"}:
-                continue
-            if dim in {"estado", "municipio", "hospital", "especialidade", "diagnostico", "procedimento", "sexo", "ano"}:
-                if "group by" not in sql_lower:
-                    return False, (
-                        f"SEMANTIC PLAN ERROR: The plan requires grouping by {dim}, but SQL has no GROUP BY."
-                    )
+        absence_antijoin = (
+            "absence_condition_requires_antijoin_or_aggregate_zero" in plan.constraints
+            and inspector.has_absence_pattern()
+            and not inspector.has_group_by()
+        )
+        if not absence_antijoin:
+            for dim in answer_shape.required_dimensions:
+                if dim in {"faixa_etaria", "mes"}:
+                    continue
+                if dim in {
+                    "estado",
+                    "municipio",
+                    "hospital",
+                    "especialidade",
+                    "diagnostico",
+                    "procedimento",
+                    "sexo",
+                    "ano",
+                }:
+                    if not inspector.has_group_by():
+                        return False, (
+                            f"SEMANTIC PLAN ERROR: The plan requires grouping by {dim}, but SQL has no GROUP BY."
+                        )
+                    if not _has_group_by_dimension(inspector, dim):
+                        return False, (
+                            f"SEMANTIC PLAN ERROR: The plan requires grouping by {dim}, but SQL GROUP BY does not include that dimension."
+                        )
 
     if "rate_denominator_must_preserve_full_scope" in plan.constraints:
         mortality_metric = any(metric.name == "taxa_mortalidade" for metric in plan.metrics)
-        if mortality_metric and re.search(r"\bwhere\b[\s\S]*\"?morte\"?\s*=\s*true", sql_lower, re.I):
+        if mortality_metric and inspector.where_filters_outcome("morte", "true"):
             return False, (
                 "SEMANTIC PLAN ERROR: Mortality-rate SQL filters MORTE=true in WHERE, which removes "
                 "non-death rows from the denominator. Use conditional aggregation for the numerator."
             )
-        if mortality_metric and not re.search(r"sum\s*\(\s*case\s+when[\s\S]*morte", sql_lower, re.I):
+        if mortality_metric and not inspector.has_conditional_aggregation_for("morte"):
             return False, (
                 "SEMANTIC PLAN ERROR: Mortality-rate SQL should compute deaths with conditional "
                 "aggregation in the numerator."
             )
 
     if "absence_condition_requires_antijoin_or_aggregate_zero" in plan.constraints:
-        has_antijoin = bool(re.search(r"\bnot\s+exists\b|\bleft\s+join\b[\s\S]*\bis\s+null\b", sql_lower, re.I))
-        has_aggregate_zero = bool(re.search(r"sum\s*\(\s*case\s+when[\s\S]*(?:=\s*0|<=\s*0)", sql_lower, re.I))
-        if not (has_antijoin or has_aggregate_zero):
+        if not inspector.has_absence_pattern():
             return False, (
                 "SEMANTIC PLAN ERROR: The question asks for absence/non-occurrence, but SQL does not "
                 "use NOT EXISTS, LEFT JOIN ... IS NULL, or an aggregate-zero HAVING condition."
             )
 
     if "include_unknown_bucket_with_left_join_or_coalesce" in plan.null_policy:
-        if "coalesce" not in sql_lower:
+        if not inspector.has_unknown_bucket_expression():
             return False, (
                 "SEMANTIC PLAN ERROR: The plan requires an explicit unknown/no-information bucket, "
-                "but SQL does not use COALESCE for null/unmatched labels."
+                "but SQL does not use COALESCE or CASE for null/unmatched labels."
             )
-        if " join " in sql_lower and "left join" not in sql_lower:
+        if not inspector.joins_preserve_unknowns():
             return False, (
                 "SEMANTIC PLAN ERROR: The plan requires preserving unknown/unmatched rows, but SQL "
                 "does not use LEFT JOIN for the lookup."
@@ -101,7 +124,35 @@ def validate_sql_against_semantic_plan(plan: SemanticPlan | dict | None, sql: st
     if answer_shape.row_grain == "time_series":
         if not any(dim in answer_shape.required_dimensions for dim in ["ano", "mes"]):
             return False, "SEMANTIC PLAN ERROR: Time-series plan lacks a temporal output dimension."
-        if "group by" not in sql_lower:
+        if not inspector.has_group_by():
             return False, "SEMANTIC PLAN ERROR: Time-series SQL must group by a temporal dimension."
+        if _has_unrequested_nonzero_metric_filter(inspector):
+            return False, (
+                "SEMANTIC PLAN ERROR: Time-series SQL filters metric values to non-zero rows, "
+                "but the plan does not request dropping zero-valued periods or groups."
+            )
+
+    contract_result = validate_sql_contract(plan, sql)
+    if not contract_result.passed:
+        return False, contract_result.errors[0]
 
     return True, None
+
+
+def _has_unrequested_nonzero_metric_filter(inspector: SQLInspector) -> bool:
+    predicate_text = " ".join(
+        [
+            inspector.clause_lower("WHERE"),
+            inspector.clause_lower("HAVING"),
+            inspector.clause_lower("QUALIFY"),
+        ]
+    )
+    if not predicate_text:
+        return False
+    return bool(
+        re.search(
+            r"\b(?:[a-z_][\w]*\.)?(?:taxa|taxa_mortalidade|metric_value)\b\s*(?:>|>=)\s*0(?:\.0+)?\b",
+            predicate_text,
+            re.I,
+        )
+    )

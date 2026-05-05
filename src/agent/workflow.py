@@ -1,22 +1,22 @@
-from langgraph.graph import StateGraph, START, END
+from langgraph.graph import END, START, StateGraph
 
-from .state_models import MessagesStateTXT2SQL
-from .nodes import (
-    query_classification_node,
-    list_tables_node,
-    get_schema_node,
-    generate_sql_node,
-    reasoning_node,
-    repair_sql_node,
-    validate_sql_node,
-    execute_sql_node,
-    generate_response_node,
-    clarification_node,
-)
-from .query_planner import query_planner_node
-from .plan_gate import plan_gate_node
 from .multi_executor import multi_sql_executor_node
 from .multi_verifier import multi_verifier_node
+from .nodes import (
+    clarification_node,
+    execute_sql_node,
+    generate_response_node,
+    generate_sql_node,
+    get_schema_node,
+    list_tables_node,
+    query_classification_node,
+    reasoning_node,
+    repair_sql_node,
+    semantic_planner_node,
+    validate_sql_node,
+)
+from .plan_gate import plan_gate_node
+from .query_planner import query_planner_node
 from .result_synthesizer import result_synthesizer_node
 from .routing import (
     route_after_classification,
@@ -29,6 +29,7 @@ from .routing import (
     route_after_sql_generation,
     route_after_sql_validation,
 )
+from .state_models import MessagesStateTXT2SQL
 
 
 def create_langgraph_sql_workflow(config=None):
@@ -41,10 +42,11 @@ def create_langgraph_sql_workflow(config=None):
 
     Full pipeline (all flags False):
       START → classify → list_tables → get_schema → plan_gate →
-      [query_planner?] → [reasoning?] → generate_sql →
+      semantic_planner → [query_planner?] → [reasoning?] → generate_sql →
       [validate_sql?] → execute_sql → [repair_sql?] → generate_response → END
     """
     from ..application.config.simple_config import OrchestratorConfig
+
     cfg = config or OrchestratorConfig()
 
     workflow = StateGraph(MessagesStateTXT2SQL)
@@ -54,6 +56,7 @@ def create_langgraph_sql_workflow(config=None):
     workflow.add_node("list_tables", list_tables_node)
     workflow.add_node("get_schema", get_schema_node)
     workflow.add_node("plan_gate", plan_gate_node)
+    workflow.add_node("semantic_planner", semantic_planner_node)
     workflow.add_node("query_planner", query_planner_node)
     workflow.add_node("generate_sql", generate_sql_node)
     workflow.add_node("execute_sql", execute_sql_node)
@@ -93,10 +96,12 @@ def create_langgraph_sql_workflow(config=None):
         {"plan_gate": "plan_gate", "generate_response": "generate_response"},
     )
 
-    # ── plan_gate: bypass reasoning when disabled ─────────────────────────────
+    workflow.add_edge("plan_gate", "semantic_planner")
+
+    # ── semantic_planner: bypass reasoning when disabled ──────────────────────
     _reasoning_target = "generate_sql" if cfg.disable_cot_reasoning else "reasoning"
     workflow.add_conditional_edges(
-        "plan_gate",
+        "semantic_planner",
         route_after_plan_gate,
         {
             "query_planner": "query_planner",
@@ -188,6 +193,7 @@ def create_langgraph_sql_workflow(config=None):
 # WORKFLOW FACTORY FUNCTIONS - Official LangGraph Patterns
 # =============================================================================
 
+
 def create_sql_agent_workflow(checkpointer=None):
     """Create SQL Agent workflow following official LangGraph tutorial"""
     workflow = create_langgraph_sql_workflow()
@@ -212,6 +218,7 @@ def create_testing_sql_agent(checkpointer=None):
 # =============================================================================
 # WORKFLOW EXECUTION HELPERS
 # =============================================================================
+
 
 def _estimate_query_complexity(user_query: str) -> str:
     """
@@ -238,7 +245,7 @@ def _estimate_query_complexity(user_query: str) -> str:
         "evolução",
         "tendência",
         "proporção",
-        "percentual"
+        "percentual",
     ]
 
     # Hard indicators
@@ -249,17 +256,11 @@ def _estimate_query_complexity(user_query: str) -> str:
         "população",
         "taxa",
         "cálculo",
-        "agregação"
+        "agregação",
     ]
 
     # Medium indicators
-    medium_indicators = [
-        "ano",
-        "data",
-        "período",
-        "filtrar",
-        "grupo"
-    ]
+    medium_indicators = ["ano", "data", "período", "filtrar", "grupo"]
 
     # Count indicators
     complex_count = sum(1 for indicator in complex_indicators if indicator in query_lower)
@@ -283,7 +284,7 @@ def execute_sql_workflow(
     session_id: str = None,
     config: dict = None,
     max_retries: int = 3,
-    llm_manager = None,
+    llm_manager=None,
     force_single_query: bool = True,
     ablation_flags: dict = None,
 ) -> dict:
@@ -331,8 +332,8 @@ def execute_sql_workflow(
             recursion_limit_map = {
                 "simple": 50,
                 "medium": 75,
-                "hard": 150,      # Increased from 100
-                "complex": 200    # Increased from 150
+                "hard": 150,  # Increased from 100
+                "complex": 200,  # Increased from 150
             }
             config["recursion_limit"] = recursion_limit_map.get(complexity, 50)
 
@@ -347,6 +348,7 @@ def execute_sql_workflow(
 
         # Execute workflow with cost tracking
         from .cost_tracker import QueryCostTracker
+
         with QueryCostTracker() as cost:
             final_state = workflow.invoke(initial_state, config=config)
 
@@ -355,7 +357,7 @@ def execute_sql_workflow(
         result["cost"] = cost.as_dict()
 
         return result
-        
+
     except Exception as e:
         # Handle workflow execution errors
         return {
@@ -371,31 +373,27 @@ def execute_sql_workflow(
             "metadata": {
                 "langgraph_v3": True,
                 "workflow_error": True,
-                "error_type": "workflow_execution_error"
-            }
+                "error_type": "workflow_execution_error",
+            },
         }
 
 
 def stream_sql_workflow(
-    workflow,
-    user_query: str,
-    session_id: str = None,
-    config: dict = None,
-    llm_manager = None
+    workflow, user_query: str, session_id: str = None, config: dict = None, llm_manager=None
 ):
     """
     Stream SQL workflow execution for real-time updates
-    
+
     Args:
         workflow: Compiled LangGraph workflow
         user_query: User's natural language question
         session_id: Session identifier
         config: Additional configuration
-        
+
     Yields:
         State updates during workflow execution
     """
-    
+
     try:
         # Import here to avoid circular dependencies
         from .state_helpers import create_initial_messages_state
@@ -403,12 +401,9 @@ def stream_sql_workflow(
         # Create initial state
         if session_id is None:
             session_id = f"session_{hash(user_query) % 10000}"
-        
-        initial_state = create_initial_messages_state(
-            user_query=user_query,
-            session_id=session_id
-        )
-        
+
+        initial_state = create_initial_messages_state(user_query=user_query, session_id=session_id)
+
         config = config or {}
 
         # Inject LLM manager into config if provided
@@ -418,24 +413,20 @@ def stream_sql_workflow(
             config["configurable"]["llm_manager"] = llm_manager
 
         # Stream workflow execution
-        for state_update in workflow.stream(initial_state, config=config):
-            yield state_update
-            
+        yield from workflow.stream(initial_state, config=config)
+
     except Exception as e:
         # Yield error state
-        yield {
-            "error": f"Workflow streaming failed: {str(e)}",
-            "success": False
-        }
+        yield {"error": f"Workflow streaming failed: {str(e)}", "success": False}
 
 
 # Export main factory functions
 __all__ = [
     "create_langgraph_sql_workflow",
-    "create_sql_agent_workflow", 
+    "create_sql_agent_workflow",
     "create_production_sql_agent",
     "create_development_sql_agent",
     "create_testing_sql_agent",
     "execute_sql_workflow",
-    "stream_sql_workflow"
+    "stream_sql_workflow",
 ]

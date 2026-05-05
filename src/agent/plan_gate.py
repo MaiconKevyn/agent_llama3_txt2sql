@@ -2,12 +2,12 @@
 
 import re
 import time
-from typing import Tuple
 
-from .state_models import ExecutionPhase, MessagesStateTXT2SQL, QueryPlan, SubQuery
-from .state_helpers import add_ai_message, update_phase
 from ..semantic.planner import build_semantic_plan
+from ..semantic.profile_store import load_profile_store
 from ..utils.logging_config import get_nodes_logger
+from .state_helpers import add_ai_message, update_phase
+from .state_models import ExecutionPhase, MessagesStateTXT2SQL, QueryPlan, SubQuery
 
 logger = get_nodes_logger()
 
@@ -80,7 +80,7 @@ def _build_single_plan(user_query: str, plan_type: str, reasoning: str) -> Query
     )
 
 
-def classify_plan_type(user_query: str) -> Tuple[str, str]:
+def classify_plan_type(user_query: str) -> tuple[str, str]:
     """Classify the query into a routing bucket using deterministic heuristics."""
     query = (user_query or "").strip()
 
@@ -88,7 +88,10 @@ def classify_plan_type(user_query: str) -> Tuple[str, str]:
         return "single_default", "Query vazia; usar SQL único por segurança."
 
     if _GLOBAL_LOCAL_AVG_PATTERN.search(query):
-        return "global_local_avg", "Comparações contra média global/estadual devem permanecer em uma SQL."
+        return (
+            "global_local_avg",
+            "Comparações contra média global/estadual devem permanecer em uma SQL.",
+        )
 
     if _SET_INTERSECTION_PATTERN.search(query):
         return "set_intersection", "Interseções de rankings exigem semântica relacional única."
@@ -107,16 +110,25 @@ def classify_plan_type(user_query: str) -> Tuple[str, str]:
         r"no\s+estado\s+(?:de\s+|do\s+|da\s+)?[A-Z]{2}\b.*?\bno\s+estado\s+(?:de\s+|do\s+|da\s+)?[A-Z]{2}\b",
     )
     if _two_state_re.search(query) and _RANKING_PATTERN.search(query):
-        return "single_window", "Top-N por estado nomeado deve usar ROW_NUMBER OVER PARTITION BY em SQL única."
+        return (
+            "single_window",
+            "Top-N por estado nomeado deve usar ROW_NUMBER OVER PARTITION BY em SQL única.",
+        )
 
     if _SINGLE_CTE_PATTERN.search(query):
-        return "single_cte", "Comparações temporais e lógica global devem permanecer em uma única SQL."
+        return (
+            "single_cte",
+            "Comparações temporais e lógica global devem permanecer em uma única SQL.",
+        )
 
     if _VERIFICATION_PATTERN.search(query):
         return "verification_side_query", "A pergunta sugere uma checagem auxiliar separada."
 
     if _FANOUT_PATTERN.search(query):
-        return "fanout_concat", "A pergunta pode ser particionada em grupos independentes com merge por concatenação."
+        return (
+            "fanout_concat",
+            "A pergunta pode ser particionada em grupos independentes com merge por concatenação.",
+        )
 
     return "single_default", "Sem padrão de multi-query seguro; usar SQL único."
 
@@ -147,17 +159,26 @@ def plan_gate_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         state["query_plan"] = None
         state["is_multi_query"] = False
 
-    semantic_plan = build_semantic_plan(user_query)
-    state["semantic_plan"] = semantic_plan.model_dump(exclude_none=True)
+    semantic_plan = build_semantic_plan(user_query, profile_store=load_profile_store())
+    semantic_plan_dump = semantic_plan.model_dump(exclude_none=True)
+    state["semantic_plan"] = semantic_plan_dump
+    meta = state.get("response_metadata", {}) or {}
+    meta["semantic_plan"] = semantic_plan_dump
+    meta["semantic_constraints"] = semantic_plan.constraints
+    meta["semantic_null_policy"] = semantic_plan.null_policy
+    state["response_metadata"] = meta
 
-    logger.info("Plan gate classified query", extra={
-        "plan_type": plan_type,
-        "multi_query_allowed": multi_query_allowed,
-    })
+    logger.info(
+        "Plan gate classified query",
+        extra={
+            "plan_type": plan_type,
+            "multi_query_allowed": multi_query_allowed,
+        },
+    )
 
     state = add_ai_message(
         state,
-        f"Plan gate: {plan_type} ({'multi elegível' if multi_query_allowed else 'single obrigatório'}). {reasoning}"
+        f"Plan gate: {plan_type} ({'multi elegível' if multi_query_allowed else 'single obrigatório'}). {reasoning}",
     )
     state = update_phase(state, ExecutionPhase.REASONING, time.time() - start_time)
     return state

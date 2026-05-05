@@ -38,18 +38,34 @@ def test_route_after_schema_routes_schema_queries_to_response():
 
 
 def test_route_after_plan_gate_and_query_planner_cover_multi_and_cot():
-    assert route_after_plan_gate(
-        {"multi_query_allowed": True, "force_single_query": False, "plan_type": None}
-    ) == "query_planner"
-    assert route_after_plan_gate(
-        {"multi_query_allowed": False, "force_single_query": False, "plan_type": "single_window"}
-    ) == "reasoning"
-    assert route_after_query_planner(
-        {"is_multi_query": True, "force_single_query": False, "plan_type": None}
-    ) == "multi"
-    assert route_after_query_planner(
-        {"is_multi_query": False, "force_single_query": False, "plan_type": "single_cte"}
-    ) == "reasoning"
+    assert (
+        route_after_plan_gate(
+            {"multi_query_allowed": True, "force_single_query": False, "plan_type": None}
+        )
+        == "query_planner"
+    )
+    assert (
+        route_after_plan_gate(
+            {
+                "multi_query_allowed": False,
+                "force_single_query": False,
+                "plan_type": "single_window",
+            }
+        )
+        == "reasoning"
+    )
+    assert (
+        route_after_query_planner(
+            {"is_multi_query": True, "force_single_query": False, "plan_type": None}
+        )
+        == "multi"
+    )
+    assert (
+        route_after_query_planner(
+            {"is_multi_query": False, "force_single_query": False, "plan_type": "single_cte"}
+        )
+        == "reasoning"
+    )
 
 
 def test_route_after_multi_verifier_and_repair():
@@ -60,63 +76,107 @@ def test_route_after_multi_verifier_and_repair():
 
 
 def test_route_after_sql_generation_and_validation_retry_logic():
-    assert route_after_sql_generation(
-        {
-            "total_workflow_cycles": 1,
-            "generation_retry_count": 0,
-            "generated_sql": "select 1",
-            "current_error": None,
-        }
-    ) == "validate"
-    assert route_after_sql_generation(
-        {
-            "total_workflow_cycles": 1,
-            "generation_retry_count": 0,
-            "generated_sql": None,
-            "current_error": "boom",
-            "retry_count": 0,
-            "max_retries": 3,
-        }
-    ) == "retry"
+    assert (
+        route_after_sql_generation(
+            {
+                "total_workflow_cycles": 1,
+                "generation_retry_count": 0,
+                "generated_sql": "select 1",
+                "current_error": None,
+            }
+        )
+        == "validate"
+    )
+    assert (
+        route_after_sql_generation(
+            {
+                "total_workflow_cycles": 1,
+                "generation_retry_count": 0,
+                "generated_sql": None,
+                "current_error": "boom",
+                "retry_count": 0,
+                "max_retries": 3,
+            }
+        )
+        == "retry"
+    )
 
-    assert route_after_sql_validation(
-        {
-            "total_workflow_cycles": 1,
-            "validation_retry_count": 0,
-            "validated_sql": None,
-            "current_error": "syntax error",
-            "retry_count": 0,
-            "max_retries": 3,
-        }
-    ) == "retry_generation"
-    assert route_after_sql_validation(
-        {
-            "total_workflow_cycles": 1,
-            "validation_retry_count": 0,
-            "validated_sql": None,
-            "current_error": "business rule mismatch",
-            "retry_count": 0,
-            "max_retries": 3,
-        }
-    ) == "retry_validation"
+    assert (
+        route_after_sql_validation(
+            {
+                "total_workflow_cycles": 1,
+                "validation_retry_count": 0,
+                "validated_sql": None,
+                "current_error": "syntax error",
+                "retry_count": 0,
+                "max_retries": 3,
+            }
+        )
+        == "retry_generation"
+    )
+    assert (
+        route_after_sql_validation(
+            {
+                "total_workflow_cycles": 1,
+                "validation_retry_count": 0,
+                "validated_sql": None,
+                "current_error": "AST CONTRACT ERROR: SQL join path for estado is invalid",
+                "retry_count": 0,
+                "max_retries": 3,
+            }
+        )
+        == "retry_generation"
+    )
+    assert (
+        route_after_sql_validation(
+            {
+                "total_workflow_cycles": 1,
+                "validation_retry_count": 0,
+                "validated_sql": None,
+                "current_error": "SEMANTIC PLAN ERROR: Time-series SQL filters metric values",
+                "retry_count": 0,
+                "max_retries": 3,
+            }
+        )
+        == "retry_generation"
+    )
+    assert (
+        route_after_sql_validation(
+            {
+                "total_workflow_cycles": 1,
+                "validation_retry_count": 0,
+                "validated_sql": None,
+                "current_error": "business rule mismatch",
+                "retry_count": 0,
+                "max_retries": 3,
+            }
+        )
+        == "retry_validation"
+    )
 
 
 def test_route_after_sql_execution_routes_success_and_infra_retries():
     success_result = SimpleNamespace(success=True)
-    assert route_after_sql_execution(
-        {
-            "total_workflow_cycles": 0,
-            "sql_execution_result": success_result,
-            "current_error": None,
-        }
-    ) == "response"
+    assert (
+        route_after_sql_execution(
+            {
+                "total_workflow_cycles": 0,
+                "sql_execution_result": success_result,
+                "current_error": None,
+            }
+        )
+        == "response"
+    )
 
-    assert route_after_sql_execution(
-        {
-            "total_workflow_cycles": 0,
-            "sql_execution_result": None,
-            "current_error": "database timeout",
-            "retry_count": 0,
-            "max_retries": 3,
-        }
-    ) == "retry_execution"
+    assert (
+        route_after_sql_execution(
+            {
+                "total_workflow_cycles": 0,
+                "sql_execution_result": None,
+                "current_error": "database timeout",
+                "retry_count": 0,
+                "max_retries": 3,
+            }
+        )
+        == "retry_execution"
+    )

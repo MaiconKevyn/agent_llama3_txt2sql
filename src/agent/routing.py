@@ -1,9 +1,8 @@
 import logging
 from typing import Literal
 
-from .state_models import ExecutionPhase, MessagesStateTXT2SQL, QueryRoute
 from .state_helpers import should_retry
-
+from .state_models import MessagesStateTXT2SQL, QueryRoute
 
 COMPLEX_PLAN_TYPES_FOR_COT = {
     "global_local_avg",
@@ -115,6 +114,8 @@ def route_after_sql_validation(
 
     if current_error and should_retry(state, "sql_validation_error"):
         error_message = current_error.lower()
+        if "semantic plan error" in error_message or "ast contract error" in error_message:
+            return "retry_generation"
         if any(keyword in error_message for keyword in ["syntax", "parse", "invalid"]):
             return "retry_generation"
         if any(keyword in error_message for keyword in ["table", "column", "field"]):
