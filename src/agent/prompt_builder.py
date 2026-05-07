@@ -1,17 +1,16 @@
 """Prompt assembly and pre-generation hints for SQL generation."""
 
-from typing import List
 
 from langchain_core.prompts import ChatPromptTemplate
 
-from .schema_node import _enhance_sus_schema_context
 from ..application.config.table_templates import (
     build_multi_table_prompt,
     build_table_specific_prompt,
 )
+from .schema_node import _enhance_sus_schema_context
 
 
-def build_pregeneration_hints(selected_tables: List[str], user_query: str) -> str:
+def build_pregeneration_hints(selected_tables: list[str], user_query: str) -> str:
     """
     Generate targeted warnings based on selected tables.
     Injected into SQL generation BEFORE calling the LLM.
@@ -60,6 +59,12 @@ def build_pregeneration_hints(selected_tables: List[str], user_query: str) -> st
             "JOIN municipios mu ON h.\"MUNIC_MOV\" = mu.codigo_6d "
             "GROUP BY mu.nome ORDER BY COUNT(i.\"N_AIH\") DESC. "
             "❌ COUNT(DISTINCT h.\"CNES\") → conta hospitais, NÃO pacientes."
+        )
+
+    if "instrucao" in selected_tables:
+        hints.append(
+            "🚨 INSTRUCAO ALERT: for analyses by education level, join instrucao and exclude invalid/unknown codes unless the question explicitly asks for no-information bucket. "
+            "Use JOIN instrucao inst ON i.\"INSTRU\" = inst.\"INSTRU\" and WHERE i.\"INSTRU\" IS NOT NULL AND i.\"INSTRU\" != 0."
         )
 
     q_lower = user_query.lower()
@@ -220,6 +225,28 @@ def build_pregeneration_hints(selected_tables: List[str], user_query: str) -> st
             f"               ROW_NUMBER() OVER (PARTITION BY {named_dim_col} ORDER BY <metrica> DESC, <tiebreaker> ASC) AS rn\n"
             f"        FROM internacoes i [JOINs necessários] GROUP BY {named_dim_col}, <valor_col>) sub\n"
             f"  WHERE rn <= N ORDER BY {named_dim_col}, rn;"
+        )
+
+    high_cardinality_average_rank = (
+        top_n_context
+        and any(t in q_lower for t in ["média", "media", "médio", "medio", "taxa", "custo"])
+        and any(
+            t in q_lower
+            for t in [
+                "hospital",
+                "hospitais",
+                "município",
+                "municipio",
+                "municípios",
+                "municipios",
+            ]
+        )
+    )
+    if high_cardinality_average_rank:
+        hints.append(
+            "📏 MINIMUM SUPPORT ALERT: ranking by AVG/rate over hospitals or municipalities must avoid tiny groups. "
+            "When the question does not provide another support threshold, aggregate first and apply HAVING COUNT(*) > 100 before ranking. "
+            "For top-N per group, compute COUNT(*) in the grouped CTE, filter support there, then apply ROW_NUMBER/RANK."
         )
 
     if top_n_context and not any("PER-ESTADO" in h for h in hints):
@@ -387,7 +414,7 @@ _SQL_RULES_AO = """        ═════════════════�
 def build_sql_generation_messages(
     user_query: str,
     schema_context: str,
-    selected_tables: List[str],
+    selected_tables: list[str],
     ablation_flags: dict | None = None,
 ) -> tuple:
     """Build the formatted messages and pre-generation hints for SQL generation."""

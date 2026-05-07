@@ -19,12 +19,12 @@ python -m evaluation.runners.run_ablation --output evaluation/ablation/results/a
 
 Exit code: 0 always (results written to disk regardless).
 """
+
 from __future__ import annotations
 
 import argparse
 import csv
 import json
-import math
 import os
 import subprocess
 import sys
@@ -32,7 +32,8 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
+from uuid import uuid4
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -40,24 +41,26 @@ sys.path.insert(0, str(ROOT))
 # Load .env before any env-guard checks
 try:
     from dotenv import load_dotenv
+
     load_dotenv(ROOT / ".env")
 except ImportError:
     pass
 
-from src.agent.mlflow_tracker import init_mlflow, log_ablation_run
-
+from evaluation.runners.result_matching import compare_results, results_match  # noqa: E402
+from src.agent.mlflow_tracker import init_mlflow, log_ablation_run  # noqa: E402
 
 # ── Variant definitions ───────────────────────────────────────────────────────
+
 
 @dataclass
 class VariantSpec:
     id: str
     name: str
     description: str
-    flags: Dict[str, Any] = field(default_factory=dict)
+    flags: dict[str, Any] = field(default_factory=dict)
 
 
-VARIANTS: List[VariantSpec] = [
+VARIANTS: list[VariantSpec] = [
     VariantSpec(
         id="V0",
         name="full_pipeline",
@@ -111,12 +114,37 @@ VARIANTS: List[VariantSpec] = [
             "disable_validation": True,
         },
     ),
+    VariantSpec(
+        id="V9",
+        name="no_semantic_planner",
+        description="Skip LLM-assisted SemanticPlan reconciliation; keep heuristic plan_gate",
+        flags={"disable_semantic_planner": True},
+    ),
+    VariantSpec(
+        id="V10",
+        name="no_semantic_plan_validation",
+        description="Skip SemanticPlan validation; keep DB validation, legacy rules, and repair",
+        flags={"disable_semantic_plan_validation": True},
+    ),
+    VariantSpec(
+        id="V11",
+        name="no_semantic_contract_validator",
+        description="Skip AST contract validator; keep higher-level SemanticPlan rules",
+        flags={"disable_semantic_contract_validation": True},
+    ),
+    VariantSpec(
+        id="V12",
+        name="no_semantic_repair_guidance",
+        description="Keep repair node, but remove semantic repair guidance and deterministic semantic repairs",
+        flags={"disable_semantic_repair_guidance": True},
+    ),
 ]
 
-VARIANT_MAP: Dict[str, VariantSpec] = {v.id: v for v in VARIANTS}
+VARIANT_MAP: dict[str, VariantSpec] = {v.id: v for v in VARIANTS}
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _git_sha() -> str:
     try:
@@ -127,7 +155,7 @@ def _git_sha() -> str:
         return "unknown"
 
 
-def _load_regression_set(tier: Optional[str] = None, max_queries: Optional[int] = None) -> List[Dict]:
+def _load_regression_set(tier: str | None = None, max_queries: int | None = None) -> list[dict]:
     path = ROOT / "evaluation" / "regression_set.json"
     if not path.exists():
         sys.exit(f"[ERROR] regression_set.json not found at {path}")
@@ -151,29 +179,14 @@ def _run_gold_sql(sql: str, db_manager) -> Any:
         return f"__GOLD_ERROR__: {exc}"
 
 
-def _normalize(raw) -> str:
-    if raw is None:
-        return ""
-    import re
-    s = str(raw).strip().lower()
-    s = re.sub(r"\s+", " ", s)
-    return s
-
-
-def _results_match(agent_rows: List[Dict], gold_raw: Any) -> bool:
-    if gold_raw is None or str(gold_raw).startswith("__GOLD_ERROR__"):
-        return False
-    gold_norm = _normalize(gold_raw)
-    if isinstance(agent_rows, list):
-        agent_str = "\n".join(r.get("result", "") for r in agent_rows if isinstance(r, dict))
-    else:
-        agent_str = str(agent_rows or "")
-    return _normalize(agent_str) == gold_norm
+def _results_match(agent_rows: Any, gold_raw: Any) -> bool:
+    return results_match(agent_rows, gold_raw)
 
 
 # ── McNemar test ──────────────────────────────────────────────────────────────
 
-def _mcnemar(v0_correct: List[bool], vi_correct: List[bool]) -> Tuple[float, float]:
+
+def _mcnemar(v0_correct: list[bool], vi_correct: list[bool]) -> tuple[float, float]:
     """
     Return (chi2_stat, p_value) for the McNemar test between V0 and Vi.
 
@@ -194,6 +207,7 @@ def _mcnemar(v0_correct: List[bool], vi_correct: List[bool]) -> Tuple[float, flo
     if n_discordant < 25:
         # Exact mid-p: P(X >= max(b,c)) where X ~ Binomial(n, 0.5)
         from math import comb
+
         k = max(b, c)
         n = n_discordant
         p_one_tail = sum(comb(n, i) * 0.5**n for i in range(k, n + 1))
@@ -205,6 +219,7 @@ def _mcnemar(v0_correct: List[bool], vi_correct: List[bool]) -> Tuple[float, flo
         chi2_stat = (abs(b - c) - 1.0) ** 2 / n_discordant
         # Chi2 p-value with 1 df
         from math import erfc, sqrt
+
         p_value = erfc(sqrt(chi2_stat / 2.0))
 
     return round(chi2_stat, 4), round(p_value, 4)
@@ -212,15 +227,17 @@ def _mcnemar(v0_correct: List[bool], vi_correct: List[bool]) -> Tuple[float, flo
 
 # ── Single-variant runner ─────────────────────────────────────────────────────
 
+
 def run_variant(
     spec: VariantSpec,
-    queries: List[Dict],
+    queries: list[dict],
     orchestrator,
     db_manager,
+    run_id: str,
     verbose: bool = True,
-) -> List[Dict]:
+) -> list[dict]:
     """Run one ablation variant over *queries*; return per-query result dicts."""
-    results: List[Dict] = []
+    results: list[dict] = []
 
     if verbose:
         print(f"\n  ── {spec.id}: {spec.name} ──")
@@ -235,21 +252,29 @@ def run_variant(
         ex = False
         generated_sql = ""
         error_msg = ""
+        comparison: dict[str, Any] = {}
+        agent_result_source = "results"
+        session_id = f"ablation_{run_id}_{spec.id}_{qid}"
 
-        cost: Dict = {}
+        cost: dict = {}
         try:
             result = orchestrator.process_query(
                 question,
-                session_id=f"ablation_{spec.id}_{qid}",
+                session_id=session_id,
                 force_single_query=True,
             )
             generated_sql = result.get("sql_query", "") or ""
-            agent_rows = result.get("results", [])
+            agent_rows = result.get("final_result_rows")
+            if agent_rows is None:
+                agent_rows = result.get("results", [])
+            else:
+                agent_result_source = "final_result_rows"
             cost = result.get("cost", {})
 
             if result.get("success"):
                 gold_raw = _run_gold_sql(gold_sql, db_manager)
-                ex = _results_match(agent_rows, gold_raw)
+                comparison = compare_results(agent_rows, gold_raw)
+                ex = bool(comparison["match"])
         except Exception as exc:
             error_msg = str(exc)
 
@@ -265,31 +290,45 @@ def run_variant(
             if not ex and error_msg:
                 print(f"           → {error_msg[:80]}")
 
-        results.append({
-            "id": qid,
-            "difficulty": difficulty,
-            "question": question,
-            "gold_sql": gold_sql,
-            "generated_sql": generated_sql,
-            "ex": ex,
-            "elapsed_s": elapsed,
-            "error": error_msg,
-            "variant_id": spec.id,
-            "variant_name": spec.name,
-            "critical_rule": q.get("critical_rule"),
-            "prompt_tokens": cost.get("prompt_tokens", 0),
-            "completion_tokens": cost.get("completion_tokens", 0),
-            "total_tokens": cost.get("total_tokens", 0),
-            "total_cost_usd": cost.get("total_cost_usd", 0.0),
-        })
+        results.append(
+            {
+                "id": qid,
+                "difficulty": difficulty,
+                "question": question,
+                "gold_sql": gold_sql,
+                "generated_sql": generated_sql,
+                "ex": ex,
+                "elapsed_s": elapsed,
+                "error": error_msg,
+                "session_id": session_id,
+                "agent_result_source": agent_result_source,
+                "gold_row_count": comparison.get("gold_row_count", 0),
+                "predicted_row_count": comparison.get("predicted_row_count", 0),
+                "gold_rows_sample": json.dumps(
+                    comparison.get("gold_rows_sample", []), ensure_ascii=False
+                ),
+                "predicted_rows_sample": json.dumps(
+                    comparison.get("predicted_rows_sample", []), ensure_ascii=False
+                ),
+                "comparison_details": json.dumps(comparison.get("details", {}), ensure_ascii=False),
+                "variant_id": spec.id,
+                "variant_name": spec.name,
+                "critical_rule": q.get("critical_rule"),
+                "prompt_tokens": cost.get("prompt_tokens", 0),
+                "completion_tokens": cost.get("completion_tokens", 0),
+                "total_tokens": cost.get("total_tokens", 0),
+                "total_cost_usd": cost.get("total_cost_usd", 0.0),
+            }
+        )
 
     return results
 
 
 # ── Summary helpers ───────────────────────────────────────────────────────────
 
-def _ex_by_tier(results: List[Dict]) -> Dict[str, float]:
-    by_tier: Dict[str, Dict[str, int]] = {}
+
+def _ex_by_tier(results: list[dict]) -> dict[str, float]:
+    by_tier: dict[str, dict[str, int]] = {}
     for r in results:
         d = r["difficulty"]
         s = by_tier.setdefault(d, {"correct": 0, "total": 0})
@@ -302,7 +341,7 @@ def _ex_by_tier(results: List[Dict]) -> Dict[str, float]:
     }
 
 
-def _overall_ex(results: List[Dict]) -> float:
+def _overall_ex(results: list[dict]) -> float:
     if not results:
         return 0.0
     return round(sum(1 for r in results if r["ex"]) / len(results), 4)
@@ -310,7 +349,8 @@ def _overall_ex(results: List[Dict]) -> float:
 
 # ── Report generation ─────────────────────────────────────────────────────────
 
-def _write_csv(path: Path, rows: List[Dict], fieldnames: List[str]) -> None:
+
+def _write_csv(path: Path, rows: list[dict], fieldnames: list[str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -320,8 +360,9 @@ def _write_csv(path: Path, rows: List[Dict], fieldnames: List[str]) -> None:
 
 def _write_report(
     path: Path,
-    summary_rows: List[Dict],
+    summary_rows: list[dict],
     run_ts: str,
+    run_id: str,
     git_sha: str,
     model_id: str,
     n_queries: int,
@@ -330,6 +371,7 @@ def _write_report(
         "# Ablation Study Report",
         "",
         f"- **Date**: {run_ts}",
+        f"- **Run ID**: {run_id}",
         f"- **Git SHA**: {git_sha}",
         f"- **Model**: {model_id}",
         f"- **Queries per variant**: {n_queries}",
@@ -354,10 +396,10 @@ def _write_report(
         cost = r.get("total_cost_usd", 0.0)
         lines.append(
             f"| {r['variant_id']} | {r['variant_name']} "
-            f"| {r['ex_overall']*100:.1f} | {delta_str} "
-            f"| {r.get('ex_easy', 0)*100:.1f} "
-            f"| {r.get('ex_medium', 0)*100:.1f} "
-            f"| {r.get('ex_hard', 0)*100:.1f} "
+            f"| {r['ex_overall'] * 100:.1f} | {delta_str} "
+            f"| {r.get('ex_easy', 0) * 100:.1f} "
+            f"| {r.get('ex_medium', 0) * 100:.1f} "
+            f"| {r.get('ex_hard', 0) * 100:.1f} "
             f"| {chi2_str} | {pval_str} "
             f"| {tokens:,} | {cost:.4f} |"
         )
@@ -367,6 +409,8 @@ def _write_report(
         "## Notes",
         "",
         "- ΔEX = variant EX − V0 EX (full pipeline)",
+        "- Session IDs include Run ID to avoid LangGraph checkpoint reuse across ablation runs",
+        "- results_detail.csv includes EX comparison row counts, samples, and mismatch details",
         "- McNemar mid-p test (exact) when discordant pairs < 25, chi-square continuity correction otherwise",
         "- p < 0.05 suggests the component has a statistically significant impact on EX",
         "",
@@ -383,101 +427,18 @@ def _write_report(
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-# ── Main runner ───────────────────────────────────────────────────────────────
-
-def run_ablation(
-    variant_ids: Optional[List[str]] = None,
-    max_queries: Optional[int] = None,
-    tier: Optional[str] = None,
-    output_dir: Optional[str] = None,
-    verbose: bool = True,
-) -> Dict:
-    if not os.getenv("DATABASE_URL") and not os.getenv("DATABASE_PATH"):
-        sys.exit(
-            "[ERROR] DATABASE_URL or DATABASE_PATH not set. "
-            "Ablation requires a live database."
-        )
-    if not os.getenv("OPENAI_API_KEY"):
-        sys.exit("[ERROR] OPENAI_API_KEY not set.")
-
-    from src.application.config.simple_config import ApplicationConfig, OrchestratorConfig
-    from src.agent.orchestrator import LangGraphOrchestrator
-
-    run_ts = datetime.utcnow().isoformat() + "Z"
-    git_sha = _git_sha()
-
-    ts_tag = datetime.utcnow().strftime("%Y%m%dT%H%M%S")
-    out_dir = (
-        Path(output_dir)
-        if output_dir
-        else ROOT / "evaluation" / "ablation" / "results" / f"ablation_{ts_tag}"
-    )
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    selected_specs = (
-        [VARIANT_MAP[vid] for vid in variant_ids if vid in VARIANT_MAP]
-        if variant_ids
-        else VARIANTS
-    )
-    if not selected_specs:
-        sys.exit(f"[ERROR] No valid variant IDs in: {variant_ids}")
-
-    queries = _load_regression_set(tier=tier, max_queries=max_queries)
-    if not queries:
-        sys.exit("[ERROR] No queries loaded.")
-
-    base_app_config = ApplicationConfig()
-    model_id = base_app_config.llm_model
-
-    init_mlflow(experiment_name="txt2sql-ablation")
-
-    print(f"\n{'━'*62}")
-    print(f"  Ablation Study")
-    print(f"  Variants : {[s.id for s in selected_specs]}")
-    print(f"  Queries  : {len(queries)}")
-    print(f"  Model    : {model_id}  |  SHA: {git_sha}")
-    print(f"  Output   : {out_dir}")
-    print(f"{'━'*62}")
-
-    all_results: Dict[str, List[Dict]] = {}
-
-    for spec in selected_specs:
-        orch_config = OrchestratorConfig(**spec.flags) if spec.flags else OrchestratorConfig()
-        orch_config.ablation_variant = spec.name
-
-        app_config = ApplicationConfig()
-        orchestrator = LangGraphOrchestrator(app_config, orchestrator_config=orch_config)
-        db_manager = orchestrator._llm_manager  # type: ignore[attr-defined]
-
-        variant_results = run_variant(spec, queries, orchestrator, db_manager, verbose=verbose)
-        all_results[spec.id] = variant_results
-
-        variant_json = out_dir / f"{spec.id}_{spec.name}.json"
-        with open(variant_json, "w", encoding="utf-8") as f:
-            json.dump(
-                {
-                    "variant_id": spec.id,
-                    "variant_name": spec.name,
-                    "flags": spec.flags,
-                    "run_ts": run_ts,
-                    "git_sha": git_sha,
-                    "model_id": model_id,
-                    "n_queries": len(variant_results),
-                    "ex_overall": _overall_ex(variant_results),
-                    "ex_by_tier": _ex_by_tier(variant_results),
-                    "queries": variant_results,
-                },
-                f,
-                ensure_ascii=False,
-                indent=2,
-            )
-
-    # ── Summary + McNemar ────────────────────────────────────────────────────
+def _build_summary_and_detail_rows(
+    selected_specs: list[VariantSpec],
+    all_results: dict[str, list[dict]],
+    run_id: str,
+) -> tuple[list[dict], list[dict]]:
+    """Build aggregate CSV rows from per-variant result dictionaries."""
     v0_results = all_results.get("V0", [])
     v0_correct = [r["ex"] for r in v0_results]
+    v0_ex = _overall_ex(v0_results)
 
-    summary_rows: List[Dict] = []
-    detail_rows: List[Dict] = []
+    summary_rows: list[dict] = []
+    detail_rows: list[dict] = []
 
     for spec in selected_specs:
         results = all_results[spec.id]
@@ -493,72 +454,305 @@ def run_ablation(
         total_cost = round(sum(r.get("total_cost_usd", 0.0) for r in results), 6)
         avg_tokens = round(total_tokens / len(results)) if results else 0
 
-        summary_rows.append({
-            "variant_id": spec.id,
-            "variant_name": spec.name,
-            "description": spec.description,
-            "flags": json.dumps(spec.flags),
-            "n_queries": len(results),
-            "ex_overall": ex_overall,
-            "ex_easy": tier_ex.get("easy", 0.0),
-            "ex_medium": tier_ex.get("medium", 0.0),
-            "ex_hard": tier_ex.get("hard", 0.0),
-            "delta_ex_pp": round((ex_overall - _overall_ex(v0_results)) * 100, 2)
-            if spec.id != "V0"
-            else 0.0,
-            "mcnemar_chi2": chi2,
-            "mcnemar_p": pval,
-            "total_tokens": total_tokens,
-            "avg_tokens_per_query": avg_tokens,
-            "total_cost_usd": total_cost,
-        })
+        summary_rows.append(
+            {
+                "variant_id": spec.id,
+                "variant_name": spec.name,
+                "run_id": run_id,
+                "description": spec.description,
+                "flags": json.dumps(spec.flags),
+                "n_queries": len(results),
+                "ex_overall": ex_overall,
+                "ex_easy": tier_ex.get("easy", 0.0),
+                "ex_medium": tier_ex.get("medium", 0.0),
+                "ex_hard": tier_ex.get("hard", 0.0),
+                "delta_ex_pp": round((ex_overall - v0_ex) * 100, 2)
+                if spec.id != "V0"
+                else 0.0,
+                "mcnemar_chi2": chi2,
+                "mcnemar_p": pval,
+                "total_tokens": total_tokens,
+                "avg_tokens_per_query": avg_tokens,
+                "total_cost_usd": total_cost,
+            }
+        )
 
         for r in results:
             detail_rows.append({**r, "flags": json.dumps(spec.flags)})
 
-    # ── Print summary table ───────────────────────────────────────────────────
-    v0_ex = _overall_ex(v0_results) if v0_results else 0.0
+    return summary_rows, detail_rows
+
+
+def _print_summary_table(summary_rows: list[dict]) -> None:
     has_cost = any(r.get("total_cost_usd", 0) > 0 for r in summary_rows)
-    print(f"\n{'━'*72}")
+    print(f"\n{'━' * 72}")
     header = f"  {'ID':<4} {'Variant':<28} {'EX':>6} {'ΔEX':>7} {'p':>7}"
     if has_cost:
         header += f"  {'Tokens':>8}  {'Cost $':>8}"
     print(header)
-    print(f"  {'─'*68}")
+    print(f"  {'─' * 68}")
     for row in summary_rows:
         delta_str = f"{row['delta_ex_pp']:+.1f}" if row["variant_id"] != "V0" else "  —  "
         pval_str = f"{row['mcnemar_p']:.3f}" if row["mcnemar_p"] is not None else "  —  "
         line = (
             f"  {row['variant_id']:<4} {row['variant_name']:<28} "
-            f"{row['ex_overall']*100:>5.1f}% {delta_str:>7}pp {pval_str:>7}"
+            f"{row['ex_overall'] * 100:>5.1f}% {delta_str:>7}pp {pval_str:>7}"
         )
         if has_cost:
             line += f"  {row.get('total_tokens', 0):>8,}  {row.get('total_cost_usd', 0):>8.4f}"
         print(line)
-    print(f"{'━'*62}\n")
+    print(f"{'━' * 62}\n")
 
-    # ── Write CSV ─────────────────────────────────────────────────────────────
-    summary_fields = [
-        "variant_id", "variant_name", "description", "flags", "n_queries",
-        "ex_overall", "ex_easy", "ex_medium", "ex_hard", "delta_ex_pp",
-        "mcnemar_chi2", "mcnemar_p",
-        "total_tokens", "avg_tokens_per_query", "total_cost_usd",
-    ]
-    _write_csv(out_dir / "results.csv", summary_rows, summary_fields)
 
-    detail_fields = [
-        "variant_id", "variant_name", "id", "difficulty", "question",
-        "gold_sql", "generated_sql", "ex", "elapsed_s", "error",
-        "critical_rule", "flags",
-        "prompt_tokens", "completion_tokens", "total_tokens", "total_cost_usd",
-    ]
-    _write_csv(out_dir / "results_detail.csv", detail_rows, detail_fields)
+SUMMARY_FIELDS = [
+    "variant_id",
+    "variant_name",
+    "run_id",
+    "description",
+    "flags",
+    "n_queries",
+    "ex_overall",
+    "ex_easy",
+    "ex_medium",
+    "ex_hard",
+    "delta_ex_pp",
+    "mcnemar_chi2",
+    "mcnemar_p",
+    "total_tokens",
+    "avg_tokens_per_query",
+    "total_cost_usd",
+]
 
-    # ── Write Markdown report ─────────────────────────────────────────────────
+DETAIL_FIELDS = [
+    "variant_id",
+    "variant_name",
+    "id",
+    "difficulty",
+    "question",
+    "gold_sql",
+    "generated_sql",
+    "ex",
+    "elapsed_s",
+    "error",
+    "session_id",
+    "agent_result_source",
+    "gold_row_count",
+    "predicted_row_count",
+    "gold_rows_sample",
+    "predicted_rows_sample",
+    "comparison_details",
+    "critical_rule",
+    "flags",
+    "prompt_tokens",
+    "completion_tokens",
+    "total_tokens",
+    "total_cost_usd",
+]
+
+
+def _write_aggregate_outputs(
+    out_dir: Path,
+    summary_rows: list[dict],
+    detail_rows: list[dict],
+    *,
+    run_ts: str,
+    run_id: str,
+    git_sha: str,
+    model_id: str,
+    n_queries: int,
+) -> None:
+    _write_csv(out_dir / "results.csv", summary_rows, SUMMARY_FIELDS)
+    _write_csv(out_dir / "results_detail.csv", detail_rows, DETAIL_FIELDS)
     _write_report(
         out_dir / "report.md",
         summary_rows,
         run_ts=run_ts,
+        run_id=run_id,
+        git_sha=git_sha,
+        model_id=model_id,
+        n_queries=n_queries,
+    )
+
+
+def rebuild_outputs_from_variant_jsons(
+    output_dir: str,
+    variant_ids: list[str] | None = None,
+    verbose: bool = True,
+) -> dict:
+    """Rebuild summary CSVs/report from existing per-variant JSON files."""
+    out_dir = Path(output_dir)
+    if not out_dir.exists():
+        sys.exit(f"[ERROR] Output directory not found: {out_dir}")
+
+    selected_specs = (
+        [VARIANT_MAP[vid] for vid in variant_ids if vid in VARIANT_MAP] if variant_ids else VARIANTS
+    )
+    all_results: dict[str, list[dict]] = {}
+    metadata: dict[str, Any] | None = None
+    loaded_specs: list[VariantSpec] = []
+    missing: list[str] = []
+
+    for spec in selected_specs:
+        variant_json = out_dir / f"{spec.id}_{spec.name}.json"
+        if not variant_json.exists():
+            missing.append(spec.id)
+            continue
+        with open(variant_json, encoding="utf-8") as f:
+            payload = json.load(f)
+        if metadata is None:
+            metadata = payload
+        all_results[spec.id] = payload.get("queries", [])
+        loaded_specs.append(spec)
+
+    if not loaded_specs:
+        sys.exit(f"[ERROR] No per-variant JSON files found in {out_dir}")
+
+    if missing and verbose:
+        print(f"[WARN] Missing variant JSON files: {', '.join(missing)}")
+
+    run_id = str((metadata or {}).get("run_id") or "unknown")
+    run_ts = str((metadata or {}).get("run_ts") or datetime.utcnow().isoformat() + "Z")
+    git_sha = str((metadata or {}).get("git_sha") or _git_sha())
+    model_id = str((metadata or {}).get("model_id") or "unknown")
+    n_queries = max((len(results) for results in all_results.values()), default=0)
+
+    summary_rows, detail_rows = _build_summary_and_detail_rows(
+        loaded_specs,
+        all_results,
+        run_id,
+    )
+    _print_summary_table(summary_rows)
+    _write_aggregate_outputs(
+        out_dir,
+        summary_rows,
+        detail_rows,
+        run_ts=run_ts,
+        run_id=run_id,
+        git_sha=git_sha,
+        model_id=model_id,
+        n_queries=n_queries,
+    )
+
+    print(f"  Rebuilt aggregate outputs from {len(loaded_specs)} variant JSON files → {out_dir}/")
+    print("    report.md | results.csv | results_detail.csv\n")
+
+    return {
+        "run_ts": run_ts,
+        "run_id": run_id,
+        "git_sha": git_sha,
+        "model_id": model_id,
+        "output_dir": str(out_dir),
+        "summary": summary_rows,
+        "missing_variants": missing,
+    }
+
+
+# ── Main runner ───────────────────────────────────────────────────────────────
+
+
+def run_ablation(
+    variant_ids: list[str] | None = None,
+    max_queries: int | None = None,
+    tier: str | None = None,
+    output_dir: str | None = None,
+    run_id: str | None = None,
+    verbose: bool = True,
+) -> dict:
+    if not os.getenv("DATABASE_URL") and not os.getenv("DATABASE_PATH"):
+        sys.exit(
+            "[ERROR] DATABASE_URL or DATABASE_PATH not set. Ablation requires a live database."
+        )
+    if not os.getenv("OPENAI_API_KEY"):
+        sys.exit("[ERROR] OPENAI_API_KEY not set.")
+
+    from src.agent.orchestrator import LangGraphOrchestrator
+    from src.application.config.simple_config import ApplicationConfig, OrchestratorConfig
+
+    run_ts = datetime.utcnow().isoformat() + "Z"
+    git_sha = _git_sha()
+
+    ts_tag = datetime.utcnow().strftime("%Y%m%dT%H%M%S")
+    run_id = run_id or f"{ts_tag}_{uuid4().hex[:8]}"
+    out_dir = (
+        Path(output_dir)
+        if output_dir
+        else ROOT / "evaluation" / "ablation" / "results" / f"ablation_{ts_tag}"
+    )
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    selected_specs = (
+        [VARIANT_MAP[vid] for vid in variant_ids if vid in VARIANT_MAP] if variant_ids else VARIANTS
+    )
+    if not selected_specs:
+        sys.exit(f"[ERROR] No valid variant IDs in: {variant_ids}")
+
+    queries = _load_regression_set(tier=tier, max_queries=max_queries)
+    if not queries:
+        sys.exit("[ERROR] No queries loaded.")
+
+    base_app_config = ApplicationConfig()
+    model_id = base_app_config.llm_model
+
+    init_mlflow(experiment_name="txt2sql-ablation")
+
+    print(f"\n{'━' * 62}")
+    print("  Ablation Study")
+    print(f"  Variants : {[s.id for s in selected_specs]}")
+    print(f"  Queries  : {len(queries)}")
+    print(f"  Run ID   : {run_id}")
+    print(f"  Model    : {model_id}  |  SHA: {git_sha}")
+    print(f"  Output   : {out_dir}")
+    print(f"{'━' * 62}")
+
+    all_results: dict[str, list[dict]] = {}
+
+    for spec in selected_specs:
+        orch_config = OrchestratorConfig(**spec.flags) if spec.flags else OrchestratorConfig()
+        orch_config.ablation_variant = spec.name
+
+        app_config = ApplicationConfig()
+        orchestrator = LangGraphOrchestrator(app_config, orchestrator_config=orch_config)
+        db_manager = orchestrator._llm_manager  # type: ignore[attr-defined]
+
+        variant_results = run_variant(
+            spec, queries, orchestrator, db_manager, run_id=run_id, verbose=verbose
+        )
+        all_results[spec.id] = variant_results
+
+        variant_json = out_dir / f"{spec.id}_{spec.name}.json"
+        with open(variant_json, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "variant_id": spec.id,
+                    "variant_name": spec.name,
+                    "flags": spec.flags,
+                    "run_ts": run_ts,
+                    "run_id": run_id,
+                    "git_sha": git_sha,
+                    "model_id": model_id,
+                    "n_queries": len(variant_results),
+                    "ex_overall": _overall_ex(variant_results),
+                    "ex_by_tier": _ex_by_tier(variant_results),
+                    "queries": variant_results,
+                },
+                f,
+                ensure_ascii=False,
+                indent=2,
+            )
+
+    # ── Summary + outputs ────────────────────────────────────────────────────
+    summary_rows, detail_rows = _build_summary_and_detail_rows(
+        selected_specs,
+        all_results,
+        run_id,
+    )
+    _print_summary_table(summary_rows)
+    _write_aggregate_outputs(
+        out_dir,
+        summary_rows,
+        detail_rows,
+        run_ts=run_ts,
+        run_id=run_id,
         git_sha=git_sha,
         model_id=model_id,
         n_queries=len(queries),
@@ -588,11 +782,12 @@ def run_ablation(
         )
 
     print(f"  Results saved → {out_dir}/")
-    print(f"    report.md | results.csv | results_detail.csv")
+    print("    report.md | results.csv | results_detail.csv")
     print(f"    + {len(selected_specs)} per-variant JSON files\n")
 
     return {
         "run_ts": run_ts,
+        "run_id": run_id,
         "git_sha": git_sha,
         "model_id": model_id,
         "output_dir": str(out_dir),
@@ -612,14 +807,36 @@ def main() -> None:
     parser.add_argument("--max-queries", type=int, default=None)
     parser.add_argument("--tier", choices=["easy", "medium", "hard"], default=None)
     parser.add_argument("--output", type=str, default=None)
+    parser.add_argument(
+        "--run-id",
+        type=str,
+        default=None,
+        help="Optional unique run ID for LangGraph session IDs. Defaults to timestamp + random suffix.",
+    )
+    parser.add_argument(
+        "--rebuild-report-only",
+        action="store_true",
+        help="Rebuild results.csv, results_detail.csv, and report.md from existing per-variant JSON files.",
+    )
     parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args()
+
+    if args.rebuild_report_only:
+        if not args.output:
+            sys.exit("[ERROR] --rebuild-report-only requires --output")
+        rebuild_outputs_from_variant_jsons(
+            output_dir=args.output,
+            variant_ids=args.variants,
+            verbose=not args.quiet,
+        )
+        sys.exit(0)
 
     run_ablation(
         variant_ids=args.variants,
         max_queries=args.max_queries,
         tier=args.tier,
         output_dir=args.output,
+        run_id=args.run_id,
         verbose=not args.quiet,
     )
 

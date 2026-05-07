@@ -58,3 +58,39 @@ def test_reconciler_accepts_llm_dimension_when_heuristic_is_unknown():
     assert result.reconciled_plan.intent == "count"
     assert result.reconciled_plan.answer_shape.required_dimensions == ["estado"]
     assert "intent" in result.accepted_llm_fields
+
+
+def test_reconciler_does_not_let_llm_turn_scalar_plan_into_grouped_output():
+    heuristic = build_semantic_plan("Quantos hospitais estão cadastrados?")
+    llm = SemanticPlan(
+        intent="count",
+        base_grain="hospital",
+        answer_shape=AnswerShape(
+            row_grain="one_row_per_group",
+            required_dimensions=["hospital"],
+            requires_group_by=True,
+        ),
+    )
+
+    result = reconcile_semantic_plans(heuristic, llm)
+
+    assert result.reconciled_plan.answer_shape.row_grain == "single_scalar"
+    assert result.reconciled_plan.answer_shape.required_dimensions == []
+    assert not result.reconciled_plan.answer_shape.requires_group_by
+
+
+def test_reconciler_deduplicates_dimension_synonyms():
+    heuristic = build_semantic_plan("Qual a evolução anual da taxa de mortalidade por estado?")
+    llm = SemanticPlan(
+        intent="trend",
+        base_grain="internacao",
+        answer_shape=AnswerShape(
+            row_grain="time_series",
+            required_dimensions=["estado_residencia", "ano_internacao"],
+            requires_group_by=True,
+        ),
+    )
+
+    result = reconcile_semantic_plans(heuristic, llm)
+
+    assert result.reconciled_plan.answer_shape.required_dimensions == ["estado", "ano"]

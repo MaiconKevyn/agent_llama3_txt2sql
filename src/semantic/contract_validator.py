@@ -95,7 +95,17 @@ def _validate_grouping_contract(
         return
     dimension_patterns = {
         "estado": [r"\bestado\b"],
+        "estado_hospital": [r"\bestado\b"],
+        "municipio": [r"\bnome\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
+        "municipio_hospital": [r"\bnome\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
         "sexo": [r"\bsexo\b"],
+        "raca_cor": [r"\braca_cor\b", r"\bra[cç]a\b", r"\bcor\b"],
+        "instrucao": [
+            r"\binstru\b",
+            r"\binstrucao\b",
+            r"\binstru[cç][aã]o\b",
+            r"\bdescri[cç][aã]o\b",
+        ],
         "hospital": [r"\bcnes\b"],
         "procedimento": [r"\bnome_proc\b", r"\bproc_rea\b"],
         "ano": [r"\bano\b", r"\bextract\s*\(\s*year\b"],
@@ -120,11 +130,15 @@ def _validate_catalog_join_paths(
 
     dimension_catalog_names = {
         "estado": ["estado_residencia", "estado_hospital"],
+        "estado_hospital": ["estado_hospital"],
         "municipio": ["municipio_residencia"],
+        "municipio_hospital": ["municipio_hospital"],
         "hospital": ["hospital"],
         "procedimento": ["procedimento"],
         "ano": ["ano_internacao"],
         "sexo": ["sexo"],
+        "raca_cor": ["raca_cor"],
+        "instrucao": ["instrucao"],
     }
     dimension_names = _stable_union(
         plan.answer_shape.required_dimensions,

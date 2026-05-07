@@ -66,6 +66,34 @@ def check_semantic_rules(user_query: str, generated_sql: str):
                 '✅ WHERE EXTRACT(MONTH FROM "DT_INTER") BETWEEN 6 AND 8'
             )
 
+    # Semantic/performance: self-joining internacoes through low-cardinality or
+    # non-unique keys can explode row counts before aggregation.
+    has_internacoes_subquery = bool(
+        re.search(
+            r"\bFROM\s*\(\s*SELECT[\s\S]*?\bFROM\s+\"?internacoes\"?\b",
+            generated_sql,
+            re.I,
+        )
+    )
+    has_outer_internacoes_join = bool(
+        re.search(r"\bJOIN\s+\"?internacoes\"?\s+(?:AS\s+)?\"?[a-z_][\w]*\"?\s+ON\b", generated_sql, re.I)
+    )
+    if has_internacoes_subquery and has_outer_internacoes_join:
+        explosive_keys = ["MUNIC_RES", "CNES", "DT_INTER", "IDADE", "MORTE"]
+        for key in explosive_keys:
+            if re.search(
+                rf"\bJOIN\s+\"?internacoes\"?\s+(?:AS\s+)?\"?[a-z_][\w]*\"?\s+ON[\s\S]{{0,300}}\"?{key}\"?[\s\S]{{0,120}}=\s*[\s\S]{{0,120}}\"?{key}\"?",
+                generated_sql,
+                re.I,
+            ):
+                return False, (
+                    "SEMANTIC/PERFORMANCE ERROR: Query self-joins internacoes after an "
+                    f"internacoes subquery using non-unique key {key}. This creates a many-to-many "
+                    "row explosion and can hang execution. FIX: aggregate directly from internacoes "
+                    "once, joining only lookup/dimension tables such as municipios. For mortality "
+                    "rates, use conditional aggregation in the same grouped query."
+                )
+
     # Semantic: spurious VAL_UTI on obstetric query
     espec_2 = bool(re.search(r'"ESPEC"\s*=\s*2\b', generated_sql))
     val_uti = bool(re.search(r'"VAL_UTI"\s*>\s*0', generated_sql))
@@ -246,9 +274,18 @@ def validate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 validation_message = sem_message
                 logger.warning("Semantic rule rejected query: %s", sem_message[:120])
 
-        if validation_passed and generated_sql:
+        ablation_flags = state.get("ablation_flags") or {}
+        if (
+            validation_passed
+            and generated_sql
+            and not ablation_flags.get("disable_semantic_plan_validation", False)
+        ):
             plan_passed, plan_message = validate_sql_against_semantic_plan(
-                state.get("semantic_plan"), generated_sql
+                state.get("semantic_plan"),
+                generated_sql,
+                enable_contract_validation=not ablation_flags.get(
+                    "disable_semantic_contract_validation", False
+                ),
             )
             meta = state.get("response_metadata", {}) or {}
             meta["semantic_validation"] = {

@@ -26,6 +26,22 @@ def test_sql_ast_extracts_tables_aliases_joins_and_windows():
     assert summary.window_functions[0].partition_by == ["mu.estado"]
 
 
+def test_sql_ast_does_not_treat_extract_from_as_table_alias():
+    sql = """
+        SELECT mu.estado, EXTRACT(YEAR FROM i."DT_INTER") AS ano, COUNT(*)
+        FROM internacoes i
+        JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d
+        WHERE EXTRACT(YEAR FROM i."DT_INTER") = 2021
+        GROUP BY mu.estado, ano
+    """
+
+    summary = parse_sql_ast(sql)
+
+    assert summary.aliases["i"] == "internacoes"
+    assert "internacoes" in summary.tables
+    assert "i" not in summary.tables
+
+
 def test_contract_validator_accepts_equivalent_aliases_for_mortality_rate():
     plan = build_semantic_plan("Qual a evolução anual da taxa de mortalidade por estado?")
     sql = """

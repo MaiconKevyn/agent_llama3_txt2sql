@@ -2,19 +2,19 @@
 
 import re
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from langchain_core.messages import HumanMessage
 
-from .llm_manager import OpenAILLMManager, get_llm_manager
-from .state_models import MessagesStateTXT2SQL, ExecutionPhase, ToolCallResult, TX
-from .state_helpers import add_ai_message, add_tool_call_result, update_phase, add_error
 from ..application.prompts.table_selection.catalog import (
     render_table_description_lines,
     render_table_selection_prompt,
     resolve_table_selection_strategy,
 )
 from ..utils.logging_config import get_nodes_logger
+from .llm_manager import OpenAILLMManager, get_llm_manager
+from .state_helpers import add_ai_message, add_error, add_tool_call_result, update_phase
+from .state_models import TX, ExecutionPhase, MessagesStateTXT2SQL, ToolCallResult
 
 logger = get_nodes_logger()
 
@@ -36,8 +36,8 @@ DEFAULT_TABLE_SELECTION_PROMPT_VARIANT = "current"
 # ---------------------------------------------------------------------------
 
 def _heuristic_table_selection(
-    user_query: str, available_tables: List[str]
-) -> Tuple[List[str], float]:
+    user_query: str, available_tables: list[str]
+) -> tuple[list[str], float]:
     """
     Stage 1: keyword-based fast table selection.
     Returns (tables, confidence). If confidence >= 0.85, skips LLM call.
@@ -46,6 +46,9 @@ def _heuristic_table_selection(
 
     if re.search(r'mortalidade infantil|taxa de mortalidade infantil', q):
         return (['socioeconomico'], 0.95)
+
+    if re.search(r'taxa de mortalidade.*(?:n[ií]vel|grau)\s+de\s+instru[cç][aã]o|taxa de mortalidade.*escolaridade', q):
+        return (['internacoes', 'municipios', 'instrucao'], 0.94)
 
     if re.search(r'taxa de mortalidade|mortalidade hospitalar|maior taxa de mortalidade', q) \
             and 'infantil' not in q:
@@ -62,6 +65,9 @@ def _heuristic_table_selection(
     # Check BEFORE the generic "procedimentos mais realizados" pattern
     if re.search(r'nas\s+cidades?', q) and re.search(r'procedimentos?|atendimentos?', q):
         return (['atendimentos', 'procedimentos', 'internacoes', 'hospital', 'municipios'], 0.92)
+
+    if re.search(r'munic[ií]pios?.*(atend\w+|receb\w+).*pacientes?', q):
+        return (['internacoes', 'hospital', 'municipios'], 0.93)
 
     if re.search(r'procedimentos?\s+(mais\s+)?(comuns?|realizados?|frequentes?)', q):
         return (['internacoes', 'atendimentos', 'procedimentos'], 0.92)
@@ -94,9 +100,9 @@ def _heuristic_table_selection(
 
 
 def _build_table_description_lines(
-    available_tables: List[str],
+    available_tables: list[str],
     description_variant: str = DEFAULT_TABLE_DESCRIPTION_VARIANT,
-) -> List[str]:
+) -> list[str]:
     """Format available tables into prompt-friendly description lines."""
     return render_table_description_lines(
         available_tables,
@@ -106,7 +112,7 @@ def _build_table_description_lines(
 
 def _build_llm_selection_prompt(
     user_query: str,
-    available_tables: List[str],
+    available_tables: list[str],
     description_variant: str = DEFAULT_TABLE_DESCRIPTION_VARIANT,
     prompt_variant: str = DEFAULT_TABLE_SELECTION_PROMPT_VARIANT,
 ) -> str:
@@ -121,8 +127,8 @@ def _build_llm_selection_prompt(
 
 def _run_embedding_table_selection(
     user_query: str,
-    available_tables: List[str],
-) -> Tuple[List[str], float]:
+    available_tables: list[str],
+) -> tuple[list[str], float]:
     """Run stage 2 embedding selector."""
     from .table_selector import get_embedding_selector
 
@@ -136,11 +142,11 @@ def _run_embedding_table_selection(
 
 def _run_llm_table_selection(
     user_query: str,
-    available_tables: List[str],
+    available_tables: list[str],
     llm_manager: Any,
     description_variant: str = DEFAULT_TABLE_DESCRIPTION_VARIANT,
     prompt_variant: str = DEFAULT_TABLE_SELECTION_PROMPT_VARIANT,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run stage 3 LLM selector and return parsing details."""
     selection_prompt = _build_llm_selection_prompt(
         user_query=user_query,
@@ -160,14 +166,14 @@ def _run_llm_table_selection(
 
 def select_tables_with_debug(
     user_query: str,
-    available_tables: List[str],
-    llm_manager: Optional[Any] = None,
+    available_tables: list[str],
+    llm_manager: Any | None = None,
     mode: str = DEFAULT_TABLE_SELECTION_MODE,
     description_variant: str = DEFAULT_TABLE_DESCRIPTION_VARIANT,
     prompt_variant: str = DEFAULT_TABLE_SELECTION_PROMPT_VARIANT,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Select tables and expose stage-by-stage telemetry for benchmarking."""
-    debug: Dict[str, Any] = {
+    debug: dict[str, Any] = {
         "mode": mode,
         "description_variant": description_variant,
         "prompt_variant": prompt_variant,
@@ -181,7 +187,7 @@ def select_tables_with_debug(
         "error": "",
     }
 
-    def _finalize(raw_tables: List[str], stage_used: str) -> Dict[str, Any]:
+    def _finalize(raw_tables: list[str], stage_used: str) -> dict[str, Any]:
         validated = _validate_table_selection(user_query, raw_tables, available_tables)
         debug["stage_used"] = stage_used
         debug["raw_selected_tables"] = list(raw_tables)
@@ -276,13 +282,13 @@ def select_tables_with_debug(
 def _select_relevant_tables(
     user_query: str,
     tool_result: str,
-    available_tables: List[str],
+    available_tables: list[str],
     llm_manager: OpenAILLMManager,
     disable_llm_stage: bool = False,
-    mode: Optional[str] = None,
+    mode: str | None = None,
     description_variant: str = DEFAULT_TABLE_DESCRIPTION_VARIANT,
     prompt_variant: str = DEFAULT_TABLE_SELECTION_PROMPT_VARIANT,
-) -> Tuple[List[str], List[str]]:
+) -> tuple[list[str], list[str]]:
     """
     3-stage table selection cascade:
       Stage 1: heuristic (instant)
@@ -320,7 +326,7 @@ def _select_relevant_tables(
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _parse_llm_table_selection(response: str, available_tables: List[str]) -> List[str]:
+def _parse_llm_table_selection(response: str, available_tables: list[str]) -> list[str]:
     """Simplified parsing of LLM table selection response."""
     import json
 
@@ -386,9 +392,9 @@ def _parse_llm_table_selection(response: str, available_tables: List[str]) -> Li
 
 def _validate_table_selection(
     user_query: str,
-    selected_tables: List[str],
-    available_tables: List[str],
-) -> List[str]:
+    selected_tables: list[str],
+    available_tables: list[str],
+) -> list[str]:
     """Validate and enhance table selection using business rules."""
     query_lower = user_query.lower()
     validated_tables = selected_tables.copy()
@@ -446,6 +452,21 @@ def _validate_table_selection(
         if 'socioeconomico' in validated_tables:
             validated_tables = ['socioeconomico']
             logger.info("Simplified to socioeconomico only for infant mortality rate query")
+
+    if re.search(r'n[ií]vel\s+de\s+instru[cç][aã]o|grau\s+de\s+instru[cç][aã]o|escolaridade', query_lower):
+        for tbl in ('internacoes', 'instrucao'):
+            if tbl not in validated_tables and tbl in available_tables:
+                validated_tables.append(tbl)
+                logger.info("Added table for education-level analysis", extra={"table": tbl})
+
+    if re.search(r'hospitais?|cnes', query_lower) and re.search(
+        r'\bestados?\b|\buf\b|munic[ií]pios?|cidades?|localiza[cç][aã]o|atend\w+|receb\w+',
+        query_lower,
+    ):
+        for tbl in ('internacoes', 'hospital', 'municipios'):
+            if tbl not in validated_tables and tbl in available_tables:
+                validated_tables.append(tbl)
+                logger.info("Added table for hospital-location join path", extra={"table": tbl})
 
     # Rule 5: Remove unnecessary over-selections for simple counting
     if len(validated_tables) > 1:
@@ -519,7 +540,7 @@ def _validate_table_selection(
     return validated_tables
 
 
-def _get_intelligent_fallback(user_query: str, available_tables: List[str]) -> List[str]:
+def _get_intelligent_fallback(user_query: str, available_tables: list[str]) -> list[str]:
     """Intelligent fallback when no tables are selected."""
     query_lower = user_query.lower()
 

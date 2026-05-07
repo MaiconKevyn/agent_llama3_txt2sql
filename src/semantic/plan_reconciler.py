@@ -70,7 +70,11 @@ def reconcile_semantic_plans(
     if candidate.metrics:
         accepted.append("metrics")
 
-    dimensions = _merge_dimensions(heuristic.dimensions, candidate.dimensions)
+    dimensions = _merge_dimensions(
+        heuristic.dimensions,
+        candidate.dimensions,
+        heuristic.answer_shape,
+    )
     if len(dimensions) > len(heuristic.dimensions):
         accepted.append("dimensions")
 
@@ -150,12 +154,15 @@ def _merge_metrics(
 def _merge_dimensions(
     heuristic_dimensions: list[SemanticDimension],
     candidate_dimensions: list[SemanticDimension],
+    heuristic_shape: AnswerShape,
 ) -> list[SemanticDimension]:
+    if heuristic_shape.row_grain == "single_scalar":
+        return heuristic_dimensions
     merged: dict[str, SemanticDimension] = {
-        dimension.name: dimension for dimension in heuristic_dimensions
+        _canonical_dimension_name(dimension.name): dimension for dimension in heuristic_dimensions
     }
     for dimension in candidate_dimensions:
-        merged.setdefault(dimension.name, dimension)
+        merged.setdefault(_canonical_dimension_name(dimension.name), dimension)
     return list(merged.values())
 
 
@@ -198,17 +205,50 @@ def _merge_answer_shape(
     elif heuristic.top_n_scope == "none" and candidate.top_n_scope != "none":
         top_n_scope = candidate.top_n_scope
 
+    required_dimensions = _merge_required_dimensions(
+        heuristic.required_dimensions,
+        candidate.required_dimensions,
+        row_grain=row_grain,
+    )
     return AnswerShape(
         row_grain=row_grain,
         top_n=heuristic.top_n or candidate.top_n,
         top_n_scope=top_n_scope,
-        required_dimensions=_stable_union(
-            heuristic.required_dimensions,
-            candidate.required_dimensions,
+        required_dimensions=required_dimensions,
+        requires_group_by=False
+        if row_grain == "single_scalar"
+        else bool(
+            required_dimensions and (heuristic.requires_group_by or candidate.requires_group_by)
         ),
-        requires_group_by=heuristic.requires_group_by or candidate.requires_group_by,
         include_unknown_bucket=heuristic.include_unknown_bucket or candidate.include_unknown_bucket,
     )
+
+
+def _merge_required_dimensions(
+    heuristic_dimensions: list[str],
+    candidate_dimensions: list[str],
+    *,
+    row_grain: str,
+) -> list[str]:
+    if row_grain == "single_scalar":
+        return []
+    merged: dict[str, str] = {}
+    for dimension in heuristic_dimensions + candidate_dimensions:
+        merged.setdefault(
+            _canonical_dimension_name(dimension), _canonical_dimension_name(dimension)
+        )
+    return list(merged.values())
+
+
+def _canonical_dimension_name(name: str) -> str:
+    aliases = {
+        "estado_residencia": "estado",
+        "ano_internacao": "ano",
+        "codigo_cid": "diagnostico",
+        "diagnostico_principal": "diagnostico",
+        "diagnostico_secundario": "diagnostico",
+    }
+    return aliases.get(name, name)
 
 
 def _stable_union(left: list[str], right: list[str]) -> list[str]:

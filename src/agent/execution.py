@@ -342,7 +342,12 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             error_message,
             state.get("semantic_plan"),
         )
-        if "filters metric values to non-zero rows" in error_message.lower():
+        ablation_flags = state.get("ablation_flags") or {}
+        semantic_repair_enabled = not ablation_flags.get("disable_semantic_repair_guidance", False)
+        if (
+            semantic_repair_enabled
+            and "filters metric values to non-zero rows" in error_message.lower()
+        ):
             deterministic_sql = _remove_unrequested_nonzero_metric_filter(previous_sql)
             if deterministic_sql and deterministic_sql != previous_sql:
                 metadata = state.get("response_metadata", {}) or {}
@@ -424,7 +429,9 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             if cands:
                 suggestion_lines.append(f"{key} → candidatos: {', '.join(cands)}")
         suggestions_text = "\n".join(suggestion_lines) if suggestion_lines else "(sem sugestões)"
-        semantic_directive_text = semantic_repair_context.prompt_block
+        semantic_directive_text = (
+            semantic_repair_context.prompt_block if semantic_repair_enabled else ""
+        )
 
         system_prompt = (
             "Você é um especialista em PostgreSQL responsável por corrigir consultas SQL para o banco SUS. "

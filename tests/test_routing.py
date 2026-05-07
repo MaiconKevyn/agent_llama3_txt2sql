@@ -5,6 +5,7 @@ import pytest
 pytest.importorskip("langgraph")
 pytest.importorskip("langchain_core")
 
+from evaluation.runners.run_ablation import VARIANT_MAP
 from src.agent.routing import (
     route_after_classification,
     route_after_multi_verifier,
@@ -17,6 +18,7 @@ from src.agent.routing import (
     route_after_sql_validation,
 )
 from src.agent.state_models import QueryRoute
+from src.application.config.simple_config import OrchestratorConfig
 
 
 def test_route_after_classification_handles_conversational_threshold():
@@ -35,6 +37,15 @@ def test_route_after_classification_handles_conversational_threshold():
 def test_route_after_schema_routes_schema_queries_to_response():
     assert route_after_schema({"query_route": QueryRoute.SCHEMA}) == "generate_response"
     assert route_after_schema({"query_route": QueryRoute.DATABASE}) == "plan_gate"
+
+
+def test_ablation_variants_cover_semantic_layer_components():
+    assert OrchestratorConfig(disable_semantic_planner=True).disable_semantic_planner
+    assert "V9" in VARIANT_MAP
+    assert VARIANT_MAP["V9"].flags == {"disable_semantic_planner": True}
+    assert VARIANT_MAP["V10"].flags == {"disable_semantic_plan_validation": True}
+    assert VARIANT_MAP["V11"].flags == {"disable_semantic_contract_validation": True}
+    assert VARIANT_MAP["V12"].flags == {"disable_semantic_repair_guidance": True}
 
 
 def test_route_after_plan_gate_and_query_planner_cover_multi_and_cot():
