@@ -1,0 +1,23 @@
+[
+  {
+    "id": "GT124",
+    "difficulty": "hard",
+    "question": "Qual a média móvel de 3 anos de internações no estado do RS por ano (2008-2023)?",
+    "query": "SELECT ano, total_internacoes, ROUND(AVG(total_internacoes) OVER (ORDER BY ano ROWS BETWEEN 2 PRECEDING AND CURRENT ROW), 0) AS media_movel_3anos FROM (SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.codigo_6d WHERE mu.estado = 'RS' AND i.\"DT_INTER\" IS NOT NULL GROUP BY ano) sub ORDER BY ano;",
+    "tables": [
+      "internacoes",
+      "municipios"
+    ],
+    "notes": "HARD: AVG() OVER (ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) window function over annual admission counts."
+  },
+  {
+    "id": "GT126",
+    "difficulty": "hard",
+    "question": "Como se distribuem os hospitais em quartis de volume de internações? Mostre o número de hospitais e o intervalo de internações por quartil.",
+    "query": "SELECT ntile_grupo, COUNT(*) AS total_hospitais, MIN(total_internacoes) AS min_internacoes, MAX(total_internacoes) AS max_internacoes, ROUND(AVG(total_internacoes), 0) AS media_internacoes FROM (SELECT \"CNES\", total_internacoes, NTILE(4) OVER (ORDER BY total_internacoes) AS ntile_grupo FROM (SELECT \"CNES\", COUNT(*) AS total_internacoes FROM internacoes GROUP BY \"CNES\") sub) ranked GROUP BY ntile_grupo ORDER BY ntile_grupo;",
+    "tables": [
+      "internacoes"
+    ],
+    "notes": "HARD: NTILE(4) over hospital-level admission volume, then quartile count and min/max interval."
+  }
+]

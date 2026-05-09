@@ -70,6 +70,136 @@ def build_pregeneration_hints(selected_tables: list[str], user_query: str) -> st
     q_lower = user_query.lower()
     import re as _re
 
+    cid_catalog_count = (
+        "cid" in selected_tables
+        and any(t in q_lower for t in ["quantos", "quantas", "número de", "numero de", "total de"])
+        and any(
+            t in q_lower
+            for t in [
+                "cid",
+                "cid-10",
+                "cids",
+            ]
+        )
+        and any(
+            t in q_lower
+            for t in [
+                "existem",
+                "existe",
+                "cadastrados",
+                "cadastradas",
+                "disponíveis",
+                "disponiveis",
+                "distintos",
+                "distintas",
+                "diferentes",
+            ]
+        )
+        and not any(t in q_lower for t in ["internações", "internacoes", "observados", "usados"])
+    )
+    if cid_catalog_count:
+        hints.append(
+            "📚 CID CATALOG COUNT ALERT: a pergunta pede cardinalidade do catálogo CID-10. "
+            "✅ Use SELECT COUNT(DISTINCT \"CID\") FROM cid. "
+            "❌ NÃO conte internacoes.\"DIAG_PRINC\"; isso mede apenas CIDs observados em internações."
+        )
+
+    fact_observed_terms = ["internações", "internacoes", "observados", "usados", "pacientes", "internados"]
+    catalog_count_terms = [
+        "quantos",
+        "quantas",
+        "número de",
+        "numero de",
+        "total de",
+        "existem",
+        "cadastrados",
+        "distintos",
+        "diferentes",
+        "cobertos",
+        "banco de dados",
+    ]
+    asks_catalog_count = (
+        any(t in q_lower for t in catalog_count_terms)
+        and not any(t in q_lower for t in fact_observed_terms)
+    )
+    if "vincprev" in selected_tables and asks_catalog_count:
+        hints.append(
+            "📚 VINCPREV CATALOG COUNT ALERT: se a pergunta pede quantos tipos de vínculo previdenciário existem, "
+            "conte a tabela de referência vincprev. Use SELECT COUNT(*) FROM vincprev. "
+            "Não conte internacoes.\"VINCPREV\"; isso mede apenas valores observados em internações."
+        )
+    if "municipios" in selected_tables and asks_catalog_count:
+        if any(t in q_lower for t in ["estado", "estados", "uf", "ufs", "cobertos", "banco de dados"]):
+            hints.append(
+                "📚 GEOGRAPHY COVERAGE ALERT: cobertura de estados/municípios do banco vem da dimensão municipios. "
+                "Para estados cobertos, use SELECT COUNT(DISTINCT \"estado\") FROM municipios. "
+                "Junte internacoes somente quando a pergunta pedir estados/municípios com internações observadas."
+            )
+        elif any(t in q_lower for t in ["município", "municipio", "municípios", "municipios"]):
+            hints.append(
+                "📚 MUNICIPIOS CATALOG COUNT ALERT: perguntas de quantidade de municípios cadastrados ou por UF "
+                "devem contar diretamente municipios, por exemplo SELECT COUNT(*) FROM municipios WHERE \"estado\" = 'MA'."
+            )
+
+    mentioned_ufs = {
+        match.group(1).upper()
+        for match in _re.finditer(
+            r"\b(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)\b",
+            user_query,
+            _re.I,
+        )
+    }
+    state_names = [
+        "acre",
+        "alagoas",
+        "amapá",
+        "amapa",
+        "amazonas",
+        "bahia",
+        "ceará",
+        "ceara",
+        "distrito federal",
+        "espírito santo",
+        "espirito santo",
+        "goiás",
+        "goias",
+        "maranhão",
+        "maranhao",
+        "mato grosso",
+        "mato grosso do sul",
+        "minas gerais",
+        "pará",
+        "paraíba",
+        "paraiba",
+        "paraná",
+        "parana",
+        "pernambuco",
+        "piauí",
+        "piaui",
+        "rio de janeiro",
+        "rio grande do norte",
+        "rio grande do sul",
+        "rondônia",
+        "rondonia",
+        "roraima",
+        "santa catarina",
+        "são paulo",
+        "sao paulo",
+        "sergipe",
+        "tocantins",
+    ]
+    mentioned_state_names = {name for name in state_names if name in q_lower}
+    multi_state_comparison = (
+        "municipios" in selected_tables
+        and len(mentioned_ufs | mentioned_state_names) > 1
+        and not any(t in q_lower for t in ["combinado", "somado", "juntos", "agregado", "no total"])
+    )
+    if multi_state_comparison:
+        hints.append(
+            "📊 MULTI-STATE COMPARISON ALERT: quando a pergunta pede valores para MA e RS sem dizer que quer total combinado, "
+            "retorne uma linha por estado. Inclua mu.\"estado\" no SELECT e GROUP BY; não colapse tudo em um único SUM/COUNT."
+        )
+
     per_named_group_triggers = [
         "por estado", "em cada estado", "de cada estado", "para cada estado",
         "por especialidade", "em cada especialidade", "de cada especialidade",
@@ -93,14 +223,143 @@ def build_pregeneration_hints(selected_tables: list[str], user_query: str) -> st
         or bool(_re.search(r"\btop[\s\-]?\d+\b", q_lower))
     )
 
-    count_triggers = ["quantos", "número de", "total de", "quantidade de", "proporção de", "quantas"]
+    count_triggers = [
+        "quantos",
+        "número de",
+        "total",
+        "quantidade de",
+        "proporção de",
+        "percentual",
+        "porcentagem",
+        "quantas",
+    ]
     if any(t in q_lower for t in count_triggers):
         hints.append(
             "📊 COUNT SEMANTICS ALERT: a pergunta pede QUANTIDADE (não listagem). "
             "✅ Use COUNT(*) ou COUNT(DISTINCT entidade) no SELECT. "
-            "❌ NÃO retorne linhas individuais ou uma lista de entidades — isso viola a intenção da pergunta. "
+            "❌ NÃO retorne linhas individuais, lista de entidades ou GROUP BY, exceto se a pergunta pedir distribuição/por grupo explicitamente. "
             "Exemplo: 'Quantos hospitais nunca tiveram óbito?' → "
             "SELECT COUNT(*) AS total FROM (SELECT DISTINCT ...) sub"
+        )
+
+    if any(t in q_lower for t in ["por idade", "distribuição por idade", "distribuicao por idade"]):
+        hints.append(
+            "📊 AGE GRAIN ALERT: 'por idade' significa agrupar pelo valor bruto internacoes.\"IDADE\". "
+            "Use SELECT \"IDADE\", ... GROUP BY \"IDADE\". Só crie CASE/faixa_etaria quando a pergunta disser 'faixa etária', 'faixa de idade' ou 'grupo etário'."
+        )
+
+    if _re.search(r"\bqual\b.*n[ií]vel\s+de\s+instru[cç][aã]o.*(?:pacientes|internad|interna[cç][oõ]es)", q_lower):
+        hints.append(
+            "📊 EDUCATION PROFILE ALERT: pergunta 'qual o nível de instrução dos pacientes/internados' pede distribuição por categoria, não um total escalar. "
+            "Use JOIN instrucao, SELECT instrucao.\"DESCRICAO\", COUNT(*), filtre i.\"INSTRU\" IS NOT NULL AND i.\"INSTRU\" != 0, GROUP BY descrição."
+        )
+
+    has_respiratory_category = any(
+        t in q_lower
+        for t in [
+            "doença respiratória",
+            "doenca respiratoria",
+            "doenças respiratórias",
+            "doencas respiratorias",
+        ]
+    )
+    if has_respiratory_category and "trimestre" in q_lower and any(
+        t in q_lower for t in ["percentual", "porcentagem", "proporção", "proporcao"]
+    ):
+        hints.append(
+            "🫁 RESPIRATORY QUARTER PERCENTAGE ALERT: CID J% é filtro de escopo, não dimensão de saída. "
+            "✅ Use WHERE i.\"DIAG_PRINC\" LIKE 'J%' e GROUP BY somente trimestre. "
+            "✅ O percentual deve usar como denominador o total anual das internações respiratórias filtradas: "
+            "COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (). "
+            "❌ Não agrupe por DIAG_PRINC/CID e não divida pelo total de todas as internações do estado."
+        )
+    elif has_respiratory_category and any(t in q_lower for t in count_triggers):
+        hints.append(
+            "🫁 RESPIRATORY DISEASE COUNT ALERT: 'por doença respiratória' expressa causa/filtro, não breakdown por diagnóstico. "
+            "Use WHERE \"DIAG_PRINC\" LIKE 'J%' e retorne um COUNT(*) scalar, sem GROUP BY por CID/descrição."
+        )
+
+    if any(t in q_lower for t in ["contraceptivo", "contraceptivos"]):
+        hints.append(
+            "🧾 CONTRACEPTIVE METHOD ALERT: métodos contraceptivos são válidos no escopo obstétrico. "
+            "✅ Use WHERE i.\"ESPEC\" = 2. "
+            "✅ Para distribuição incluindo sem informação, use LEFT JOIN contraceptivos c "
+            "ON i.\"CONTRACEP1\" = c.\"CONTRACEPTIVO\" e COALESCE(c.\"DESCRICAO\", 'SEM INFORMACAO'). "
+            "❌ Não adicione filtro de UTI por causa da palavra 'utilizados' e não use INNER JOIN quando "
+            "a pergunta pede casos sem informação."
+        )
+
+    if "sexo" in q_lower and any(t in q_lower for t in ["média", "media", "custo", "distribuição", "distribuicao"]):
+        hints.append(
+            "⚥ SEX LABEL ALERT: quando agrupar por sexo, retorne labels legíveis. "
+            "✅ Use CASE WHEN i.\"SEXO\" = 1 THEN 'Masculino' WHEN i.\"SEXO\" = 3 THEN 'Feminino' END "
+            "ou JOIN sexo para descrição. "
+            "✅ Filtre i.\"SEXO\" IN (1, 3) quando a análise compara masculino/feminino. "
+            "❌ Não exponha apenas os códigos numéricos 1/3 no resultado final."
+        )
+
+    if any(t in q_lower for t in ["causa de morte", "causas de morte"]) and "diagnóstico principal" in q_lower:
+        hints.append(
+            "☠️ DEATH-CAUSE ANTI-JOIN ALERT: causa de morte usa i.\"CID_MORTE\" com i.\"MORTE\" = true; "
+            "diagnóstico principal usa i.\"DIAG_PRINC\". "
+            "✅ Para 'aparece como causa de morte mas nunca como diagnóstico principal', use NOT EXISTS "
+            "correlacionando d.\"DIAG_PRINC\" = c.\"CID\". "
+            "❌ Não use DIAG_PRINC como causa de morte e não trate a palavra 'principal' como ranking/top-1."
+        )
+
+    period_ranges = _re.findall(
+        r"\b((?:19|20)\d{2})\s*(?:-|a|até|ate)\s*((?:19|20)\d{2})\b",
+        q_lower,
+    )
+    if len(period_ranges) >= 2 and any(
+        t in q_lower for t in ["crescimento", "queda", "variação", "variacao", "delta"]
+    ):
+        p1_start, p1_end = period_ranges[0]
+        p2_start, p2_end = period_ranges[1]
+        hints.append(
+            "📈 PERIOD COMPARISON ALERT: a pergunta compara dois períodos fechados. "
+            f"✅ Agregue cada período em CTE separada ({p1_start}-{p1_end} e {p2_start}-{p2_end}) "
+            "pela mesma entidade, faça INNER JOIN entre as entidades presentes nos dois períodos, "
+            "e retorne entidade, contagem_periodo_1, contagem_periodo_2 e delta. "
+            "✅ Para crescimento use periodo_2 - periodo_1; para queda use periodo_1 - periodo_2 "
+            "como queda positiva e ordene DESC. "
+            "❌ Não use FULL OUTER JOIN nem retorne apenas o delta quando a pergunta pede top-N comparativo."
+        )
+
+    if any(t in q_lower for t in ["média móvel", "media movel"]):
+        hints.append(
+            "📉 MOVING AVERAGE ALERT: média móvel de internações deve agregar contagens por período primeiro. "
+            "✅ Use CTE anual com SELECT ano, COUNT(*) AS total_internacoes ... GROUP BY ano. "
+            "✅ Depois aplique AVG(total_internacoes) OVER (ORDER BY ano ROWS BETWEEN 2 PRECEDING AND CURRENT ROW). "
+            "❌ Não use AVG(VAL_TOT), AVG(DIAS_PERM) ou SUM(...) OVER para média móvel de internações."
+        )
+
+    if any(t in q_lower for t in ["quartil", "quartis"]):
+        hints.append(
+            "▦ QUARTILE DISTRIBUTION ALERT: para distribuir entidades em quartis, compute volume por entidade primeiro. "
+            "✅ CTE 1: SELECT entidade, COUNT(*) AS total_internacoes GROUP BY entidade. "
+            "✅ CTE 2: NTILE(4) OVER (ORDER BY total_internacoes) AS ntile_grupo. "
+            "✅ Saída: quartil, COUNT(*) entidades, MIN(total_internacoes), MAX(total_internacoes). "
+            "❌ Não aplique NTILE diretamente nas linhas brutas de internações."
+        )
+
+    socio_terms = ["idhm", "bolsa família", "bolsa familia", "mortalidade infantil"]
+    if sum(1 for term in socio_terms if term in q_lower) >= 2:
+        hints.append(
+            "🏛️ SOCIOECONOMIC MULTI-METRIC ALERT: socioeconomico é long-format "
+            "(codigo_6d, ano, metrica, valor). "
+            "✅ Para múltiplas métricas, use pivot condicional com CASE WHEN s.\"metrica\" = ... THEN s.\"valor\" END. "
+            "✅ Calcule médias estaduais em CTE separada e valores por município em outra CTE. "
+            "✅ Use JOIN municipios ON s.\"codigo_6d\" = mu.\"codigo_6d\" para filtrar estado e retornar nomes. "
+            "❌ Não agregue métricas diferentes juntas sem filtrar/pivotar metrica."
+        )
+    elif "idhm" in q_lower and "mortalidade hospitalar" in q_lower:
+        hints.append(
+            "🏛️ IDHM + HOSPITAL MORTALITY ALERT: taxa de mortalidade hospitalar vem de internacoes; "
+            "IDHM vem de socioeconomico com s.\"metrica\" = 'idhm'. "
+            "✅ Primeiro calcule mortalidade por município e média estadual em internacoes. "
+            "✅ Depois junte socioeconomico por codigo_6d e agregue AVG(s.\"valor\") por grupo acima/abaixo da média. "
+            "❌ Não tente obter IDHM de internacoes e não use socioeconomico para calcular mortalidade hospitalar."
         )
 
     antijoin_triggers = ["nunca", "nenhum", "nenhuma", "sem registro", "não aparecem", "não tiveram",
@@ -335,7 +594,9 @@ _SQL_RULES_AO = """        ═════════════════�
         ❌ (CURRENT_DATE - "NASC") / 365 > 60    ← NEVER! use IDADE directly
 
         RULE I — COUNT rows vs COUNT DISTINCT values:
-        "Quantos X diferentes existem cadastrados/registrados?" → COUNT(*) rows in the table (total registros).
+        "Quantos X diferentes existem cadastrados/registrados?" → count rows/codes in the relevant reference table.
+        CID catalog example: "quantos códigos CID-10 distintos existem?" → SELECT COUNT(DISTINCT "CID") FROM cid.
+        Fact-observed example: "quantos CIDs foram registrados em internações?" → COUNT(DISTINCT i."DIAG_PRINC") FROM internacoes.
         COUNT(DISTINCT col) only when asking "quantos valores únicos de COLUNA" or "quantas categorias distintas".
         ✅ "Quantos procedimentos diferentes existem?" → SELECT COUNT(*) FROM procedimentos
         ❌ SELECT COUNT(DISTINCT "NOME_PROC") → WRONG for "how many procedures exist"

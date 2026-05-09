@@ -1,10 +1,12 @@
 """SQL generation pipeline: schema, CoT planning, and structured output."""
 
 import time
+import re
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
+from ..semantic.plan_schema import SemanticPlan
 from ..utils.logging_config import get_nodes_logger
 from .llm_manager import get_llm_manager
 from .prompt_builder import build_pregeneration_hints, build_sql_generation_messages
@@ -100,6 +102,63 @@ def _build_pregeneration_hints(selected_tables, user_query):
     return build_pregeneration_hints(selected_tables, user_query)
 
 
+def _build_deterministic_scalar_sql(semantic_plan) -> str | None:
+    if not semantic_plan:
+        return None
+    try:
+        plan = (
+            semantic_plan
+            if isinstance(semantic_plan, SemanticPlan)
+            else SemanticPlan.model_validate(semantic_plan)
+        )
+    except Exception:
+        return None
+
+    if plan.base_grain != "internacao" or plan.answer_shape.row_grain != "single_scalar":
+        return None
+
+    age_filter_conditions: list[tuple[str, int]] = []
+    for semantic_filter in plan.filters:
+        if semantic_filter.field != "idade" or not semantic_filter.values:
+            continue
+        operator = semantic_filter.operator.strip()
+        if operator not in {"=", "<", "<=", ">", ">="}:
+            return None
+        values = [str(value).strip() for value in semantic_filter.values]
+        if not all(re.fullmatch(r"\d+", value) for value in values):
+            return None
+        numeric_values = [int(value) for value in values]
+        if operator == "=":
+            age_filter_conditions.append((operator, numeric_values[0]))
+        elif operator in {"<", "<="}:
+            age_filter_conditions.append((operator, max(numeric_values)))
+        else:
+            age_filter_conditions.append((operator, min(numeric_values)))
+
+    if ("=", 0) in age_filter_conditions and any(
+        operator in {"<", "<="} and value <= 1 for operator, value in age_filter_conditions
+    ):
+        age_filter_conditions = [("=", 0)]
+
+    where_conditions = [
+        f'"IDADE" {operator} {value}' for operator, value in age_filter_conditions
+    ]
+    where_clause = f" WHERE {' AND '.join(where_conditions)}" if where_conditions else ""
+    metric_names = {metric.name for metric in plan.metrics}
+    metric_types = {metric.expression_type for metric in plan.metrics}
+    if "idade_minima" in metric_names or "min" in metric_types:
+        return f'SELECT MIN("IDADE") AS idade_minima FROM internacoes{where_clause};'
+    if "idade_maxima" in metric_names or "max" in metric_types:
+        return f'SELECT MAX("IDADE") AS idade_maxima FROM internacoes{where_clause};'
+    if (
+        any(metric.name == "total" and metric.expression_type == "count" for metric in plan.metrics)
+        and where_conditions
+        and all(semantic_filter.field == "idade" for semantic_filter in plan.filters)
+    ):
+        return f'SELECT COUNT(*) AS total_internacoes FROM internacoes{where_clause};'
+    return None
+
+
 def generate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
     """Generate SQL using ChatPromptTemplate with table-specific rules."""
     start_time = time.time()
@@ -107,11 +166,34 @@ def generate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
     logger.info("SQL generation node started", extra={"user_query": state["user_query"][:100]})
 
     try:
-        llm_manager = get_llm_manager()
         user_query = state["user_query"]
         schema_context = state.get("schema_context", "")
         selected_tables = state.get("selected_tables", [])
         semantic_plan = state.get("semantic_plan")
+
+        deterministic_sql = _build_deterministic_scalar_sql(semantic_plan)
+        if deterministic_sql:
+            state["generated_sql"] = deterministic_sql
+            state["current_error"] = None
+            state = add_ai_message(
+                state,
+                f"Generated SQL query (deterministic_scalar): {deterministic_sql}",
+            )
+            meta = state.get("response_metadata", {}) or {}
+            meta["sql_generation_confidence"] = 1.0
+            meta["sql_generation_reasoning"] = (
+                "Deterministic scalar SQL generated from the semantic plan."
+            )
+            state["response_metadata"] = meta
+            execution_time = time.time() - start_time
+            state = update_phase(state, ExecutionPhase.SQL_GENERATION, execution_time)
+            logger.info(
+                "SQL generated via deterministic scalar macro",
+                extra={"sql": deterministic_sql[:200], "execution_time": execution_time},
+            )
+            return state
+
+        llm_manager = get_llm_manager()
 
         reasoning_plan = state.get("reasoning_plan")
         if reasoning_plan:

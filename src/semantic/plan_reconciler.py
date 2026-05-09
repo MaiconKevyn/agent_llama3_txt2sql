@@ -170,6 +170,12 @@ def _merge_filters(
     heuristic_filters: list[SemanticFilter],
     candidate_filters: list[SemanticFilter],
 ) -> list[SemanticFilter]:
+    heuristic_fields = {semantic_filter.field for semantic_filter in heuristic_filters}
+    if "idade" in heuristic_fields:
+        candidate_filters = [
+            semantic_filter for semantic_filter in candidate_filters if semantic_filter.field != "idade"
+        ]
+
     merged: dict[tuple[str, str, tuple[str, ...]], SemanticFilter] = {}
     for semantic_filter in heuristic_filters + candidate_filters:
         key = (
@@ -210,18 +216,47 @@ def _merge_answer_shape(
         candidate.required_dimensions,
         row_grain=row_grain,
     )
+    partition_dimensions = _merge_required_dimensions(
+        heuristic.partition_dimensions,
+        candidate.partition_dimensions,
+        row_grain=row_grain,
+    )
+    ranked_dimensions = _merge_required_dimensions(
+        heuristic.ranked_dimensions,
+        candidate.ranked_dimensions,
+        row_grain=row_grain,
+    )
     return AnswerShape(
         row_grain=row_grain,
         top_n=heuristic.top_n or candidate.top_n,
         top_n_scope=top_n_scope,
         required_dimensions=required_dimensions,
-        requires_group_by=False
-        if row_grain == "single_scalar"
-        else bool(
-            required_dimensions and (heuristic.requires_group_by or candidate.requires_group_by)
+        partition_dimensions=partition_dimensions,
+        ranked_dimensions=ranked_dimensions,
+        requires_group_by=_merge_requires_group_by(
+            heuristic,
+            candidate,
+            row_grain=row_grain,
+            required_dimensions=required_dimensions,
         ),
         include_unknown_bucket=heuristic.include_unknown_bucket or candidate.include_unknown_bucket,
     )
+
+
+def _merge_requires_group_by(
+    heuristic: AnswerShape,
+    candidate: AnswerShape,
+    *,
+    row_grain: str,
+    required_dimensions: list[str],
+) -> bool:
+    if row_grain == "single_scalar":
+        return False
+    if heuristic.requires_group_by:
+        return True
+    if heuristic.row_grain == "unknown" and candidate.requires_group_by:
+        return bool(required_dimensions)
+    return False
 
 
 def _merge_required_dimensions(

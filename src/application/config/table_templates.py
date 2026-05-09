@@ -1,6 +1,3 @@
-from typing import List, Dict, Optional
-
-
 # PostgreSQL-specific templates for all sihrd5 tables
 TABLE_TEMPLATES = {
     "internacoes": """
@@ -173,6 +170,13 @@ TABLE_TEMPLATES = {
         WHERE i."VAL_TOT" IS NOT NULL
         GROUP BY e."DESCRICAO"
         ORDER BY custo_medio DESC;
+
+        -- Q: "Qual a distribuição por idade nas internações?"
+        -- NOTE: "por idade" means exact numeric IDADE, not age bands.
+        SELECT "IDADE", COUNT(*) AS total_internacoes
+        FROM internacoes
+        GROUP BY "IDADE"
+        ORDER BY total_internacoes DESC;
 
         -- Q: "Qual o tempo médio de permanência em UTI por faixa etária?"
         -- NOTE: "faixa etária" always means CASE WHEN age bands (NOT GROUP BY exact IDADE)
@@ -559,6 +563,9 @@ TABLE_TEMPLATES = {
         -- RS state municipalities
         SELECT COUNT(*) FROM municipios WHERE "estado" = 'RS';
 
+        -- Distinct states covered by the database geography reference
+        SELECT COUNT(DISTINCT "estado") FROM municipios;
+
         -- Municipalities by state
         SELECT "estado", COUNT(*) AS total_municipios
         FROM municipios
@@ -697,6 +704,9 @@ TABLE_TEMPLATES = {
           Without "!= 0", the JOIN returns virtually the entire internacoes table.
 
         EXACT QUERY EXAMPLES:
+        -- Count registered social security linkage types in the lookup catalog
+        SELECT COUNT(*) FROM vincprev;
+
         -- NOTE: count WITH social security data → use internacoes directly (NOT vincprev lookup table!)
         -- vincprev table has only 7 rows (codes); patient records are in internacoes."VINCPREV"
         -- "Quantos pacientes aposentados foram internados?"
@@ -1123,7 +1133,7 @@ USER QUERY: {user_query}
 Generate the PostgreSQL query:"""
 
 
-def build_table_specific_prompt(selected_tables: List[str]) -> str:
+def build_table_specific_prompt(selected_tables: list[str]) -> str:
     """
     Builds dynamic prompt based on selected tables for PostgreSQL sihrd5 database
 
@@ -1157,7 +1167,7 @@ def build_table_specific_prompt(selected_tables: List[str]) -> str:
     return "\n".join(rules)
 
 
-def get_table_template(table_name: str) -> Optional[str]:
+def get_table_template(table_name: str) -> str | None:
     """
     Gets specific template for a table
 
@@ -1170,7 +1180,7 @@ def get_table_template(table_name: str) -> Optional[str]:
     return TABLE_TEMPLATES.get(table_name)
 
 
-def get_available_templates() -> List[str]:
+def get_available_templates() -> list[str]:
     """
     Returns list of tables with available templates
 
@@ -1180,7 +1190,7 @@ def get_available_templates() -> List[str]:
     return list(TABLE_TEMPLATES.keys())
 
 
-def validate_template_coverage(tables: List[str]) -> Dict[str, bool]:
+def validate_template_coverage(tables: list[str]) -> dict[str, bool]:
     """
     Validates if tables have available templates
 
@@ -1233,7 +1243,7 @@ JOIN BEST PRACTICES:
 """
 
 
-def build_multi_table_prompt(selected_tables: List[str]) -> str:
+def build_multi_table_prompt(selected_tables: list[str]) -> str:
     """
     Builds prompt for queries involving multiple tables
 
@@ -1268,7 +1278,7 @@ TEMPLATE_CONFIG = {
 }
 
 
-def get_template_stats() -> Dict[str, int]:
+def get_template_stats() -> dict[str, int]:
     """
     Gets statistics about template coverage
 

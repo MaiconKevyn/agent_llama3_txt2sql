@@ -1,0 +1,66 @@
+[
+  {
+    "id": "GT079",
+    "difficulty": "hard",
+    "question": "Quais são os 10 procedimentos mais comuns nas cidades do RS?",
+    "query": "SELECT p.\"NOME_PROC\" AS procedimento, COUNT(a.\"N_AIH\") AS total_procedimentos FROM atendimentos a JOIN procedimentos p ON a.\"PROC_REA\" = p.\"PROC_REA\" JOIN internacoes i ON a.\"N_AIH\" = i.\"N_AIH\" JOIN hospital h ON i.\"CNES\" = h.\"CNES\" JOIN municipios m ON h.\"MUNIC_MOV\" = m.codigo_6d WHERE m.estado = 'RS' GROUP BY p.\"NOME_PROC\" ORDER BY total_procedimentos DESC LIMIT 10;",
+    "tables": ["atendimentos", "procedimentos", "internacoes", "hospital", "municipios"],
+    "notes": "Hard regression slice: filter municipality scope through hospital location, output top procedures globally."
+  },
+  {
+    "id": "GT087",
+    "difficulty": "hard",
+    "question": "Qual a evolução anual da taxa de mortalidade por estado (MA e RS)?",
+    "query": "SELECT mu.estado, EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.codigo_6d WHERE mu.estado IN ('MA', 'RS') AND i.\"DT_INTER\" IS NOT NULL GROUP BY mu.estado, ano ORDER BY mu.estado, ano;",
+    "tables": ["internacoes", "municipios"],
+    "notes": "Hard regression slice: annual mortality rate by state preserving denominator."
+  },
+  {
+    "id": "GT115",
+    "difficulty": "hard",
+    "question": "Qual o hospital com maior receita total por especialidade médica, considerando apenas hospitais com mais de 500 internações na especialidade?",
+    "query": "SELECT especialidade, \"CNES\", receita_total FROM (SELECT e.\"DESCRICAO\" AS especialidade, i.\"CNES\", ROUND(SUM(i.\"VAL_TOT\"), 2) AS receita_total, ROW_NUMBER() OVER (PARTITION BY e.\"DESCRICAO\" ORDER BY SUM(i.\"VAL_TOT\") DESC) AS rn FROM internacoes i JOIN especialidade e ON i.\"ESPEC\" = e.\"ESPEC\" GROUP BY e.\"DESCRICAO\", i.\"CNES\" HAVING COUNT(*) > 500) sub WHERE rn = 1 ORDER BY receita_total DESC;",
+    "tables": ["internacoes", "especialidade"],
+    "notes": "Hard regression slice: top-1 per group with partitioned ranking and HAVING support threshold."
+  },
+  {
+    "id": "GT116",
+    "difficulty": "hard",
+    "question": "Quais são os 10 diagnósticos com maior crescimento absoluto de internações entre os períodos 2008-2012 e 2019-2023?",
+    "query": "WITH p1 AS (SELECT \"DIAG_PRINC\", COUNT(*) AS n1 FROM internacoes WHERE EXTRACT(YEAR FROM \"DT_INTER\") BETWEEN 2008 AND 2012 AND \"DIAG_PRINC\" IS NOT NULL GROUP BY \"DIAG_PRINC\"), p2 AS (SELECT \"DIAG_PRINC\", COUNT(*) AS n2 FROM internacoes WHERE EXTRACT(YEAR FROM \"DT_INTER\") BETWEEN 2019 AND 2023 AND \"DIAG_PRINC\" IS NOT NULL GROUP BY \"DIAG_PRINC\") SELECT c.\"CD_DESCRICAO\", p1.n1 AS periodo_2008_2012, p2.n2 AS periodo_2019_2023, (p2.n2 - p1.n1) AS crescimento_absoluto FROM p1 JOIN p2 ON p1.\"DIAG_PRINC\" = p2.\"DIAG_PRINC\" JOIN cid c ON p1.\"DIAG_PRINC\" = c.\"CID\" WHERE p1.n1 > 1000 ORDER BY crescimento_absoluto DESC LIMIT 10;",
+    "tables": ["internacoes", "cid"],
+    "notes": "Hard regression slice: matched-period temporal comparison with delta."
+  },
+  {
+    "id": "GT120",
+    "difficulty": "hard",
+    "question": "Qual o total e o percentual de internações por doenças respiratórias (CID J%) em cada trimestre do ano no estado do RS?",
+    "query": "SELECT t.trimestre, COUNT(*) AS total_respiratorio, ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) AS pct_anual FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.codigo_6d JOIN tempo t ON i.\"DT_INTER\" = t.data WHERE i.\"DIAG_PRINC\" LIKE 'J%' AND mu.estado = 'RS' GROUP BY t.trimestre ORDER BY t.trimestre;",
+    "tables": ["internacoes", "municipios", "tempo"],
+    "notes": "Hard regression slice: filtered category denominator and quarter grouping."
+  },
+  {
+    "id": "GT124",
+    "difficulty": "hard",
+    "question": "Qual a média móvel de 3 anos de internações no estado do RS por ano (2008-2023)?",
+    "query": "SELECT ano, total_internacoes, ROUND(AVG(total_internacoes) OVER (ORDER BY ano ROWS BETWEEN 2 PRECEDING AND CURRENT ROW), 0) AS media_movel_3anos FROM (SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.codigo_6d WHERE mu.estado = 'RS' AND i.\"DT_INTER\" IS NOT NULL GROUP BY ano) sub ORDER BY ano;",
+    "tables": ["internacoes", "municipios"],
+    "notes": "Hard regression slice: preaggregated annual series plus 3-year moving average."
+  },
+  {
+    "id": "GT129",
+    "difficulty": "hard",
+    "question": "Quais códigos CID aparecem como causa de morte em óbitos registrados mas nunca foram registrados como diagnóstico principal de internação?",
+    "query": "SELECT c.\"CID\", c.\"CD_DESCRICAO\", COUNT(*) AS total_como_morte FROM internacoes i JOIN cid c ON i.\"CID_MORTE\" = c.\"CID\" WHERE i.\"MORTE\" = true AND i.\"CID_MORTE\" IS NOT NULL AND i.\"CID_MORTE\" != '0' AND NOT EXISTS (SELECT 1 FROM internacoes d WHERE d.\"DIAG_PRINC\" = c.\"CID\") GROUP BY c.\"CID\", c.\"CD_DESCRICAO\" ORDER BY total_como_morte DESC LIMIT 10;",
+    "tables": ["internacoes", "cid"],
+    "notes": "Hard regression slice: death-cause anti-condition over CID_MORTE versus DIAG_PRINC."
+  },
+  {
+    "id": "GT135",
+    "difficulty": "hard",
+    "question": "Quais são os 10 municípios do Maranhão com Bolsa Família acima da média estadual e mortalidade infantil abaixo da média estadual?",
+    "query": "WITH media_ma AS (SELECT AVG(CASE WHEN s.metrica = 'bolsa_familia_total' THEN s.valor END) AS avg_bf, AVG(CASE WHEN s.metrica = 'mortalidade_infantil_1ano' THEN s.valor END) AS avg_mi FROM socioeconomico s JOIN municipios mu ON s.codigo_6d = mu.codigo_6d WHERE mu.estado = 'MA'), por_municipio AS (SELECT mu.nome, MAX(CASE WHEN s.metrica = 'bolsa_familia_total' THEN s.valor END) AS bolsa_familia, MAX(CASE WHEN s.metrica = 'mortalidade_infantil_1ano' THEN s.valor END) AS mort_infantil FROM socioeconomico s JOIN municipios mu ON s.codigo_6d = mu.codigo_6d WHERE mu.estado = 'MA' GROUP BY mu.nome) SELECT pm.nome, pm.bolsa_familia, pm.mort_infantil FROM por_municipio pm, media_ma mm WHERE pm.bolsa_familia > mm.avg_bf AND pm.mort_infantil < mm.avg_mi AND pm.bolsa_familia IS NOT NULL AND pm.mort_infantil IS NOT NULL ORDER BY pm.bolsa_familia DESC LIMIT 10;",
+    "tables": ["socioeconomico", "municipios"],
+    "notes": "Hard regression slice: multi-metric socioeconomic pivot and state-average filters."
+  }
+]

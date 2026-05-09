@@ -100,6 +100,140 @@ metrics:
       - taxa de mortalidade infantil
       - mortalidade infantil media
 
+  bolsa_familia_total:
+    label: Total de beneficio Bolsa Familia
+    grain: municipio_ano_metrica
+    metric_type: socioeconomic_indicator
+    expression_type: sum
+    expression: SUM(s."valor")
+    denominator_scope: rows_matching_metric_filter
+    default_scope: socioeconomico rows where metrica = 'bolsa_familia_total'
+    required_filters:
+      - s."metrica" = 'bolsa_familia_total'
+    forbidden_filters: []
+    null_policy: []
+    rules:
+      - socioeconomico_metric_filter_required
+    aliases:
+      - bolsa familia
+      - beneficio bolsa familia
+      - total bolsa familia
+
+  esgotamento_sanitario_domicilio:
+    label: Total de esgotamento sanitario domiciliar
+    grain: municipio_ano_metrica
+    metric_type: socioeconomic_indicator
+    expression_type: sum
+    expression: SUM(s."valor")
+    denominator_scope: rows_matching_metric_filter
+    default_scope: socioeconomico rows where metrica = 'esgotamento_sanitario_domicilio'
+    required_filters:
+      - s."metrica" = 'esgotamento_sanitario_domicilio'
+    forbidden_filters: []
+    null_policy: []
+    rules:
+      - socioeconomico_metric_filter_required
+    aliases:
+      - esgotamento sanitario
+      - saneamento
+      - total esgotamento sanitario
+
+  populacao_total:
+    label: Populacao total municipal
+    grain: municipio_ano_metrica
+    metric_type: socioeconomic_indicator
+    expression_type: value
+    expression: s."valor"
+    denominator_scope: rows_matching_metric_filter
+    default_scope: socioeconomico rows where metrica = 'populacao_total'
+    required_filters:
+      - s."metrica" = 'populacao_total'
+    forbidden_filters: []
+    null_policy: []
+    rules:
+      - socioeconomico_metric_filter_required
+    aliases:
+      - populacao
+      - habitantes
+      - populacao total
+
+  cid_catalog_count:
+    label: Total de codigos CID-10 cadastrados
+    grain: cid_code
+    metric_type: catalog_cardinality
+    expression_type: count
+    expression: COUNT(DISTINCT c."CID")
+    denominator_scope: null
+    default_scope: cid reference table
+    required_filters: []
+    forbidden_filters:
+      - counting internacoes.DIAG_PRINC when the question asks how many CID-10 codes exist
+    null_policy: []
+    rules:
+      - catalog_cardinality_must_use_reference_table
+    aliases:
+      - codigos cid existentes
+      - codigos cid cadastrados
+      - cid-10 distintos existem
+      - quantos cids existem
+
+  vincprev_catalog_count:
+    label: Total de tipos de vinculo previdenciario cadastrados
+    grain: vincprev_code
+    metric_type: catalog_cardinality
+    expression_type: count
+    expression: COUNT(*) FROM vincprev
+    denominator_scope: null
+    default_scope: vincprev reference table
+    required_filters: []
+    forbidden_filters:
+      - counting internacoes.VINCPREV when the question asks how many vincprev types exist
+    null_policy: []
+    rules:
+      - catalog_cardinality_must_use_reference_table
+    aliases:
+      - tipos de vinculo previdenciario
+      - vinculos previdenciarios existentes
+      - vinculos previdenciarios cadastrados
+
+  municipio_catalog_count:
+    label: Total de municipios cadastrados na dimensao geografica
+    grain: municipio
+    metric_type: catalog_cardinality
+    expression_type: count
+    expression: COUNT(*) FROM municipios
+    denominator_scope: null
+    default_scope: municipios reference table
+    required_filters: []
+    forbidden_filters:
+      - joining internacoes when the question asks how many municipalities are covered or registered
+    null_policy: []
+    rules:
+      - catalog_cardinality_must_use_reference_table
+    aliases:
+      - municipios cadastrados
+      - municipios cobertos pelo banco
+      - municipios por estado
+
+  estado_coverage_count:
+    label: Total de estados cobertos pela dimensao geografica
+    grain: estado
+    metric_type: catalog_cardinality
+    expression_type: count_distinct
+    expression: COUNT(DISTINCT m.estado) FROM municipios m
+    denominator_scope: null
+    default_scope: municipios reference table
+    required_filters: []
+    forbidden_filters:
+      - joining internacoes when the question asks how many states the database covers
+    null_policy: []
+    rules:
+      - catalog_cardinality_must_use_reference_table
+    aliases:
+      - estados cobertos pelo banco de dados
+      - estados distintos cadastrados
+      - cobertura de estados
+
 dimensions:
   estado_residencia:
     label: Estado de residencia do paciente
@@ -141,6 +275,24 @@ dimensions:
     null_policy:
       - preserve_unknown_hospital_location_when_requested
 
+  estado_socioeconomico:
+    label: Estado de indicador socioeconomico municipal
+    source: municipios.estado
+    grain: municipio_ano_metrica
+    joins:
+      - socioeconomico.codigo_6d -> municipios.codigo_6d
+    join_path:
+      - socioeconomico.codigo_6d -> municipios.codigo_6d
+    default_for:
+      - indicador por estado
+      - socioeconomico por estado
+      - metrica municipal por estado
+    aliases:
+      - uf do indicador
+      - estado do municipio
+      - estado em socioeconomico
+    null_policy: []
+
   municipio_residencia:
     label: Municipio de residencia do paciente
     source: municipios.nome
@@ -159,6 +311,25 @@ dimensions:
       - municipio do paciente
     null_policy:
       - preserve_unknown_residence_when_requested
+
+  municipio_socioeconomico:
+    label: Municipio de indicador socioeconomico municipal
+    source: municipios.nome
+    grain: municipio_ano_metrica
+    joins:
+      - socioeconomico.codigo_6d -> municipios.codigo_6d
+    join_path:
+      - socioeconomico.codigo_6d -> municipios.codigo_6d
+    default_for:
+      - indicador por municipio
+      - socioeconomico por municipio
+      - metrica municipal por municipio
+      - municipio com maior populacao
+    aliases:
+      - cidade do indicador
+      - municipio do indicador
+      - municipio em socioeconomico
+    null_policy: []
 
   municipio_hospital:
     label: Municipio onde o hospital esta localizado
@@ -211,6 +382,22 @@ dimensions:
       - procedimento realizado
       - procedimento sus
     null_policy: []
+
+  contraceptivo:
+    label: Metodo contraceptivo
+    source: contraceptivos.DESCRICAO
+    grain: internacao_obstetrica
+    joins:
+      - internacoes.CONTRACEP1 -> contraceptivos.CONTRACEPTIVO
+    join_path:
+      - internacoes.CONTRACEP1 -> contraceptivos.CONTRACEPTIVO
+    aliases:
+      - contraceptivo
+      - contraceptivos
+      - metodo contraceptivo
+      - metodos contraceptivos
+    null_policy:
+      - preserve_unknown_bucket_when_requested
 
   sexo:
     label: Sexo do paciente
@@ -362,3 +549,11 @@ rules:
       Rankings top-N por media ou taxa em entidades de alta cardinalidade devem
       aplicar suporte minimo de grupo, por exemplo HAVING COUNT(*) > 100, para
       evitar ordenar entidades com amostras pequenas.
+
+  catalog_cardinality_must_use_reference_table:
+    severity: error
+    description: >
+      Perguntas sobre quantos codigos/tipos existem, estao cadastrados ou estao
+      disponiveis em um catalogo devem contar a tabela de referencia. So use a
+      tabela fato quando a pergunta pedir valores observados, registrados ou
+      usados em internacoes.

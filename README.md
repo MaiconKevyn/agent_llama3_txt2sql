@@ -330,7 +330,7 @@ The repository includes four complementary evaluation paths:
 
 ### Running Evaluation
 ```bash
-python evaluation/run_dag_evaluation.py
+python -m evaluation.runners.run_dag_evaluation
 python evaluation/run_rich_prompt_baseline.py
 python -m evaluation.runners.run_regression --threshold 0.90
 python -m evaluation.runners.run_ablation
@@ -341,6 +341,7 @@ python evaluation/generate_report.py
 ```bash
 evaluation/agent/results/                 # Agent regression / general evaluation outputs
 evaluation/ablation/results/              # Ablation outputs
+evaluation/results/dag_evaluation_<id>/   # DAG evaluation run folders
 evaluation/table_selection/results/       # Table-selection benchmark outputs
 baselines/rich_prompt_baseline/artifacts/ # Baseline artifacts
 evaluation/logs/                          # Evaluation runner logs

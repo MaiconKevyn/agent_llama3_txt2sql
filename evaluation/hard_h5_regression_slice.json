@@ -1,0 +1,35 @@
+[
+  {
+    "id": "GT114",
+    "difficulty": "hard",
+    "question": "Qual a distribuição dos métodos contraceptivos utilizados por pacientes em internações obstétricas, incluindo os casos sem informação?",
+    "query": "SELECT COALESCE(c.\"DESCRICAO\", 'SEM INFORMACAO') AS metodo_contraceptivo, COUNT(*) AS total_internacoes FROM internacoes i LEFT JOIN contraceptivos c ON i.\"CONTRACEP1\" = c.\"CONTRACEPTIVO\" WHERE i.\"ESPEC\" = 2 GROUP BY COALESCE(c.\"DESCRICAO\", 'SEM INFORMACAO') ORDER BY total_internacoes DESC LIMIT 10;",
+    "tables": [
+      "internacoes",
+      "contraceptivos"
+    ],
+    "notes": "HARD: LEFT JOIN with COALESCE to preserve NULL/unmatched rows as 'SEM INFORMACAO'. Filter ESPEC=2 for obstetric."
+  },
+  {
+    "id": "GT119",
+    "difficulty": "hard",
+    "question": "Qual o custo médio de UTI por especialidade médica e sexo do paciente, considerando apenas internações com custo de UTI registrado?",
+    "query": "SELECT e.\"DESCRICAO\" AS especialidade, CASE WHEN i.\"SEXO\" = 1 THEN 'Masculino' ELSE 'Feminino' END AS sexo, ROUND(AVG(i.\"VAL_UTI\"), 2) AS custo_medio_uti FROM internacoes i JOIN especialidade e ON i.\"ESPEC\" = e.\"ESPEC\" WHERE i.\"VAL_UTI\" > 0 AND i.\"SEXO\" IN (1, 3) GROUP BY e.\"DESCRICAO\", i.\"SEXO\" ORDER BY custo_medio_uti DESC;",
+    "tables": [
+      "internacoes",
+      "especialidade"
+    ],
+    "notes": "HARD: JOIN especialidade + CASE WHEN for sex label + dual filter (VAL_UTI > 0, SEXO IN) + GROUP BY 2 dimensions."
+  },
+  {
+    "id": "GT129",
+    "difficulty": "hard",
+    "question": "Quais códigos CID aparecem como causa de morte em óbitos registrados mas nunca foram registrados como diagnóstico principal de internação?",
+    "query": "SELECT c.\"CID\", c.\"CD_DESCRICAO\", COUNT(*) AS total_como_morte FROM internacoes i JOIN cid c ON i.\"CID_MORTE\" = c.\"CID\" WHERE i.\"MORTE\" = true AND i.\"CID_MORTE\" IS NOT NULL AND i.\"CID_MORTE\" != '0' AND NOT EXISTS (SELECT 1 FROM internacoes d WHERE d.\"DIAG_PRINC\" = c.\"CID\") GROUP BY c.\"CID\", c.\"CD_DESCRICAO\" ORDER BY total_como_morte DESC LIMIT 10;",
+    "tables": [
+      "internacoes",
+      "cid"
+    ],
+    "notes": "HARD: NOT EXISTS correlated anti-join subquery + MORTE=true filter + exclusion of code '0'."
+  }
+]

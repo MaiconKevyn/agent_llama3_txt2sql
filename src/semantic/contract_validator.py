@@ -33,6 +33,7 @@ def validate_sql_contract(
     errors: list[str] = []
 
     _validate_top_n_contract(plan, ast_summary, errors)
+    _validate_metric_expression_contract(plan, ast_summary, sql, errors)
     _validate_rate_contract(plan, ast_summary, sql, errors)
     _validate_grouping_contract(plan, ast_summary, errors)
     _validate_catalog_join_paths(plan, ast_summary, catalog, errors)
@@ -56,6 +57,70 @@ def _validate_top_n_contract(
         return
     if not any(window.partition_by for window in ast_summary.window_functions):
         errors.append("AST CONTRACT ERROR: top-N per group window must declare PARTITION BY.")
+        return
+    if plan.answer_shape.top_n == 1 and any(
+        window.name in {"rank", "dense_rank"} for window in ast_summary.window_functions
+    ):
+        errors.append(
+            "AST CONTRACT ERROR: top-1 per group should use ROW_NUMBER(), not RANK/DENSE_RANK, "
+            "unless the question explicitly asks to include ties."
+        )
+        return
+    partition_dimensions = plan.answer_shape.partition_dimensions
+    ranked_dimensions = plan.answer_shape.ranked_dimensions
+    if partition_dimensions:
+        if not any(
+            _window_matches_dimensions(window.partition_by, partition_dimensions)
+            for window in ast_summary.window_functions
+        ):
+            expected = ", ".join(partition_dimensions)
+            errors.append(
+                "AST CONTRACT ERROR: top-N per group window must partition by the group "
+                f"dimension(s): {expected}."
+            )
+            return
+    if ranked_dimensions:
+        for window in ast_summary.window_functions:
+            if _window_matches_any_dimension(window.partition_by, ranked_dimensions):
+                ranked = ", ".join(ranked_dimensions)
+                errors.append(
+                    "AST CONTRACT ERROR: top-N per group window partitions by the ranked "
+                    f"entity ({ranked}), making every entity rank within itself."
+                )
+                return
+
+
+def _validate_metric_expression_contract(
+    plan: SemanticPlan,
+    ast_summary: SQLAstSummary,
+    sql: str,
+    errors: list[str],
+) -> None:
+    metric_names = {metric.name for metric in plan.metrics}
+    sql_lower = sql.lower()
+    if "receita_total" in metric_names:
+        if not re.search(r"\bsum\s*\(\s*(?:[a-z_][\w]*\.)?\"?val_tot\"?\s*\)", sql_lower, re.I):
+            errors.append(
+                "AST CONTRACT ERROR: receita total must aggregate internacoes.VAL_TOT with SUM."
+            )
+            return
+        if plan.answer_shape.top_n_scope != "none" and ast_summary.window_functions:
+            if not re.search(
+                r"\border\s+by\s+(?:sum\s*\([^)]*\"?val_tot\"?[^)]*\)|\"?receita_total\"?)",
+                sql_lower,
+                re.I,
+            ):
+                errors.append(
+                    "AST CONTRACT ERROR: ranking by receita total must order the window by SUM(VAL_TOT)."
+                )
+                return
+
+    if "media_val_sh" in metric_names:
+        if not re.search(r"\bavg\s*\(\s*(?:[a-z_][\w]*\.)?\"?val_sh\"?\s*\)", sql_lower, re.I):
+            errors.append(
+                "AST CONTRACT ERROR: valor médio de serviço hospitalar must use AVG(VAL_SH)."
+            )
+            return
 
 
 def _validate_rate_contract(
@@ -75,6 +140,40 @@ def _validate_rate_contract(
         errors.append(
             "AST CONTRACT ERROR: mortality-rate numerator must use conditional aggregation."
         )
+
+
+def _window_matches_dimensions(partition_by: list[str], dimensions: list[str]) -> bool:
+    partition_text = ", ".join(partition_by).lower()
+    return all(_text_matches_dimension(partition_text, dimension) for dimension in dimensions)
+
+
+def _window_matches_any_dimension(partition_by: list[str], dimensions: list[str]) -> bool:
+    partition_text = ", ".join(partition_by).lower()
+    return any(_text_matches_dimension(partition_text, dimension) for dimension in dimensions)
+
+
+def _text_matches_dimension(text: str, dimension: str) -> bool:
+    dimension_patterns = {
+        "estado": [r"\bestado\b"],
+        "estado_hospital": [r"\bestado\b"],
+        "municipio": [r"\bnome\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
+        "municipio_hospital": [r"\bnome\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
+        "hospital": [r"\bcnes\b"],
+        "especialidade": [r"\bespecialidade\b", r"\bdescri[cç][aã]o\b", r"\bespec\b"],
+        "diagnostico": [r"\bcd_descricao\b", r"\bdiag_princ\b", r"\bcid\b"],
+        "procedimento": [r"\bnome_proc\b", r"\bproc_rea\b"],
+        "contraceptivo": [r"\bcontraceptivo\b", r"\bcontracep1\b", r"\bdescri[cç][aã]o\b"],
+        "sexo": [r"\bsexo\b"],
+        "raca_cor": [r"\braca_cor\b", r"\bra[cç]a\b", r"\bcor\b", r"\bdescri[cç][aã]o\b"],
+        "instrucao": [r"\binstru\b", r"\binstrucao\b", r"\binstru[cç][aã]o\b"],
+        "idade": [r"\bidade\b"],
+        "faixa_etaria": [r"\bfaixa\b", r"\bidade\b", r"\bcase\b"],
+        "ano": [r"\bano\b", r"\bextract\s*\(\s*year\b"],
+        "mes": [r"\bmes\b", r"\bm[eê]s\b", r"\bextract\s*\(\s*month\b"],
+        "dia_semana": [r"\bdia_semana\b", r"\bdia\s+da\s+semana\b"],
+        "quartil": [r"\bntile\b", r"\bquartil\b", r"\bntile_grupo\b"],
+    }
+    return any(re.search(pattern, text, re.I) for pattern in dimension_patterns.get(dimension, []))
 
 
 def _validate_grouping_contract(
@@ -99,16 +198,23 @@ def _validate_grouping_contract(
         "municipio": [r"\bnome\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
         "municipio_hospital": [r"\bnome\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
         "sexo": [r"\bsexo\b"],
-        "raca_cor": [r"\braca_cor\b", r"\bra[cç]a\b", r"\bcor\b"],
+        "raca_cor": [r"\braca_cor\b", r"\bra[cç]a\b", r"\bcor\b", r"\bdescri[cç][aã]o\b"],
         "instrucao": [
             r"\binstru\b",
             r"\binstrucao\b",
             r"\binstru[cç][aã]o\b",
             r"\bdescri[cç][aã]o\b",
         ],
+        "idade": [r"\bidade\b"],
         "hospital": [r"\bcnes\b"],
+        "especialidade": [r"\bespecialidade\b", r"\bdescri[cç][aã]o\b", r"\bespec\b"],
+        "diagnostico": [r"\bcd_descricao\b", r"\bdiag_princ\b", r"\bcid\b"],
         "procedimento": [r"\bnome_proc\b", r"\bproc_rea\b"],
+        "contraceptivo": [r"\bcontraceptivo\b", r"\bcontracep1\b", r"\bdescri[cç][aã]o\b"],
         "ano": [r"\bano\b", r"\bextract\s*\(\s*year\b"],
+        "trimestre": [r"\btrimestre\b", r"\bextract\s*\(\s*quarter\b"],
+        "dia_semana": [r"\bdia_semana\b", r"\bdia\s+da\s+semana\b"],
+        "quartil": [r"\bntile\b", r"\bquartil\b", r"\bntile_grupo\b"],
     }
     for dimension in plan.answer_shape.required_dimensions:
         patterns = dimension_patterns.get(dimension)
@@ -131,14 +237,17 @@ def _validate_catalog_join_paths(
     dimension_catalog_names = {
         "estado": ["estado_residencia", "estado_hospital"],
         "estado_hospital": ["estado_hospital"],
-        "municipio": ["municipio_residencia"],
+        "municipio": ["municipio_residencia", "municipio_socioeconomico"],
         "municipio_hospital": ["municipio_hospital"],
         "hospital": ["hospital"],
         "procedimento": ["procedimento"],
+        "contraceptivo": ["contraceptivo"],
         "ano": ["ano_internacao"],
+        "trimestre": ["ano_internacao"],
         "sexo": ["sexo"],
         "raca_cor": ["raca_cor"],
         "instrucao": ["instrucao"],
+        "idade": [],
     }
     dimension_names = _stable_union(
         plan.answer_shape.required_dimensions,
@@ -146,8 +255,18 @@ def _validate_catalog_join_paths(
     )
     sql_tables = {table.lower() for table in ast_summary.tables}
     for dimension in dimension_names:
+        if (
+            "geographic_filter_dimension_not_output" in plan.constraints
+            and dimension in {"estado", "estado_hospital", "municipio", "municipio_hospital"}
+            and dimension not in plan.answer_shape.required_dimensions
+        ):
+            continue
         catalog_names = dimension_catalog_names.get(dimension) or []
-        catalog_names = _prefer_contextual_catalog_names(catalog_names, dimension_names)
+        catalog_names = _prefer_contextual_catalog_names(
+            catalog_names,
+            dimension_names,
+            plan.base_grain,
+        )
         path_errors: list[str] = []
         checked_any_path = False
         for catalog_name in catalog_names:
@@ -202,8 +321,18 @@ def _join_path_errors(
 
 
 def _prefer_contextual_catalog_names(
-    catalog_names: list[str], dimension_names: list[str]
+    catalog_names: list[str],
+    dimension_names: list[str],
+    base_grain: str,
 ) -> list[str]:
+    if base_grain == "municipio_ano_metrica" and "municipio_socioeconomico" in catalog_names:
+        return ["municipio_socioeconomico"] + [
+            name for name in catalog_names if name != "municipio_socioeconomico"
+        ]
+    if base_grain == "municipio_ano_metrica" and "estado_residencia" in catalog_names:
+        return ["estado_socioeconomico"] + [
+            name for name in catalog_names if name != "estado_socioeconomico"
+        ]
     if "hospital" in dimension_names and "estado_hospital" in catalog_names:
         return ["estado_hospital"] + [name for name in catalog_names if name != "estado_hospital"]
     return catalog_names

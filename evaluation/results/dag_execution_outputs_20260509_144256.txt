@@ -1,0 +1,349 @@
+================================================================================
+QUERY EXECUTION OUTPUTS - MANUAL VALIDATION
+================================================================================
+
+Generated: 2026-05-09 14:42:56
+Total Questions: 10
+
+================================================================================
+GT014: Quantas internações por meningite ocasionaram em morte?
+Difficulty: MEDIUM
+================================================================================
+
+Ground Truth SQL:
+  SELECT COUNT(*) FROM internacoes i JOIN cid c ON i."CID_MORTE" = c."CID" WHERE c."CD_DESCRICAO" ILIKE '%meningite%' AND i."MORTE" = true;
+
+Ground Truth Results:
+  Row 1: [226]
+  Total rows: 1
+
+Multi-Query Metadata:
+  plan_type: None
+  execution_mode: single
+  merge_strategy: None
+  fallback_reason: None
+
+Predicted SQL:
+  [AGENT FAILED - No SQL generated]
+
+Predicted Results:
+  [Agent failed - no SQL to execute]
+
+Execution Accuracy (EX): 0.0
+Status: ✗ INCORRECT (Results differ)
+
+
+================================================================================
+GT019: Quais os cinco municípios com mais internações obstétricas registradas?
+Difficulty: MEDIUM
+================================================================================
+
+Ground Truth SQL:
+  SELECT mu.nome, COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d WHERE i."ESPEC" = 2 GROUP BY mu.nome ORDER BY total_internacoes DESC LIMIT 5;
+
+Ground Truth Results:
+  Row 1: ['SÃ£o LuÃ\xads', 222673]
+  Row 2: ['Porto Alegre', 166478]
+  Row 3: ['Imperatriz', 60366]
+  Row 4: ['Pelotas', 56523]
+  Row 5: ['Canoas', 56065]
+  Total rows: 5
+
+Multi-Query Metadata:
+  plan_type: single_default
+  execution_mode: single
+  merge_strategy: none
+  fallback_reason: None
+
+Predicted SQL:
+  [AGENT FAILED - No SQL generated]
+
+Predicted Results:
+  [Agent failed - no SQL to execute]
+
+Execution Accuracy (EX): 0.0
+Status: ✗ INCORRECT (Results differ)
+
+
+================================================================================
+GT108: Qual a distribuição de internações por raça/cor?
+Difficulty: MEDIUM
+================================================================================
+
+Ground Truth SQL:
+  SELECT r."DESCRICAO" AS raca_cor, COUNT(*) AS total_internacoes FROM internacoes i JOIN raca_cor r ON i."RACA_COR" = r."RACA_COR" GROUP BY r."DESCRICAO" ORDER BY total_internacoes DESC;
+
+Ground Truth Results:
+  Row 1: ['BRANCA', 8857139]
+  Row 2: ['SEM INFORMACAO', 4824195]
+  Row 3: ['PARDA', 3783817]
+  Row 4: ['PRETA', 615708]
+  Row 5: ['AMARELA', 307359]
+  Row 6: ['INDIGENA', 54866]
+  Total rows: 6
+
+Multi-Query Metadata:
+  plan_type: single_default
+  execution_mode: single
+  merge_strategy: none
+  fallback_reason: None
+
+Predicted SQL:
+  [AGENT FAILED - No SQL generated]
+
+Predicted Results:
+  [Agent failed - no SQL to execute]
+
+Execution Accuracy (EX): 0.0
+Status: ✗ INCORRECT (Results differ)
+
+
+================================================================================
+GT081: Quais são os 5 procedimentos mais realizados para cada sexo?
+Difficulty: HARD
+================================================================================
+
+Ground Truth SQL:
+  SELECT faixa_sexo, "NOME_PROC", total FROM (SELECT CASE WHEN i."SEXO" = 1 THEN 'Masculino' ELSE 'Feminino' END AS faixa_sexo, p."NOME_PROC", COUNT(*) AS total, ROW_NUMBER() OVER (PARTITION BY i."SEXO" ORDER BY COUNT(*) DESC) AS rn FROM atendimentos a JOIN procedimentos p ON a."PROC_REA" = p."PROC_REA" JOIN internacoes i ON a."N_AIH" = i."N_AIH" GROUP BY i."SEXO", p."NOME_PROC") sub WHERE rn <= 5 ORDER BY faixa_sexo, rn;
+
+Ground Truth Results:
+  Row 1: ['Feminino', 'PARTO NORMAL', 3190040]
+  Row 2: ['Feminino', 'PARTO CESARIANO', 1803418]
+  Row 3: ['Feminino', 'TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)', 1153766]
+  Row 4: ['Feminino', 'TRATAMENTO DE DOENCAS INFECCIOSAS INTESTINAIS', 863672]
+  Row 5: ['Feminino', 'TRATAMENTO DAS DOENCAS CRONICAS DAS VIAS AEREAS INFERIORES', 509058]
+  Row 6: ['Masculino', 'TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)', 1229026]
+  Row 7: ['Masculino', 'TRATAMENTO DE DOENCAS INFECCIOSAS INTESTINAIS', 737786]
+  Row 8: ['Masculino', 'TRATAMENTO DAS DOENCAS CRONICAS DAS VIAS AEREAS INFERIORES', 543456]
+  Row 9: ['Masculino', 'TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS', 434084]
+  Row 10: ['Masculino', 'TRATAMENTO DE INSUFICIENCIA CARDIACA', 353424]
+  Total rows: 10
+
+Multi-Query Metadata:
+  plan_type: single_default
+  execution_mode: single
+  merge_strategy: none
+  fallback_reason: None
+
+Predicted SQL:
+  [AGENT FAILED - No SQL generated]
+
+Predicted Results:
+  [Agent failed - no SQL to execute]
+
+Execution Accuracy (EX): 0.0
+Status: ✗ INCORRECT (Results differ)
+
+
+================================================================================
+GT082: Quais são os 3 diagnósticos principais mais comuns entre pacientes com mais de 60 anos no estado de MA e no estado do RS?
+Difficulty: HARD
+================================================================================
+
+Ground Truth SQL:
+  SELECT estado, "CD_DESCRICAO", total FROM (SELECT mu.estado, c."CD_DESCRICAO", COUNT(*) AS total, ROW_NUMBER() OVER (PARTITION BY mu.estado ORDER BY COUNT(*) DESC) AS rn FROM internacoes i JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d JOIN cid c ON i."DIAG_PRINC" = c."CID" WHERE i."IDADE" > 60 AND mu.estado IN ('MA', 'RS') GROUP BY mu.estado, c."CD_DESCRICAO") sub WHERE rn <= 3 ORDER BY estado, rn;
+
+Ground Truth Results:
+  Row 1: ['MA', 'Hipertensao essencial', 62773]
+  Row 2: ['MA', 'Acid vasc cerebr NE como hemorrag isquemico', 45508]
+  Row 3: ['MA', 'Pneumonia NE', 40070]
+  Row 4: ['RS', 'Pneumonia NE', 126867]
+  Row 5: ['RS', 'Doenc pulmonar obstrutiva cronica NE', 115828]
+  Row 6: ['RS', 'Insuf cardiaca NE', 108432]
+  Total rows: 6
+
+Multi-Query Metadata:
+  plan_type: single_window
+  execution_mode: single
+  merge_strategy: none
+  fallback_reason: None
+
+Predicted SQL:
+  [AGENT FAILED - No SQL generated]
+
+Predicted Results:
+  [Agent failed - no SQL to execute]
+
+Execution Accuracy (EX): 0.0
+Status: ✗ INCORRECT (Results differ)
+
+
+================================================================================
+GT114: Qual a distribuição dos métodos contraceptivos utilizados por pacientes em internações obstétricas, incluindo os casos sem informação?
+Difficulty: HARD
+================================================================================
+
+Ground Truth SQL:
+  SELECT COALESCE(c."DESCRICAO", 'SEM INFORMACAO') AS metodo_contraceptivo, COUNT(*) AS total_internacoes FROM internacoes i LEFT JOIN contraceptivos c ON i."CONTRACEP1" = c."CONTRACEPTIVO" WHERE i."ESPEC" = 2 GROUP BY COALESCE(c."DESCRICAO", 'SEM INFORMACAO') ORDER BY total_internacoes DESC LIMIT 10;
+
+Ground Truth Results:
+  Row 1: ['SEM INFORMACAO', 2858216]
+  Row 2: ['PRESERVATIVO', 12433]
+  Row 3: ['HORMONIO ORAL', 7323]
+  Row 4: ['LAM', 447]
+  Row 5: ['COITO INTERROMPIDO', 328]
+  Row 6: ['HORMONIO INJETAVEL', 188]
+  Row 7: ['DIAFRAGMA', 180]
+  Row 8: ['ESPERMICIDA', 114]
+  Row 9: ['DIU', 112]
+  Row 10: ['OGINO-KNAUS', 43]
+  Total rows: 10
+
+Multi-Query Metadata:
+  plan_type: single_default
+  execution_mode: single
+  merge_strategy: none
+  fallback_reason: None
+
+Predicted SQL:
+  [AGENT FAILED - No SQL generated]
+
+Predicted Results:
+  [Agent failed - no SQL to execute]
+
+Execution Accuracy (EX): 0.0
+Status: ✗ INCORRECT (Results differ)
+
+
+================================================================================
+GT115: Qual o hospital com maior receita total por especialidade médica, considerando apenas hospitais com mais de 500 internações na especialidade?
+Difficulty: HARD
+================================================================================
+
+Ground Truth SQL:
+  SELECT especialidade, "CNES", receita_total FROM (SELECT e."DESCRICAO" AS especialidade, i."CNES", ROUND(SUM(i."VAL_TOT"), 2) AS receita_total, ROW_NUMBER() OVER (PARTITION BY e."DESCRICAO" ORDER BY SUM(i."VAL_TOT") DESC) AS rn FROM internacoes i JOIN especialidade e ON i."ESPEC" = e."ESPEC" GROUP BY e."DESCRICAO", i."CNES" HAVING COUNT(*) > 500) sub WHERE rn = 1 ORDER BY receita_total DESC;
+
+Ground Truth Results:
+  Row 1: ['CIRURGICO', 2237253, 2118064008.52]
+  Row 2: ['CLINICOS', 2237601, 990777711.96]
+  Row 3: ['PEDIATRICOS', 2237571, 464276557.68]
+  Row 4: ['PSIQUIATRIA', 2698056, 178876071.62]
+  Row 5: ['OBSTETRICOS', 2309254, 152126166.9]
+  Row 6: ['LEITO DIA - CIRURGICOS', 2237601, 41150452.06]
+  Row 7: ['PNEUMOLOGIA SANITARIA', 2237121, 35488436.26]
+  Row 8: ['REABILITACAO', 2307006, 31741968.66]
+  Row 9: ['CRONICOS', 2232146, 30199381.44]
+  Row 10: ['LEITO DIA - SAUDE MENTAL', 2308088, 20304064.8]
+  ... (3 more rows)
+  Total rows: 13
+
+Multi-Query Metadata:
+  plan_type: single_window
+  execution_mode: single
+  merge_strategy: none
+  fallback_reason: None
+
+Predicted SQL:
+  [AGENT FAILED - No SQL generated]
+
+Predicted Results:
+  [Agent failed - no SQL to execute]
+
+Execution Accuracy (EX): 0.0
+Status: ✗ INCORRECT (Results differ)
+
+
+================================================================================
+GT125: Qual a distribuição e percentual de internações em UTI por dia da semana?
+Difficulty: HARD
+================================================================================
+
+Ground Truth SQL:
+  SELECT t.dia_semana, COUNT(*) AS total_internacoes_uti, ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) AS pct_total FROM internacoes i JOIN tempo t ON i."DT_INTER" = t.data WHERE i."VAL_UTI" > 0 GROUP BY t.dia_semana ORDER BY t.dia_semana;
+
+Ground Truth Results:
+  Row 1: [1, 175763, 15.85]
+  Row 2: [2, 174485, 15.73]
+  Row 3: [3, 172987, 15.6]
+  Row 4: [4, 169139, 15.25]
+  Row 5: [5, 164461, 14.83]
+  Row 6: [6, 128098, 11.55]
+  Row 7: [7, 124183, 11.2]
+  Total rows: 7
+
+Multi-Query Metadata:
+  plan_type: single_default
+  execution_mode: single
+  merge_strategy: none
+  fallback_reason: None
+
+Predicted SQL:
+  [AGENT FAILED - No SQL generated]
+
+Predicted Results:
+  [Agent failed - no SQL to execute]
+
+Execution Accuracy (EX): 0.0
+Status: ✗ INCORRECT (Results differ)
+
+
+================================================================================
+GT132: Quais os 3 hospitais com maior valor médio de serviço hospitalar (VAL_SH) por estado (MA e RS), considerando hospitais com mais de 500 internações?
+Difficulty: HARD
+================================================================================
+
+Ground Truth SQL:
+  SELECT estado, "CNES", total_internacoes, avg_val_sh, rk FROM (SELECT mu.estado, i."CNES", COUNT(*) AS total_internacoes, ROUND(AVG(i."VAL_SH"), 2) AS avg_val_sh, RANK() OVER (PARTITION BY mu.estado ORDER BY AVG(i."VAL_SH") DESC) AS rk FROM internacoes i JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d WHERE mu.estado IN ('MA', 'RS') AND i."VAL_SH" IS NOT NULL GROUP BY mu.estado, i."CNES" HAVING COUNT(*) > 500) sub WHERE rk <= 3 ORDER BY estado, rk;
+
+Ground Truth Results:
+  Row 1: ['MA', 145602, 547, 10236.05, 1]
+  Row 2: ['MA', 2455781, 16552, 7466.36, 2]
+  Row 3: ['MA', 2698056, 24223, 6496.4, 3]
+  Row 4: ['RS', 2237849, 96278, 10087.44, 1]
+  Row 5: ['RS', 2237121, 3071, 8469.69, 2]
+  Row 6: ['RS', 9575936, 6270, 7883.72, 3]
+  Total rows: 6
+
+Multi-Query Metadata:
+  plan_type: single_window
+  execution_mode: single
+  merge_strategy: none
+  fallback_reason: None
+
+Predicted SQL:
+  [AGENT FAILED - No SQL generated]
+
+Predicted Results:
+  [Agent failed - no SQL to execute]
+
+Execution Accuracy (EX): 0.0
+Status: ✗ INCORRECT (Results differ)
+
+
+================================================================================
+GT134: Qual a média de dias de internação por especialidade médica, comparando lado a lado os estados MA e RS?
+Difficulty: HARD
+================================================================================
+
+Ground Truth SQL:
+  SELECT e."DESCRICAO" AS especialidade, ROUND(AVG(CASE WHEN mu.estado = 'MA' THEN i."DIAS_PERM" END), 2) AS media_dias_MA, ROUND(AVG(CASE WHEN mu.estado = 'RS' THEN i."DIAS_PERM" END), 2) AS media_dias_RS, COUNT(CASE WHEN mu.estado = 'MA' THEN 1 END) AS total_MA, COUNT(CASE WHEN mu.estado = 'RS' THEN 1 END) AS total_RS FROM internacoes i JOIN especialidade e ON i."ESPEC" = e."ESPEC" JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d WHERE mu.estado IN ('MA', 'RS') GROUP BY e."DESCRICAO" HAVING COUNT(CASE WHEN mu.estado = 'MA' THEN 1 END) > 100 AND COUNT(CASE WHEN mu.estado = 'RS' THEN 1 END) > 100 ORDER BY especialidade;
+
+Ground Truth Results:
+  Row 1: ['CIRURGICO', 4.16, 4.22, 1585225, 3959600]
+  Row 2: ['CLINICOS', 4.5, 7.06, 2591500, 4778055]
+  Row 3: ['LEITO DIA - SAUDE MENTAL', 31.65, 29.91, 25001, 6742]
+  Row 4: ['OBSTETRICOS', 2.18, 2.65, 1450966, 1416526]
+  Row 5: ['PEDIATRICOS', 4.91, 6.51, 876695, 999295]
+  Row 6: ['PNEUMOLOGIA SANITARIA', 16.02, 13.45, 1204, 5831]
+  Row 7: ['PSIQUIATRIA', 31.44, 16.37, 48895, 419256]
+  Row 8: ['REABILITACAO', 8.23, 24.96, 29616, 283]
+  Total rows: 8
+
+Multi-Query Metadata:
+  plan_type: pivot_compare
+  execution_mode: single
+  merge_strategy: none
+  fallback_reason: None
+
+Predicted SQL:
+  [AGENT FAILED - No SQL generated]
+
+Predicted Results:
+  [Agent failed - no SQL to execute]
+
+Execution Accuracy (EX): 0.0
+Status: ✗ INCORRECT (Results differ)
+
+================================================================================
+END OF REPORT
+================================================================================
