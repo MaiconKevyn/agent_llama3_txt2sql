@@ -43,7 +43,8 @@ def parse_sql_ast(sql: str) -> SQLAstSummary:
 
     try:
         ctes = _extract_ctes(normalized)
-        aliases = _extract_table_aliases(normalized)
+        sql_for_table_scans = _mask_function_inner_from(normalized)
+        aliases = _extract_table_aliases(sql_for_table_scans)
         joins = _extract_joins(normalized)
         tables = _stable_unique(
             [
@@ -70,9 +71,12 @@ def parse_sql_ast(sql: str) -> SQLAstSummary:
             window_functions=_extract_window_functions(lowered),
         )
     except Exception:
+        sql_for_table_scans = _mask_function_inner_from(lowered)
         return SQLAstSummary(
             parse_status="fallback",
-            tables=_stable_unique(re.findall(r"\b(?:from|join)\s+\"?([a-z_][\w]*)\"?", lowered)),
+            tables=_stable_unique(
+                re.findall(r"\b(?:from|join)\s+\"?([a-z_][\w]*)\"?", sql_for_table_scans)
+            ),
             where=inspector.clause_text("WHERE"),
             group_by=inspector.clause_text("GROUP BY"),
             having=inspector.clause_text("HAVING"),
@@ -84,6 +88,16 @@ def _extract_ctes(sql: str) -> list[str]:
     if not re.search(r"^\s*WITH\b", sql, re.I):
         return []
     return _stable_unique(re.findall(r"(?:WITH|,)\s+\"?([a-z_][\w]*)\"?\s+AS\s*\(", sql, re.I))
+
+
+def _mask_function_inner_from(sql: str) -> str:
+    """Avoid treating EXTRACT(... FROM column) as a table FROM clause."""
+    return re.sub(
+        r"\bEXTRACT\s*\(\s*([a-z_]+)\s+FROM\s+([\s\S]*?)\)",
+        lambda match: f"EXTRACT({match.group(1)} __FROM__ {match.group(2)})",
+        sql,
+        flags=re.I,
+    )
 
 
 def _extract_table_aliases(sql: str) -> dict[str, str]:

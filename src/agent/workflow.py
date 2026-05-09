@@ -56,7 +56,8 @@ def create_langgraph_sql_workflow(config=None):
     workflow.add_node("list_tables", list_tables_node)
     workflow.add_node("get_schema", get_schema_node)
     workflow.add_node("plan_gate", plan_gate_node)
-    workflow.add_node("semantic_planner", semantic_planner_node)
+    if not cfg.disable_semantic_planner:
+        workflow.add_node("semantic_planner", semantic_planner_node)
     workflow.add_node("query_planner", query_planner_node)
     workflow.add_node("generate_sql", generate_sql_node)
     workflow.add_node("execute_sql", execute_sql_node)
@@ -96,19 +97,21 @@ def create_langgraph_sql_workflow(config=None):
         {"plan_gate": "plan_gate", "generate_response": "generate_response"},
     )
 
-    workflow.add_edge("plan_gate", "semantic_planner")
-
-    # ── semantic_planner: bypass reasoning when disabled ──────────────────────
     _reasoning_target = "generate_sql" if cfg.disable_cot_reasoning else "reasoning"
-    workflow.add_conditional_edges(
-        "semantic_planner",
-        route_after_plan_gate,
-        {
-            "query_planner": "query_planner",
-            "reasoning": _reasoning_target,
-            "generate_sql": "generate_sql",
-        },
-    )
+    _after_plan_gate_targets = {
+        "query_planner": "query_planner",
+        "reasoning": _reasoning_target,
+        "generate_sql": "generate_sql",
+    }
+    if cfg.disable_semantic_planner:
+        workflow.add_conditional_edges("plan_gate", route_after_plan_gate, _after_plan_gate_targets)
+    else:
+        workflow.add_edge("plan_gate", "semantic_planner")
+        workflow.add_conditional_edges(
+            "semantic_planner",
+            route_after_plan_gate,
+            _after_plan_gate_targets,
+        )
 
     workflow.add_conditional_edges(
         "query_planner",

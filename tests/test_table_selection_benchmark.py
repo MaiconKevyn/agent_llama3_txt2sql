@@ -118,6 +118,26 @@ def test_validate_table_selection_adds_hospital_for_municipios_que_atendem():
     assert validated == ["internacoes", "municipios", "hospital"]
 
 
+def test_heuristic_table_selection_adds_instrucao_for_mortality_by_education():
+    selected, confidence = ts._heuristic_table_selection(
+        user_query="Qual é a taxa de mortalidade por nível de instrução no estado do RS?",
+        available_tables=["internacoes", "municipios", "instrucao", "socioeconomico"],
+    )
+
+    assert confidence >= 0.85
+    assert selected == ["internacoes", "municipios", "instrucao"]
+
+
+def test_validate_table_selection_adds_hospital_location_path_for_hospital_by_state():
+    validated = ts._validate_table_selection(
+        user_query="Quais são os 3 hospitais com maior custo médio de UTI por estado?",
+        selected_tables=["internacoes"],
+        available_tables=["internacoes", "hospital", "municipios"],
+    )
+
+    assert validated == ["internacoes", "hospital", "municipios"]
+
+
 def test_schema_contract_and_selection_protocol_variants_include_core_invariants():
     available = ["internacoes", "tempo", "hospital", "municipios", "socioeconomico"]
 

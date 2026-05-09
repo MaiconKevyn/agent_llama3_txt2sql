@@ -155,10 +155,14 @@ def _catalog_rule_names(catalog: SemanticCatalog, rule_names: list[str] | None) 
 def _catalog_dimension_name(plan_dimension: str) -> str | None:
     mapping = {
         "estado": "estado_residencia",
+        "estado_hospital": "estado_hospital",
         "municipio": "municipio_residencia",
+        "municipio_hospital": "municipio_hospital",
         "hospital": "hospital",
         "procedimento": "procedimento",
         "sexo": "sexo",
+        "instrucao": "instrucao",
+        "raca_cor": "raca_cor",
         "ano": "ano_internacao",
     }
     return mapping.get(plan_dimension)

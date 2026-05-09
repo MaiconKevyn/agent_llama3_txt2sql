@@ -77,6 +77,29 @@ metrics:
       - media de custo de uti
       - custo medio da uti
 
+  mortalidade_infantil_1ano:
+    label: Taxa de mortalidade infantil ate 1 ano
+    grain: municipio_ano_metrica
+    metric_type: socioeconomic_indicator
+    expression_type: avg
+    expression: AVG(s."valor")
+    denominator_scope: rows_matching_metric_filter
+    default_scope: socioeconomico rows where metrica = 'mortalidade_infantil_1ano'
+    required_filters:
+      - s."metrica" = 'mortalidade_infantil_1ano'
+    forbidden_filters:
+      - s."metrica" = 'morte_infantil'
+      - s."metrica" = 'bolsa_familia_total'
+      - deriving infant mortality from internacoes.MORTE
+    null_policy:
+      - ignore_null_numeric_values_in_avg
+    rules:
+      - socioeconomico_metric_filter_required
+    aliases:
+      - mortalidade infantil
+      - taxa de mortalidade infantil
+      - mortalidade infantil media
+
 dimensions:
   estado_residencia:
     label: Estado de residencia do paciente
@@ -214,6 +237,39 @@ dimensions:
       - ano da internacao
     null_policy: []
 
+  instrucao:
+    label: Nivel de instrucao/escolaridade do paciente
+    source: instrucao.DESCRICAO
+    grain: internacao
+    joins:
+      - internacoes.INSTRU -> instrucao.INSTRU
+    join_path:
+      - internacoes.INSTRU -> instrucao.INSTRU
+    aliases:
+      - nivel de instrucao
+      - grau de instrucao
+      - escolaridade
+    null_policy:
+      - exclude_code_zero_unless_unknown_bucket_requested
+    output_policy: use_description_label
+
+  raca_cor:
+    label: Raca/cor do paciente
+    source: raca_cor.DESCRICAO
+    grain: internacao
+    joins:
+      - internacoes.RACA_COR -> raca_cor.RACA_COR
+    join_path:
+      - internacoes.RACA_COR -> raca_cor.RACA_COR
+    aliases:
+      - raca
+      - cor
+      - raca cor
+    null_policy:
+      - preserve_unknown_bucket_for_distribution
+      - exclude_unknown_codes_for_rates_or_averages
+    output_policy: use_description_label
+
 macros:
   top_n_per_group:
     description: Ranking por grupo usando janela particionada.
@@ -278,4 +334,31 @@ rules:
     severity: error
     description: >
       Perguntas que pedem sem informacao devem preservar linhas sem correspondencia
-      usando LEFT JOIN e bucket explicito via COALESCE ou CASE.
+      ou codigos desconhecidos em bucket explicito.
+
+  join_path_hospital_location_required:
+    severity: error
+    description: >
+      Perguntas sobre municipio/estado de atendimento, hospital ou localizacao do
+      hospital devem usar internacoes.CNES -> hospital.CNES -> hospital.MUNIC_MOV
+      -> municipios.codigo_6d, nao MUNIC_RES.
+
+  domain_instrucao_valid_required:
+    severity: error
+    description: >
+      Analises por nivel de instrucao devem juntar a tabela instrucao e excluir
+      INSTRU nulo ou 0, exceto quando a pergunta solicitar explicitamente sem
+      informacao.
+
+  socioeconomico_metric_filter_required:
+    severity: error
+    description: >
+      Consultas em socioeconomico devem filtrar a metrica canonica indicada pelo
+      plano semantico. Mortalidade infantil usa metrica='mortalidade_infantil_1ano'.
+
+  top_n_average_high_cardinality_requires_minimum_group_size:
+    severity: error
+    description: >
+      Rankings top-N por media ou taxa em entidades de alta cardinalidade devem
+      aplicar suporte minimo de grupo, por exemplo HAVING COUNT(*) > 100, para
+      evitar ordenar entidades com amostras pequenas.

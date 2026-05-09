@@ -18,6 +18,7 @@ python -m evaluation.runners.run_regression --output evaluation/agent/results/re
 
 Exit code: 0 if EX >= threshold (default 0.90), 1 otherwise.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -28,7 +29,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # ── project root on path ──────────────────────────────────────────────────────
 ROOT = Path(__file__).resolve().parents[2]
@@ -36,9 +37,12 @@ sys.path.insert(0, str(ROOT))
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv(ROOT / ".env")
 except ImportError:
     pass
+
+from evaluation.runners.result_matching import results_match  # noqa: E402
 
 
 def _git_sha() -> str:
@@ -50,7 +54,7 @@ def _git_sha() -> str:
         return "unknown"
 
 
-def _load_regression_set(tier: Optional[str]) -> List[Dict]:
+def _load_regression_set(tier: str | None) -> list[dict]:
     path = ROOT / "evaluation" / "regression_set.json"
     if not path.exists():
         sys.exit(f"[ERROR] regression_set.json not found at {path}")
@@ -75,48 +79,25 @@ def _run_gold_sql(sql: str, db_manager) -> Any:
         return f"__GOLD_ERROR__: {exc}"
 
 
-def _normalize_result(raw) -> str:
-    """Normalise a result for comparison (strips whitespace, lowercases)."""
-    if raw is None:
-        return ""
-    s = str(raw).strip().lower()
-    import re
-    s = re.sub(r"\s+", " ", s)
-    return s
-
-
-def _results_match(agent_rows: List[Dict], gold_raw: Any) -> bool:
+def _results_match(agent_rows: Any, gold_raw: Any) -> bool:
     """Execution accuracy: agent result == gold result (row-set comparison)."""
-    if gold_raw is None or str(gold_raw).startswith("__GOLD_ERROR__"):
-        return False
-
-    gold_norm = _normalize_result(gold_raw)
-
-    # Agent result is a list of {"result": "..."} dicts
-    if isinstance(agent_rows, list):
-        agent_str = "\n".join(r.get("result", "") for r in agent_rows if isinstance(r, dict))
-    else:
-        agent_str = str(agent_rows or "")
-
-    agent_norm = _normalize_result(agent_str)
-    return agent_norm == gold_norm
+    return results_match(agent_rows, gold_raw)
 
 
 def run_regression(
-    max_queries: Optional[int] = None,
-    tier: Optional[str] = None,
+    max_queries: int | None = None,
+    tier: str | None = None,
     ex_threshold: float = 0.90,
     per_query_timeout: int = 60,
-    output_path: Optional[str] = None,
+    output_path: str | None = None,
     verbose: bool = True,
-) -> Dict:
+) -> dict:
     """Run the regression suite and return a results dict."""
 
     # ── env guards ────────────────────────────────────────────────────────────
     if not os.getenv("DATABASE_URL") and not os.getenv("DATABASE_PATH"):
         sys.exit(
-            "[ERROR] DATABASE_URL or DATABASE_PATH not set. "
-            "Regression requires a live database."
+            "[ERROR] DATABASE_URL or DATABASE_PATH not set. Regression requires a live database."
         )
     if not os.getenv("OPENAI_API_KEY"):
         sys.exit("[ERROR] OPENAI_API_KEY not set.")
@@ -137,13 +118,13 @@ def run_regression(
     prompt_version = getattr(config, "prompt_version", "v1")
     model_id = config.llm_model
 
-    results: List[Dict] = []
+    results: list[dict] = []
     n_correct = 0
-    by_tier: Dict[str, Dict] = {}
+    by_tier: dict[str, dict] = {}
 
-    print(f"\n{'─'*60}")
+    print(f"\n{'─' * 60}")
     print(f"  Regression Suite — {len(queries)} queries | model={model_id} | sha={git_sha}")
-    print(f"{'─'*60}\n")
+    print(f"{'─' * 60}\n")
 
     for i, q in enumerate(queries, 1):
         qid = q["id"]
@@ -155,7 +136,7 @@ def run_regression(
         ex = False
         generated_sql = ""
         error_msg = ""
-        taxonomy: List[str] = []
+        taxonomy: list[str] = []
 
         try:
             result = orchestrator.process_query(
@@ -164,7 +145,9 @@ def run_regression(
                 force_single_query=True,
             )
             generated_sql = result.get("sql_query", "")
-            agent_rows = result.get("results", [])
+            agent_rows = result.get("final_result_rows")
+            if agent_rows is None:
+                agent_rows = result.get("results", [])
             taxonomy = result.get("failure_taxonomy", [])
 
             if result.get("success"):
@@ -184,27 +167,31 @@ def run_regression(
 
         status = "✓" if ex else "✗"
         if verbose:
-            print(f"  [{i:02d}/{len(queries)}] {status} {qid} ({difficulty:6}) {elapsed:5.1f}s  {question[:55]}")
+            print(
+                f"  [{i:02d}/{len(queries)}] {status} {qid} ({difficulty:6}) {elapsed:5.1f}s  {question[:55]}"
+            )
             if not ex and (error_msg or taxonomy):
                 detail = error_msg[:80] if error_msg else f"taxonomy={taxonomy}"
                 print(f"           → {detail}")
 
-        results.append({
-            "id": qid,
-            "difficulty": difficulty,
-            "question": question,
-            "gold_sql": gold_sql,
-            "generated_sql": generated_sql,
-            "ex": ex,
-            "elapsed_s": elapsed,
-            "failure_taxonomy": taxonomy,
-            "error": error_msg,
-            "critical_rule": q.get("critical_rule"),
-        })
+        results.append(
+            {
+                "id": qid,
+                "difficulty": difficulty,
+                "question": question,
+                "gold_sql": gold_sql,
+                "generated_sql": generated_sql,
+                "ex": ex,
+                "elapsed_s": elapsed,
+                "failure_taxonomy": taxonomy,
+                "error": error_msg,
+                "critical_rule": q.get("critical_rule"),
+            }
+        )
 
     overall_ex = n_correct / len(queries) if queries else 0.0
 
-    print(f"\n{'─'*60}")
+    print(f"\n{'─' * 60}")
     print(f"  EX overall : {overall_ex:.1%}  ({n_correct}/{len(queries)})")
     for tier_name in ("easy", "medium", "hard"):
         ts = by_tier.get(tier_name)
@@ -213,7 +200,7 @@ def run_regression(
             print(f"  EX {tier_name:6} : {pct:.1%}  ({ts['correct']}/{ts['total']})")
     passed = overall_ex >= ex_threshold
     print(f"\n  {'PASS ✓' if passed else 'FAIL ✗'}  (threshold={ex_threshold:.0%})")
-    print(f"{'─'*60}\n")
+    print(f"{'─' * 60}\n")
 
     report = {
         "run_ts": run_ts,
@@ -224,8 +211,10 @@ def run_regression(
         "ex_overall": round(overall_ex, 4),
         "ex_threshold": ex_threshold,
         "passed": passed,
-        "by_tier": {k: {"ex": round(v["correct"] / v["total"], 4) if v["total"] else 0, **v}
-                    for k, v in by_tier.items()},
+        "by_tier": {
+            k: {"ex": round(v["correct"] / v["total"], 4) if v["total"] else 0, **v}
+            for k, v in by_tier.items()
+        },
         "queries": results,
     }
 
