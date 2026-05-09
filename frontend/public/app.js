@@ -1,24 +1,19 @@
-// App Configuration
 const API_BASE_URL = '/api';
 const SESSION_STORAGE_KEY = 'chatSessionId';
-
-// Must match MAX_CONVERSATION_TURNS in src/agent/state.py
-// Controls how many (user + assistant) message pairs the AI actually remembers.
-// Visual history in localStorage is aligned to this limit so the user only sees
-// what the AI can still reference.
+const CHAT_HISTORY_KEY = 'chatHistory';
+const THEME_KEY = 'theme';
 const MAX_CONVERSATION_TURNS = 10;
-const MAX_HISTORY_MESSAGES = MAX_CONVERSATION_TURNS * 2; // 20 messages = 10 pairs
+const MAX_HISTORY_MESSAGES = MAX_CONVERSATION_TURNS * 2;
+const MAX_MESSAGE_LENGTH = 1000;
 
-// State Management
 let isLoading = false;
 let messageHistory = [];
+let schemaTriggerElement = null;
 
-// DOM Elements
 const elements = {
     messageInput: document.getElementById('messageInput'),
     sendBtn: document.getElementById('sendBtn'),
     chatMessages: document.getElementById('chatMessages'),
-    loadingOverlay: document.getElementById('loadingOverlay'),
     schemaModal: document.getElementById('schemaModal'),
     schemaBtn: document.getElementById('schemaBtn'),
     closeSchemaModal: document.getElementById('closeSchemaModal'),
@@ -28,87 +23,64 @@ const elements = {
     errorToast: document.getElementById('errorToast'),
     schemaContent: document.getElementById('schemaContent'),
     exampleBtns: document.querySelectorAll('.example-btn'),
-    themeToggle: document.getElementById('themeToggle')
+    themeToggle: document.getElementById('themeToggle'),
+    charCounter: document.getElementById('charCounter')
 };
 
-// Initialize App
 document.addEventListener('DOMContentLoaded', function() {
+    initializeTheme();
     initializeApp();
     setupEventListeners();
     checkServerStatus();
-    setWelcomeTime();
-    initializeTheme();
 });
 
 function initializeApp() {
     ensureSessionId();
-
-    // Auto-resize textarea
-    elements.messageInput.addEventListener('input', autoResizeTextarea);
-    
-    // Enable send button when there's text
-    elements.messageInput.addEventListener('input', toggleSendButton);
-    
-    // Handle Enter key
-    elements.messageInput.addEventListener('keydown', handleKeyDown);
-    
-    // Load message history from localStorage
     loadMessageHistory();
+    autoResizeTextarea();
+    updateInputState();
 }
 
 function setupEventListeners() {
-    // Send message
+    elements.messageInput.addEventListener('input', updateInputState);
+    elements.messageInput.addEventListener('keydown', handleInputKeyDown);
     elements.sendBtn.addEventListener('click', sendMessage);
-    
-    // Schema modal
     elements.schemaBtn.addEventListener('click', showSchemaModal);
     elements.closeSchemaModal.addEventListener('click', hideSchemaModal);
-    elements.schemaModal.addEventListener('click', function(e) {
-        if (e.target === elements.schemaModal) {
+    elements.clearBtn.addEventListener('click', clearChat);
+    elements.themeToggle.addEventListener('click', toggleTheme);
+
+    elements.schemaModal.addEventListener('click', function(event) {
+        if (event.target === elements.schemaModal) {
             hideSchemaModal();
         }
     });
-    
-    // Schema controls
+
     const loadSchemaBtn = document.getElementById('loadSchemaBtn');
     if (loadSchemaBtn) {
         loadSchemaBtn.addEventListener('click', loadSelectedSchema);
     }
-    
-    // Clear chat
-    elements.clearBtn.addEventListener('click', clearChat);
-    
-    // Theme toggle
-    elements.themeToggle.addEventListener('click', toggleTheme);
-    
-    // Example buttons
-    elements.exampleBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const question = this.getAttribute('data-question');
-            elements.messageInput.value = question;
-            autoResizeTextarea();
-            toggleSendButton();
-            sendMessage();
+
+    elements.exampleBtns.forEach((button) => {
+        button.addEventListener('click', function() {
+            const question = this.getAttribute('data-question') || '';
+            fillQuestion(question);
         });
     });
-    
-    // Error toast close
+
     const toastClose = elements.errorToast.querySelector('.toast-close');
     if (toastClose) {
         toastClose.addEventListener('click', hideErrorToast);
     }
-    
-    // Keyboard shortcuts
-    document.addEventListener('keydown', function(e) {
-        // Ctrl/Cmd + Enter to send message
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+
+    document.addEventListener('keydown', function(event) {
+        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
             if (!isLoading && elements.messageInput.value.trim()) {
                 sendMessage();
             }
         }
-        
-        // Escape to close modal
-        if (e.key === 'Escape') {
+
+        if (event.key === 'Escape') {
             if (elements.schemaModal.classList.contains('show')) {
                 hideSchemaModal();
             }
@@ -119,20 +91,31 @@ function setupEventListeners() {
     });
 }
 
+function fillQuestion(question) {
+    elements.messageInput.value = question;
+    elements.messageInput.focus();
+    elements.messageInput.setSelectionRange(question.length, question.length);
+    updateInputState();
+}
+
 function autoResizeTextarea() {
     const textarea = elements.messageInput;
     textarea.style.height = 'auto';
-    textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 140)}px`;
 }
 
-function toggleSendButton() {
-    const hasText = elements.messageInput.value.trim().length > 0;
+function updateInputState() {
+    autoResizeTextarea();
+    const value = elements.messageInput.value;
+    const hasText = value.trim().length > 0;
     elements.sendBtn.disabled = !hasText || isLoading;
+    elements.charCounter.textContent = `${value.length}/${MAX_MESSAGE_LENGTH}`;
+    elements.charCounter.classList.toggle('limit-warning', value.length > MAX_MESSAGE_LENGTH * 0.9);
 }
 
-function handleKeyDown(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
+function handleInputKeyDown(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
         if (!isLoading && elements.messageInput.value.trim()) {
             sendMessage();
         }
@@ -143,18 +126,11 @@ async function sendMessage() {
     const message = elements.messageInput.value.trim();
     if (!message || isLoading) return;
 
-    // Lock: prevents double-submit during the entire async lifecycle
     isLoading = true;
-
-    // Add user message to chat
     addMessage(message, 'user');
-
-    // Clear input and reflect locked state on button
     elements.messageInput.value = '';
-    autoResizeTextarea();
-    toggleSendButton();
+    updateInputState();
 
-    // Add loading message to chat
     const loadingMessageId = addLoadingMessage();
 
     try {
@@ -186,145 +162,155 @@ async function sendMessage() {
         removeLoadingMessage(loadingMessageId);
 
         if (data.success) {
-            const responseContent = data.response || data.conversational_response || 'Consulta processada com sucesso.';
-            addMessage(responseContent, 'assistant', {
-                executionTime: data.execution_time
+            addMessage(data.response || data.conversational_response || 'Consulta processada com sucesso.', 'assistant', {
+                executionTime: data.execution_time,
+                sql: data.sql || data.sql_query || null
             });
         } else {
-            addMessage(data.error_message || 'Erro desconhecido', 'error');
+            addMessage(data.error_message || 'Nao foi possivel processar a consulta.', 'error');
         }
 
-        updateServerStatus(true);
-
+        setServerStatus('online');
     } catch (error) {
         console.error('Error sending message:', error);
         removeLoadingMessage(loadingMessageId);
+        setServerStatus('offline');
 
-        let errorMessage = 'Erro de conexão com o servidor.';
-        if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-            errorMessage = 'Não foi possível conectar ao servidor web do DataVisSUS.';
-            updateServerStatus(false);
-        } else if (error.message.includes('HTTP 5')) {
-            errorMessage = 'Erro interno do servidor. Tente novamente em alguns instantes.';
-        } else {
-            errorMessage = `Erro de conexão: ${error.message}`;
-        }
-
+        const errorMessage = buildUserFacingError(error);
         addMessage(errorMessage, 'error');
-        showErrorToast('Erro ao conectar com o servidor do DataVisSUS.');
-
+        showErrorToast('Nao foi possivel concluir a consulta. Verifique o agent e tente novamente.');
     } finally {
-        // Always unlock, regardless of success or error
         isLoading = false;
-        toggleSendButton();
+        updateInputState();
+        elements.messageInput.focus();
     }
+}
+
+function buildUserFacingError(error) {
+    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        return 'Nao foi possivel conectar ao servidor do DataVisSUS. Confirme se o agent esta rodando e tente novamente.';
+    }
+    if (error.message.includes('HTTP 429')) {
+        return 'Muitas consultas em pouco tempo. Aguarde alguns segundos antes de tentar novamente.';
+    }
+    if (error.message.includes('HTTP 5')) {
+        return 'O servidor retornou erro interno. Tente novamente em alguns instantes.';
+    }
+    return `Erro de conexao: ${error.message}`;
 }
 
 function addMessage(content, type = 'assistant', metadata = null) {
     const messageData = {
+        id: createMessageId(),
         content,
         type,
         timestamp: new Date().toISOString(),
         metadata
     };
-    
-    // Add to history
+
     messageHistory.push(messageData);
     saveMessageHistory();
-    
-    // Create message element
-    const messageElement = createMessageElement(messageData);
-    elements.chatMessages.appendChild(messageElement);
-    
-    // Scroll to bottom
+    elements.chatMessages.appendChild(createMessageElement(messageData));
     scrollToBottom();
 }
 
 function createMessageElement(messageData) {
-    const { content, type, timestamp, metadata } = messageData;
-    
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${type}-message`;
-    
-    const avatarDiv = document.createElement('div');
-    avatarDiv.className = 'message-avatar';
-    
-    const contentDiv = document.createElement('div');
-    contentDiv.className = 'message-content';
-    
-    // Set avatar icon
-    const icon = type === 'user' ? 'fas fa-user' : 
-                 type === 'error' ? 'fas fa-exclamation-triangle' : 
-                 'fas fa-robot';
-    avatarDiv.innerHTML = `<i class="${icon}"></i>`;
-    
-    // Create message text
-    const textDiv = document.createElement('div');
-    textDiv.className = 'message-text';
-    
-    if (type === 'error') {
-        textDiv.innerHTML = `<strong>Erro:</strong> ${escapeHtml(content)}`;
-    } else {
-        textDiv.innerHTML = formatMessageContent(content);
+    const { content, type, timestamp, metadata, id } = messageData;
+    const message = document.createElement('div');
+    message.className = `message ${type}-message`;
+    message.dataset.messageId = id || createMessageId();
+
+    const avatar = document.createElement('div');
+    avatar.className = 'message-avatar';
+    avatar.setAttribute('aria-hidden', 'true');
+    avatar.innerHTML = `<i class="${getMessageIcon(type)}"></i>`;
+
+    const contentWrap = document.createElement('div');
+    contentWrap.className = 'message-content';
+
+    const text = document.createElement('div');
+    text.className = 'message-text';
+    text.innerHTML = type === 'error'
+        ? `<strong>Erro:</strong> ${escapeHtml(content)}`
+        : formatMessageContent(content);
+
+    const meta = document.createElement('div');
+    meta.className = 'message-meta';
+
+    const time = document.createElement('span');
+    time.className = 'message-time';
+    time.textContent = formatTime(timestamp);
+    meta.appendChild(time);
+
+    if (metadata && Number.isFinite(metadata.executionTime)) {
+        const execution = document.createElement('span');
+        execution.className = 'execution-time';
+        execution.innerHTML = `<i class="fas fa-clock" aria-hidden="true"></i> ${metadata.executionTime.toFixed(2)}s`;
+        meta.appendChild(execution);
     }
-    
-    // Create timestamp
-    const timeDiv = document.createElement('div');
-    timeDiv.className = 'message-time';
-    timeDiv.textContent = formatTime(timestamp);
-    
-    // Add execution time if available
-    if (metadata && metadata.executionTime) {
-        timeDiv.innerHTML += ` • <i class="fas fa-clock"></i> ${metadata.executionTime.toFixed(2)}s`;
+
+    if (type === 'assistant') {
+        const copyButton = document.createElement('button');
+        copyButton.type = 'button';
+        copyButton.className = 'message-action';
+        copyButton.innerHTML = '<i class="fas fa-copy" aria-hidden="true"></i><span>Copiar</span>';
+        copyButton.setAttribute('aria-label', 'Copiar resposta');
+        copyButton.addEventListener('click', () => copyMessage(content, copyButton));
+        meta.appendChild(copyButton);
     }
-    
-    contentDiv.appendChild(textDiv);
-    contentDiv.appendChild(timeDiv);
-    
-    messageDiv.appendChild(avatarDiv);
-    messageDiv.appendChild(contentDiv);
-    
-    return messageDiv;
+
+    contentWrap.appendChild(text);
+    contentWrap.appendChild(meta);
+    message.appendChild(avatar);
+    message.appendChild(contentWrap);
+    return message;
+}
+
+function getMessageIcon(type) {
+    if (type === 'user') return 'fas fa-user';
+    if (type === 'error') return 'fas fa-triangle-exclamation';
+    return 'fas fa-robot';
+}
+
+async function copyMessage(content, button) {
+    try {
+        await navigator.clipboard.writeText(content);
+        const original = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check" aria-hidden="true"></i><span>Copiado</span>';
+        setTimeout(() => {
+            button.innerHTML = original;
+        }, 1600);
+    } catch (error) {
+        console.warn('Clipboard unavailable:', error);
+        showErrorToast('Nao foi possivel copiar a resposta.');
+    }
 }
 
 function formatMessageContent(content) {
-    // Escape HTML first
     let formatted = escapeHtml(content);
-    
-    // Convert line breaks
-    formatted = formatted.replace(/\n/g, '<br>');
-    
-    // Format code blocks (simple detection)
-    formatted = formatted.replace(/```([\s\S]*?)```/g, '<pre style="background: #f1f5f9; padding: 0.75rem; border-radius: 6px; margin: 0.5rem 0; border-left: 4px solid var(--sus-primary); overflow-x: auto;"><code>$1</code></pre>');
-    
-    // Format inline code
-    formatted = formatted.replace(/`([^`]+)`/g, '<code style="background: #f1f5f9; padding: 0.25rem 0.5rem; border-radius: 4px; font-family: monospace; font-size: 0.875em;">$1</code>');
-    
-    // Format bold text
+    formatted = formatted.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+    formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
     formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    
-    // Format italic text
     formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    
+    formatted = formatted.replace(/\n/g, '<br>');
     return formatted;
 }
 
 function escapeHtml(text) {
     const div = document.createElement('div');
-    div.textContent = text;
+    div.textContent = text == null ? '' : String(text);
     return div.innerHTML;
 }
 
 function formatTime(timestamp) {
     const date = new Date(timestamp);
     const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    
+    const diffMins = Math.floor((now - date) / 60000);
+
     if (diffMins < 1) return 'Agora';
-    if (diffMins < 60) return `${diffMins}m atrás`;
-    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h atrás`;
-    
+    if (diffMins < 60) return `${diffMins}m atras`;
+    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h atras`;
+
     return date.toLocaleDateString('pt-BR', {
         day: '2-digit',
         month: '2-digit',
@@ -338,82 +324,65 @@ function scrollToBottom() {
 }
 
 function addLoadingMessage() {
-    const loadingId = 'loading-' + Date.now();
-    const loadingDiv = document.createElement('div');
-    loadingDiv.className = 'message assistant-message loading-message';
-    loadingDiv.id = loadingId;
-    
-    loadingDiv.innerHTML = `
-        <div class="message-avatar">
+    const loadingId = `loading-${Date.now()}`;
+    const loading = document.createElement('div');
+    loading.className = 'message assistant-message loading-message';
+    loading.id = loadingId;
+    loading.innerHTML = `
+        <div class="message-avatar" aria-hidden="true">
             <i class="fas fa-robot"></i>
         </div>
         <div class="message-content">
             <div class="message-text">
                 <div class="inline-loading">
-                    <div class="inline-spinner">
-                        <i class="fas fa-brain"></i>
-                    </div>
-                    <span>Consultando o Agent...</span>
+                    <span class="inline-spinner" aria-hidden="true"></span>
+                    <span>Consultando dados e preparando a resposta...</span>
                 </div>
             </div>
         </div>
     `;
-    
-    elements.chatMessages.appendChild(loadingDiv);
+    elements.chatMessages.appendChild(loading);
     scrollToBottom();
-    
     return loadingId;
 }
 
 function removeLoadingMessage(loadingId) {
-    const loadingElement = document.getElementById(loadingId);
-    if (loadingElement) {
-        loadingElement.remove();
-    }
-}
-
-function showLoading() {
-    isLoading = true;
-    elements.loadingOverlay.classList.add('show');
-    toggleSendButton();
-}
-
-function hideLoading() {
-    isLoading = false;
-    elements.loadingOverlay.classList.remove('show');
-    toggleSendButton();
+    const loading = document.getElementById(loadingId);
+    if (loading) loading.remove();
 }
 
 async function showSchemaModal() {
+    schemaTriggerElement = document.activeElement;
     elements.schemaModal.classList.add('show');
-    elements.schemaContent.textContent = 'Selecione uma tabela e clique em "Carregar" para visualizar o esquema.';
+    document.body.classList.add('modal-open');
+    elements.closeSchemaModal.focus();
+    setSchemaState('empty', 'Selecione uma tabela e clique em "Carregar schema".');
     await loadSchemaTables();
+}
+
+function hideSchemaModal() {
+    elements.schemaModal.classList.remove('show');
+    document.body.classList.remove('modal-open');
+    if (schemaTriggerElement && typeof schemaTriggerElement.focus === 'function') {
+        schemaTriggerElement.focus();
+    }
 }
 
 async function loadSelectedSchema() {
     const tableSelect = document.getElementById('tableSelect');
     const loadSchemaBtn = document.getElementById('loadSchemaBtn');
     const selectedTable = tableSelect.value;
-    
+
     try {
-        // Disable button and show loading
         loadSchemaBtn.disabled = true;
-        loadSchemaBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Carregando esquema...';
-        elements.schemaContent.innerHTML = `
-            <div class="loading-message">
-                <div class="inline-spinner">
-                    <i class="fas fa-database"></i>
-                </div>
-                <span>Carregando esquema da tabela...</span>
-            </div>
-        `;
-        
-        // Build URL with table parameter if selected
+        loadSchemaBtn.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i><span>Carregando...</span>';
+        setSchemaState('loading', 'Carregando schema da tabela selecionada...');
+
         let url = `${API_BASE_URL}/schema`;
         if (selectedTable) {
             url += `?table=${encodeURIComponent(selectedTable)}`;
         }
-        
+
         const response = await fetch(url, {
             method: 'GET',
             headers: {
@@ -424,78 +393,66 @@ async function loadSelectedSchema() {
             mode: 'cors',
             cache: 'no-cache'
         });
-        
+
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        
+
         const data = await response.json();
-        
-        // Check if schema contains HTML table and render accordingly
-        if (data.schema.includes('<div class="sample-data-table">') || data.schema.includes('class="schema-table"')) {
-            elements.schemaContent.classList.remove('text-content');
-            elements.schemaContent.innerHTML = data.schema;
-            
-            // Initialize table search functionality
-            setTimeout(() => {
-                initializeTableSearch();
-            }, 100);
-        } else {
-            elements.schemaContent.classList.add('text-content');
-            elements.schemaContent.textContent = data.schema;
-        }
-        
+        renderSchema(data.schema || 'Schema indisponivel para esta selecao.');
     } catch (error) {
         console.error('Error loading schema:', error);
-        elements.schemaContent.textContent = `Erro ao carregar esquema: ${error.message}`;
-        showErrorToast('Erro ao carregar o esquema do banco de dados');
+        setSchemaState('error', `Erro ao carregar schema: ${error.message}`);
+        showErrorToast('Erro ao carregar o schema do banco de dados.');
     } finally {
-        // Re-enable button
         loadSchemaBtn.disabled = false;
-        loadSchemaBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Carregar';
+        loadSchemaBtn.innerHTML = '<i class="fas fa-sync-alt" aria-hidden="true"></i><span>Carregar schema</span>';
     }
 }
 
-function hideSchemaModal() {
-    elements.schemaModal.classList.remove('show');
+function setSchemaState(state, message) {
+    elements.schemaContent.className = `schema-content ${state}-state`;
+    elements.schemaContent.textContent = message;
+}
+
+function renderSchema(schema) {
+    elements.schemaContent.className = 'schema-content loaded-state';
+    if (schema.includes('<div class="sample-data-table">') || schema.includes('class="schema-table"')) {
+        elements.schemaContent.innerHTML = schema;
+        setTimeout(initializeTableSearch, 50);
+    } else {
+        elements.schemaContent.classList.add('text-content');
+        elements.schemaContent.textContent = schema;
+    }
 }
 
 function clearChat() {
-    if (confirm('Tem certeza que deseja limpar toda a conversa? Esta ação não pode ser desfeita.')) {
-        elements.chatMessages.innerHTML = '';
-        messageHistory = [];
-        resetSessionId();
-        saveMessageHistory();
-        
-        // Add welcome message back
-        setTimeout(() => {
-            addWelcomeMessage();
-        }, 100);
+    if (!confirm('Limpar toda a conversa e iniciar uma nova sessao?')) {
+        return;
     }
+    elements.chatMessages.innerHTML = '';
+    messageHistory = [];
+    resetSessionId();
+    localStorage.removeItem(CHAT_HISTORY_KEY);
+    addWelcomeMessage();
+    elements.messageInput.focus();
 }
 
 function addWelcomeMessage() {
-    const welcomeMessage = {
-        content: 'Olá! Sou o assistente inteligente do DataVisSUS. Estou aqui para ajudá-lo a consultar dados de saúde pública de forma simples e intuitiva.',
+    const welcome = {
+        id: createMessageId(),
+        content: 'Ola! Eu ajudo a consultar dados de saude publica em linguagem natural. Experimente perguntar por rankings de municipios, medias por grupo demografico ou recortes de mortalidade.',
         type: 'assistant',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        metadata: null
     };
-    
-    const messageElement = createMessageElement(welcomeMessage);
-    elements.chatMessages.appendChild(messageElement);
+    elements.chatMessages.appendChild(createMessageElement(welcome));
     scrollToBottom();
 }
 
-function setWelcomeTime() {
-    const welcomeTimeElement = document.getElementById('welcomeTime');
-    if (welcomeTimeElement) {
-        welcomeTimeElement.textContent = formatTime(new Date().toISOString());
-    }
-}
-
 async function checkServerStatus() {
+    setServerStatus('checking');
     try {
-        // Check web interface health
         const webResponse = await fetch(`${API_BASE_URL}/health`, {
             method: 'GET',
             headers: {
@@ -506,59 +463,52 @@ async function checkServerStatus() {
             mode: 'cors',
             cache: 'no-cache'
         });
-        
-        if (webResponse.ok) {
-            // Check if Agent API is reachable
-            const agentResponse = await fetch(`${API_BASE_URL}/agent-health`, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                credentials: 'include',
-                mode: 'cors',
-                cache: 'no-cache'
-            });
-            
-            if (agentResponse.ok) {
-                const agentData = await agentResponse.json();
-                updateServerStatus(agentData.agent_status === 'online');
-            } else {
-                updateServerStatus(false);
-            }
-        } else {
-            updateServerStatus(false);
+
+        if (!webResponse.ok) {
+            setServerStatus('offline');
+            return;
         }
+
+        const agentResponse = await fetch(`${API_BASE_URL}/agent-health`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'include',
+            mode: 'cors',
+            cache: 'no-cache'
+        });
+
+        if (!agentResponse.ok) {
+            setServerStatus('offline');
+            return;
+        }
+
+        const agentData = await agentResponse.json();
+        setServerStatus(agentData.agent_status === 'online' ? 'online' : 'offline');
     } catch (error) {
         console.error('Server health check failed:', error);
-        updateServerStatus(false);
+        setServerStatus('offline');
     }
 }
 
-function updateServerStatus(isOnline) {
-    const indicator = elements.statusIndicator.querySelector('i');
-    const text = elements.statusText;
-    
-    if (isOnline) {
-        indicator.style.color = '#10b981';
-        text.textContent = 'Online';
-        text.style.color = 'white';
-    } else {
-        indicator.style.color = '#ef4444';
-        text.textContent = 'Agent Offline';
-        text.style.color = '#fecaca';
-    }
+function setServerStatus(status) {
+    elements.statusIndicator.classList.remove('status-checking', 'status-online', 'status-offline');
+    elements.statusIndicator.classList.add(`status-${status}`);
+
+    const labels = {
+        checking: 'Verificando...',
+        online: 'Online',
+        offline: 'Agent offline'
+    };
+    elements.statusText.textContent = labels[status] || labels.offline;
 }
 
 function showErrorToast(message) {
-    const errorText = document.getElementById('errorText');
-    errorText.textContent = message;
+    document.getElementById('errorText').textContent = message;
     elements.errorToast.classList.add('show');
-    
-    // Auto hide after 5 seconds
-    setTimeout(() => {
-        hideErrorToast();
-    }, 5000);
+    setTimeout(hideErrorToast, 5000);
 }
 
 function hideErrorToast() {
@@ -567,13 +517,10 @@ function hideErrorToast() {
 
 function saveMessageHistory() {
     try {
-        // Persist only the messages the AI can still reference (aligned with
-        // MAX_CONVERSATION_TURNS on the backend). Errors are excluded so they
-        // don't reappear as stale noise on the next page load.
         const persistable = messageHistory
-            .filter(m => m.type !== 'error')
+            .filter((message) => message.type !== 'error')
             .slice(-MAX_HISTORY_MESSAGES);
-        localStorage.setItem('chatHistory', JSON.stringify(persistable));
+        localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(persistable));
     } catch (error) {
         console.warn('Failed to save message history:', error);
     }
@@ -581,33 +528,30 @@ function saveMessageHistory() {
 
 function loadMessageHistory() {
     try {
-        const saved = localStorage.getItem('chatHistory');
-        if (saved) {
-            messageHistory = JSON.parse(saved);
-
-            elements.chatMessages.innerHTML = '';
-
-            // If history is at the sliding-window limit, show an informational
-            // separator so the user knows the AI context starts here.
-            if (messageHistory.length >= MAX_HISTORY_MESSAGES) {
-                const separator = document.createElement('div');
-                separator.className = 'context-separator';
-                separator.innerHTML =
-                    '<span><i class="fas fa-brain"></i> Início do contexto da IA</span>';
-                elements.chatMessages.appendChild(separator);
-            }
-
-            messageHistory.forEach(messageData => {
-                const messageElement = createMessageElement(messageData);
-                elements.chatMessages.appendChild(messageElement);
-            });
-
-            scrollToBottom();
-        } else {
+        const saved = localStorage.getItem(CHAT_HISTORY_KEY);
+        if (!saved) {
             addWelcomeMessage();
+            return;
         }
+
+        messageHistory = JSON.parse(saved);
+        elements.chatMessages.innerHTML = '';
+
+        if (messageHistory.length >= MAX_HISTORY_MESSAGES) {
+            const separator = document.createElement('div');
+            separator.className = 'context-separator';
+            separator.innerHTML = '<span><i class="fas fa-brain" aria-hidden="true"></i> Inicio do contexto da IA</span>';
+            elements.chatMessages.appendChild(separator);
+        }
+
+        messageHistory.forEach((messageData) => {
+            elements.chatMessages.appendChild(createMessageElement(messageData));
+        });
+        scrollToBottom();
     } catch (error) {
         console.warn('Failed to load message history:', error);
+        elements.chatMessages.innerHTML = '';
+        messageHistory = [];
         addWelcomeMessage();
     }
 }
@@ -617,6 +561,10 @@ function createSessionId() {
         return window.crypto.randomUUID();
     }
     return `web-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function createMessageId() {
+    return `msg-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function ensureSessionId() {
@@ -656,7 +604,6 @@ async function loadSchemaTables() {
 
         const data = await response.json();
         const selectedValue = tableSelect.value;
-
         tableSelect.innerHTML = '';
 
         const allOption = document.createElement('option');
@@ -679,33 +626,16 @@ async function loadSchemaTables() {
     }
 }
 
-// Utility Functions
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
         clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
+        timeout = setTimeout(() => func(...args), wait);
     };
 }
 
-// Check server status periodically
-setInterval(checkServerStatus, 30000); // Every 30 seconds
-
-// Handle visibility change to reconnect when page becomes visible
-document.addEventListener('visibilitychange', function() {
-    if (!document.hidden) {
-        checkServerStatus();
-    }
-});
-
-// Theme Management
 function initializeTheme() {
-    // Get saved theme or default to light
-    const savedTheme = localStorage.getItem('theme') || 'light';
+    const savedTheme = localStorage.getItem(THEME_KEY) || 'light';
     document.documentElement.setAttribute('data-theme', savedTheme);
     updateThemeIcon(savedTheme);
 }
@@ -713,9 +643,8 @@ function initializeTheme() {
 function toggleTheme() {
     const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
     const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-    
     document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('theme', newTheme);
+    localStorage.setItem(THEME_KEY, newTheme);
     updateThemeIcon(newTheme);
 }
 
@@ -723,207 +652,152 @@ function updateThemeIcon(theme) {
     const icon = elements.themeToggle.querySelector('i');
     if (theme === 'dark') {
         icon.className = 'fas fa-moon';
-        elements.themeToggle.title = 'Alternar para Tema Claro';
+        elements.themeToggle.title = 'Alternar para tema claro';
+        elements.themeToggle.setAttribute('aria-label', 'Alternar para tema claro');
     } else {
         icon.className = 'fas fa-sun';
-        elements.themeToggle.title = 'Alternar para Tema Escuro';
+        elements.themeToggle.title = 'Alternar para tema escuro';
+        elements.themeToggle.setAttribute('aria-label', 'Alternar para tema escuro');
     }
 }
 
-// Table Search Functionality
 function initializeTableSearch() {
     const searchInputs = document.querySelectorAll('.column-filter');
     const table = document.getElementById('schema-data-table');
-    
     if (!table || !searchInputs.length) return;
-    
+
     const tbody = table.querySelector('tbody');
     const rows = Array.from(tbody.querySelectorAll('tr'));
-    
-    // Add event listeners to all search inputs
+
     searchInputs.forEach((input, columnIndex) => {
-        // Real-time filtering with debounce
         input.addEventListener('input', debounce(() => {
             filterTable();
             highlightSearchTerms();
         }, 200));
-        
-        // Keyboard shortcuts
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
+
+        input.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
                 input.value = '';
                 filterTable();
                 highlightSearchTerms();
             }
-            // Navigate between filter inputs with Tab/Shift+Tab
-            if (e.key === 'ArrowRight' && e.ctrlKey) {
-                e.preventDefault();
+            if (event.key === 'ArrowRight' && event.ctrlKey) {
+                event.preventDefault();
                 const nextInput = searchInputs[columnIndex + 1];
                 if (nextInput) nextInput.focus();
             }
-            if (e.key === 'ArrowLeft' && e.ctrlKey) {
-                e.preventDefault();
+            if (event.key === 'ArrowLeft' && event.ctrlKey) {
+                event.preventDefault();
                 const prevInput = searchInputs[columnIndex - 1];
                 if (prevInput) prevInput.focus();
             }
         });
-        
-        // Visual feedback on focus - no longer needed with integrated design
-        input.addEventListener('focus', () => {
-            input.style.transform = 'scale(1.02)';
-        });
-        
-        input.addEventListener('blur', () => {
-            input.style.transform = 'scale(1)';
-        });
     });
-    
+
     function filterTable() {
         let visibleCount = 0;
-        
         rows.forEach((row) => {
             let showRow = true;
-            
-            // Check each column filter
             searchInputs.forEach((input, columnIndex) => {
                 const searchTerm = input.value.toLowerCase().trim();
-                
-                if (searchTerm) {
-                    const cell = row.cells[columnIndex];
-                    if (cell) {
-                        const cellText = cell.textContent.toLowerCase();
-                        if (!cellText.includes(searchTerm)) {
-                            showRow = false;
-                        }
-                    }
+                if (!searchTerm) return;
+
+                const cell = row.cells[columnIndex];
+                if (cell && !cell.textContent.toLowerCase().includes(searchTerm)) {
+                    showRow = false;
                 }
             });
-            
-            // Show/hide row
-            if (showRow) {
-                row.classList.remove('hidden-row');
-                row.classList.add('highlight-match');
-                visibleCount++;
-            } else {
-                row.classList.add('hidden-row');
-                row.classList.remove('highlight-match');
-            }
+
+            row.classList.toggle('hidden-row', !showRow);
+            row.classList.toggle('highlight-match', showRow && hasActiveFilter());
+            if (showRow) visibleCount++;
         });
-        
-        // Update row striping after filtering
-        updateRowStriping();
-        
-        // Show count of filtered results
         updateFilterCount(visibleCount, rows.length);
     }
-    
-    function updateRowStriping() {
-        const visibleRows = rows.filter(row => !row.classList.contains('hidden-row'));
-        visibleRows.forEach((row, index) => {
-            if (index % 2 === 0) {
-                row.style.backgroundColor = '';
-            } else {
-                row.style.backgroundColor = 'var(--bg-secondary)';
-            }
-        });
+
+    function hasActiveFilter() {
+        return Array.from(searchInputs).some((input) => input.value.trim().length > 0);
     }
-    
+
     function updateFilterCount(visible, total) {
         const filteredRecords = document.querySelector('.filtered-records');
         const filteredCount = document.querySelector('.filtered-count');
-        
-        if (visible !== total) {
-            // Show filtered counter
-            if (filteredRecords) {
-                filteredRecords.style.display = 'flex';
-                if (filteredCount) {
-                    filteredCount.textContent = visible.toLocaleString();
-                }
-            }
-        } else {
-            // Hide filtered counter when showing all records
-            if (filteredRecords) {
-                filteredRecords.style.display = 'none';
-            }
+        if (!filteredRecords) return;
+
+        filteredRecords.style.display = visible !== total ? 'flex' : 'none';
+        if (filteredCount) {
+            filteredCount.textContent = visible.toLocaleString('pt-BR');
         }
     }
-    
+
     function highlightSearchTerms() {
-        // Remove existing highlights
-        rows.forEach(row => {
-            Array.from(row.cells).forEach(cell => {
-                if (cell.dataset.originalText) {
-                    cell.innerHTML = cell.dataset.originalText;
-                }
-            });
-        });
-        
-        // Apply new highlights
-        searchInputs.forEach((input, columnIndex) => {
-            const searchTerm = input.value.toLowerCase().trim();
-            if (searchTerm && searchTerm.length > 1) {
-                rows.forEach(row => {
-                    if (!row.classList.contains('hidden-row')) {
-                        const cell = row.cells[columnIndex];
-                        if (cell && !cell.querySelector('.null-value')) {
-                            if (!cell.dataset.originalText) {
-                                cell.dataset.originalText = cell.innerHTML;
-                            }
-                            const originalText = cell.dataset.originalText;
-                            const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-                            const highlighted = originalText.replace(regex, '<mark style="background: rgba(0, 168, 107, 0.3); padding: 0.1rem 0.2rem; border-radius: 2px;">$1</mark>');
-                            cell.innerHTML = highlighted;
-                        }
-                    }
-                });
-            }
-        });
-    }
-    
-    // Clear all filters function
-    function clearAllFilters() {
-        searchInputs.forEach(input => {
-            input.value = '';
-            input.style.transform = 'scale(1)';
-        });
-        
-        // Remove highlights and show all rows
-        rows.forEach(row => {
-            row.classList.remove('hidden-row', 'highlight-match');
-            Array.from(row.cells).forEach(cell => {
+        rows.forEach((row) => {
+            Array.from(row.cells).forEach((cell) => {
                 if (cell.dataset.originalText) {
                     cell.innerHTML = cell.dataset.originalText;
                     delete cell.dataset.originalText;
                 }
             });
         });
-        
-        updateRowStriping();
-        updateFilterCount(rows.length, rows.length);
-        
-        // Focus first search input for better UX
-        if (searchInputs.length > 0) {
-            searchInputs[0].focus();
-        }
+
+        searchInputs.forEach((input, columnIndex) => {
+            const searchTerm = input.value.trim();
+            if (searchTerm.length <= 1) return;
+
+            rows.forEach((row) => {
+                if (row.classList.contains('hidden-row')) return;
+                const cell = row.cells[columnIndex];
+                if (!cell || cell.querySelector('.null-value')) return;
+
+                cell.dataset.originalText = cell.innerHTML;
+                const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                cell.innerHTML = cell.dataset.originalText.replace(regex, '<mark>$1</mark>');
+            });
+        });
     }
-    
-    // Add clear all button to the filter bar
+
+    function clearAllFilters() {
+        searchInputs.forEach((input) => {
+            input.value = '';
+        });
+        rows.forEach((row) => {
+            row.classList.remove('hidden-row', 'highlight-match');
+            Array.from(row.cells).forEach((cell) => {
+                if (cell.dataset.originalText) {
+                    cell.innerHTML = cell.dataset.originalText;
+                    delete cell.dataset.originalText;
+                }
+            });
+        });
+        updateFilterCount(rows.length, rows.length);
+        searchInputs[0].focus();
+    }
+
     const filterBar = document.querySelector('.filter-bar');
-    if (filterBar) {
-        const clearBtn = document.createElement('button');
-        clearBtn.className = 'clear-filters-btn';
-        clearBtn.innerHTML = '<i class="fas fa-eraser"></i>';
-        clearBtn.title = 'Limpar todos os filtros';
-        clearBtn.addEventListener('click', clearAllFilters);
-        
+    if (filterBar && !filterBar.querySelector('.clear-filters-btn')) {
+        const clearButton = document.createElement('button');
+        clearButton.className = 'clear-filters-btn';
+        clearButton.type = 'button';
+        clearButton.innerHTML = '<i class="fas fa-eraser" aria-hidden="true"></i>';
+        clearButton.title = 'Limpar todos os filtros';
+        clearButton.setAttribute('aria-label', 'Limpar todos os filtros');
+        clearButton.addEventListener('click', clearAllFilters);
+
         const clearWrapper = document.createElement('div');
         clearWrapper.className = 'clear-filters-wrapper';
-        clearWrapper.appendChild(clearBtn);
+        clearWrapper.appendChild(clearButton);
         filterBar.appendChild(clearWrapper);
     }
 }
 
-// Export for potential future use
+setInterval(checkServerStatus, 30000);
+
+document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+        checkServerStatus();
+    }
+});
+
 window.ChatApp = {
     sendMessage,
     clearChat,

@@ -119,6 +119,10 @@ app.use(express.static(path.join(__dirname, 'public'), {
     }
 }));
 
+app.get('/favicon.ico', (req, res) => {
+    res.status(204).end();
+});
+
 // Health Check Endpoint
 app.get('/api/health', (req, res) => {
     res.json({
