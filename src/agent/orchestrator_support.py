@@ -61,8 +61,14 @@ def initialize_orchestrator_runtime(
         extra={"provider": "openai", "model": app_config.llm_model},
     )
 
-    os.makedirs("data", exist_ok=True)
-    memory_conn = sqlite3.connect("data/chatbot_memory.db", check_same_thread=False)
+    checkpoint_db_path = os.getenv(
+        "CHECKPOINT_DB_PATH",
+        "/tmp/chatbot_memory.db" if os.getenv("VERCEL") == "1" else "data/chatbot_memory.db",
+    )
+    checkpoint_dir = os.path.dirname(checkpoint_db_path)
+    if checkpoint_dir:
+        os.makedirs(checkpoint_dir, exist_ok=True)
+    memory_conn = sqlite3.connect(checkpoint_db_path, check_same_thread=False)
     memory = SqliteSaver(memory_conn)
 
     workflow = create_langgraph_sql_workflow(config=orchestrator_config).compile(

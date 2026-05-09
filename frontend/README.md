@@ -20,7 +20,7 @@ Esta é uma interface web moderna e responsiva que se conecta ao Agent TXT2SQL v
 
 ### Pré-requisitos
 
-- Node.js >= 16.0.0
+- Node.js >= 18.0.0
 - npm >= 8.0.0
 - TXT2SQL Agent rodando na porta 8000
 
@@ -47,7 +47,28 @@ Esta é uma interface web moderna e responsiva que se conecta ao Agent TXT2SQL v
    npm start
    ```
 
-O servidor estará disponível em `http://localhost:3000`
+O servidor estará disponível em `http://localhost:3000`.
+
+## Deploy na Vercel
+
+Crie um projeto Vercel apontando para este diretório:
+
+```text
+Root Directory: frontend
+Framework Preset: Other
+Install Command: npm ci
+Build Command: npm run build
+```
+
+Configure as variáveis:
+
+```env
+NODE_ENV=production
+API_BASE_URL=https://your-api-project.vercel.app/api/v1
+ALLOWED_ORIGINS=https://your-frontend-project.vercel.app
+```
+
+O servidor também libera automaticamente a URL de preview atual da Vercel via `VERCEL_URL`, então previews funcionam sem cadastrar cada URL manualmente.
 
 ## 🔧 Configuração
 
@@ -57,7 +78,7 @@ O servidor estará disponível em `http://localhost:3000`
 |----------|--------|-----------|
 | `PORT` | `3000` | Porta do servidor web |
 | `HOST` | `0.0.0.0` | Host do servidor |
-| `API_BASE_URL` | `http://localhost:8000` | URL do TXT2SQL Agent |
+| `API_BASE_URL` | `http://localhost:8000/api/v1` | URL do TXT2SQL Agent |
 | `NODE_ENV` | `development` | Ambiente de execução |
 
 ### Configuração do Agent API
