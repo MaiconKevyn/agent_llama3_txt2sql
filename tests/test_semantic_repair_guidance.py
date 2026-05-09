@@ -38,8 +38,11 @@ def test_top_n_guidance_mentions_window_partition_and_preserves_scope_filters():
 
     assert context.error.category == SemanticErrorCategory.TOP_N_SCOPE
     assert "PARTITION BY" in context.prompt_block
+    assert "entidade ranqueada" in context.prompt_block
     assert "Preserve todos os filtros de escopo" in context.prompt_block
     assert context.violated_contract["answer_shape.top_n"] == 3
+    assert context.violated_contract["answer_shape.partition_dimensions"] == ["estado_hospital"]
+    assert context.violated_contract["answer_shape.ranked_dimensions"] == ["hospital"]
 
 
 def test_absence_guidance_rejects_negative_filter_pattern():

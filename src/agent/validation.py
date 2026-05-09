@@ -130,12 +130,36 @@ def check_semantic_rules(user_query: str, generated_sql: str):
             "quantidade de ",
         ]
     )
+    ranking_or_lookup_count_context = any(
+        t in user_query_lower
+        for t in [
+            "em qual ano",
+            "qual ano",
+            "em qual mês",
+            "em qual mes",
+            "qual mês",
+            "qual mes",
+            "maior número",
+            "maior numero",
+            "menor número",
+            "menor numero",
+            "mais comuns",
+            "mais frequentes",
+        ]
+    )
     if count_question:
+        asks_population_value = any(
+            token in user_query_lower
+            for token in ["habitantes", "população", "populacao"]
+        ) and any(
+            token in sql_lower
+            for token in ["populacao_total", "socioeconomico", "valor"]
+        )
         outer_select = re.sub(
             r"\bWITH\b.*?\)\s*SELECT", "SELECT", generated_sql, flags=re.I | re.DOTALL
         )
         has_count_outer = bool(re.search(r"\bCOUNT\s*\(", outer_select, re.I))
-        if not has_count_outer:
+        if not has_count_outer and not asks_population_value and not ranking_or_lookup_count_context:
             return False, (
                 "SEMANTIC ERROR: A pergunta pede QUANTIDADE ('quantos'/'quantas') mas a query "
                 "retorna uma lista de registros em vez de COUNT(*). "
@@ -264,16 +288,6 @@ def validate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             validation_passed = True
             validation_message = "DB validation passed"
 
-        # Semantic rules (pure logic — no LLM/DB required)
-        if validation_passed and generated_sql:
-            sem_passed, sem_message = check_semantic_rules(
-                state.get("user_query") or "", generated_sql
-            )
-            if not sem_passed:
-                validation_passed = False
-                validation_message = sem_message
-                logger.warning("Semantic rule rejected query: %s", sem_message[:120])
-
         ablation_flags = state.get("ablation_flags") or {}
         if (
             validation_passed
@@ -299,6 +313,17 @@ def validate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 validation_passed = False
                 validation_message = plan_message
                 logger.warning("Semantic plan rejected query: %s", (plan_message or "")[:120])
+
+        # Legacy semantic rules run after SemanticPlan validation. This lets the
+        # richer contract produce repairable errors for patterns it owns.
+        if validation_passed and generated_sql:
+            sem_passed, sem_message = check_semantic_rules(
+                state.get("user_query") or "", generated_sql
+            )
+            if not sem_passed:
+                validation_passed = False
+                validation_message = sem_message
+                logger.warning("Semantic rule rejected query: %s", sem_message[:120])
 
         # Update state
         if validation_passed:

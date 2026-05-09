@@ -14,6 +14,7 @@ const elements = {
     messageInput: document.getElementById('messageInput'),
     sendBtn: document.getElementById('sendBtn'),
     chatMessages: document.getElementById('chatMessages'),
+    chatWelcome: document.getElementById('chatWelcome'),
     schemaModal: document.getElementById('schemaModal'),
     schemaBtn: document.getElementById('schemaBtn'),
     closeSchemaModal: document.getElementById('closeSchemaModal'),
@@ -22,7 +23,7 @@ const elements = {
     statusText: document.getElementById('statusText'),
     errorToast: document.getElementById('errorToast'),
     schemaContent: document.getElementById('schemaContent'),
-    exampleBtns: document.querySelectorAll('.example-btn'),
+    questionButtons: document.querySelectorAll('[data-question]'),
     themeToggle: document.getElementById('themeToggle'),
     charCounter: document.getElementById('charCounter')
 };
@@ -61,7 +62,7 @@ function setupEventListeners() {
         loadSchemaBtn.addEventListener('click', loadSelectedSchema);
     }
 
-    elements.exampleBtns.forEach((button) => {
+    elements.questionButtons.forEach((button) => {
         button.addEventListener('click', function() {
             const question = this.getAttribute('data-question') || '';
             fillQuestion(question);
@@ -188,18 +189,37 @@ async function sendMessage() {
 
 function buildUserFacingError(error) {
     if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-        return 'Nao foi possivel conectar ao servidor do DataVisSUS. Confirme se o agent esta rodando e tente novamente.';
+        return 'Nao foi possivel conectar ao agent do DataVisSUS. Confirme se o servico esta rodando e tente novamente.';
     }
     if (error.message.includes('HTTP 429')) {
         return 'Muitas consultas em pouco tempo. Aguarde alguns segundos antes de tentar novamente.';
     }
     if (error.message.includes('HTTP 5')) {
-        return 'O servidor retornou erro interno. Tente novamente em alguns instantes.';
+        return 'O agent retornou erro interno. Tente novamente em alguns instantes ou refine o recorte da consulta.';
     }
     return `Erro de conexao: ${error.message}`;
 }
 
+function showWelcomeState() {
+    if (elements.chatWelcome) {
+        elements.chatWelcome.style.display = '';
+        elements.chatWelcome.querySelectorAll('.welcome-steps li').forEach(el => {
+            el.style.animation = 'none';
+            void el.offsetHeight;
+            el.style.animation = '';
+        });
+    }
+    elements.chatMessages.style.display = 'none';
+}
+
+function hideWelcomeState() {
+    if (elements.chatWelcome) elements.chatWelcome.style.display = 'none';
+    elements.chatMessages.style.display = '';
+}
+
 function addMessage(content, type = 'assistant', metadata = null) {
+    hideWelcomeState();
+
     const messageData = {
         id: createMessageId(),
         content,
@@ -334,9 +354,10 @@ function addLoadingMessage() {
         </div>
         <div class="message-content">
             <div class="message-text">
-                <div class="inline-loading">
-                    <span class="inline-spinner" aria-hidden="true"></span>
-                    <span>Consultando dados e preparando a resposta...</span>
+                <div class="thinking-dots" role="status" aria-label="Processando consulta">
+                    <span class="thinking-dot"></span>
+                    <span class="thinking-dot"></span>
+                    <span class="thinking-dot"></span>
                 </div>
             </div>
         </div>
@@ -434,21 +455,10 @@ function clearChat() {
     messageHistory = [];
     resetSessionId();
     localStorage.removeItem(CHAT_HISTORY_KEY);
-    addWelcomeMessage();
+    showWelcomeState();
     elements.messageInput.focus();
 }
 
-function addWelcomeMessage() {
-    const welcome = {
-        id: createMessageId(),
-        content: 'Ola! Eu ajudo a consultar dados de saude publica em linguagem natural. Experimente perguntar por rankings de municipios, medias por grupo demografico ou recortes de mortalidade.',
-        type: 'assistant',
-        timestamp: new Date().toISOString(),
-        metadata: null
-    };
-    elements.chatMessages.appendChild(createMessageElement(welcome));
-    scrollToBottom();
-}
 
 async function checkServerStatus() {
     setServerStatus('checking');
@@ -530,12 +540,18 @@ function loadMessageHistory() {
     try {
         const saved = localStorage.getItem(CHAT_HISTORY_KEY);
         if (!saved) {
-            addWelcomeMessage();
+            showWelcomeState();
             return;
         }
 
         messageHistory = JSON.parse(saved);
+        if (!messageHistory.length) {
+            showWelcomeState();
+            return;
+        }
+
         elements.chatMessages.innerHTML = '';
+        hideWelcomeState();
 
         if (messageHistory.length >= MAX_HISTORY_MESSAGES) {
             const separator = document.createElement('div');
@@ -552,7 +568,7 @@ function loadMessageHistory() {
         console.warn('Failed to load message history:', error);
         elements.chatMessages.innerHTML = '';
         messageHistory = [];
-        addWelcomeMessage();
+        showWelcomeState();
     }
 }
 

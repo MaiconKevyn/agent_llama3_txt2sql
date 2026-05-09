@@ -54,7 +54,10 @@ def load_ground_truth(**kwargs) -> Dict[str, Any]:
     """
     print("  Loading ground truth data...")
 
-    gt_path = project_root / "evaluation" / "ground_truth.json"
+    ground_truth_path = kwargs.get("ground_truth_path") or "evaluation/ground_truth.json"
+    gt_path = Path(ground_truth_path)
+    if not gt_path.is_absolute():
+        gt_path = project_root / gt_path
 
     if not gt_path.exists():
         raise FileNotFoundError(f"Ground truth file not found: {gt_path}")
@@ -73,6 +76,7 @@ def load_ground_truth(**kwargs) -> Dict[str, Any]:
 
     return {
         'questions': questions,
+        'ground_truth_path': str(gt_path),
         'total_count': len(questions),
         'difficulty_breakdown': difficulty_counts
     }
@@ -976,22 +980,29 @@ def save_results(
     }
 
     # Save JSON results
-    output_dir = project_root / "evaluation" / "results"
+    run_id = str(kwargs.get("run_id") or datetime.now().strftime("%Y%m%d_%H%M%S"))
+    requested_output_dir = kwargs.get("output_dir")
+    output_dir = (
+        Path(requested_output_dir)
+        if requested_output_dir
+        else project_root / "evaluation" / "results" / f"dag_evaluation_{run_id}"
+    )
+    if not output_dir.is_absolute():
+        output_dir = project_root / output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    json_path = output_dir / f"dag_evaluation_{timestamp}.json"
+    json_path = output_dir / f"dag_evaluation_{run_id}.json"
 
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(complete_results, f, indent=2, ensure_ascii=False)
 
     # Save report text
-    report_path = output_dir / f"dag_evaluation_report_{timestamp}.txt"
+    report_path = output_dir / f"dag_evaluation_report_{run_id}.txt"
     with open(report_path, 'w', encoding='utf-8') as f:
         f.write(generate_report['report_text'])
 
     # Generate execution outputs file for manual validation
-    outputs_path = output_dir / f"dag_execution_outputs_{timestamp}.txt"
+    outputs_path = output_dir / f"dag_execution_outputs_{run_id}.txt"
     _generate_execution_outputs_file(
         detailed_results=evaluate_questions['detailed_results'],
         output_path=outputs_path,
@@ -1011,6 +1022,8 @@ def save_results(
         'json_path': str(json_path),
         'report_path': str(report_path),
         'outputs_path': str(outputs_path),
+        'output_dir': str(output_dir),
+        'run_id': run_id,
         'saved_successfully': True
     }
 

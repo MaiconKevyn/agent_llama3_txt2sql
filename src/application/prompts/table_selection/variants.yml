@@ -3,14 +3,15 @@ metadata:
     internacoes: "FACT | 1 row per AIH | use for counts, deaths, costs, ICU, dates, age, sex, race, education, residence municipality, and hospital CNES"
     atendimentos: "JUNCTION DETAIL | 1 row per procedure occurrence | use only when the question is about procedures performed"
     procedimentos: "LOOKUP | procedure names/codes | add only together with atendimentos when the question needs procedure identity"
-    cid: "LOOKUP | diagnosis / cause-of-death names | add only when the question needs disease names/descriptions"
+    cid: "LOOKUP/CATALOG | diagnosis names and CID-10 code catalog | add for disease names/descriptions OR when counting how many CID codes exist/are registered/available"
     hospital: "LOOKUP | hospital attributes and MUNIC_MOV | add only for hospital attributes or hospital location"
-    municipios: "DIMENSION | city/state names | add when the question needs municipality/state names or geography"
+    municipios: "DIMENSION | city/state names and geographic coverage | add when the question needs municipality/state names, geography, or counts of covered/registered municipalities/states"
     socioeconomico: "FACT CONTEXT | municipality-year metric table | use only for socioeconomics / infant mortality / population / IDHM with metrica filter"
     tempo: "DATE DIMENSION | auxiliary only | usually DO NOT SELECT; prefer EXTRACT() over internacoes dates"
     sexo: "LOOKUP | label only | add only if the output must show Masculino/Feminino labels"
     raca_cor: "LOOKUP | label only | add only if the output must show raça/cor labels"
     instrucao: "LOOKUP | label only | add only if the output must show education labels"
+    vincprev: "LOOKUP/CATALOG | social-security linkage labels and code catalog | add for labels OR when counting how many vincprev types exist/are registered"
     especialidade: "LOOKUP | label only | add only if the output must show specialty labels"
   grain_hints:
     internacoes: "grain=1 row per hospitalization (AIH)"
@@ -24,19 +25,21 @@ metadata:
     sexo: "grain=1 row per sex code"
     raca_cor: "grain=1 row per race/color code"
     instrucao: "grain=1 row per education code"
+    vincprev: "grain=1 row per social-security linkage code"
     especialidade: "grain=1 row per specialty code"
   do_not_use_hints:
     internacoes: "do_not_add_extra_lookups unless the output needs human-readable labels or external geography/metrics"
     atendimentos: "do_not_use unless the question is about procedures performed"
     procedimentos: "do_not_use without atendimentos"
-    cid: "do_not_use unless disease/cause names or textual diagnosis matching are required"
+    cid: "do_not_use unless disease/cause names, textual diagnosis matching, or CID catalog cardinality is required"
     hospital: "do_not_use unless hospital attributes or hospital location are required"
-    municipios: "do_not_use unless city/state names or geographic grouping/filtering are required"
+    municipios: "do_not_use unless city/state names, geographic grouping/filtering, or reference coverage counts are required"
     socioeconomico: "do_not_use for hospitalization mortality/cost/ICU queries; use only for municipal indicators with metrica"
     tempo: "do_not_use for year/month/weekend filters when EXTRACT(...) from internacoes is enough"
     sexo: "do_not_use if sexo code/filtering from internacoes is enough"
     raca_cor: "do_not_use if race code/filtering from internacoes is enough"
     instrucao: "do_not_use if instruction code/filtering from internacoes is enough"
+    vincprev: "do_not_use if VINCPREV code/filtering from internacoes is enough; use for labels or catalog cardinality"
     especialidade: "do_not_use if specialty code/filtering from internacoes is enough"
 
 presets:
@@ -142,7 +145,7 @@ prompt_variants:
       - Use internacoes for most hospitalization, death, cost, length-of-stay, demographic, and ICU questions.
       - Use socioeconomico only for IDHM, bolsa família, saneamento, população, envelhecimento, and taxa de mortalidade infantil.
       - Use atendimentos + procedimentos for procedure-volume or procedure-name questions.
-      - Add cid, hospital, municipios, instrucao, vincprev, especialidade, or raca_cor only when names/descriptions or geographic context are needed.
+      - Add cid, hospital, municipios, instrucao, vincprev, especialidade, or raca_cor only when names/descriptions, catalog cardinality, or geographic context are needed.
       - Never select removed tables such as mortes, cid10, dado_ibge, or uti_detalhes.
 
       USER QUERY: "{user_query}"
@@ -173,12 +176,15 @@ prompt_variants:
       3. Add `tempo` only if the question explicitly requires the date dimension itself. For year/month/weekend filters, prefer `EXTRACT(...)` on `internacoes`.
       4. Add demographic lookups (`sexo`, `raca_cor`, `instrucao`, `especialidade`) only if the output needs human-readable labels. Do not add them for filtering/grouping when the code already exists in `internacoes`.
       5. Add `hospital` only for hospital attributes or to reach hospital municipality via `MUNIC_MOV`.
-      6. Add `municipios` only when the question needs city/state names or a geographic filter that is not already answerable by raw codes.
+      6. Add `municipios` when the question needs city/state names, a geographic filter, or geographic reference coverage counts.
       7. Add `atendimentos` + `procedimentos` only for procedure identity/volume questions.
       8. Add `socioeconomico` only for population, IDHM, bolsa família, saneamento, envelhecimento, or infant mortality metrics.
       9. For municipality questions, distinguish:
          - patient residence -> `internacoes.MUNIC_RES` + `municipios`
          - hospital location -> `internacoes.CNES` -> `hospital.MUNIC_MOV` + `municipios`
+      10. Add `cid` for CID catalog cardinality questions such as how many CID codes exist, are registered, available, distinct, or different.
+      11. Add `vincprev` for catalog cardinality questions such as how many social-security linkage types exist.
+      12. Use `municipios` alone for geographic reference coverage counts such as municipalities in a state or states covered by the database.
 
       USER QUERY: "{user_query}"
 
@@ -195,11 +201,15 @@ prompt_variants:
       DECIDE IN THIS ORDER:
       - If the query is about admissions, deaths, ICU, costs, age, sex, race, education, birth year, weekends, or general hospitalization trends, start with `internacoes`.
       - If the query asks for a disease/procedure/specialty/race/education NAME or DESCRIPTION, add the matching lookup table.
+      - If the query asks how many CID codes exist, are registered, available, distinct, or different, use `cid` as the catalog source.
+      - If the query asks how many social-security linkage/vincprev types exist, use `vincprev` as the catalog source.
+      - If the query asks how many municipalities/states the database covers or has registered, use `municipios` as the reference source.
       - If the query is about procedures performed, use `atendimentos` + `procedimentos`; otherwise do not add them.
       - If the query is about infant mortality, population, IDHM, bolsa família, or other municipal indicators, use `socioeconomico` with `metrica`.
       - If the query needs municipality or state names:
         - use `internacoes` + `municipios` for patient residence (`MUNIC_RES`)
         - use `internacoes` + `hospital` + `municipios` for hospital location (`MUNIC_MOV`)
+      - If the query requests totals for multiple states and does not say combined total, preserve one row per state.
       - Prefer NOT adding extra tables when `internacoes` already has the needed code/measure.
       - Avoid `tempo` unless the date dimension itself is explicitly necessary.
 
@@ -220,11 +230,11 @@ prompt_variants:
 
       DATABASE INVARIANTS:
       - `internacoes` is the primary fact table for admissions, deaths, ICU, costs, dates, age, sex, race, education, residence municipality code, and hospital CNES.
-      - Lookup tables (`sexo`, `raca_cor`, `instrucao`, `especialidade`, `cid`, `procedimentos`) are added only when the query needs labels/descriptions or text matching over those descriptions.
+      - Lookup tables (`sexo`, `raca_cor`, `instrucao`, `especialidade`, `cid`, `procedimentos`) are added only when the query needs labels/descriptions, catalog cardinality, or text matching over those descriptions.
       - `atendimentos` is not a generic admissions table; it exists only to connect admissions to performed procedures.
       - `tempo` is an auxiliary date dimension; for year/month/weekend filters prefer `EXTRACT(...)` from `internacoes`.
       - `hospital` is for hospital attributes or hospital location (`MUNIC_MOV`), not for generic hospitalization counts.
-      - `municipios` is for city/state names or geographic grouping/filtering.
+      - `municipios` is for city/state names, geographic grouping/filtering, and reference coverage counts.
       - `socioeconomico` is a separate municipal indicator fact table and requires `metrica`; do not use it for hospital mortality, ICU, or hospitalization cost queries.
 
       DECISION PROTOCOL:
@@ -236,6 +246,7 @@ prompt_variants:
          - municipality/state name or geographic grouping
          - hospital attributes/location
          - external municipal indicator
+         - catalog cardinality, such as counting how many codes/types exist in a reference table
       4. Before finalizing, remove any table whose information is already available in previously selected tables.
 
       MANDATORY DISTINCTIONS:
@@ -245,6 +256,10 @@ prompt_variants:
       - sex/race/education/specialty labels in output -> add corresponding lookup
       - procedure volume or procedure identity -> `atendimentos` + `procedimentos`
       - disease/cause names -> add `cid`
+      - CID catalog cardinality ("quantos códigos CID existem/cadastrados/disponíveis/distintos") -> add `cid`, not `internacoes`
+      - vincprev catalog cardinality ("quantos tipos de vínculo previdenciário existem") -> add `vincprev`, not `internacoes`
+      - geographic reference coverage ("quantos estados/municípios estão cobertos/cadastrados no banco") -> add `municipios`, not `internacoes`
+      - multi-state comparison ("para os estados X e Y") -> include `municipios` and preserve `estado` as output grouping unless combined total is explicit
 
       SELF-CHECK BEFORE ANSWERING:
       - Is every selected table necessary?
@@ -270,11 +285,11 @@ prompt_variants:
 
       NON-NEGOTIABLE DATABASE INVARIANTS:
       - `internacoes` is the main fact table for admissions, deaths, ICU, costs, dates, age, sex, race, education, residence municipality code, and hospital CNES.
-      - Lookup tables (`sexo`, `raca_cor`, `instrucao`, `especialidade`, `cid`, `procedimentos`) are only for labels/descriptions or text matching over those descriptions.
+      - Lookup tables (`sexo`, `raca_cor`, `instrucao`, `especialidade`, `cid`, `procedimentos`) are only for labels/descriptions, catalog cardinality, or text matching over those descriptions.
       - `atendimentos` is only to connect hospitalizations to performed procedures; do not use it for generic admission analytics.
       - `tempo` is auxiliary; for year/month/weekend filters prefer `EXTRACT(...)` from `internacoes`.
       - `hospital` is only for hospital attributes or hospital location via `MUNIC_MOV`.
-      - `municipios` is only for city/state names or geography-based grouping/filtering.
+      - `municipios` is for city/state names, geography-based grouping/filtering, or reference coverage counts.
       - `socioeconomico` is a separate municipal indicator fact table. Use it only for population, IDHM, bolsa família, saneamento, envelhecimento, or infant mortality metrics, usually with `metrica`.
 
       DECISION CHECKLIST:
@@ -287,6 +302,7 @@ prompt_variants:
          - municipality/state name or geography grouping
          - hospital attribute or hospital location
          - external municipal indicator
+         - catalog cardinality, such as counting how many codes/types exist in a reference table
       5. Before finalizing, remove every table whose information is already available from the others.
 
       MANDATORY DISTINCTIONS:
@@ -296,6 +312,10 @@ prompt_variants:
       - sex/race/education/specialty labels in output -> add corresponding lookup
       - procedure volume or procedure identity -> `atendimentos` + `procedimentos`
       - disease/cause names or descriptions -> add `cid`
+      - CID catalog cardinality ("quantos códigos CID existem/cadastrados/disponíveis/distintos") -> add `cid`, not `internacoes`
+      - vincprev catalog cardinality ("quantos tipos de vínculo previdenciário existem") -> add `vincprev`, not `internacoes`
+      - geographic reference coverage ("quantos estados/municípios estão cobertos/cadastrados no banco") -> add `municipios`, not `internacoes`
+      - multi-state comparison ("para os estados X e Y") -> include `municipios` and preserve `estado` as output grouping unless combined total is explicit
       - infant mortality or municipal indicators -> `socioeconomico`, not `internacoes`
 
       SELF-CHECK BEFORE ANSWERING:
@@ -328,7 +348,7 @@ prompt_variants:
       • cid: Join when need disease/diagnosis NAMES (table renamed from cid10 — use cid, NOT cid10!)
       • procedimentos: Join when need procedure NAMES (always via atendimentos junction table)
       • hospital: Join when need hospital/facility information
-      • municipios: Join when need city/municipality NAMES or geographic data
+      • municipios: Join when need city/municipality NAMES, geographic data, or reference coverage counts
 
        SPECIALIZED ANALYSIS — socioeconomico is the ONLY source for these metrics:
       • socioeconomico: Use for "população", "mortalidade infantil", "IDHM", "bolsa família", "envelhecimento",
@@ -336,7 +356,7 @@ prompt_variants:
         NEVER use internacoes for "taxa de mortalidade infantil" — that comes from socioeconomico!
         Example: WHERE metrica = 'mortalidade_infantil_1ano' OR metrica = 'populacao_total' OR metrica = 'idhm'
       • instrucao: Lookup for education level descriptions (JOIN with internacoes.INSTRU)
-      • vincprev: Lookup for social security type descriptions (JOIN with internacoes.VINCPREV)
+      • vincprev: Lookup/catalog for social security type descriptions and catalog counts
       • especialidade: Lookup for medical specialty descriptions (JOIN with internacoes.ESPEC)
       • raca_cor: Lookup for race/color descriptions (JOIN with internacoes.RACA_COR)
 
@@ -347,12 +367,14 @@ prompt_variants:
       • "municípios de residência" / "onde os pacientes moram" → internacoes.MUNIC_RES → municipios
       • "municípios que atendem" / "por localização do hospital" / "média por município (hospital)" →
         hospital.MUNIC_MOV → municipios (requires BOTH hospital AND municipios tables)
+      • "quantos tipos de vínculo previdenciário existem" → vincprev only
+      • "quantos estados/municípios estão cobertos/cadastrados no banco" → municipios only
 
        IMPORTANT RULES:
       • For years/months/weekends, DO NOT select `tempo` unless the calendar dimension itself is explicitly required.
         Prefer EXTRACT(YEAR|MONTH|DOW ...) from `internacoes.DT_INTER` / `internacoes.DT_SAIDA`.
       • `atendimentos` NEVER means generic atendimento count. It only exists to bridge hospitalization facts to procedure occurrences.
-      • If a code/filter already exists inside `internacoes`, do not add the lookup table unless the output needs the label/description.
+      • If a code/filter already exists inside `internacoes`, do not add the lookup table unless the output needs the label/description or catalog cardinality.
       • Never select removed tables such as mortes, cid10, dado_ibge, or uti_detalhes.
 
       USER QUERY: "{user_query}"

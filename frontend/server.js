@@ -16,32 +16,10 @@ require('dotenv').config();
 
 const API_CONFIG = require('./config/api');
 
-function getAllowedOrigins() {
-    const configuredOrigins = process.env.ALLOWED_ORIGINS
-        ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim()).filter(Boolean)
-        : [];
-    const vercelOrigin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null;
-
-    if (process.env.NODE_ENV === 'production') {
-        return [...new Set([...configuredOrigins, vercelOrigin].filter(Boolean))];
-    }
-
-    return [
-        'http://localhost:3000',
-        'http://127.0.0.1:3000',
-        'http://0.0.0.0:3000',
-        `http://localhost:${PORT}`,
-        `http://127.0.0.1:${PORT}`,
-        `http://0.0.0.0:${PORT}`
-    ];
-}
-
 // App Configuration
 const app = express();
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
-
-app.set('trust proxy', 1);
 
 // Security Middleware - Enhanced Chrome compatibility
 app.use(helmet({
@@ -66,7 +44,16 @@ app.use(cors({
         // Allow requests with no origin (mobile apps, Postman, etc.)
         if (!origin) return callback(null, true);
         
-        const allowedOrigins = getAllowedOrigins();
+        const allowedOrigins = process.env.NODE_ENV === 'production'
+            ? process.env.ALLOWED_ORIGINS?.split(',') || []
+            : [
+                'http://localhost:3000',
+                'http://127.0.0.1:3000',
+                'http://0.0.0.0:3000',
+                `http://localhost:${PORT}`,
+                `http://127.0.0.1:${PORT}`,
+                `http://0.0.0.0:${PORT}`
+            ];
         
         if (allowedOrigins.includes(origin)) {
             return callback(null, true);
@@ -397,7 +384,8 @@ process.on('SIGTERM', () => {
     process.exit(0);
 });
 
-function logStartup() {
+// Start server
+app.listen(PORT, HOST, () => {
     console.log('\n🚀 DataVisSUS Web Interface Server Started');
     console.log('='.repeat(50));
     console.log(`📍 Web Interface: http://${HOST}:${PORT}`);
@@ -431,10 +419,4 @@ function logStartup() {
             console.warn(`⚠️  Agent API connection failed: ${error.message}`);
             console.warn('   Make sure the TXT2SQL Agent is running on port 8000');
         });
-}
-
-if (process.env.VERCEL !== '1') {
-    app.listen(PORT, HOST, logStartup);
-}
-
-module.exports = app;
+});

@@ -32,7 +32,18 @@ class SemanticMetric(BaseModel):
     """A canonical metric requested or implied by the question."""
 
     name: str
-    expression_type: Literal["count", "sum", "avg", "rate", "delta", "ratio", "unknown"] = "unknown"
+    expression_type: Literal[
+        "count",
+        "sum",
+        "avg",
+        "min",
+        "max",
+        "rate",
+        "delta",
+        "ratio",
+        "value",
+        "unknown",
+    ] = "unknown"
     numerator_condition: str | None = None
     denominator_scope: str | None = None
     required_filters: list[str] = Field(default_factory=list)
@@ -60,6 +71,8 @@ class AnswerShape(BaseModel):
     top_n: int | None = None
     top_n_scope: TopNScope = "none"
     required_dimensions: list[str] = Field(default_factory=list)
+    partition_dimensions: list[str] = Field(default_factory=list)
+    ranked_dimensions: list[str] = Field(default_factory=list)
     requires_group_by: bool = False
     include_unknown_bucket: bool = False
 

@@ -1,5 +1,5 @@
 from src.semantic.plan_reconciler import reconcile_semantic_plans
-from src.semantic.plan_schema import AnswerShape, SemanticMetric, SemanticPlan
+from src.semantic.plan_schema import AnswerShape, SemanticFilter, SemanticMetric, SemanticPlan
 from src.semantic.planner import build_semantic_plan
 
 
@@ -77,6 +77,49 @@ def test_reconciler_does_not_let_llm_turn_scalar_plan_into_grouped_output():
     assert result.reconciled_plan.answer_shape.row_grain == "single_scalar"
     assert result.reconciled_plan.answer_shape.required_dimensions == []
     assert not result.reconciled_plan.answer_shape.requires_group_by
+
+
+def test_reconciler_keeps_heuristic_age_filter_over_llm_duplicate():
+    heuristic = build_semantic_plan(
+        "Quantas internações foram registradas para pacientes com menos de 1 ano de idade?"
+    )
+    llm = SemanticPlan(
+        intent="count",
+        base_grain="internacao",
+        metrics=[SemanticMetric(name="total", expression_type="count")],
+        filters=[SemanticFilter(field="idade", values=["0", "1"], operator="<")],
+        answer_shape=AnswerShape(row_grain="single_scalar"),
+    )
+
+    result = reconcile_semantic_plans(heuristic, llm)
+
+    assert [(f.field, f.operator, f.values) for f in result.reconciled_plan.filters] == [
+        ("idade", "=", ["0"])
+    ]
+
+
+def test_reconciler_preserves_heuristic_no_group_by_for_value_metric_ranking():
+    heuristic = build_semantic_plan(
+        "Quantos habitantes tem o município que tem a maior população segundo dados do IBGE?"
+    )
+    llm = SemanticPlan(
+        intent="ranking",
+        base_grain="municipio_ano_metrica",
+        metrics=[SemanticMetric(name="populacao_total", expression_type="value")],
+        answer_shape=AnswerShape(
+            row_grain="top_n_global",
+            top_n=1,
+            top_n_scope="global",
+            required_dimensions=["municipio"],
+            requires_group_by=True,
+        ),
+    )
+
+    result = reconcile_semantic_plans(heuristic, llm)
+
+    assert result.reconciled_plan.answer_shape.row_grain == "top_n_global"
+    assert result.reconciled_plan.answer_shape.required_dimensions == ["municipio"]
+    assert result.reconciled_plan.answer_shape.requires_group_by is False
 
 
 def test_reconciler_deduplicates_dimension_synonyms():

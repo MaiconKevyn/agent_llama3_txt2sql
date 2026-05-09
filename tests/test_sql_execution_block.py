@@ -75,3 +75,279 @@ def test_remove_unrequested_nonzero_metric_filter_preserves_order_by():
 
     assert "taxa > 0" not in repaired
     assert "ORDER BY tm.estado, tm.ano" in repaired
+
+
+def test_reorder_top_n_per_group_select_places_group_before_entity():
+    from src.agent.execution import _reorder_top_n_per_group_select
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan(
+        "Qual o hospital com maior receita total por especialidade médica, considerando apenas hospitais com mais de 500 internações na especialidade?"
+    )
+    sql = (
+        'WITH ranked AS (SELECT i."CNES", e."DESCRICAO" AS especialidade, '
+        'SUM(i."VAL_TOT") AS receita_total, '
+        'ROW_NUMBER() OVER (PARTITION BY e."DESCRICAO" ORDER BY SUM(i."VAL_TOT") DESC) AS rn '
+        'FROM internacoes i JOIN especialidade e ON i."ESPEC" = e."ESPEC" '
+        'GROUP BY i."CNES", e."DESCRICAO" HAVING COUNT(*) > 500) '
+        'SELECT "CNES", especialidade, receita_total FROM ranked WHERE rn = 1;'
+    )
+
+    repaired = _reorder_top_n_per_group_select(sql, plan)
+
+    assert 'SELECT especialidade, "CNES", receita_total FROM ranked' in repaired
+
+
+def test_replace_top1_rank_with_row_number():
+    from src.agent.execution import _replace_top1_rank_with_row_number
+
+    sql = (
+        'SELECT RANK() OVER (PARTITION BY e."DESCRICAO" ORDER BY SUM(i."VAL_TOT") DESC) AS rk'
+    )
+
+    repaired = _replace_top1_rank_with_row_number(sql)
+
+    assert "ROW_NUMBER() OVER" in repaired
+    assert "RANK() OVER" not in repaired
+
+
+def test_build_filtered_category_period_percentage_sql_from_semantic_plan():
+    from src.agent.execution import _build_filtered_category_period_percentage_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan(
+        "Qual o total e o percentual de internações por doenças respiratórias (CID J%) em cada trimestre do ano no estado do RS?"
+    )
+
+    sql = _build_filtered_category_period_percentage_sql(plan)
+
+    assert sql is not None
+    assert 'i."DIAG_PRINC" LIKE \'J%\'' in sql
+    assert 'mu."estado" = \'RS\'' in sql
+    assert "SUM(COUNT(*)) OVER ()" in sql
+    assert "GROUP BY EXTRACT(QUARTER" in sql
+
+
+def test_build_temporal_period_comparison_sql_from_semantic_plan():
+    from src.agent.execution import _build_temporal_period_comparison_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan(
+        "Quais são os 10 diagnósticos com maior queda absoluta de internações "
+        "entre os períodos 2008-2012 e 2019-2023?"
+    )
+
+    sql = _build_temporal_period_comparison_sql(plan)
+
+    assert sql is not None
+    assert "WITH periodo_1 AS" in sql
+    assert "BETWEEN 2008 AND 2012" in sql
+    assert "BETWEEN 2019 AND 2023" in sql
+    assert "JOIN periodo_2" in sql
+    assert "FULL OUTER JOIN" not in sql
+    assert "queda_absoluta" in sql
+    assert "p1.total_internacoes - p2.total_internacoes" in sql
+    assert "LIMIT 10" in sql
+
+
+def test_build_death_cause_cid_antijoin_sql_from_semantic_plan():
+    from src.agent.execution import _build_death_cause_cid_antijoin_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan(
+        "Quais códigos CID aparecem como causa de morte em óbitos registrados mas nunca foram registrados como diagnóstico principal de internação?"
+    )
+
+    sql = _build_death_cause_cid_antijoin_sql(plan)
+
+    assert sql is not None
+    assert 'i."CID_MORTE" = c."CID"' in sql
+    assert 'i."MORTE" = true' in sql
+    assert 'd."DIAG_PRINC" = c."CID"' in sql
+    assert "COUNT(*) AS total_como_morte" in sql
+    assert "ORDER BY total_como_morte DESC" in sql
+    assert "LIMIT 10" in sql
+
+
+def test_build_moving_average_sql_from_semantic_plan():
+    from src.agent.execution import _build_moving_average_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan(
+        "Qual a média móvel de 3 anos de internações no estado do RS por ano (2008-2023)?"
+    )
+
+    sql = _build_moving_average_sql(plan)
+
+    assert sql is not None
+    assert "COUNT(*) AS total_internacoes" in sql
+    assert 'mu."estado" = \'RS\'' in sql
+    assert "BETWEEN 2008 AND 2023" in sql
+    assert "AVG(total_internacoes) OVER" in sql
+    assert "ROWS BETWEEN 2 PRECEDING AND CURRENT ROW" in sql
+
+
+def test_build_quartile_distribution_sql_from_semantic_plan():
+    from src.agent.execution import _build_quartile_distribution_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan(
+        "Como se distribuem os hospitais em quartis de volume de internações? Mostre o número de hospitais e o intervalo de internações por quartil."
+    )
+
+    sql = _build_quartile_distribution_sql(plan)
+
+    assert sql is not None
+    assert "NTILE(4) OVER" in sql
+    assert 'SELECT "CNES", COUNT(*) AS total_internacoes' in sql
+    assert "COUNT(*) AS total_hospitais" in sql
+    assert "MIN(total_internacoes)" in sql
+    assert "MAX(total_internacoes)" in sql
+
+
+def test_build_idhm_mortality_cohort_sql_from_semantic_plan():
+    from src.agent.execution import _build_idhm_mortality_cohort_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan(
+        "Compare o IDHM médio dos municípios do RS com taxa de mortalidade hospitalar acima e abaixo da média estadual (mínimo de 500 internações)."
+    )
+
+    sql = _build_idhm_mortality_cohort_sql(plan)
+
+    assert sql is not None
+    assert 's."metrica" = \'idhm\'' in sql
+    assert 'mu."estado" = \'RS\'' in sql
+    assert "HAVING COUNT(*) > 500" in sql
+    assert "AVG(s.\"valor\")" in sql
+    assert "Acima da media" in sql
+
+
+def test_build_socioeconomic_multi_metric_sql_from_semantic_plan():
+    from src.agent.execution import _build_socioeconomic_multi_metric_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan(
+        "Quais são os 10 municípios do Maranhão com Bolsa Família acima da média estadual e mortalidade infantil abaixo da média estadual?"
+    )
+
+    sql = _build_socioeconomic_multi_metric_sql(plan)
+
+    assert sql is not None
+    assert "bolsa_familia_total" in sql
+    assert "mortalidade_infantil_1ano" in sql
+    assert 'mu."estado" = \'MA\'' in sql
+    assert "MAX(CASE WHEN" in sql
+    assert "LIMIT 10" in sql
+
+
+def test_build_mortality_rate_time_series_sql_from_semantic_plan():
+    from src.agent.execution import _build_mortality_rate_time_series_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan("Qual a evolução anual da taxa de mortalidade por estado (MA e RS)?")
+
+    sql = _build_mortality_rate_time_series_sql(plan)
+
+    assert sql is not None
+    assert 'mu."estado" IN (\'MA\', \'RS\')' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") AS ano' in sql
+    assert 'SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END)' in sql
+    assert 'GROUP BY mu."estado", ano' in sql
+    assert 'ORDER BY mu."estado", ano' in sql
+
+
+def test_build_goalv2_death_cause_description_count_sql():
+    from src.agent.execution import _build_death_cause_description_count_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan("Quantas internações por meningite ocasionaram em morte?")
+
+    sql = _build_death_cause_description_count_sql(plan)
+
+    assert sql is not None
+    assert 'i."CID_MORTE" = c."CID"' in sql
+    assert 'i."MORTE" = true' in sql
+    assert 'c."CD_DESCRICAO" ILIKE \'%meningite%\'' in sql
+    assert 'i."DIAG_PRINC"' not in sql
+
+
+def test_build_goalv2_top_n_obstetric_municipality_sql():
+    from src.agent.execution import _build_top_n_count_by_dimension_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan("Quais os cinco municípios com mais internações obstétricas registradas?")
+
+    sql = _build_top_n_count_by_dimension_sql(plan)
+
+    assert sql is not None
+    assert 'JOIN municipios mu ON i."MUNIC_RES" = mu."codigo_6d"' in sql
+    assert 'i."ESPEC" = 2' in sql
+    assert "ORDER BY total_internacoes DESC" in sql
+    assert "LIMIT 5" in sql
+
+
+def test_build_goalv2_lookup_distribution_sql_for_race_color():
+    from src.agent.execution import _build_lookup_distribution_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan("Qual a distribuição de internações por raça/cor?")
+
+    sql = _build_lookup_distribution_sql(plan)
+
+    assert sql is not None
+    assert 'JOIN raca_cor r ON i."RACA_COR" = r."RACA_COR"' in sql
+    assert 'r."DESCRICAO" AS raca_cor' in sql
+    assert 'GROUP BY r."DESCRICAO"' in sql
+
+
+def test_build_goalv2_filtered_cohort_weekday_percentage_sql():
+    from src.agent.execution import _build_filtered_cohort_weekday_percentage_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan("Qual a distribuição e percentual de internações em UTI por dia da semana?")
+
+    sql = _build_filtered_cohort_weekday_percentage_sql(plan)
+
+    assert sql is not None
+    assert 'JOIN tempo t ON i."DT_INTER" = t."data"' in sql
+    assert 'WHERE i."VAL_UTI" > 0' in sql
+    assert "SUM(COUNT(*)) OVER ()" in sql
+    assert 'GROUP BY t."dia_semana"' in sql
+
+
+def test_build_goalv2_top_hospital_revenue_by_specialty_sql():
+    from src.agent.execution import _build_top_hospital_revenue_by_specialty_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan(
+        "Qual o hospital com maior receita total por especialidade médica, "
+        "considerando apenas hospitais com mais de 500 internações na especialidade?"
+    )
+
+    sql = _build_top_hospital_revenue_by_specialty_sql(plan)
+
+    assert sql is not None
+    assert 'e."DESCRICAO" AS especialidade' in sql
+    assert 'i."CNES" AS hospital' in sql
+    assert 'SUM(i."VAL_TOT") AS receita_total' in sql
+    assert 'ROW_NUMBER() OVER (PARTITION BY e."DESCRICAO"' in sql
+    assert "HAVING COUNT(*) > 500" in sql
+    assert "SELECT especialidade, hospital, receita_total" in sql
+
+
+def test_build_goalv2_side_by_side_state_average_sql():
+    from src.agent.execution import _build_side_by_side_state_average_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan(
+        "Qual a média de dias de internação por especialidade médica, comparando lado a lado os estados MA e RS?"
+    )
+
+    sql = _build_side_by_side_state_average_sql(plan)
+
+    assert sql is not None
+    assert 'AVG(CASE WHEN mu."estado" = \'MA\' THEN i."DIAS_PERM" END)' in sql
+    assert 'AVG(CASE WHEN mu."estado" = \'RS\' THEN i."DIAS_PERM" END)' in sql
+    assert 'GROUP BY e."DESCRICAO"' in sql
+    assert "GROUP BY e.\"DESCRICAO\", mu" not in sql

@@ -43,6 +43,7 @@ TABLE_DESCRIPTIONS = {
             'MORTE é boolean — use WHERE "MORTE" = true para contar óbitos (NÃO existe tabela mortes separada)',
             'IND_VDRL é boolean — use WHERE "IND_VDRL" = true para VDRL positivo',
             'DIAS_PERM substitui QT_DIARIAS do banco anterior',
+            'Para "por idade" ou "distribuição por idade": agrupar por "IDADE" bruto; só criar faixas quando a pergunta disser "faixa etária"/"grupo etário"',
             'Para procedimentos: JOIN com atendimentos via "N_AIH" e depois JOIN procedimentos via "PROC_REA"',
             'JOIN com cid via "DIAG_PRINC" para descrição de diagnóstico',
             'JOIN com hospital via "CNES" para dados do estabelecimento',
@@ -94,12 +95,12 @@ TABLE_DESCRIPTIONS = {
 
     "cid": {
         "title": "Códigos CID-10 (TABELA DE REFERÊNCIA)",
-        "description": "Tabela de referência com os códigos da Classificação Internacional de Doenças (CID-10) e suas descrições. Use SOMENTE para JOINs e lookups de descrição. NUNCA para contagem ou como fonte primária de dados.",
-        "purpose": "REFERÊNCIA APENAS — JOINs e lookups de nomes de doenças",
+        "description": "Tabela de referência com os códigos da Classificação Internacional de Doenças (CID-10) e suas descrições. Use para JOINs/lookups de descrição e para cardinalidade do catálogo quando a pergunta pedir quantos códigos CID existem, estão cadastrados, disponíveis ou distintos. Para contar internações por diagnóstico observado, use internacoes.",
+        "purpose": "REFERÊNCIA — catálogo de códigos CID-10 e lookup de nomes de doenças",
         "use_cases": [
             "JOIN com internacoes para obter descrição do diagnóstico",
             "Lookup de nome de doença a partir do código CID",
-            "NUNCA usar para contar doenças ou procedimentos"
+            "Contar códigos CID-10 existentes/cadastrados/disponíveis no catálogo"
         ],
         "key_columns": ['"CID"', '"CD_DESCRICAO"'],
         "value_mappings": {
@@ -107,7 +108,8 @@ TABLE_DESCRIPTIONS = {
             '"CD_DESCRICAO"': "Descrição completa da doença/condição"
         },
         "critical_notes": [
-            "LOOKUP TABLE ONLY — nunca usar para contagem!",
+            "Para 'quantos códigos CID existem/cadastrados/disponíveis/distintos', conte cid.\"CID\" nesta tabela.",
+            "Para 'CIDs registrados/observados/usados em internações', conte os códigos nas colunas de internacoes.",
             '"CID" é chave primária',
             'JOINs: internacoes."DIAG_PRINC" = cid."CID" ou internacoes."DIAG_SECUN" = cid."CID" ou internacoes."CID_MORTE" = cid."CID"',
             "Tabela anteriormente chamada cid10 — agora se chama cid"
@@ -121,9 +123,11 @@ TABLE_DESCRIPTIONS = {
 
     "municipios": {
         "title": "Municípios Brasileiros",
-        "description": "Tabela de referência com os municípios do Brasil. Contém código 6 dígitos (chave primária), código IBGE 7 dígitos, nome, estado (UF) e coordenadas geográficas.",
-        "purpose": "Análises geográficas e localização de pacientes e hospitais",
+        "description": "Tabela de referência com os municípios do Brasil. Contém código 6 dígitos (chave primária), código IBGE 7 dígitos, nome, estado (UF) e coordenadas geográficas. Use como fonte de cobertura geográfica quando a pergunta pedir quantos municípios/estados existem, estão cadastrados ou estão cobertos pelo banco de dados.",
+        "purpose": "Dimensão geográfica, cobertura de municípios/estados e localização de pacientes e hospitais",
         "use_cases": [
+            "Contar municípios cadastrados ou municípios por estado",
+            "Contar estados/UFs cobertos pela base de referência geográfica",
             "Análises por estado/cidade",
             "JOIN com internacoes para nome do município de residência do paciente",
             "JOIN com hospital via MUNIC_MOV para município do hospital",
@@ -138,6 +142,8 @@ TABLE_DESCRIPTIONS = {
         },
         "critical_notes": [
             '"codigo_6d" é chave primária',
+            "Para 'quantos municípios/estados existem/cobertos/cadastrados no banco', conte diretamente municipios.",
+            "Para 'estados/municípios com internações observadas', junte com internacoes.",
             'JOIN com internacoes: internacoes."MUNIC_RES" = municipios."codigo_6d"',
             'JOIN com hospital: hospital."MUNIC_MOV" = municipios."codigo_6d"',
             'JOIN com socioeconomico: socioeconomico."codigo_6d" = municipios."codigo_6d"'
@@ -224,9 +230,10 @@ TABLE_DESCRIPTIONS = {
 
     "vincprev": {
         "title": "Vínculo Previdenciário (LOOKUP TABLE)",
-        "description": "Tabela de referência com os códigos e descrições dos tipos de vínculo previdenciário dos pacientes. Os valores de VINCPREV estão diretamente em internacoes.",
-        "purpose": "Lookup dos códigos de vínculo previdenciário",
+        "description": "Tabela de referência com os códigos e descrições dos tipos de vínculo previdenciário dos pacientes. Os valores observados por internação estão em internacoes.VINCPREV. Use vincprev para cardinalidade do catálogo quando a pergunta pedir quantos tipos de vínculo existem/cadastrados.",
+        "purpose": "Lookup e catálogo dos códigos de vínculo previdenciário",
         "use_cases": [
+            "Contar tipos de vínculo previdenciário existentes/cadastrados",
             "JOIN com internacoes para obter descrição do vínculo previdenciário",
             "Análise de internações por situação previdenciária"
         ],
@@ -236,6 +243,8 @@ TABLE_DESCRIPTIONS = {
         },
         "critical_notes": [
             '"VINCPREV" é chave primária',
+            "Para 'quantos tipos de vínculo previdenciário existem', conte a tabela vincprev.",
+            "Para 'pacientes/internações com vínculo previdenciário informado/observado', use internacoes.VINCPREV e aplique os filtros de domínio.",
             'JOIN com internacoes: internacoes."VINCPREV" = vincprev."VINCPREV"'
         ],
         "relationships": [

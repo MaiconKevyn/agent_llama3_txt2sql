@@ -143,3 +143,21 @@ def test_contract_validator_accepts_hospital_state_join_path_when_hospital_dimen
     result = validate_sql_contract(plan, sql)
 
     assert result.passed, result.errors
+
+
+def test_contract_validator_accepts_socioeconomico_state_join_path():
+    plan = build_semantic_plan(
+        "Qual o total de esgotamento sanitário nos estados do MA e RS?"
+    )
+    sql = """
+        SELECT mu."estado", SUM(s."valor") AS total_esgotamento_sanitario
+        FROM socioeconomico s
+        JOIN municipios mu ON s."codigo_6d" = mu."codigo_6d"
+        WHERE s."metrica" = 'esgotamento_sanitario_domicilio'
+          AND mu."estado" IN ('MA', 'RS')
+        GROUP BY mu."estado"
+    """
+
+    result = validate_sql_contract(plan, sql)
+
+    assert result.passed, result.errors
