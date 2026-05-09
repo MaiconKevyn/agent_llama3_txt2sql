@@ -19,7 +19,6 @@ Text-to-SQL for Brazilian public healthcare analytics, built around a LangGraph 
   - [Installation](#installation)
   - [Configuration](#configuration)
   - [Running the Application](#running-the-application)
-- [Vercel Deployment](#vercel-deployment)
 - [Usage](#usage)
 - [Evaluation](#evaluation)
 - [Observability](#observability)
@@ -233,49 +232,6 @@ npm start
 ```
 
 The frontend is exposed on `http://localhost:3000`.
-
-## Vercel Deployment
-This repository is prepared as a Vercel monorepo with separate projects for the web UI and the agent API.
-
-### Frontend project
-Create a Vercel project with:
-
-```text
-Root Directory: frontend
-Framework Preset: Other
-Install Command: npm ci
-Build Command: npm run build
-```
-
-Set these environment variables:
-
-```env
-NODE_ENV=production
-API_BASE_URL=https://your-api-project.vercel.app/api/v1
-ALLOWED_ORIGINS=https://your-frontend-project.vercel.app
-```
-
-The frontend also allows the current Vercel preview URL automatically through `VERCEL_URL`, so preview deployments work without editing `ALLOWED_ORIGINS` for every preview URL.
-
-### API project
-Create a second Vercel project from the same repository with:
-
-```text
-Root Directory: .
-Framework Preset: Other / Python
-```
-
-The root-level `app.py` exposes the FastAPI app from `src/interfaces/api/main.py`. Set at least:
-
-```env
-OPENAI_API_KEY=sk-your_openai_key_here
-DATABASE_URL=postgresql+psycopg2://user:password@host:5432/database
-CHECKPOINT_DB_PATH=/tmp/chatbot_memory.db
-```
-
-Use a managed PostgreSQL database for Vercel. Local absolute DuckDB paths such as `/home/.../sihrd5.duckdb` will not be available inside Vercel.
-
-The Python API has a large dependency graph. If the Vercel build exceeds function bundle limits, keep only the frontend on Vercel and deploy the API on a container platform such as Render, Fly.io, Railway, AWS, or GCP, then point `API_BASE_URL` at that API URL.
 
 ## Usage
 ### Example Queries
