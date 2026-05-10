@@ -114,7 +114,10 @@ def route_after_sql_validation(
 
     if current_error and should_retry(state, "sql_validation_error"):
         error_message = current_error.lower()
-        if "semantic plan error" in error_message or "ast contract error" in error_message:
+        if any(
+            keyword in error_message
+            for keyword in ["semantic plan error", "ast contract error", "chart plan error"]
+        ):
             return "retry_generation"
         if any(keyword in error_message for keyword in ["syntax", "parse", "invalid"]):
             return "retry_generation"

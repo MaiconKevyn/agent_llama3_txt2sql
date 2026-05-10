@@ -28,7 +28,7 @@ app.use(helmet({
             defaultSrc: ["'self'"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
             fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com"],
-            scriptSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
             imgSrc: ["'self'", "data:", "https:"],
             connectSrc: ["'self'", `http://localhost:${PORT}`, `http://127.0.0.1:${PORT}`, API_CONFIG.BASE_URL]
         },
@@ -184,6 +184,7 @@ app.post('/api/query', async (req, res) => {
             answer: response.answer || response.response,
             sql_query: response.sql_query || response.sql || null,
             sql: response.sql || response.sql_query || null,
+            chart: response.chart || null,
             session_id: response.session_id || session_id || null,
             metadata: response.metadata || {},
             execution_time: executionTime,

@@ -290,6 +290,8 @@ def execute_sql_workflow(
     llm_manager=None,
     force_single_query: bool = True,
     ablation_flags: dict = None,
+    visualization_intent: dict = None,
+    chart_plan: dict = None,
 ) -> dict:
     """
     Execute SQL workflow with proper error handling and adaptive recursion limit
@@ -318,6 +320,8 @@ def execute_sql_workflow(
             session_id=session_id,
             force_single_query=force_single_query,
             ablation_flags=ablation_flags or {},
+            visualization_intent=visualization_intent,
+            chart_plan=chart_plan,
         )
 
         config = config or {}
@@ -382,7 +386,15 @@ def execute_sql_workflow(
 
 
 def stream_sql_workflow(
-    workflow, user_query: str, session_id: str = None, config: dict = None, llm_manager=None
+    workflow,
+    user_query: str,
+    session_id: str = None,
+    config: dict = None,
+    llm_manager=None,
+    force_single_query: bool = True,
+    ablation_flags: dict = None,
+    visualization_intent: dict = None,
+    chart_plan: dict = None,
 ):
     """
     Stream SQL workflow execution for real-time updates
@@ -405,7 +417,14 @@ def stream_sql_workflow(
         if session_id is None:
             session_id = f"session_{hash(user_query) % 10000}"
 
-        initial_state = create_initial_messages_state(user_query=user_query, session_id=session_id)
+        initial_state = create_initial_messages_state(
+            user_query=user_query,
+            session_id=session_id,
+            force_single_query=force_single_query,
+            ablation_flags=ablation_flags or {},
+            visualization_intent=visualization_intent,
+            chart_plan=chart_plan,
+        )
 
         config = config or {}
 

@@ -24,6 +24,14 @@ from .orchestrator_support import (
 from .mlflow_tracker import log_query_run
 from ..utils.logging_setup import LoggingSetup
 from ..application.config.simple_config import ApplicationConfig, OrchestratorConfig
+from ..visualization import (
+    build_chart_plan,
+    build_chart_planning_input,
+    detect_visualization_intent,
+    plan_chart,
+)
+from ..visualization.renderer_contract import build_chart_response
+from ..visualization.schema import ChartPlan, ChartSpec, VisualizationIntent
 
 load_dotenv()
 
@@ -85,6 +93,7 @@ class LangGraphOrchestrator:
         self._llm_manager = None
         self._current_model = None
         self._metrics = MetricsCollector(max_history=1000)
+        self._last_result_by_session: Dict[str, Dict[str, Any]] = {}
         
         # Setup structured logging first
         self._setup_logging()
@@ -226,6 +235,26 @@ class LangGraphOrchestrator:
         })
 
         try:
+            visualization_intent = detect_visualization_intent(user_query)
+            chart_plan = build_chart_plan(user_query, visualization_intent)
+            effective_force_single_query = force_single_query or visualization_intent.requested
+            if visualization_intent.requested and visualization_intent.uses_last_result:
+                cached_result = self._last_result_by_session.get(session_id)
+                if cached_result:
+                    return self._build_followup_chart_result(
+                        user_query=user_query,
+                        session_id=session_id,
+                        visualization_intent=visualization_intent,
+                        cached_result=cached_result,
+                        started_at=start_time,
+                    )
+                return self._build_missing_chart_context_result(
+                    user_query=user_query,
+                    session_id=session_id,
+                    visualization_intent=visualization_intent,
+                    started_at=start_time,
+                )
+
             workflow_config = build_workflow_config(config=config, session_id=session_id)
 
             if streaming:
@@ -235,6 +264,10 @@ class LangGraphOrchestrator:
                     user_query=user_query,
                     session_id=session_id,
                     config=workflow_config,
+                    force_single_query=effective_force_single_query,
+                    ablation_flags=_orch_config_to_flags(self.orchestrator_config),
+                    visualization_intent=visualization_intent.model_dump(mode="json"),
+                    chart_plan=chart_plan.model_dump(mode="json"),
                 ):
                     results.append(update)
                 execution_time = time.time() - start_time
@@ -246,12 +279,21 @@ class LangGraphOrchestrator:
                 user_query=user_query,
                 session_id=session_id,
                 config=workflow_config,
-                force_single_query=force_single_query,
+                force_single_query=effective_force_single_query,
                 ablation_flags=_orch_config_to_flags(self.orchestrator_config),
+                visualization_intent=visualization_intent.model_dump(mode="json"),
+                chart_plan=chart_plan.model_dump(mode="json"),
             )
 
             execution_time = time.time() - start_time
             result["execution_time"] = execution_time
+            result = self._attach_visualization_if_requested(
+                result=result,
+                user_query=user_query,
+                visualization_intent=visualization_intent,
+                chart_plan=chart_plan,
+            )
+            self._remember_result_if_available(session_id=session_id, result=result)
             self._metrics.record_result(
                 user_query,
                 result,
@@ -303,6 +345,145 @@ class LangGraphOrchestrator:
                 current_model_metadata=self._current_model_metadata(),
                 environment=self.environment,
             )
+
+    def _attach_visualization_if_requested(
+        self,
+        *,
+        result: Dict[str, Any],
+        user_query: str,
+        visualization_intent: VisualizationIntent,
+        chart_plan: ChartPlan | None = None,
+    ) -> Dict[str, Any]:
+        """Attach a validated chart payload only for explicit chart requests."""
+
+        result["metadata"] = result.get("metadata", {}) or {}
+        result["metadata"]["visualization_intent"] = visualization_intent.model_dump(mode="json")
+        if chart_plan is not None:
+            result["metadata"]["chart_plan"] = chart_plan.model_dump(mode="json")
+
+        if not visualization_intent.requested:
+            result["chart"] = None
+            return result
+
+        chart_spec = self._plan_chart_for_result(
+            user_query=user_query,
+            result=result,
+            visualization_intent=visualization_intent,
+            chart_plan=chart_plan,
+        )
+        result["chart"] = build_chart_response(intent=visualization_intent, spec=chart_spec)
+        result["metadata"]["chart_spec"] = (
+            chart_spec.model_dump(mode="json") if chart_spec else None
+        )
+        return result
+
+    def _plan_chart_for_result(
+        self,
+        *,
+        user_query: str,
+        result: Dict[str, Any],
+        visualization_intent: VisualizationIntent,
+        chart_plan: ChartPlan | None = None,
+    ) -> ChartSpec | None:
+        if not result.get("success") or not result.get("results"):
+            return ChartSpec(
+                chartable=False,
+                chart_type="table",
+                reason="Sem resultado tabular validado para gerar grafico.",
+            )
+        try:
+            planning_input = build_chart_planning_input(
+                user_query=user_query,
+                sql_query=result.get("sql_query"),
+                results=result.get("results") or [],
+                row_count=int(result.get("row_count") or len(result.get("results") or [])),
+                semantic_plan=(result.get("metadata") or {}).get("semantic_plan"),
+                chart_hint=visualization_intent.chart_hint,
+                chart_plan=chart_plan or (result.get("metadata") or {}).get("chart_plan"),
+            )
+            return plan_chart(planning_input)
+        except Exception as exc:
+            self.logger.warning("Chart planning failed", extra={"error": str(exc)})
+            return ChartSpec(
+                chartable=False,
+                chart_type="table",
+                data=[],
+                reason=f"Nao foi possivel gerar grafico validado: {exc}",
+            )
+
+    def _remember_result_if_available(self, *, session_id: str, result: Dict[str, Any]) -> None:
+        if not result.get("success") or not result.get("results"):
+            return
+        self._last_result_by_session[session_id] = {
+            "response": result.get("response"),
+            "sql_query": result.get("sql_query"),
+            "results": result.get("results") or [],
+            "row_count": result.get("row_count") or len(result.get("results") or []),
+            "metadata": result.get("metadata") or {},
+        }
+
+    def _build_followup_chart_result(
+        self,
+        *,
+        user_query: str,
+        session_id: str,
+        visualization_intent: VisualizationIntent,
+        cached_result: Dict[str, Any],
+        started_at: float,
+    ) -> Dict[str, Any]:
+        base_result = {
+            "success": True,
+            "question": user_query,
+            "sql_query": cached_result.get("sql_query"),
+            "results": cached_result.get("results") or [],
+            "row_count": cached_result.get("row_count") or len(cached_result.get("results") or []),
+            "execution_time": time.time() - started_at,
+            "error_message": None,
+            "response": "Grafico gerado a partir do ultimo resultado da sessao.",
+            "timestamp": datetime.now().isoformat(),
+            "final_result_rows": None,
+            "metadata": {
+                **(cached_result.get("metadata") or {}),
+                "session_id": session_id,
+                "visualization_followup": True,
+            },
+        }
+        return self._attach_visualization_if_requested(
+            result=base_result,
+            user_query=user_query,
+            visualization_intent=visualization_intent,
+        )
+
+    def _build_missing_chart_context_result(
+        self,
+        *,
+        user_query: str,
+        session_id: str,
+        visualization_intent: VisualizationIntent,
+        started_at: float,
+    ) -> Dict[str, Any]:
+        chart_payload = build_chart_response(intent=visualization_intent, spec=None)
+        return {
+            "success": True,
+            "question": user_query,
+            "sql_query": None,
+            "results": [],
+            "row_count": 0,
+            "execution_time": time.time() - started_at,
+            "error_message": None,
+            "response": (
+                "Para gerar um grafico disso, primeiro preciso de uma resposta de dados "
+                "na mesma sessao."
+            ),
+            "timestamp": datetime.now().isoformat(),
+            "final_result_rows": None,
+            "chart": chart_payload,
+            "metadata": {
+                "session_id": session_id,
+                "visualization_intent": visualization_intent.model_dump(mode="json"),
+                "visualization_missing_context": True,
+            },
+        }
     
     def get_performance_metrics(self) -> Dict[str, Any]:
         """

@@ -257,6 +257,26 @@ def test_build_mortality_rate_time_series_sql_from_semantic_plan():
     assert 'ORDER BY mu."estado", ano' in sql
 
 
+def test_build_recent_years_mortality_by_sex_sql_from_semantic_plan():
+    from src.agent.execution import _build_recent_years_mortality_by_sex_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan(
+        "gere um grafico comparando morte de homens e mulheres nos ultimos 5 anos"
+    )
+
+    sql = _build_recent_years_mortality_by_sex_sql(plan)
+
+    assert sql is not None
+    assert 'MAX(EXTRACT(YEAR FROM "DT_INTER")) AS ano_max' in sql
+    assert "m.ano_max - 4" in sql
+    assert 'i."MORTE" = true' in sql
+    assert 'i."SEXO" IN (1, 3)' in sql
+    assert "CASE WHEN i.\"SEXO\" = 1 THEN 'homens'" in sql
+    assert "COUNT(*) AS total_mortes" in sql
+    assert 'GROUP BY EXTRACT(YEAR FROM i."DT_INTER"), i."SEXO"' in sql
+
+
 def test_build_goalv2_death_cause_description_count_sql():
     from src.agent.execution import _build_death_cause_description_count_sql
     from src.semantic.planner import build_semantic_plan

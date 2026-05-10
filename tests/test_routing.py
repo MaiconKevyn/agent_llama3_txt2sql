@@ -131,6 +131,19 @@ def test_route_after_sql_generation_and_validation_retry_logic():
                 "total_workflow_cycles": 1,
                 "validation_retry_count": 0,
                 "validated_sql": None,
+                "current_error": "CHART PLAN ERROR: last_n_available_years charts must use max year",
+                "retry_count": 0,
+                "max_retries": 3,
+            }
+        )
+        == "retry_generation"
+    )
+    assert (
+        route_after_sql_validation(
+            {
+                "total_workflow_cycles": 1,
+                "validation_retry_count": 0,
+                "validated_sql": None,
                 "current_error": "AST CONTRACT ERROR: SQL join path for estado is invalid",
                 "retry_count": 0,
                 "max_retries": 3,

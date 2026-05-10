@@ -145,6 +145,17 @@ def _extract_year_ranges(query_lower: str) -> list[tuple[str, str]]:
     return ranges
 
 
+def _extract_recent_year_window(query_lower: str) -> int | None:
+    for pattern in [
+        r"\b(?:últimos|ultimos|últimas|ultimas)\s+(\d+)\s+anos\b",
+        r"\b(?:nos\s+)?(?:anos\s+)?mais\s+recentes\s*\(?\s*(\d+)\s+anos?\s*\)?",
+    ]:
+        match = re.search(pattern, query_lower, re.I)
+        if match:
+            return int(match.group(1))
+    return None
+
+
 def _dimension(name: str, source: str, role: str = "group") -> SemanticDimension:
     return SemanticDimension(name=name, source=source, role=role)
 
@@ -157,6 +168,18 @@ def _contains_any(query_lower: str, tokens: list[str]) -> bool:
         elif re.search(rf"(?<!\w){re.escape(token)}(?!\w)", query_lower):
             return True
     return False
+
+
+def _mentions_male(query_lower: str) -> bool:
+    return bool(re.search(r"\b(homens?|masculin[oa]s?)\b", query_lower))
+
+
+def _mentions_female(query_lower: str) -> bool:
+    return bool(re.search(r"\b(mulheres?|ulheres?|feminin[oa]s?)\b", query_lower))
+
+
+def _mentions_both_sexes(query_lower: str) -> bool:
+    return _mentions_male(query_lower) and _mentions_female(query_lower)
 
 
 def _extract_min_age(query_lower: str) -> int | None:
@@ -208,9 +231,59 @@ def _extract_death_cause_description_term(query_lower: str) -> str | None:
         term = re.sub(r"\b(?:registradas?|ocasionadas?|em|internacoes|internações)\b", " ", match.group(1))
         term = re.sub(r"[^\wÀ-ÿ -]", " ", term)
         term = re.sub(r"\s+", " ", term).strip()
-        if term:
+        if term and not _is_grouping_or_temporal_term(term):
             return term
     return None
+
+
+def _is_grouping_or_temporal_term(term: str) -> bool:
+    """Avoid treating "mortes por <dimension>" as CID death-cause text."""
+
+    normalized = term.lower().strip()
+    normalized = re.sub(r"\s+", " ", normalized)
+    grouping_terms = {
+        "ano",
+        "anos",
+        "mês",
+        "mes",
+        "meses",
+        "trimestre",
+        "trimestres",
+        "semestre",
+        "semestres",
+        "data",
+        "periodo",
+        "período",
+        "estado",
+        "estados",
+        "uf",
+        "ufs",
+        "municipio",
+        "município",
+        "municipios",
+        "municípios",
+        "cidade",
+        "cidades",
+        "sexo",
+        "genero",
+        "gênero",
+        "idade",
+        "faixa etaria",
+        "faixa etária",
+        "hospital",
+        "hospitais",
+        "especialidade",
+        "especialidades",
+        "procedimento",
+        "procedimentos",
+        "regiao",
+        "região",
+        "regioes",
+        "regiões",
+    }
+    if normalized in grouping_terms:
+        return True
+    return any(normalized.startswith(f"{term} ") for term in grouping_terms)
 
 
 def _has_side_by_side_state_comparison(query_lower: str) -> bool:
@@ -422,6 +495,35 @@ def _is_entity_list_question(query_lower: str, dimension: str) -> bool:
     return bool(pattern and re.search(pattern, query_lower, re.I))
 
 
+def _is_ranked_entity_group_question(query_lower: str, dimension: str) -> bool:
+    terms = {
+        "estado": r"estados?|ufs?",
+        "estado_hospital": r"estados?|ufs?",
+        "municipio": r"munic[ií]pios?|cidades?",
+        "municipio_hospital": r"munic[ií]pios?|cidades?",
+        "hospital": r"hospitais|cnes",
+        "especialidade": r"especialidades?",
+        "diagnostico": r"diagn[oó]sticos?|cids?|doen[cç]as?",
+        "procedimento": r"procedimentos?",
+    }
+    term = terms.get(dimension)
+    if not term:
+        return False
+    entity_near_rank = re.search(
+        rf"\b{term}\b[\s\S]{{0,80}}\b(?:com|que\s+(?:teve|tiveram|tem|têm)|de)\b"
+        r"[\s\S]{0,80}\b(?:mais|maior|menor|menos)\b",
+        query_lower,
+        re.I,
+    )
+    rank_near_entity = re.search(
+        r"\b(?:mais|maior|menor|menos)\b[\s\S]{0,80}\b"
+        rf"{term}\b",
+        query_lower,
+        re.I,
+    )
+    return bool(entity_near_rank or rank_near_entity)
+
+
 def _is_temporal_entity_question(query_lower: str, dimension: str) -> bool:
     temporal_patterns = {
         "ano": [
@@ -505,6 +607,7 @@ def _filter_output_dimensions(
                 has_distribution
                 or _has_group_phrase(query_lower, dim.name)
                 or _is_entity_list_question(query_lower, dim.name)
+                or _is_ranked_entity_group_question(query_lower, dim.name)
                 or bool(top_n)
             )
         if keep:
@@ -657,7 +760,11 @@ def _infer_dimensions(query_lower: str) -> list[SemanticDimension]:
             "contraceptivos.DESCRICAO",
             ["contraceptivo", "contraceptivos", "método contraceptivo", "metodo contraceptivo"],
         ),
-        ("sexo", "internacoes.SEXO", ["sexo", "homens", "mulheres", "masculino", "feminino"]),
+        (
+            "sexo",
+            "internacoes.SEXO",
+            ["sexo", "homem", "homens", "mulher", "mulheres", "ulher", "ulheres", "masculino", "feminino"],
+        ),
         ("raca_cor", "internacoes.RACA_COR", ["raça", "raca", "cor"]),
         (
             "instrucao",
@@ -698,6 +805,10 @@ def _infer_dimensions(query_lower: str) -> list[SemanticDimension]:
     for name, source, tokens in checks:
         if _contains_any(query_lower, tokens):
             dims.append(_dimension(name, source))
+    if _extract_recent_year_window(query_lower) is not None and not any(
+        dim.name == "ano" for dim in dims
+    ):
+        dims.append(_dimension("ano", "EXTRACT(YEAR FROM internacoes.DT_INTER)"))
     return dims
 
 
@@ -883,6 +994,15 @@ def _infer_metrics(query_lower: str) -> list[SemanticMetric]:
     ):
         metrics.append(SemanticMetric(name="delta_temporal", expression_type="delta"))
 
+    if not metrics and any(token in query_lower for token in ["óbito", "obito", "morte", "mortes"]):
+        metrics.append(
+            SemanticMetric(
+                name="total_mortes",
+                expression_type="count",
+                required_filters=["MORTE = true"],
+            )
+        )
+
     if not metrics:
         metrics.append(SemanticMetric(name="requested_metric", expression_type="unknown"))
 
@@ -901,6 +1021,16 @@ def _infer_filters(query: str, query_lower: str) -> list[SemanticFilter]:
     if ufs:
         filters.append(
             SemanticFilter(field="estado", values=ufs, operator="IN" if len(ufs) > 1 else "=")
+        )
+
+    recent_year_window = _extract_recent_year_window(query_lower)
+    if recent_year_window is not None:
+        filters.append(
+            SemanticFilter(
+                field="recent_years_available",
+                values=[str(recent_year_window)],
+                operator="last_n_available",
+            )
         )
 
     year_ranges = _extract_year_ranges(query_lower)
@@ -975,10 +1105,13 @@ def _infer_filters(query: str, query_lower: str) -> list[SemanticFilter]:
         filters.append(
             SemanticFilter(field="diagnostico_secundario_required", values=["IS NOT NULL"], operator="semantic")
         )
-    if _contains_any(query_lower, ["homens", "masculino"]):
-        filters.append(SemanticFilter(field="sexo", values=["1"], operator="="))
-    if _contains_any(query_lower, ["mulheres", "feminino"]):
-        filters.append(SemanticFilter(field="sexo", values=["3"], operator="="))
+    if _mentions_both_sexes(query_lower):
+        filters.append(SemanticFilter(field="sexo", values=["1", "3"], operator="IN"))
+    else:
+        if _mentions_male(query_lower):
+            filters.append(SemanticFilter(field="sexo", values=["1"], operator="="))
+        if _mentions_female(query_lower):
+            filters.append(SemanticFilter(field="sexo", values=["3"], operator="="))
     filters.extend(_extract_age_filters(query_lower))
     death_cause_term = _extract_death_cause_description_term(query_lower)
     if death_cause_term:
@@ -1044,7 +1177,8 @@ def build_semantic_plan(
     }
     is_catalog_cardinality = bool(metric_names & catalog_cardinality_metrics)
 
-    has_temporal_trend = any(
+    has_monthly_trend = _contains_any(q, ["mensal", "mensais", "por mês", "por mes", "monthly"])
+    has_temporal_trend = has_monthly_trend or any(
         token in q
         for token in [
             "evolução",
@@ -1054,10 +1188,25 @@ def build_semantic_plan(
             "ao longo",
             "anual",
         ]
+    ) or _extract_recent_year_window(q) is not None
+    has_sex_breakdown = not has_temporal_trend and _mentions_both_sexes(q) and _contains_any(
+        q,
+        [
+            "entre",
+            "comparando",
+            "comparar",
+            "compare",
+            "comparação",
+            "comparacao",
+            "pizza",
+            "pie",
+            "donut",
+            "rosca",
+        ],
     )
     has_distribution = any(
         token in q for token in ["distribuição", "distribuicao", "como se distribui"]
-    )
+    ) or has_sex_breakdown
     has_moving_average = _contains_any(q, ["média móvel", "media movel"])
     has_quartile_distribution = _contains_any(q, ["quartil", "quartis"])
     has_attribute_profile = _has_attribute_profile_intent(q, raw_dimensions)
@@ -1092,6 +1241,22 @@ def build_semantic_plan(
         has_attribute_profile=has_attribute_profile,
         has_delta=has_delta,
     )
+    if has_temporal_trend and not any(
+        dim.name in {"ano", "mes", "trimestre", "dia_semana"} for dim in dimensions
+    ):
+        temporal_name = "mes" if has_monthly_trend else "ano"
+        temporal_source = (
+            'EXTRACT(MONTH FROM internacoes."DT_INTER")'
+            if temporal_name == "mes"
+            else 'EXTRACT(YEAR FROM internacoes."DT_INTER")'
+        )
+        dimensions.append(
+            SemanticDimension(
+                name=temporal_name,
+                source=temporal_source,
+                role="group",
+            )
+        )
     if _should_preserve_multi_value_filter_dimension(q):
         multi_value_filter_fields = {
             semantic_filter.field
@@ -1222,6 +1387,8 @@ def build_semantic_plan(
         constraints.append("catalog_cardinality_must_use_reference_table")
     if has_moving_average:
         constraints.append("moving_average_requires_preaggregated_time_series")
+    if any(semantic_filter.field == "recent_years_available" for semantic_filter in filters):
+        constraints.append("relative_recent_years_use_available_data_max_year")
     if has_quartile_distribution:
         constraints.append("quartile_distribution_requires_ntile_interval")
         if not any(dim.name == "quartil" for dim in dimensions):

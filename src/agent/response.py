@@ -4,6 +4,7 @@ import time
 from typing import Any
 
 from ..utils.logging_config import get_nodes_logger
+from ..visualization.data import normalize_result_rows
 from .llm_manager import get_llm_manager
 from .state_helpers import add_ai_message, add_error, clean_conversation_messages, update_phase
 from .state_models import ExecutionPhase, MessagesStateTXT2SQL, QueryRoute
@@ -100,8 +101,9 @@ def _generate_formatted_response(
         MAX_TOTAL_RESULTS_LENGTH = 5000
 
         results_text = ""
+        normalized_rows, _columns = normalize_result_rows(results, sql_query)
         if row_count == 1 and len(results) == 1:
-            result_value = results[0].get("result", "")
+            result_value = normalized_rows[0] if normalized_rows else results[0].get("result", "")
             result_str = str(result_value)
             if len(result_str) > MAX_RESULT_STRING_LENGTH:
                 results_text = (
@@ -113,8 +115,9 @@ def _generate_formatted_response(
         else:
             results_to_show = min(len(results), MAX_RESULTS_TO_SHOW)
             is_partial_result = row_count > results_to_show
-            for i, result in enumerate(results[:results_to_show], 1):
-                result_value = result.get("result", "")
+            display_rows = normalized_rows if normalized_rows else results
+            for i, result in enumerate(display_rows[:results_to_show], 1):
+                result_value = result if normalized_rows else result.get("result", "")
                 result_str = str(result_value)
                 if len(result_str) > MAX_RESULT_STRING_LENGTH:
                     result_str = result_str[:MAX_RESULT_STRING_LENGTH] + "..."

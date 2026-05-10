@@ -6,6 +6,7 @@ import time
 from ..semantic.error_taxonomy import build_semantic_error_record
 from ..semantic.validators import validate_sql_against_semantic_plan
 from ..utils.logging_config import get_nodes_logger
+from ..visualization.chart_plan import validate_sql_against_chart_plan
 from .llm_manager import get_llm_manager
 from .state_helpers import add_ai_message, add_error, add_tool_call_result, update_phase
 from .state_models import ExecutionPhase, MessagesStateTXT2SQL, ToolCallResult
@@ -279,16 +280,32 @@ def validate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 validation_passed = False
                 validation_message = f"Query checker failed: {str(checker_error)}"
 
-        # DB EXPLAIN — takes precedence
-        db_val = llm_manager.validate_sql_query(generated_sql)
-        if not db_val.get("is_valid", False):
-            validation_passed = False
-            validation_message = db_val.get("error", "DB validation failed")
-        elif validation_passed is False and db_val.get("is_valid", False):
-            validation_passed = True
-            validation_message = "DB validation passed"
+        if validation_passed and generated_sql and state.get("chart_plan"):
+            chart_passed, chart_message = validate_sql_against_chart_plan(
+                state.get("chart_plan"),
+                generated_sql,
+            )
+            meta = state.get("response_metadata", {}) or {}
+            meta["chart_plan_validation"] = {
+                "passed": chart_passed,
+                "message": chart_message,
+                "chart_plan": state.get("chart_plan"),
+            }
+            state["response_metadata"] = meta
+            if not chart_passed:
+                validation_passed = False
+                validation_message = chart_message
+                logger.warning("Chart plan rejected query: %s", (chart_message or "")[:120])
 
         ablation_flags = state.get("ablation_flags") or {}
+        # DB EXPLAIN runs only after cheap semantic contracts pass. This keeps
+        # known chart-shape errors repairable instead of surfacing as DB errors.
+        if validation_passed:
+            db_val = llm_manager.validate_sql_query(generated_sql)
+            if not db_val.get("is_valid", False):
+                validation_passed = False
+                validation_message = db_val.get("error", "DB validation failed")
+
         if (
             validation_passed
             and generated_sql

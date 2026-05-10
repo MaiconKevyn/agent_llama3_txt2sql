@@ -18,6 +18,9 @@ def test_state_helpers_create_typed_state():
     assert isinstance(initial_state, dict)
     assert initial_state["current_phase"] == ExecutionPhase.INITIALIZATION
     assert initial_state["execution_mode"] == "single"
+    assert initial_state["visualization_intent"] is None
+    assert initial_state["chart_plan"] is None
+    assert initial_state["chart_spec"] is None
 
 
 def test_state_helpers_create_initial_state_message():

@@ -231,6 +231,120 @@ def test_semantic_plan_detects_death_cause_cid_antijoin():
     assert "death_cause_cid_requires_cid_morte_antijoin" in plan.constraints
 
 
+def test_semantic_plan_does_not_treat_temporal_grouping_as_death_cause_description():
+    plan = build_semantic_plan("Gere um grafico temporal com o numero de mortes por ano")
+
+    assert "death_cause_description_requires_cid_morte" not in plan.constraints
+    assert not any(filter_.field == "cid_morte_descricao" for filter_ in plan.filters)
+    assert any(filter_.field == "desfecho" and filter_.values == ["MORTE = true"] for filter_ in plan.filters)
+    assert "ano" in plan.answer_shape.required_dimensions
+
+
+def test_semantic_validator_rejects_temporal_count_rank_deduplication():
+    plan = build_semantic_plan("Gere um grafico temporal com o numero de mortes por ano")
+    sql = """
+        SELECT ano, COUNT(*) AS total
+        FROM (
+            SELECT EXTRACT(YEAR FROM i."DT_INTER") AS ano,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY EXTRACT(YEAR FROM i."DT_INTER")
+                       ORDER BY i."DT_INTER"
+                   ) AS rn
+            FROM internacoes i
+            WHERE i."MORTE" = true
+        ) sub
+        WHERE rn = 1
+        GROUP BY ano
+        ORDER BY ano
+    """
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert valid is False
+    assert "complete temporal aggregation" in (message or "")
+
+
+def test_semantic_plan_detects_recent_years_as_available_data_window():
+    plan = build_semantic_plan(
+        "gere um grafico comparando morte de homens e mulheres nos ultimos 5 anos"
+    )
+
+    assert plan.intent == "trend"
+    assert plan.answer_shape.row_grain == "time_series"
+    assert "ano" in plan.answer_shape.required_dimensions
+    assert any(metric.name == "total_mortes" for metric in plan.metrics)
+    assert any(
+        filter_.field == "recent_years_available" and filter_.values == ["5"]
+        for filter_ in plan.filters
+    )
+    assert "relative_recent_years_use_available_data_max_year" in plan.constraints
+
+
+def test_semantic_validator_rejects_current_date_for_recent_available_years():
+    plan = build_semantic_plan(
+        "gere um grafico comparando morte de homens e mulheres nos ultimos 5 anos"
+    )
+    sql = """
+        SELECT EXTRACT(YEAR FROM "DT_INTER") AS ano,
+               SUM(CASE WHEN "SEXO" = 1 THEN 1 ELSE 0 END) AS total_mortes_homens,
+               SUM(CASE WHEN "SEXO" = 3 THEN 1 ELSE 0 END) AS total_mortes_mulheres
+        FROM internacoes
+        WHERE "MORTE" = true
+          AND "SEXO" IN (1, 3)
+          AND "DT_INTER" >= CURRENT_DATE - INTERVAL '5 years'
+        GROUP BY ano
+    """
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert valid is False
+    assert "latest year available" in (message or "")
+
+
+def test_semantic_validator_accepts_sex_comparison_pivot_columns():
+    plan = build_semantic_plan(
+        "gere um grafico comparando morte de homens e mulheres nos ultimos 5 anos"
+    )
+    sql = """
+        WITH max_ano AS (
+            SELECT MAX(EXTRACT(YEAR FROM "DT_INTER")) AS ano_max
+            FROM internacoes
+            WHERE "DT_INTER" IS NOT NULL
+        )
+        SELECT EXTRACT(YEAR FROM i."DT_INTER") AS ano,
+               SUM(CASE WHEN i."SEXO" = 1 THEN 1 ELSE 0 END) AS total_mortes_homens,
+               SUM(CASE WHEN i."SEXO" = 3 THEN 1 ELSE 0 END) AS total_mortes_mulheres
+        FROM internacoes i
+        CROSS JOIN max_ano m
+        WHERE i."MORTE" = true
+          AND i."SEXO" IN (1, 3)
+          AND i."DT_INTER" IS NOT NULL
+          AND EXTRACT(YEAR FROM i."DT_INTER") BETWEEN m.ano_max - 4 AND m.ano_max
+        GROUP BY EXTRACT(YEAR FROM i."DT_INTER")
+        ORDER BY ano
+    """
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert valid is True
+    assert message is None
+
+
+def test_semantic_plan_detects_static_death_distribution_by_sex_with_typo():
+    plan = build_semantic_plan(
+        "gere um grafico de pizza mostrando as mortes entre homens em ulheres"
+    )
+
+    assert plan.intent == "distribution"
+    assert plan.answer_shape.row_grain == "one_row_per_group"
+    assert plan.answer_shape.required_dimensions == ["sexo"]
+    assert any(
+        filter_.field == "sexo" and filter_.operator == "IN" and filter_.values == ["1", "3"]
+        for filter_ in plan.filters
+    )
+    assert any(filter_.field == "desfecho" and filter_.values == ["MORTE = true"] for filter_ in plan.filters)
+
+
 def test_semantic_plan_detects_moving_average_contract_without_state_false_positive():
     plan = build_semantic_plan(
         "Qual a média móvel de 3 anos de internações no estado do RS por ano (2008-2023)?"
@@ -2190,6 +2304,35 @@ def test_goalv2_plan_detects_written_top_n_obstetric_municipality():
     assert plan.answer_shape.top_n_scope == "global"
     assert plan.answer_shape.required_dimensions == ["municipio"]
     assert any(filter_.field == "obstetrico" for filter_ in plan.filters)
+
+
+def test_semantic_plan_preserves_ranked_entity_dimension_without_explicit_top_n():
+    plan = build_semantic_plan("Gere um grafico de barras com os municipios que tiveram mais mortes.")
+
+    assert plan.intent in {"distribution", "unknown"}
+    assert plan.answer_shape.row_grain == "one_row_per_group"
+    assert plan.answer_shape.requires_group_by is True
+    assert plan.answer_shape.required_dimensions == ["municipio"]
+    assert any(metric.name == "total_mortes" for metric in plan.metrics)
+
+
+def test_semantic_plan_adds_year_dimension_for_over_years_trend():
+    plan = build_semantic_plan("Gere um grafico de linhas das internacoes por estado ao longo dos anos.")
+
+    assert plan.intent == "trend"
+    assert plan.answer_shape.row_grain == "time_series"
+    assert "estado" in plan.answer_shape.required_dimensions
+    assert "ano" in plan.answer_shape.required_dimensions
+    assert plan.answer_shape.requires_group_by is True
+
+
+def test_semantic_plan_adds_month_dimension_for_monthly_chart():
+    plan = build_semantic_plan("Visualize em grafico as internacoes mensais.")
+
+    assert plan.intent == "trend"
+    assert plan.answer_shape.row_grain == "time_series"
+    assert plan.answer_shape.required_dimensions == ["mes"]
+    assert plan.answer_shape.requires_group_by is True
 
 
 def test_goalv2_validator_rejects_scalar_for_top_n_municipality():

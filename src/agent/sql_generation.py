@@ -1,7 +1,7 @@
 """SQL generation pipeline: schema, CoT planning, and structured output."""
 
-import time
 import re
+import time
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
@@ -170,6 +170,7 @@ def generate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         schema_context = state.get("schema_context", "")
         selected_tables = state.get("selected_tables", [])
         semantic_plan = state.get("semantic_plan")
+        chart_plan = state.get("chart_plan")
 
         deterministic_sql = _build_deterministic_scalar_sql(semantic_plan)
         if deterministic_sql:
@@ -219,6 +220,21 @@ def generate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 f"{user_query}\n\n"
                 f"{semantic_prompt}\n"
                 "Antes de escrever a SQL, preserve métricas, dimensões, filtros, granularidade e shape desse plano."
+            )
+        if chart_plan:
+            try:
+                from ..visualization.schema import ChartPlan
+
+                parsed_chart_plan = ChartPlan.model_validate(chart_plan)
+                chart_prompt = parsed_chart_plan.to_prompt_block()
+            except Exception:
+                chart_prompt = f"[CHART PLAN - SQL RESULT MUST SUPPORT THIS VISUALIZATION]\n{chart_plan}"
+            user_query = (
+                f"{user_query}\n\n"
+                f"{chart_prompt}\n"
+                "Quando houver ChartPlan requested=true, a SQL deve retornar colunas compatíveis com required_columns. "
+                "Prefira formato tidy/long para series_dimension: uma linha por x_dimension e series_dimension, "
+                "com a métrica em y_column. Não gere colunas extras que sejam códigos de domínio se elas não forem necessárias ao gráfico."
             )
 
         logger.info("Tables selected for SQL generation", extra={"tables": selected_tables})

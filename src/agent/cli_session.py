@@ -128,6 +128,8 @@ class InteractiveSession:
         print_fn("Digite 'sair', 'exit' ou 'quit' para encerrar")
         print_fn("=" * 60)
 
+        session_id = f"interactive_{int(time.time() * 1000) % 100000}"
+
         while True:
             try:
                 user_input = input_fn("\n Sua pergunta: ").strip()
@@ -138,7 +140,6 @@ class InteractiveSession:
                     print_fn("\n Até logo!")
                     break
 
-                session_id = f"interactive_{int(time.time() * 1000) % 100000}"
                 result = orchestrator.process_query(
                     user_query=user_input,
                     session_id=session_id,
@@ -167,6 +168,11 @@ class InteractiveSession:
             print_fn(f"\n {response_text}")
             if result.get("sql_query"):
                 print_fn(f" SQL: {result['sql_query']}")
+            if result.get("chart"):
+                import json
+
+                print_fn(" ChartSpec:")
+                print_fn(json.dumps(result["chart"], ensure_ascii=False, indent=2))
             if result.get("execution_time") is not None:
                 try:
                     print_fn(f" Tempo: {float(result['execution_time']):.2f}s")

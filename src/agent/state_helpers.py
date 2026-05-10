@@ -26,6 +26,8 @@ def create_initial_messages_state(
     max_retries: int = 5,
     force_single_query: bool = False,
     ablation_flags: Dict[str, bool] | None = None,
+    visualization_intent: Dict[str, Any] | None = None,
+    chart_plan: Dict[str, Any] | None = None,
 ) -> MessagesStateTXT2SQL:
     """Create the initial LangGraph messages state."""
     initial_message = HumanMessage(content=user_query)
@@ -83,6 +85,9 @@ def create_initial_messages_state(
         final_result_rows=None,
         ablation_flags=ablation_flags or {},
         semantic_plan=None,
+        visualization_intent=visualization_intent,
+        chart_plan=chart_plan,
+        chart_spec=None,
     )
 
 
@@ -323,6 +328,7 @@ def state_to_legacy_format(state: MessagesStateTXT2SQL) -> Dict[str, Any]:
         "response": response_text,
         "timestamp": state["timestamp"].isoformat(),
         "final_result_rows": state.get("final_result_rows"),
+        "chart": state.get("chart_spec"),
         "metadata": {
             "langgraph_v3": True,
             "messages_state": True,
@@ -366,6 +372,9 @@ def state_to_legacy_format(state: MessagesStateTXT2SQL) -> Dict[str, Any]:
                 "failure_taxonomy": state.get("failure_taxonomy", []),
             },
             "semantic_plan": state.get("semantic_plan"),
+            "visualization_intent": state.get("visualization_intent"),
+            "chart_plan": state.get("chart_plan"),
+            "chart_spec": state.get("chart_spec"),
             **state.get("response_metadata", {}),
         },
     }

@@ -708,6 +708,62 @@ def _build_mortality_rate_time_series_sql(
     )
 
 
+def _build_recent_years_mortality_by_sex_sql(
+    semantic_plan: SemanticPlan | dict | None,
+) -> str | None:
+    if not semantic_plan:
+        return None
+    plan = (
+        semantic_plan
+        if isinstance(semantic_plan, SemanticPlan)
+        else SemanticPlan.model_validate(semantic_plan)
+    )
+    recent_windows = [
+        int(value)
+        for semantic_filter in plan.filters
+        if semantic_filter.field == "recent_years_available"
+        for value in semantic_filter.values
+        if str(value).isdigit()
+    ]
+    if not recent_windows:
+        return None
+    if "ano" not in plan.answer_shape.required_dimensions:
+        return None
+    has_death_filter = any(
+        semantic_filter.field == "desfecho"
+        and any("morte" in str(value).lower() for value in semantic_filter.values)
+        for semantic_filter in plan.filters
+    )
+    sex_values = {
+        str(value)
+        for semantic_filter in plan.filters
+        if semantic_filter.field == "sexo"
+        for value in semantic_filter.values
+    }
+    if not has_death_filter or not {"1", "3"} <= sex_values:
+        return None
+
+    years = max(1, recent_windows[0])
+    return (
+        "WITH max_ano AS ("
+        " SELECT MAX(EXTRACT(YEAR FROM \"DT_INTER\")) AS ano_max"
+        " FROM internacoes"
+        " WHERE \"DT_INTER\" IS NOT NULL"
+        ") "
+        "SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano,"
+        " CASE WHEN i.\"SEXO\" = 1 THEN 'homens' WHEN i.\"SEXO\" = 3 THEN 'mulheres' END AS sexo,"
+        " COUNT(*) AS total_mortes"
+        " FROM internacoes i"
+        " CROSS JOIN max_ano m"
+        " WHERE i.\"MORTE\" = true"
+        " AND i.\"SEXO\" IN (1, 3)"
+        " AND i.\"DT_INTER\" IS NOT NULL"
+        f" AND EXTRACT(YEAR FROM i.\"DT_INTER\") BETWEEN m.ano_max - {years - 1} AND m.ano_max"
+        " GROUP BY EXTRACT(YEAR FROM i.\"DT_INTER\"), i.\"SEXO\""
+        " ORDER BY ano, sexo;"
+    )
+
+
 def _split_select_items(select_clause: str) -> list[str]:
     items: list[str] = []
     current: list[str] = []
@@ -1316,6 +1372,12 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 or "uti distribution" in error_message.lower()
                 or "side-by-side state comparisons" in error_message.lower()
                 or "length-of-stay" in error_message.lower()
+                or "recent-year requests" in error_message.lower()
+                or "recent-year window" in error_message.lower()
+                or "last_n_available_years charts" in error_message.lower()
+                or "chart plan" in error_message.lower()
+                or "cannot compare values of type date and type bigint" in error_message.lower()
+                or "max(extract(year" in error_message.lower()
             )
         ):
             deterministic_sql = (
@@ -1324,6 +1386,7 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 or _build_top_n_count_by_dimension_sql(state.get("semantic_plan"))
                 or _build_filtered_cohort_weekday_percentage_sql(state.get("semantic_plan"))
                 or _build_side_by_side_state_average_sql(state.get("semantic_plan"))
+                or _build_recent_years_mortality_by_sex_sql(state.get("semantic_plan"))
             )
             if deterministic_sql and deterministic_sql != previous_sql:
                 metadata = state.get("response_metadata", {}) or {}
