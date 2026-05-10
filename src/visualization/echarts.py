@@ -15,6 +15,10 @@ ECHARTS_COLORS = [
     "#a16207",
     "#0891b2",
     "#4d7c0f",
+    "#9333ea",
+    "#0284c7",
+    "#b45309",
+    "#047857",
 ]
 
 
@@ -65,12 +69,19 @@ def _cartesian(spec: ChartSpec, *, chart_type: str, area: bool = False) -> dict[
     rows = list(spec.data or [])
     x_values = _unique(row.get(spec.x) for row in rows)
     series_values = _unique(row.get(spec.series) for row in rows) if spec.series else [spec.y]
+    x_type = spec.encoding.get("x_type")
+
+    # Color each bar differently when there's no series dimension; avoids uniform blue.
+    # Legend is rendered as HTML below the chart (not inside ECharts canvas) for better UX.
+    per_item_color = chart_type == "bar" and not spec.series and len(x_values) > 1
+    multi_series_legend = bool(spec.series and len(series_values) > 1)
+    horizontal_bar = chart_type == "bar" and not spec.series and x_type != "temporal"
 
     option.update(
         {
             "grid": {"left": 56, "right": 18, "top": 54, "bottom": 48, "containLabel": True},
             "legend": {
-                "show": bool(spec.series and len(series_values) > 1),
+                "show": multi_series_legend,
                 "top": 26,
                 "right": 0,
                 "type": "scroll",
@@ -94,6 +105,28 @@ def _cartesian(spec: ChartSpec, *, chart_type: str, area: bool = False) -> dict[
             "series": [],
         }
     )
+    if horizontal_bar:
+        option["grid"] = {"left": 14, "right": 28, "top": 24, "bottom": 22, "containLabel": True}
+        option["xAxis"] = {
+            "type": "value",
+            "name": spec.y or "",
+            "nameGap": 30,
+            "axisLabel": {"color": "#667085"},
+            "splitLine": {"lineStyle": {"color": "rgba(102,112,133,0.18)"}},
+        }
+        option["yAxis"] = {
+            "type": "category",
+            "name": spec.x or "",
+            "nameGap": 46,
+            "inverse": True,
+            "data": x_values,
+            "axisLabel": {
+                "color": "#667085",
+                "width": 142,
+                "overflow": "truncate",
+            },
+            "axisLine": {"lineStyle": {"color": "#98a2b3"}},
+        }
 
     for series_value in series_values:
         if spec.series:
@@ -106,12 +139,29 @@ def _cartesian(spec: ChartSpec, *, chart_type: str, area: bool = False) -> dict[
         series: dict[str, Any] = {
             "type": chart_type,
             "name": name,
-            "data": [value_by_x.get(str(x_value), 0) for x_value in x_values],
             "emphasis": {"focus": "series"},
         }
+        if per_item_color:
+            series["data"] = [
+                {
+                    "value": value_by_x.get(str(x_value), 0),
+                    "itemStyle": {
+                        "color": ECHARTS_COLORS[i % len(ECHARTS_COLORS)],
+                        "borderRadius": [5, 5, 0, 0],
+                    },
+                }
+                for i, x_value in enumerate(x_values)
+            ]
+            option["_legend"] = [
+                {"name": str(x_value), "color": ECHARTS_COLORS[i % len(ECHARTS_COLORS)]}
+                for i, x_value in enumerate(x_values)
+            ]
+        else:
+            series["data"] = [value_by_x.get(str(x_value), 0) for x_value in x_values]
         if chart_type == "bar":
-            series["barMaxWidth"] = 34
-            series["itemStyle"] = {"borderRadius": [5, 5, 0, 0]}
+            series["barMaxWidth"] = 26 if horizontal_bar else 34
+            if not per_item_color:
+                series["itemStyle"] = {"borderRadius": [0, 5, 5, 0] if horizontal_bar else [5, 5, 0, 0]}
         if chart_type == "line":
             series["smooth"] = True
             series["symbolSize"] = 7
@@ -150,23 +200,38 @@ def _scatter(spec: ChartSpec) -> dict[str, Any]:
 def _pie(spec: ChartSpec, *, donut: bool) -> dict[str, Any]:
     option = _base(spec)
     rows = list(spec.data or [])
+    total = sum(row.get(spec.y) for row in rows if isinstance(row.get(spec.y), int | float))
+    legend_data = [
+        {
+            "name": str(row.get(spec.x)),
+            "color": ECHARTS_COLORS[i % len(ECHARTS_COLORS)],
+            "value": row.get(spec.y),
+            "percent": round((row.get(spec.y) or 0) * 100 / total, 2) if total else 0,
+        }
+        for i, row in enumerate(rows)
+    ]
     option.update(
         {
             "tooltip": {"trigger": "item", "confine": True},
-            "legend": {"type": "scroll", "orient": "vertical", "right": 0, "top": "middle"},
+            "legend": {"show": False},
+            "_legend": legend_data,
             "series": [
                 {
                     "type": "pie",
                     "name": spec.y or "valor",
                     "radius": ["44%", "70%"] if donut else ["0%", "70%"],
-                    "center": ["40%", "56%"],
+                    "center": ["50%", "48%"],
                     "avoidLabelOverlap": True,
-                    "label": {"formatter": "{b}\n{d}%", "fontSize": 11},
-                    "labelLine": {"smooth": True},
+                    "label": {"show": False},
+                    "labelLine": {"show": False},
                     "itemStyle": {"borderColor": "#fff", "borderWidth": 2},
                     "data": [
-                        {"name": str(row.get(spec.x)), "value": row.get(spec.y)}
-                        for row in rows
+                        {
+                            "name": str(row.get(spec.x)),
+                            "value": row.get(spec.y),
+                            "itemStyle": {"color": ECHARTS_COLORS[i % len(ECHARTS_COLORS)]},
+                        }
+                        for i, row in enumerate(rows)
                     ],
                 }
             ],

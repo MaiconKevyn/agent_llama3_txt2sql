@@ -375,7 +375,35 @@ class LangGraphOrchestrator:
         result["metadata"]["chart_spec"] = (
             chart_spec.model_dump(mode="json") if chart_spec else None
         )
+        self._append_chart_notice_to_response(result=result, chart_spec=chart_spec)
         return result
+
+    def _append_chart_notice_to_response(
+        self,
+        *,
+        result: Dict[str, Any],
+        chart_spec: ChartSpec | None,
+    ) -> None:
+        if not chart_spec or not chart_spec.warnings:
+            return
+        notices = [
+            warning.message
+            for warning in chart_spec.warnings
+            if warning.code == "excluded_unfilled_category"
+        ]
+        if not notices:
+            return
+        notice = f"Observacao: {notices[0]}"
+        response = result.get("response") or ""
+        if "nao preenchido" in response.lower() or "não preenchido" in response.lower():
+            result["response"] = (
+                "Grafico gerado considerando apenas registros com causa, diagnostico "
+                "ou motivo preenchido.\n\n"
+                f"{notice}"
+            )
+            return
+        if notice not in response:
+            result["response"] = f"{response}\n\n{notice}" if response else notice
 
     def _plan_chart_for_result(
         self,

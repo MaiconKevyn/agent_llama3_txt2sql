@@ -240,6 +240,22 @@ def _merge_answer_shape(
             required_dimensions=required_dimensions,
         ),
         include_unknown_bucket=heuristic.include_unknown_bucket or candidate.include_unknown_bucket,
+        answer_kind=heuristic.answer_kind
+        if heuristic.answer_kind != "unknown"
+        else candidate.answer_kind,
+        expected_row_count=heuristic.expected_row_count
+        if heuristic.expected_row_count != "unknown"
+        else candidate.expected_row_count,
+        output_dimensions=required_dimensions,
+        filter_dimensions=_stable_union(
+            heuristic.filter_dimensions,
+            candidate.filter_dimensions,
+        ),
+        counted_entity=heuristic.counted_entity or candidate.counted_entity,
+        forbidden_output_dimensions=_stable_union(
+            heuristic.forbidden_output_dimensions,
+            candidate.forbidden_output_dimensions,
+        ),
     )
 
 

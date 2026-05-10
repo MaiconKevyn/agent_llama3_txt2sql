@@ -7,6 +7,7 @@ from decimal import Decimal
 from typing import Any
 
 from .schema import ChartPlan, ChartPlanningInput
+from .text_normalization import normalize_chart_label
 
 
 def build_chart_planning_input(
@@ -209,4 +210,6 @@ def _json_safe(value: Any) -> Any:
         return float(value)
     if isinstance(value, (datetime, date)):
         return value.isoformat()
+    if isinstance(value, str):
+        return normalize_chart_label(value)
     return value

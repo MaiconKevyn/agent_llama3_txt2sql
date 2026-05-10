@@ -26,7 +26,10 @@ class SemanticErrorRecord(BaseModel):
 
 
 _CATEGORY_MARKERS: list[tuple[SemanticErrorCategory, tuple[str, ...]]] = [
-    (SemanticErrorCategory.TOP_N_SCOPE, ("top-n per group", "partition by", "rank")),
+    (
+        SemanticErrorCategory.TOP_N_SCOPE,
+        ("top-n per group", "global top-n", "ranked top-n", "top_n=", "partition by", "rank"),
+    ),
     (
         SemanticErrorCategory.RATE_DENOMINATOR,
         ("denominator", "mortality-rate", "conditional aggregation"),
@@ -42,7 +45,10 @@ _CATEGORY_MARKERS: list[tuple[SemanticErrorCategory, tuple[str, ...]]] = [
     (SemanticErrorCategory.GROUPING_DIMENSION, ("grouping by", "group by does not include")),
     (SemanticErrorCategory.JOIN_PATH, ("join path", "catalog edge", "missing join")),
     (SemanticErrorCategory.TEMPORAL_GRAIN, ("time-series", "temporal dimension")),
-    (SemanticErrorCategory.SQL_VALIDITY, ("syntax", "invalid sql", "sql execution blocked")),
+    (
+        SemanticErrorCategory.SQL_VALIDITY,
+        ("syntax", "invalid sql", "sql execution blocked", "binder error"),
+    ),
 ]
 
 

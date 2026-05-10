@@ -93,7 +93,7 @@ def _extract_top_n(query_lower: str) -> int | None:
     patterns = [
         r"\btop\s*-?\s*(\d+)\b",
         r"\b(\d+)\s+(?:principais|maiores|menores|mais\s+comuns|mais\s+frequentes)\b",
-        r"\b(?:os|as)?\s*(\d+)\s+(?:munic[ií]pios|cidades|hospitais|procedimentos|diagn[oó]sticos)\b",
+        r"\b(?:os|as)?\s*(\d+)\s+(?:munic[ií]pios|cidades|hospitais|procedimentos|diagn[oó]sticos|causas?|categorias?|itens?)\b",
         r"\b(?:os|as)\s+(\d+)\s+\w+\s+(?:com|de|mais|maior|menor)\b",
     ]
     for pattern in patterns:
@@ -105,7 +105,7 @@ def _extract_top_n(query_lower: str) -> int | None:
                 return None
     word_pattern = "|".join(number_words)
     word_patterns = [
-        rf"\b(?:os|as)\s+({word_pattern})\s+(?:munic[ií]pios|cidades|hospitais|procedimentos|diagn[oó]sticos)\b",
+        rf"\b(?:os|as)\s+({word_pattern})\s+(?:munic[ií]pios|cidades|hospitais|procedimentos|diagn[oó]sticos|causas?|categorias?|itens?)\b",
         rf"\b({word_pattern})\s+(?:principais|maiores|menores|mais\s+comuns|mais\s+frequentes)\b",
     ]
     for pattern in word_patterns:
@@ -509,15 +509,16 @@ def _is_ranked_entity_group_question(query_lower: str, dimension: str) -> bool:
     term = terms.get(dimension)
     if not term:
         return False
+    term_group = rf"(?:{term})"
     entity_near_rank = re.search(
-        rf"\b{term}\b[\s\S]{{0,80}}\b(?:com|que\s+(?:teve|tiveram|tem|têm)|de)\b"
+        rf"\b{term_group}\b[\s\S]{{0,80}}\b(?:com|que\s+(?:teve|tiveram|tem|têm)|de)\b"
         r"[\s\S]{0,80}\b(?:mais|maior|menor|menos)\b",
         query_lower,
         re.I,
     )
     rank_near_entity = re.search(
         r"\b(?:mais|maior|menor|menos)\b[\s\S]{0,80}\b"
-        rf"{term}\b",
+        rf"{term_group}\b",
         query_lower,
         re.I,
     )
@@ -613,6 +614,71 @@ def _filter_output_dimensions(
         if keep:
             result.append(dim)
     return result
+
+
+def _counted_entity_from_scalar_question(
+    query_lower: str,
+    raw_dimensions: list[SemanticDimension],
+    metrics: list[SemanticMetric],
+) -> str | None:
+    """Return the entity being counted without making it an output dimension."""
+    if not any(metric.expression_type == "count" for metric in metrics):
+        return None
+    if not _contains_any(
+        query_lower,
+        ["quantos", "quantas", "número de", "numero de", "quantidade de", "total de"],
+    ):
+        return None
+    if any(
+        token in query_lower
+        for token in [
+            "por ",
+            "para cada",
+            "em cada",
+            "de cada",
+            "quais ",
+            "distribuição",
+            "distribuicao",
+        ]
+    ):
+        return None
+
+    priority = [
+        "hospital",
+        "municipio",
+        "municipio_hospital",
+        "estado",
+        "estado_hospital",
+        "diagnostico",
+        "procedimento",
+        "sexo",
+        "idade",
+    ]
+    raw_names = [dim.name for dim in raw_dimensions]
+    for name in priority:
+        if name in raw_names:
+            return name
+    return None
+
+
+def _answer_kind_for_row_grain(row_grain: str) -> str:
+    return {
+        "single_scalar": "scalar",
+        "one_row_per_group": "grouped_table",
+        "top_n_global": "top_n_global",
+        "top_n_per_group": "top_n_per_group",
+        "time_series": "time_series",
+    }.get(row_grain, "unknown")
+
+
+def _expected_row_count_for_row_grain(row_grain: str) -> str:
+    return {
+        "single_scalar": "one",
+        "top_n_global": "bounded_n",
+        "one_row_per_group": "one_per_group",
+        "top_n_per_group": "one_per_group",
+        "time_series": "one_per_group",
+    }.get(row_grain, "unknown")
 
 
 def _top_n_partition_dimensions(
@@ -748,6 +814,12 @@ def _infer_dimensions(query_lower: str) -> list[SemanticDimension]:
                 "diagnósticos",
                 "diagnosticos",
                 "cid",
+                "causa de morte",
+                "causas de morte",
+                "causa do óbito",
+                "causas do óbito",
+                "causa do obito",
+                "causas do obito",
                 "doença",
                 "doenca",
                 "doenças",
@@ -1562,6 +1634,24 @@ def build_semantic_plan(
     if value_metric_ranking:
         requires_group_by = False
 
+    output_dimensions = list(required_dimensions)
+    filter_dimensions = [
+        dim.name
+        for dim in raw_dimensions
+        if dim.name not in output_dimensions
+        and (
+            any(semantic_filter.field.startswith(dim.name) for semantic_filter in filters)
+            or _geography_mention_is_filter_context(q, dim.name)
+            or _diagnosis_mention_is_filter_context(q)
+        )
+    ]
+    counted_entity = _counted_entity_from_scalar_question(q, raw_dimensions, metrics)
+    forbidden_output_dimensions = []
+    if row_grain == "single_scalar":
+        forbidden_output_dimensions = [
+            dim.name for dim in raw_dimensions if dim.name not in output_dimensions
+        ]
+
     answer_shape = AnswerShape(
         row_grain=row_grain,
         top_n=top_n,
@@ -1571,6 +1661,12 @@ def build_semantic_plan(
         ranked_dimensions=ranked_dimensions,
         requires_group_by=requires_group_by,
         include_unknown_bucket=has_unknown_bucket,
+        answer_kind=_answer_kind_for_row_grain(row_grain),
+        expected_row_count=_expected_row_count_for_row_grain(row_grain),
+        output_dimensions=output_dimensions,
+        filter_dimensions=sorted(set(filter_dimensions)),
+        counted_entity=counted_entity,
+        forbidden_output_dimensions=sorted(set(forbidden_output_dimensions)),
     )
 
     base_grain = "internacao"
