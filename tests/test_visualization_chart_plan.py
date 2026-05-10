@@ -29,6 +29,7 @@ def test_build_chart_plan_for_pie_death_causes():
     assert plan.y_column == "total_mortes"
     assert plan.expected_result_shape == "category_metric"
     assert plan.required_columns == ["causa_morte", "total_mortes"]
+    assert "Nao preenchido" in plan.sql_shape_guidance
 
 
 def test_build_chart_plan_for_pie_deaths_by_sex_with_typo():
@@ -236,6 +237,40 @@ def test_chart_plan_validation_accepts_tidy_recent_years_sql():
         WHERE EXTRACT(YEAR FROM i."DT_INTER") BETWEEN m.ano_max - 4 AND m.ano_max
         GROUP BY ano, sexo
     """
+
+    passed, message = validate_sql_against_chart_plan(plan, sql)
+
+    assert passed is True
+    assert message is None
+
+
+def test_chart_plan_validation_rejects_clinical_categories_without_unfilled_exclusion():
+    query = "gere um gráfico de pizza com as 6 principais causas de morte"
+    plan = build_chart_plan(query, detect_visualization_intent(query))
+    sql = (
+        'SELECT c."CD_DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes '
+        'FROM internacoes i JOIN cid c ON i."CID_MORTE" = c."CID" '
+        'WHERE i."MORTE" = true '
+        'GROUP BY c."CD_DESCRICAO" ORDER BY total_mortes DESC LIMIT 6'
+    )
+
+    passed, message = validate_sql_against_chart_plan(plan, sql)
+
+    assert passed is False
+    assert "Nao preenchido" in message
+
+
+def test_chart_plan_validation_accepts_clinical_categories_with_unfilled_exclusion():
+    query = "gere um gráfico de pizza com as 6 principais causas de morte"
+    plan = build_chart_plan(query, detect_visualization_intent(query))
+    sql = (
+        'SELECT c."CD_DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes '
+        'FROM internacoes i JOIN cid c ON i."CID_MORTE" = c."CID" '
+        'WHERE i."MORTE" = true '
+        'AND c."CD_DESCRICAO" <> \'Nao preenchido\' '
+        'AND c."CD_DESCRICAO" IS NOT NULL '
+        'GROUP BY c."CD_DESCRICAO" ORDER BY total_mortes DESC LIMIT 6'
+    )
 
     passed, message = validate_sql_against_chart_plan(plan, sql)
 

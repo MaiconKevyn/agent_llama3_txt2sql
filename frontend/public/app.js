@@ -284,6 +284,7 @@ function createMessageElement(messageData) {
     if (metadata && metadata.chart) {
         const chartElement = createChartElement(metadata.chart);
         if (chartElement) {
+            message.classList.add('message-has-chart');
             contentWrap.appendChild(chartElement);
         }
     }
@@ -342,7 +343,7 @@ function createChartElement(chartPayload) {
 
 function renderECharts(container, echartsOption, spec) {
     const target = document.createElement('div');
-    target.className = 'echarts-chart';
+    target.className = `echarts-chart echarts-chart-${spec.chart_type || 'default'}`;
     target.setAttribute('role', 'img');
     target.setAttribute('aria-label', buildChartAriaLabel(spec));
     container.appendChild(target);
@@ -361,7 +362,64 @@ function renderECharts(container, echartsOption, spec) {
         console.warn('Failed to render ECharts chart, falling back to table:', error);
         target.remove();
         renderFallbackTable(container, spec);
+        return;
     }
+
+    renderPerItemLegend(container, echartsOption);
+}
+
+function renderPerItemLegend(container, echartsOption) {
+    const legendData = echartsOption._legend;
+    if (!Array.isArray(legendData) || legendData.length === 0) return;
+
+    const legend = document.createElement('div');
+    const hasMetrics = legendData.some(item => item.value !== undefined || item.percent !== undefined);
+    legend.className = hasMetrics ? 'chart-legend chart-legend-detailed' : 'chart-legend';
+
+    legendData.forEach((legendItem) => {
+        const { name, color } = legendItem;
+        const item = document.createElement('div');
+        item.className = 'chart-legend-item';
+
+        const label = document.createElement('span');
+        label.className = 'chart-legend-label';
+
+        const swatch = document.createElement('span');
+        swatch.className = 'chart-swatch';
+        swatch.style.background = color;
+        label.appendChild(swatch);
+
+        const labelText = document.createElement('span');
+        labelText.className = 'chart-legend-name';
+        labelText.textContent = name;
+        label.appendChild(labelText);
+        item.appendChild(label);
+
+        if (hasMetrics) {
+            const metric = document.createElement('span');
+            metric.className = 'chart-legend-metric';
+            metric.textContent = formatLegendMetric(legendItem);
+            item.appendChild(metric);
+        }
+
+        legend.appendChild(item);
+    });
+
+    container.appendChild(legend);
+}
+
+function formatLegendMetric(item) {
+    const parts = [];
+    if (typeof item.value === 'number' && Number.isFinite(item.value)) {
+        parts.push(item.value.toLocaleString('pt-BR'));
+    }
+    if (typeof item.percent === 'number' && Number.isFinite(item.percent)) {
+        parts.push(`${item.percent.toLocaleString('pt-BR', {
+            minimumFractionDigits: item.percent < 10 ? 1 : 0,
+            maximumFractionDigits: 1
+        })}%`);
+    }
+    return parts.join(' / ');
 }
 
 function renderFallbackTable(container, spec) {

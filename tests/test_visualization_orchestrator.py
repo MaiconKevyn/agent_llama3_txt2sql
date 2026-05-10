@@ -59,6 +59,68 @@ def test_attach_visualization_builds_chart_when_requested():
     assert updated["chart"]["echarts"]["series"][0]["type"] == "bar"
 
 
+def test_attach_visualization_appends_unfilled_category_notice_to_response():
+    orchestrator = _orchestrator_without_runtime()
+    result = {
+        "success": True,
+        "response": "1. Nao preenchido: 488.330\n2. Insuf respirat aguda: 24.784",
+        "sql_query": (
+            'SELECT c."CD_DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes '
+            'FROM internacoes i JOIN cid c ON i."CID_MORTE" = c."CID" GROUP BY causa_morte'
+        ),
+        "results": [
+            {"result": ("Nao preenchido", 488330)},
+            {"result": ("Insuf respirat aguda", 24784)},
+        ],
+        "row_count": 2,
+        "metadata": {},
+    }
+
+    updated = orchestrator._attach_visualization_if_requested(
+        result=result,
+        user_query="gere um gráfico de pizza com as 6 principais causas de morte",
+        visualization_intent=detect_visualization_intent(
+            "gere um gráfico de pizza com as 6 principais causas de morte"
+        ),
+    )
+
+    assert updated["chart"]["spec"]["data"] == [
+        {"causa_morte": "Insuf respirat aguda", "total_mortes": 24784}
+    ]
+    assert "desconsidera registros sem causa" in updated["response"].lower()
+    assert "nao preenchido" not in updated["response"].lower()
+
+
+def test_attach_visualization_preserves_coherent_response_when_adding_unfilled_notice():
+    orchestrator = _orchestrator_without_runtime()
+    result = {
+        "success": True,
+        "response": "1. Insuf respirat aguda: 24.784\n2. Septicemia NE: 17.904",
+        "sql_query": (
+            'SELECT c."CD_DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes '
+            'FROM internacoes i JOIN cid c ON i."CID_MORTE" = c."CID" '
+            'WHERE c."CD_DESCRICAO" <> \'Nao preenchido\' GROUP BY causa_morte'
+        ),
+        "results": [
+            {"result": ("Insuf respirat aguda", 24784)},
+            {"result": ("Septicemia NE", 17904)},
+        ],
+        "row_count": 2,
+        "metadata": {},
+    }
+
+    updated = orchestrator._attach_visualization_if_requested(
+        result=result,
+        user_query="gere um gráfico de pizza com as 6 principais causas de morte",
+        visualization_intent=detect_visualization_intent(
+            "gere um gráfico de pizza com as 6 principais causas de morte"
+        ),
+    )
+
+    assert updated["response"].startswith("1. Insuf respirat aguda")
+    assert "desconsidera registros sem causa" in updated["response"].lower()
+
+
 def test_followup_chart_result_uses_cached_session_result():
     orchestrator = _orchestrator_without_runtime()
     cached = {

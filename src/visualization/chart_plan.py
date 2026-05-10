@@ -142,6 +142,14 @@ def validate_sql_against_chart_plan(
                 "(or pivot aliases AS homens/mulheres), not raw SEXO codes."
             )
 
+    if plan.x_dimension and _requires_unfilled_category_exclusion(plan):
+        if not _sql_excludes_unfilled_category(text):
+            return False, (
+                "CHART PLAN ERROR: clinical category charts must exclude unfilled labels "
+                "such as 'Nao preenchido', 'Nao informado', empty strings, and NULL values "
+                "before ORDER BY/LIMIT."
+            )
+
     return True, None
 
 
@@ -379,8 +387,10 @@ def _shape_guidance(
         )
     if expected_shape == "category_metric" and x_dimension:
         sex_hint = sex_label_hint if x_dimension == "sexo" else ""
+        missing_hint = _clinical_missing_shape_hint(x_dimension)
         return (
-            f"Return one row per {x_dimension} with columns: {x_dimension}, {y_column}.{sex_hint}"
+            f"Return one row per {x_dimension} with columns: {x_dimension}, {y_column}."
+            f"{sex_hint}{missing_hint}"
         )
     if expected_shape == "single_metric":
         return f"Return a single scalar row with column: {y_column}."
@@ -401,6 +411,35 @@ def _window_shape_hint(time_window: ChartTimeWindow) -> str:
             f"BETWEEN {time_window.start_year} AND {time_window.end_year}."
         )
     return ""
+
+
+def _clinical_missing_shape_hint(x_dimension: str | None) -> str:
+    if x_dimension and any(
+        token in x_dimension.lower()
+        for token in ["causa", "diagnostico", "doenca", "cid", "motivo"]
+    ):
+        return (
+            " Exclude missing/unfilled clinical categories such as 'Nao preenchido', "
+            "'Nao informado', empty strings, and NULL values from the chart result."
+        )
+    return ""
+
+
+def _requires_unfilled_category_exclusion(plan: ChartPlan) -> bool:
+    return plan.chart_type in {"bar", "pie", "donut"} and any(
+        token in plan.x_dimension.lower()
+        for token in ["causa", "diagnostico", "doenca", "cid", "motivo"]
+    )
+
+
+def _sql_excludes_unfilled_category(sql_text: str) -> bool:
+    has_unfilled_label_filter = bool(
+        re.search(r"(<>|!=|not\s+in|not\s+like)[\s\S]{0,80}na[oã]\s+preench", sql_text, re.I)
+        or re.search(r"na[oã]\s+preench[\s\S]{0,80}(<>|!=|not\s+in|not\s+like)", sql_text, re.I)
+    )
+    has_empty_string_filter = bool(re.search(r"(<>|!=)\s*''|nullif\s*\(|trim\s*\(", sql_text, re.I))
+    has_null_filter = " is not null" in sql_text
+    return has_unfilled_label_filter and (has_null_filter or has_empty_string_filter)
 
 
 def _default_y_column(metric: str) -> str:

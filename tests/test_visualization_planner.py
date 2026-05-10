@@ -239,6 +239,55 @@ def test_chart_plan_pie_folds_excess_categories_into_outros():
     assert spec.data[-1]["especialidade"] == "Outros"
 
 
+def test_pie_chart_excludes_unfilled_clinical_categories_and_warns_user():
+    query = "gere um gráfico de pizza com as 6 principais causas de morte"
+    plan = build_chart_plan(query, detect_visualization_intent(query))
+    spec = plan_chart(
+        ChartPlanningInput(
+            user_query=query,
+            columns=["causa_morte", "total_mortes"],
+            column_types={"causa_morte": "string", "total_mortes": "number"},
+            rows=[
+                {"causa_morte": "Nao preenchido", "total_mortes": 488330},
+                {"causa_morte": "Insuf respirat aguda", "total_mortes": 24784},
+                {"causa_morte": "Septicemia NE", "total_mortes": 17904},
+            ],
+            row_count=3,
+            chart_hint="pie",
+            chart_plan=plan,
+        )
+    )
+
+    assert spec.chartable is True
+    assert spec.chart_type == "pie"
+    assert [row["causa_morte"] for row in spec.data] == [
+        "Insuf respirat aguda",
+        "Septicemia NE",
+    ]
+    assert any(warning.code == "excluded_unfilled_category" for warning in spec.warnings)
+    assert "desconsidera" in spec.warnings[0].message.lower()
+
+
+def test_planner_repairs_mojibake_city_labels_before_chart_spec():
+    spec = plan_chart(
+        ChartPlanningInput(
+            user_query="gere grafico de barras por municipio",
+            columns=["municipio", "total_mortes"],
+            column_types={"municipio": "string", "total_mortes": "number"},
+            rows=[
+                {"municipio": "SÃ£o LuÃ­s", "total_mortes": 35860},
+                {"municipio": "ViamÃ£o", "total_mortes": 15029},
+            ],
+            row_count=2,
+        )
+    )
+
+    assert spec.data == [
+        {"municipio": "São Luís", "total_mortes": 35860},
+        {"municipio": "Viamão", "total_mortes": 15029},
+    ]
+
+
 def test_format_domain_label_normalizes_to_canonical_sex_form():
     from src.visualization.planner import _format_domain_label
 

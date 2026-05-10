@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from .schema import ChartPlan, ChartPlanningInput, ChartSpec, ChartWarning
+from .text_normalization import normalize_chart_label
 from .validator import validate_chart_spec
 
 MAX_BAR_CATEGORIES = 30
@@ -122,6 +123,13 @@ def plan_chart(planning_input: ChartPlanningInput | dict[str, Any]) -> ChartSpec
 
     if chart_input.chart_hint in {"pie", "donut"} and categorical_columns and numeric_columns:
         chart_type = "donut" if chart_input.chart_hint == "donut" else "pie"
+        prepared_data, warnings = _prepare_chart_data_for_spec(
+            chart_input.rows,
+            chart_type=chart_type,
+            x=categorical_columns[0],
+            y=numeric_columns[0],
+            series=None,
+        )
         spec = ChartSpec(
             chartable=True,
             chart_type=chart_type,
@@ -129,8 +137,9 @@ def plan_chart(planning_input: ChartPlanningInput | dict[str, Any]) -> ChartSpec
             x=categorical_columns[0],
             y=numeric_columns[0],
             encoding={"x_type": "nominal", "y_type": "quantitative"},
-            data=chart_input.rows,
+            data=prepared_data,
             reason="Pedido explicito de grafico de proporcao.",
+            warnings=warnings,
         )
         return validate_chart_spec(spec, columns, column_types)
 
@@ -163,6 +172,13 @@ def plan_chart(planning_input: ChartPlanningInput | dict[str, Any]) -> ChartSpec
         return validate_chart_spec(spec, columns, column_types)
 
     if categorical_columns and numeric_columns:
+        prepared_data, warnings = _prepare_chart_data_for_spec(
+            chart_input.rows,
+            chart_type="bar",
+            x=categorical_columns[0],
+            y=numeric_columns[0],
+            series=None,
+        )
         spec = ChartSpec(
             chartable=True,
             chart_type="bar",
@@ -170,8 +186,9 @@ def plan_chart(planning_input: ChartPlanningInput | dict[str, Any]) -> ChartSpec
             x=categorical_columns[0],
             y=numeric_columns[0],
             encoding={"x_type": "nominal", "y_type": "quantitative"},
-            data=chart_input.rows,
+            data=prepared_data,
             reason="Resultado categorico com metrica numerica.",
+            warnings=warnings,
         )
         return validate_chart_spec(spec, columns, column_types)
 
@@ -233,6 +250,13 @@ def _plan_from_chart_plan(
     if chart_plan.expected_result_shape in {"time_series_metric", "time_metric"}:
         chart_type = "line" if chart_type not in {"area", "bar"} else chart_type
 
+    prepared_data, warnings = _prepare_chart_data_for_spec(
+        chart_input.rows,
+        chart_type=chart_type,
+        x=x,
+        y=y,
+        series=series,
+    )
     return ChartSpec(
         chartable=True,
         chart_type=chart_type,
@@ -245,14 +269,9 @@ def _plan_from_chart_plan(
             "y_type": "quantitative",
             **({"series_type": "nominal"} if series else {}),
         },
-        data=_prepare_chart_plan_data(
-            chart_input.rows,
-            chart_type=chart_type,
-            x=x,
-            y=y,
-            series=series,
-        ),
+        data=prepared_data,
         reason="Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+        warnings=warnings,
     )
 
 
@@ -264,20 +283,56 @@ def _prepare_chart_plan_data(
     y: str,
     series: str | None,
 ) -> list[dict[str, Any]]:
+    rows, _ = _prepare_chart_data_for_spec(
+        rows,
+        chart_type=chart_type,
+        x=x,
+        y=y,
+        series=series,
+    )
+    return rows
+
+
+def _prepare_chart_data_for_spec(
+    rows: list[dict[str, Any]],
+    *,
+    chart_type: str,
+    x: str,
+    y: str,
+    series: str | None,
+) -> tuple[list[dict[str, Any]], list[ChartWarning]]:
     normalized_rows = [
             {
                 **row,
+                x: normalize_chart_label(row.get(x)),
                 **(
-                    {series: _format_domain_label(series, row.get(series))}
+                    {series: normalize_chart_label(_format_domain_label(series, row.get(series)))}
                     if series
                     else {}
                 ),
             }
             for row in rows
     ]
+    warnings: list[ChartWarning] = []
+    if chart_type in {"bar", "pie", "donut"} and _is_clinical_missing_sensitive_dimension(x):
+        filtered_rows = [row for row in normalized_rows if not _is_unfilled_category(row.get(x))]
+        removed_count = len(normalized_rows) - len(filtered_rows)
+        if removed_count:
+            normalized_rows = filtered_rows
+        warnings.append(
+            ChartWarning(
+                code="excluded_unfilled_category",
+                message=(
+                    "Este grafico desconsidera registros sem causa, diagnostico ou "
+                    "motivo preenchido para evitar que categorias incompletas dominem "
+                    "a visualizacao."
+                ),
+                severity="info",
+            )
+        )
     if chart_type in {"pie", "donut"}:
-        return _limit_pie_categories(normalized_rows, x=x, y=y)
-    return normalized_rows
+        normalized_rows = _limit_pie_categories(normalized_rows, x=x, y=y)
+    return normalized_rows, warnings
 
 
 def _limit_pie_categories(
@@ -405,6 +460,35 @@ def _format_domain_label(dimension: str, value: Any) -> Any:
         }
         return labels.get(text, value)
     return value
+
+
+def _is_clinical_missing_sensitive_dimension(dimension: str | None) -> bool:
+    normalized = _normalize_label(dimension)
+    return any(
+        token in normalized
+        for token in ["causa", "diagnostico", "doenca", "cid", "motivo"]
+    )
+
+
+def _is_unfilled_category(value: Any) -> bool:
+    normalized = _normalize_label(value)
+    return normalized in {
+        "",
+        "nao preenchido",
+        "nao informado",
+        "sem informacao",
+        "ignorado",
+        "null",
+        "none",
+    }
+
+
+def _normalize_label(value: Any) -> str:
+    import unicodedata
+
+    normalized = unicodedata.normalize("NFKD", "" if value is None else str(value))
+    ascii_text = "".join(char for char in normalized if not unicodedata.combining(char))
+    return " ".join(ascii_text.lower().strip().split())
 
 
 def _build_chart_plan_title(chart_plan: ChartPlan) -> str:

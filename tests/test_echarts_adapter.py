@@ -1,6 +1,6 @@
 import json
 
-from src.visualization.echarts import chart_spec_to_echarts_option
+from src.visualization.echarts import ECHARTS_COLORS, chart_spec_to_echarts_option
 from src.visualization.schema import ChartSpec
 
 
@@ -32,9 +32,42 @@ def test_bar_chart_emits_echarts_option():
     option = chart_spec_to_echarts_option(_bar_spec())
 
     assert option["series"][0]["type"] == "bar"
-    assert option["xAxis"]["data"] == ["Porto Alegre", "Canoas"]
-    assert option["series"][0]["data"] == [10, 8]
+    assert option["xAxis"]["type"] == "value"
+    assert option["yAxis"]["type"] == "category"
+    assert option["yAxis"]["data"] == ["Porto Alegre", "Canoas"]
+    assert option["yAxis"]["inverse"] is True
+    assert option["series"][0]["data"][0]["value"] == 10
+    assert option["series"][0]["data"][1]["value"] == 8
     assert option["title"]["text"] == "Top municipios"
+
+
+def test_simple_bar_uses_per_item_color_with_html_legend():
+    option = chart_spec_to_echarts_option(_bar_spec())
+
+    # Each bar gets its own color via inline itemStyle; no colorBy to avoid native legend.
+    assert option["series"][0]["data"][0]["itemStyle"]["color"] == ECHARTS_COLORS[0]
+    assert option["series"][0]["data"][1]["itemStyle"]["color"] == ECHARTS_COLORS[1]
+    assert option["legend"]["show"] is False
+    # _legend drives the HTML legend rendered by app.js.
+    assert option["_legend"][0] == {"name": "Porto Alegre", "color": ECHARTS_COLORS[0]}
+    assert option["_legend"][1] == {"name": "Canoas", "color": ECHARTS_COLORS[1]}
+
+
+def test_temporal_bar_keeps_vertical_axis():
+    spec = ChartSpec(
+        chartable=True,
+        chart_type="bar",
+        x="ano",
+        y="total_mortes",
+        encoding={"x_type": "temporal", "y_type": "quantitative"},
+        data=[{"ano": 2021, "total_mortes": 10}, {"ano": 2022, "total_mortes": 8}],
+    )
+
+    option = chart_spec_to_echarts_option(spec)
+
+    assert option["xAxis"]["type"] == "category"
+    assert option["xAxis"]["data"] == [2021, 2022]
+    assert option["yAxis"]["type"] == "value"
 
 
 def test_grouped_bar_chart_creates_one_series_per_group():
@@ -109,9 +142,16 @@ def test_pie_chart_uses_pie_series():
 
     assert option["series"][0]["type"] == "pie"
     assert option["series"][0]["radius"] == ["0%", "70%"]
+    assert option["series"][0]["center"] == ["50%", "48%"]
+    assert option["series"][0]["label"]["show"] is False
+    assert option["legend"]["show"] is False
     assert option["series"][0]["data"] == [
-        {"name": "Masculino", "value": 404208},
-        {"name": "Feminino", "value": 358813},
+        {"name": "Masculino", "value": 404208, "itemStyle": {"color": ECHARTS_COLORS[0]}},
+        {"name": "Feminino", "value": 358813, "itemStyle": {"color": ECHARTS_COLORS[1]}},
+    ]
+    assert option["_legend"] == [
+        {"name": "Masculino", "color": ECHARTS_COLORS[0], "value": 404208, "percent": 52.97},
+        {"name": "Feminino", "color": ECHARTS_COLORS[1], "value": 358813, "percent": 47.03},
     ]
 
 
