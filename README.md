@@ -6,7 +6,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115.13-009688.svg)](https://fastapi.tiangolo.com/)
 [![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL%20%2F%20DuckDB-336791.svg)](https://www.postgresql.org/)
 
-Text-to-SQL for Brazilian public healthcare analytics, built around a LangGraph workflow with OpenAI models, FastAPI, a CLI, and a lightweight web frontend.
+Text-to-SQL for Brazilian public healthcare analytics, built around a LangGraph workflow with OpenAI models, a semantic layer, FastAPI, a CLI, and a lightweight web frontend.
 
 ## Table of Contents
 - [Overview](#overview)
@@ -25,12 +25,17 @@ Text-to-SQL for Brazilian public healthcare analytics, built around a LangGraph 
 - [License](#license)
 
 ## Overview
-The agent translates natural-language questions into SQL for DATASUS-style analytical workloads. The current pipeline combines query classification, table discovery, schema enrichment, planning, SQL generation, validation, repair, execution, and response synthesis inside a stateful LangGraph workflow.
+The agent translates natural-language questions into SQL for DATASUS-style analytical workloads. The current pipeline combines query classification, table discovery, schema enrichment, semantic planning, SQL generation, SQL/semantic validation, repair, execution, and response synthesis inside a stateful LangGraph workflow.
+
+The implementation is intentionally oriented toward semantic robustness rather than benchmark-specific tuning. The semantic layer stores reusable metric definitions, domain filters, join expectations, SQL macros, and validation rules that can be applied to new questions without hardcoding individual ground-truth examples.
 
 ## Features
 - Natural language to SQL in Portuguese or English.
 - Query routing for database, conversational, schema, and clarification paths.
-- Schema-aware SQL generation with SUS-specific table metadata.
+- Three-stage table selection with heuristics, multilingual embeddings, and optional LLM fallback.
+- Schema-aware SQL generation with SUS-specific table metadata and semantic catalog guidance.
+- Semantic planning before SQL generation for metrics, filters, grouping, ordering, limits, joins, and expected output shape.
+- Domain-aware validation for mortality denominators, top-N/grouping patterns, socioeconomic metric filters, catalog-count questions, and date/age filters.
 - Multi-step recovery through validation and execution feedback loops.
 - Multi-query planning and synthesis for more complex analytical requests.
 - Multiple interfaces in one repository: CLI, REST API, and web frontend.
@@ -50,12 +55,13 @@ flowchart TD
     A -->|error| R
 
     B --> D[get_schema]
-    D --> E[plan_gate]
+    D -->|database query| E[plan_gate]
+    D -->|schema response or error| R
+    E --> S[semantic_planner]
 
-    E -->|query_planner| F[query_planner]
-    E -->|reasoning| G[reasoning]
-    E -->|generate_sql| H[generate_sql]
-    E -->|response| R
+    S -->|query_planner| F[query_planner]
+    S -->|reasoning| G[reasoning]
+    S -->|generate_sql| H[generate_sql]
 
     F -->|single| H
     F -->|complex single| G
@@ -95,6 +101,7 @@ flowchart TD
 | API layer | FastAPI | REST endpoints for query, schema, models, and health |
 | Frontend | Node.js, Express, vanilla JS | Web chat interface |
 | Database access | SQLAlchemy, psycopg2, LangChain SQLDatabase | SQL execution against PostgreSQL; DuckDB URLs are also accepted |
+| Semantic layer | YAML catalog + Pydantic models + SQL AST inspection | Domain metrics, join rules, macros, semantic plan validation, and SQL contract checks |
 | Session memory | `langgraph-checkpoint-sqlite` + SQLite | Session checkpoint persistence in `data/chatbot_memory.db` |
 | Evaluation | Custom EX / CM / EM metrics | Benchmarking, regression, and ablation analysis |
 | Observability | Rotating file logs, optional MLflow | Operational visibility and experiment tracking |
@@ -113,19 +120,32 @@ txt2sql_refactor_openai_v2/
 │   │   ├── result_synthesizer.py    # Multi-query result synthesis
 │   │   └── mlflow_tracker.py        # Optional MLflow integration
 │   ├── application/config/          # App config and SUS table metadata
+│   ├── application/prompts/         # Versioned table-selection prompt catalog
 │   ├── interfaces/
 │   │   ├── api/main.py              # FastAPI entrypoint
 │   │   └── cli/agent.py             # CLI entrypoint
 │   ├── infrastructure/database/     # Database connection services
 │   ├── memory/                      # Example memory/vector store artifacts
+│   ├── semantic/
+│   │   ├── catalog.yml              # Reusable metrics, dimensions, macros, rules
+│   │   ├── planner.py               # Heuristic semantic plan extraction
+│   │   ├── plan_reconciler.py       # Reconcile heuristic and LLM semantic plans
+│   │   ├── validators.py            # Semantic plan and SQL-shape validators
+│   │   ├── contract_validator.py    # AST-level SQL contract checks
+│   │   └── repair_guidance.yml      # Semantic repair hints by failure type
 │   └── utils/                       # Logging, SQL safety, classification utils
 ├── baselines/rich_prompt_baseline/  # Single-shot baseline implementation
-├── evaluation/                      # Evaluation runners, metrics, reports
+├── evaluation/
+│   ├── dag/                         # DAG evaluation pipeline tasks
+│   ├── metrics/                     # EX, CM, EM, and SQL parsing helpers
+│   ├── runners/                     # DAG, regression, ablation, table-selection runners
+│   ├── ablation/results/            # Ablation run folders and item checkpoints
+│   ├── results/                     # DAG and legacy evaluation outputs
+│   └── table_selection/             # Table-selection benchmark data
 ├── frontend/                        # Web interface served by Node/Express
 ├── data/                            # Runtime SQLite checkpoint database
 ├── logs/                            # Application logs
 ├── mlruns/                          # Local MLflow artifacts when enabled
-├── docs/                            # Migration notes and reports
 ├── tests/                           # Unit tests
 ├── pyproject.toml                   # Canonical Python dependency spec
 ├── uv.lock                          # Locked dependency graph for uv
@@ -214,6 +234,7 @@ python src/interfaces/cli/agent.py --query "Quantas mortes ocorreram em 2022?"
 python src/interfaces/cli/agent.py --query "Quantos hospitais existem?" --debug-steps
 python src/interfaces/cli/agent.py --health-check
 python src/interfaces/cli/agent.py --db-url "postgresql://user:pass@localhost:5432/sihrd5" --query "..."
+python src/interfaces/cli/agent.py --table-selection-preset llm_best --query "..."
 ```
 
 Run the API:
@@ -270,12 +291,22 @@ uv run pytest tests/ \
 
 The test suite covers routing, orchestration support, SQL safety, execution blocking, CLI session behavior, logging, and MLflow helpers.
 
+Useful focused checks while changing the semantic layer:
+
+```bash
+uv run pytest tests/test_semantic_layer.py \
+  tests/test_semantic_plan_reconciliation.py \
+  tests/test_sql_contract_validator.py \
+  tests/test_sql_execution_block.py -q
+```
+
 ## Evaluation
-The repository includes four complementary evaluation paths:
+The repository includes five complementary evaluation paths:
 - End-to-end DAG evaluation of the LangGraph agent
 - Rich prompt baseline evaluation
-- Regression runs for CI or targeted benchmark checks
+- Regression runs for CI or targeted benchmark slices
 - Ablation runs to measure the impact of specific pipeline components
+- Dedicated table-selection benchmark runs
 
 ### Metrics
 | Metric | Description |
@@ -286,24 +317,26 @@ The repository includes four complementary evaluation paths:
 
 ### Running Evaluation
 ```bash
-python -m evaluation.runners.run_dag_evaluation
+python -m evaluation.runners.run_dag_evaluation --ground-truth evaluation/ground_truth_v2.json --workers 2
 python evaluation/run_rich_prompt_baseline.py
 python -m evaluation.runners.run_regression --threshold 0.90
-python -m evaluation.runners.run_ablation
+python -m evaluation.runners.run_ablation --dataset evaluation/ground_truth_v2.json --workers 4
+python -m evaluation.runners.run_table_selection_eval
 python evaluation/generate_report.py
 ```
 
+`evaluation/run_dag_evaluation.py` is kept as a compatibility wrapper. The canonical DAG runner is `evaluation/runners/run_dag_evaluation.py`.
+
 ### Output Locations
 ```bash
-evaluation/agent/results/                 # Agent regression / general evaluation outputs
-evaluation/ablation/results/              # Ablation outputs
-evaluation/results/dag_evaluation_<id>/   # DAG evaluation run folders
-evaluation/table_selection/results/       # Table-selection benchmark outputs
-baselines/rich_prompt_baseline/artifacts/ # Baseline artifacts
-evaluation/logs/                          # Evaluation runner logs
+evaluation/results/dag_evaluation_<id>/       # DAG evaluation run folders
+evaluation/ablation/results/<run_id>/         # Ablation outputs and item checkpoints
+evaluation/table_selection/results/<run_id>/  # Table-selection benchmark outputs
+baselines/rich_prompt_baseline/artifacts/     # Baseline artifacts
+evaluation/logs/                              # Evaluation runner logs
 ```
 
-Ground-truth datasets are stored in `evaluation/ground_truth.json`, `evaluation/ground_truth_v2.json`, and `evaluation/regression_set.json`.
+Ground-truth and slice datasets are stored in `evaluation/ground_truth.json`, `evaluation/ground_truth_v2.json`, `evaluation/regression_set.json`, and the targeted slice files under `evaluation/*slice*.json`.
 
 ## Observability
 ### Logging
