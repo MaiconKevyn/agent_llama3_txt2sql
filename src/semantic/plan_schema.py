@@ -18,6 +18,17 @@ Intent = Literal[
 ]
 
 TopNScope = Literal["none", "global", "per_group"]
+AnswerKind = Literal[
+    "scalar",
+    "single_row",
+    "grouped_table",
+    "top_n_global",
+    "top_n_per_group",
+    "time_series",
+    "comparison_buckets",
+    "unknown",
+]
+ExpectedRowCount = Literal["one", "bounded_n", "one_per_group", "unknown"]
 
 
 class SemanticDimension(BaseModel):
@@ -75,6 +86,12 @@ class AnswerShape(BaseModel):
     ranked_dimensions: list[str] = Field(default_factory=list)
     requires_group_by: bool = False
     include_unknown_bucket: bool = False
+    answer_kind: AnswerKind = "unknown"
+    expected_row_count: ExpectedRowCount = "unknown"
+    output_dimensions: list[str] = Field(default_factory=list)
+    filter_dimensions: list[str] = Field(default_factory=list)
+    counted_entity: str | None = None
+    forbidden_output_dimensions: list[str] = Field(default_factory=list)
 
 
 class SemanticPlan(BaseModel):

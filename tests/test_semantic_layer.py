@@ -231,6 +231,38 @@ def test_semantic_plan_detects_death_cause_cid_antijoin():
     assert "death_cause_cid_requires_cid_morte_antijoin" in plan.constraints
 
 
+def test_semantic_plan_detects_top_n_death_causes_as_ranked_groups():
+    plan = build_semantic_plan("Quais são as três causas de morte mais frequentes entre mulheres?")
+
+    assert plan.intent == "ranking"
+    assert plan.answer_shape.row_grain == "top_n_global"
+    assert plan.answer_shape.top_n == 3
+    assert plan.answer_shape.answer_kind == "top_n_global"
+    assert "diagnostico" in plan.answer_shape.required_dimensions
+    assert "diagnostico" in plan.answer_shape.output_dimensions
+    assert "sexo" in plan.answer_shape.filter_dimensions
+    assert any(filter_.field == "sexo" and filter_.values == ["3"] for filter_ in plan.filters)
+    assert any(filter_.field == "desfecho" and filter_.values == ["MORTE = true"] for filter_ in plan.filters)
+
+
+def test_semantic_validator_accepts_top_n_death_causes_for_women():
+    plan = build_semantic_plan("Quais são as três causas de morte mais frequentes entre mulheres?")
+    sql = """
+        SELECT c."CD_DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes
+        FROM internacoes i
+        JOIN cid c ON i."CID_MORTE" = c."CID"
+        WHERE i."MORTE" = true AND i."SEXO" = 3
+        GROUP BY c."CD_DESCRICAO"
+        ORDER BY total_mortes DESC
+        LIMIT 3
+    """
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert valid is True
+    assert message is None
+
+
 def test_semantic_plan_does_not_treat_temporal_grouping_as_death_cause_description():
     plan = build_semantic_plan("Gere um grafico temporal com o numero de mortes por ano")
 
@@ -1390,6 +1422,44 @@ def test_semantic_plan_treats_principal_secondary_diagnosis_question_as_scalar_c
     assert any(filter_.field == "diagnostico_secundario_required" for filter_ in plan.filters)
 
 
+def test_semantic_plan_treats_counted_hospital_as_scalar_not_output_dimension():
+    plan = build_semantic_plan("Quantos hospitais registraram pelo menos uma morte?")
+
+    assert plan.intent == "count"
+    assert plan.answer_shape.row_grain == "single_scalar"
+    assert plan.answer_shape.answer_kind == "scalar"
+    assert plan.answer_shape.expected_row_count == "one"
+    assert plan.answer_shape.counted_entity == "hospital"
+    assert plan.answer_shape.required_dimensions == []
+    assert plan.answer_shape.output_dimensions == []
+    assert "hospital" in plan.answer_shape.forbidden_output_dimensions
+    assert not plan.answer_shape.requires_group_by
+
+
+def test_semantic_plan_treats_counted_municipality_with_state_filter_as_scalar():
+    plan = build_semantic_plan("Quantos municípios estão no estado do RS?")
+
+    assert plan.intent == "count"
+    assert plan.answer_shape.row_grain == "single_scalar"
+    assert plan.answer_shape.counted_entity == "municipio"
+    assert plan.answer_shape.required_dimensions == []
+    assert plan.answer_shape.output_dimensions == []
+    assert "estado" in plan.answer_shape.filter_dimensions
+    assert {"estado", "municipio"} <= set(plan.answer_shape.forbidden_output_dimensions)
+    assert any(filter_.field == "estado" and filter_.values == ["RS"] for filter_ in plan.filters)
+
+
+def test_semantic_plan_treats_counted_catalog_entity_as_scalar_not_grouping():
+    plan = build_semantic_plan("Quantos códigos CID-10 estão disponíveis?")
+
+    assert plan.intent == "count"
+    assert plan.base_grain == "cid_catalog"
+    assert plan.answer_shape.row_grain == "single_scalar"
+    assert plan.answer_shape.counted_entity == "diagnostico"
+    assert plan.answer_shape.required_dimensions == []
+    assert "diagnostico" in plan.answer_shape.forbidden_output_dimensions
+
+
 def test_semantic_plan_treats_respiratory_disease_as_filter_not_breakdown():
     plan = build_semantic_plan(
         "Quantas internações por doença respiratória ocorrem no inverno (junho a agosto)?"
@@ -1622,9 +1692,19 @@ def test_semantic_error_taxonomy_classifies_validator_messages():
     )
     assert (
         classify_semantic_error(
+            "The plan requires a global top-N answer, but SQL does not limit the result to top_n=10."
+        )
+        == SemanticErrorCategory.TOP_N_SCOPE
+    )
+    assert (
+        classify_semantic_error(
             "Mortality-rate SQL filters MORTE=true in WHERE, damaging denominator"
         )
         == SemanticErrorCategory.RATE_DENOMINATOR
+    )
+    assert (
+        classify_semantic_error('Binder Error: Referenced table "mu" not found!')
+        == SemanticErrorCategory.SQL_VALIDITY
     )
     record = build_semantic_error_record("SQL does not use NOT EXISTS for absence")
     assert record.category == SemanticErrorCategory.ABSENCE_CONDITION

@@ -434,6 +434,7 @@ def run_query_item(
     session_id = f"ablation_{run_id}_{spec.id}_{qid}"
 
     cost: dict[str, Any] = {}
+    agent_metadata: dict[str, Any] = {}
     try:
         result = orchestrator.process_query(
             question,
@@ -441,6 +442,7 @@ def run_query_item(
             force_single_query=True,
         )
         generated_sql = result.get("sql_query", "") or ""
+        agent_metadata = result.get("metadata", {}) or {}
         agent_rows = result.get("final_result_rows")
         if agent_rows is None:
             agent_rows = result.get("results", [])
@@ -479,6 +481,14 @@ def run_query_item(
         "variant_id": spec.id,
         "variant_name": spec.name,
         "critical_rule": q.get("critical_rule"),
+        "workflow_success": bool(agent_metadata.get("workflow_metrics", {}).get("overall_success")),
+        "semantic_plan": json.dumps(agent_metadata.get("semantic_plan", {}), ensure_ascii=False),
+        "semantic_validation": json.dumps(
+            agent_metadata.get("semantic_validation", {}), ensure_ascii=False
+        ),
+        "semantic_error": json.dumps(agent_metadata.get("semantic_error", {}), ensure_ascii=False),
+        "semantic_repair": json.dumps(agent_metadata.get("semantic_repair", {}), ensure_ascii=False),
+        "repair_attempts": json.dumps(agent_metadata.get("repair_attempts", []), ensure_ascii=False),
         "prompt_tokens": cost.get("prompt_tokens", 0),
         "completion_tokens": cost.get("completion_tokens", 0),
         "total_tokens": cost.get("total_tokens", 0),
@@ -546,6 +556,12 @@ def _run_item_in_worker(
             "variant_id": spec.id,
             "variant_name": spec.name,
             "critical_rule": q.get("critical_rule"),
+            "workflow_success": False,
+            "semantic_plan": "{}",
+            "semantic_validation": "{}",
+            "semantic_error": "{}",
+            "semantic_repair": "{}",
+            "repair_attempts": "[]",
             "prompt_tokens": 0,
             "completion_tokens": 0,
             "total_tokens": 0,
@@ -733,6 +749,12 @@ def _run_missing_items(
                         "variant_id": spec_.id,
                         "variant_name": spec_.name,
                         "critical_rule": q.get("critical_rule"),
+                        "workflow_success": False,
+                        "semantic_plan": "{}",
+                        "semantic_validation": "{}",
+                        "semantic_error": "{}",
+                        "semantic_repair": "{}",
+                        "repair_attempts": "[]",
                         "prompt_tokens": 0,
                         "completion_tokens": 0,
                         "total_tokens": 0,
@@ -975,6 +997,12 @@ DETAIL_FIELDS = [
     "predicted_rows_sample",
     "comparison_details",
     "critical_rule",
+    "workflow_success",
+    "semantic_plan",
+    "semantic_validation",
+    "semantic_error",
+    "semantic_repair",
+    "repair_attempts",
     "flags",
     "prompt_tokens",
     "completion_tokens",
