@@ -253,14 +253,18 @@ def debug_query_execution(orchestrator, user_query: str):
                 elif node_name == "generate_sql":
                     sql = node_state.get("generated_sql", "")
                     selected_tables = node_state.get("selected_tables", [])
+                    chart_plan = node_state.get("chart_plan")
 
                     debug_data["sql_generated"] = sql
                     step_data["data"]["sql"] = sql
                     step_data["data"]["tables_used"] = selected_tables
+                    step_data["data"]["chart_plan"] = chart_plan
 
                     print(" SQL Generated:")
                     print(f"     Query: {sql}")
                     print(f"      Using tables: {selected_tables}")
+                    if chart_plan:
+                        print(f"     Chart plan: {chart_plan}")
 
                     # Validate SQL quality
                     if sql:
@@ -804,6 +808,11 @@ Domínio: Healthcare brasileiro (internações, procedimentos, diagnósticos)
                     # Show SQL for debugging if available
                     if result.get("sql_query"):
                         print(f" SQL: {result['sql_query']}")
+                    if result.get("chart"):
+                        import json
+
+                        print(" ChartSpec:")
+                        print(json.dumps(result["chart"], ensure_ascii=False, indent=2))
                 else:
                     logger.error(
                         "Query processing failed", extra={"error": result["error_message"]}

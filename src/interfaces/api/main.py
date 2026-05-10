@@ -70,6 +70,7 @@ class QueryResponse(BaseModel):
     execution_time: float
     timestamp: str
     session_id: Optional[str] = None
+    chart: Optional[Dict[str, Any]] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -102,6 +103,7 @@ def _build_query_response(result: Dict[str, Any], started_at: float, session_id:
         execution_time=round(time.time() - started_at, 2),
         timestamp=datetime.now().isoformat(),
         session_id=session_id or metadata.get("session_id"),
+        chart=result.get("chart"),
         metadata=metadata,
     )
 
@@ -204,6 +206,7 @@ async def process_query(request: QueryRequest):
             execution_time=round(time.time() - start_time, 2),
             timestamp=datetime.now().isoformat(),
             session_id=request.session_id,
+            chart=None,
             metadata={},
         )
 

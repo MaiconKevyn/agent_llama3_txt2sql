@@ -3,17 +3,48 @@
 import re
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Dict, List
 
-from .llm_manager import OpenAILLMManager, get_llm_manager
-from .state_models import MessagesStateTXT2SQL, ExecutionPhase, ToolCallResult
-from .state_helpers import add_ai_message, add_tool_call_result, update_phase, add_error
+from ..application.config.table_descriptions import TABLE_DESCRIPTIONS
 from ..utils.logging_config import get_nodes_logger
+from .llm_manager import OpenAILLMManager, get_llm_manager
+from .state_helpers import add_ai_message, add_error, add_tool_call_result, update_phase
+from .state_models import ExecutionPhase, MessagesStateTXT2SQL, ToolCallResult
 
 logger = get_nodes_logger()
 
 # Module-level schema cache — schema is static; no need to re-fetch per query
 _schema_cache: Dict[str, str] = {}
+
+
+def _build_fallback_schema_context(selected_tables: list[str], error_message: str) -> str:
+    sections = [
+        "Schema context fallback generated from curated table metadata.",
+        f"Original schema-tool error: {error_message}",
+    ]
+    for table in selected_tables:
+        description = TABLE_DESCRIPTIONS.get(table)
+        if not description:
+            sections.append(f"\nTABLE {table}: metadata not available.")
+            continue
+        sections.append(f"\nTABLE {table}: {description.get('title', table)}")
+        sections.append(str(description.get("description", "")))
+        key_columns = description.get("key_columns") or []
+        if key_columns:
+            sections.append("Key columns: " + ", ".join(str(column) for column in key_columns))
+        mappings = description.get("value_mappings") or {}
+        if mappings:
+            sections.append("Value mappings:")
+            sections.extend(f"- {column}: {meaning}" for column, meaning in mappings.items())
+        notes = description.get("critical_notes") or []
+        if notes:
+            sections.append("Critical notes:")
+            sections.extend(f"- {note}" for note in notes)
+        relationships = description.get("relationships") or []
+        if relationships:
+            sections.append("Relationships:")
+            sections.extend(f"- {relationship}" for relationship in relationships)
+    return "\n".join(sections)
 
 
 # ---------------------------------------------------------------------------
@@ -281,8 +312,37 @@ def get_schema_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
 
     except Exception as e:
         error_message = f"Schema retrieval failed: {str(e)}"
-        state = add_error(state, error_message, "schema_error", ExecutionPhase.SCHEMA_ANALYSIS)
+        selected_tables = state.get("selected_tables", []) or state.get("available_tables", [])[:3]
+        if selected_tables:
+            schema_text = _build_fallback_schema_context(selected_tables, error_message)
+            cache_key = "|".join(sorted(selected_tables))
+            state["schema_context"] = schema_text
+            _schema_cache[cache_key] = schema_text
+            state = add_tool_call_result(
+                state,
+                ToolCallResult(
+                    tool_name="sql_db_schema",
+                    tool_input={"tables": ", ".join(selected_tables)},
+                    tool_output=schema_text,
+                    success=False,
+                    error_message=error_message,
+                    execution_time=time.time() - start_time,
+                ),
+            )
+            state = add_ai_message(state, f"Retrieved fallback schema for {len(selected_tables)} tables")
+            execution_time = time.time() - start_time
+            state = update_phase(state, ExecutionPhase.SCHEMA_ANALYSIS, execution_time)
+            logger.warning(
+                "Schema tool failed; using curated fallback schema",
+                extra={
+                    "tables": selected_tables,
+                    "error": error_message,
+                    "context_size": len(schema_text),
+                },
+            )
+            return state
 
+        state = add_error(state, error_message, "schema_error", ExecutionPhase.SCHEMA_ANALYSIS)
         state["schema_context"] = (
             "Tables: internacoes (patient healthcare data), cid (diagnoses), "
             "municipios (cities), atendimentos (procedures junction)"

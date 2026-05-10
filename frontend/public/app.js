@@ -165,7 +165,8 @@ async function sendMessage() {
         if (data.success) {
             addMessage(data.response || data.conversational_response || 'Consulta processada com sucesso.', 'assistant', {
                 executionTime: data.execution_time,
-                sql: data.sql || data.sql_query || null
+                sql: data.sql || data.sql_query || null,
+                chart: data.chart || null
             });
         } else {
             addMessage(data.error_message || 'Nao foi possivel processar a consulta.', 'error');
@@ -280,10 +281,183 @@ function createMessageElement(messageData) {
     }
 
     contentWrap.appendChild(text);
+    if (metadata && metadata.chart) {
+        const chartElement = createChartElement(metadata.chart);
+        if (chartElement) {
+            contentWrap.appendChild(chartElement);
+        }
+    }
     contentWrap.appendChild(meta);
     message.appendChild(avatar);
     message.appendChild(contentWrap);
     return message;
+}
+
+function createChartElement(chartPayload) {
+    const spec = chartPayload && chartPayload.spec;
+    const echartsOption = chartPayload && chartPayload.echarts;
+    if (!chartPayload.requested || !spec) return null;
+
+    const container = document.createElement('div');
+    container.className = 'chart-panel';
+
+    const header = document.createElement('div');
+    header.className = 'chart-header';
+
+    const title = document.createElement('div');
+    title.className = 'chart-title';
+    title.textContent = spec.title || chartTypeLabel(spec.chart_type);
+    header.appendChild(title);
+
+    const badge = document.createElement('div');
+    badge.className = 'chart-type-badge';
+    badge.textContent = shortChartTypeLabel(spec.chart_type);
+    header.appendChild(badge);
+    container.appendChild(header);
+
+    if (!spec.chartable) {
+        const empty = document.createElement('div');
+        empty.className = 'chart-empty';
+        empty.textContent = spec.reason || 'Nao foi possivel gerar um grafico validado para esse resultado.';
+        container.appendChild(empty);
+        return container;
+    }
+
+    if (echartsOption && window.echarts && typeof window.echarts.init === 'function') {
+        renderECharts(container, echartsOption, spec);
+    } else {
+        // Fallback when ECharts is unavailable or the spec is a plain table.
+        renderTableChart(container, spec);
+    }
+
+    if (Array.isArray(spec.warnings) && spec.warnings.length > 0) {
+        const warnings = document.createElement('div');
+        warnings.className = 'chart-warnings';
+        warnings.textContent = spec.warnings.map(w => w.message).join(' ');
+        container.appendChild(warnings);
+    }
+
+    return container;
+}
+
+function renderECharts(container, echartsOption, spec) {
+    const target = document.createElement('div');
+    target.className = 'echarts-chart';
+    target.setAttribute('role', 'img');
+    target.setAttribute('aria-label', buildChartAriaLabel(spec));
+    container.appendChild(target);
+
+    try {
+        const chart = window.echarts.init(target, null, { renderer: 'svg' });
+        chart.setOption(echartsOption, true);
+        if (typeof ResizeObserver === 'function') {
+            const resizeObserver = new ResizeObserver(() => chart.resize());
+            resizeObserver.observe(target);
+            target.__echartsResizeObserver = resizeObserver;
+        } else {
+            window.addEventListener('resize', () => chart.resize(), { passive: true });
+        }
+    } catch (error) {
+        console.warn('Failed to render ECharts chart, falling back to table:', error);
+        target.remove();
+        renderFallbackTable(container, spec);
+    }
+}
+
+function renderFallbackTable(container, spec) {
+    if (Array.isArray(spec.data) && spec.data.length > 0) {
+        renderTableChart(container, spec);
+    } else {
+        const empty = document.createElement('div');
+        empty.className = 'chart-empty';
+        empty.textContent = 'Nao foi possivel renderizar o grafico.';
+        container.appendChild(empty);
+    }
+}
+
+function renderTableChart(container, spec) {
+    const rows = Array.isArray(spec.data) ? spec.data.slice(0, 12) : [];
+    const table = document.createElement('table');
+    table.className = 'chart-table';
+    if (rows.length === 0) {
+        container.appendChild(table);
+        return;
+    }
+    const columns = Object.keys(rows[0]);
+    const thead = document.createElement('thead');
+    const headRow = document.createElement('tr');
+    columns.forEach(column => {
+        const th = document.createElement('th');
+        th.textContent = formatFieldLabel(column);
+        headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    rows.forEach(row => {
+        const tr = document.createElement('tr');
+        columns.forEach(column => {
+            const td = document.createElement('td');
+            td.textContent = formatTableCell(row[column]);
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    container.appendChild(table);
+}
+
+function chartTypeLabel(type) {
+    const labels = {
+        bar: 'Grafico de barras',
+        line: 'Grafico de linha',
+        area: 'Grafico de area',
+        scatter: 'Grafico de dispersao',
+        pie: 'Grafico de proporcao',
+        donut: 'Grafico de proporcao',
+        kpi: 'Indicador',
+        table: 'Tabela'
+    };
+    return labels[type] || 'Grafico';
+}
+
+function shortChartTypeLabel(type) {
+    const labels = {
+        bar: 'Barras',
+        line: 'Linha',
+        area: 'Area',
+        scatter: 'Dispersao',
+        pie: 'Pizza',
+        donut: 'Donut',
+        kpi: 'KPI',
+        table: 'Tabela'
+    };
+    return labels[type] || 'Grafico';
+}
+
+function formatTableCell(value) {
+    if (value === null || value === undefined) return '-';
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return value.toLocaleString('pt-BR');
+    }
+    return String(value);
+}
+
+function formatFieldLabel(field) {
+    if (!field) return '';
+    return String(field)
+        .replace(/_/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/\b\w/g, char => char.toUpperCase());
+}
+
+function buildChartAriaLabel(spec) {
+    const title = spec.title || chartTypeLabel(spec.chart_type);
+    const x = formatFieldLabel(spec.x);
+    const y = formatFieldLabel(spec.y);
+    return `${title}. Eixo X: ${x}. Eixo Y: ${y}.`;
 }
 
 function getMessageIcon(type) {

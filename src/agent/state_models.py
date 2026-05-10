@@ -167,6 +167,9 @@ class MessagesStateTXT2SQL(TypedDict):
     final_result_rows: Optional[List]
     ablation_flags: Dict[str, bool]
     semantic_plan: Optional[Dict[str, Any]]
+    visualization_intent: Optional[Dict[str, Any]]
+    chart_plan: Optional[Dict[str, Any]]
+    chart_spec: Optional[Dict[str, Any]]
 
 
 class TX:

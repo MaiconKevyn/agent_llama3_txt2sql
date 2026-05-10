@@ -18,6 +18,8 @@ def _has_group_by_dimension(inspector: SQLInspector, dimension: str) -> bool:
     search_space = group_by_lower
     if inspector.has_window_partition():
         search_space = f"{group_by_lower} {inspector.text_lower}"
+    if dimension == "sexo" and re.search(r"\bcase\s+when[\s\S]{0,120}\bsexo\b", inspector.text_lower, re.I):
+        return True
     patterns = {
         "estado": [r"\bestado\b", r"\bmu\.estado\b", r"\bm\.estado\b"],
         "estado_hospital": [r"\bestado\b", r"\bmu\.estado\b", r"\bm\.estado\b"],
@@ -92,6 +94,18 @@ def validate_sql_against_semantic_plan(
             return False, (
                 "SEMANTIC PLAN ERROR: The plan requires a ranked top-N answer, but SQL has no ORDER BY."
             )
+
+    if (
+        answer_shape.top_n_scope == "none"
+        and any(dim in answer_shape.required_dimensions for dim in ["ano", "mes", "trimestre"])
+        and re.search(r"\b(?:row_number|rank|dense_rank)\s*\(\s*\)\s+over\s*\(", sql_lower, re.I)
+        and inspector.constrains_rank(None)
+    ):
+        return False, (
+            "SEMANTIC PLAN ERROR: The plan asks for a complete temporal aggregation, but SQL ranks "
+            "period rows and filters to one row per period. Aggregate all rows for each requested "
+            "period instead of using ROW_NUMBER()/RANK() unless the question asks for top-N periods."
+        )
 
     if answer_shape.requires_group_by:
         absence_antijoin = (
@@ -317,15 +331,24 @@ def _validate_additional_semantic_constraints(
 
     if "sex_label_output_required" in plan.constraints:
         has_case_labels = bool(
-            re.search(r"\bcase\s+when[\s\S]{0,240}masculino[\s\S]{0,240}feminino", text, re.I)
+            re.search(
+                r"\bcase\s+when[\s\S]{0,240}(masculino|homens?)[\s\S]{0,240}(feminino|mulheres?)",
+                text,
+                re.I,
+            )
         )
         has_lookup_label = bool(
             re.search(r"\bjoin\s+sexo\b[\s\S]{0,240}\bdescri[cç][aã]o\b", text, re.I)
         )
-        if not (has_case_labels or has_lookup_label):
+        has_pivot_label_aliases = bool(
+            re.search(r"\bas\s+\"?[a-z_]*(masculino|homens?)\"?\b", text, re.I)
+            and re.search(r"\bas\s+\"?[a-z_]*(feminino|mulheres?)\"?\b", text, re.I)
+        )
+        if not (has_case_labels or has_lookup_label or has_pivot_label_aliases):
             return False, (
                 "SEMANTIC PLAN ERROR: Sex-grouped output must return human-readable labels "
-                "('Masculino'/'Feminino') via CASE or the sexo lookup, not raw SEXO codes."
+                "('Masculino'/'Feminino' or 'homens'/'mulheres') via CASE or the sexo lookup, "
+                "not raw SEXO codes."
             )
 
     if "death_cause_cid_requires_cid_morte_antijoin" in plan.constraints:
@@ -915,6 +938,18 @@ def _validate_required_filters(
             )
             if not (has_start and has_end and has_temporal_expression):
                 return False, "SEMANTIC PLAN ERROR: SQL does not apply the requested year range filter."
+        elif field == "recent_years_available" and values:
+            if "current_date" in text or "now()" in text:
+                return False, (
+                    "SEMANTIC PLAN ERROR: Relative recent-year requests must use the latest "
+                    "year available in internacoes.DT_INTER, not CURRENT_DATE/NOW(), because "
+                    "the dataset can lag behind the wall-clock date."
+                )
+            if not ("dt_inter" in text and "year" in text):
+                return False, (
+                    "SEMANTIC PLAN ERROR: SQL does not apply the requested recent-year window "
+                    "using internacoes.DT_INTER."
+                )
         elif field == "sexo" and values:
             if "sexo" not in text or not any(value in text for value in values):
                 return False, "SEMANTIC PLAN ERROR: SQL does not apply the requested sex filter."

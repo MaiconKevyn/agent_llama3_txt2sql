@@ -4,9 +4,9 @@ import pytest
 pytest.importorskip("langgraph")
 
 import src.agent.classification as classification_module
-from src.agent.state_helpers import create_initial_messages_state
-from src.agent.state_models import ExecutionPhase, QueryRoute
 import src.agent.nodes as nodes
+from src.agent.state_helpers import create_initial_messages_state
+from src.agent.state_models import QueryRoute
 
 
 class DummyResp:
@@ -94,3 +94,29 @@ def test_classification_node_detects_explicit_sql(monkeypatch):
 
     assert new_state["classification"].route == QueryRoute.DATABASE
 
+
+def test_classification_node_routes_explicit_chart_columns_to_database(monkeypatch):
+    class SchemaLLM(DummyLLM):
+        def invoke(self, messages):
+            return DummyResp('{"route":"SCHEMA","confidence":0.95,"reasons":"colunas"}')
+
+    class Mgr:
+        def __init__(self):
+            self._llm = SchemaLLM()
+
+        def get_bound_llm(self):
+            return self._llm
+
+        def invoke_chat(self, messages):
+            return self._llm.invoke(messages)
+
+    monkeypatch.setattr(classification_module, "get_llm_manager", lambda: Mgr())
+
+    state = create_initial_messages_state(
+        "Mostre um grafico de colunas com internacoes por estado.",
+        session_id="s5",
+        visualization_intent={"requested": True, "chart_hint": "bar"},
+    )
+    new_state = nodes.query_classification_node(state)
+
+    assert new_state["classification"].route == QueryRoute.DATABASE

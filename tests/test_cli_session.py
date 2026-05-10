@@ -85,3 +85,23 @@ def test_interactive_session_runs_single_query_and_exits():
     assert orchestrator.calls[0]["metadata"]["environment"] == "testing"
     assert any("ok" in line for line in printed)
     assert any(level == "info" and message == "Interactive session ended by user" for level, message, _ in logger.records)
+
+
+def test_interactive_session_reuses_session_id_for_followups():
+    logger = DummyLogger()
+    orchestrator = DummyOrchestrator(
+        {"success": True, "response": "ok", "sql_query": "select 1", "execution_time": 1.25}
+    )
+    printed = []
+    inputs = iter(["primeira pergunta", "gere um grafico disso", "sair"])
+
+    InteractiveSession.start(
+        orchestrator,
+        logger,
+        "testing",
+        input_fn=lambda prompt: next(inputs),
+        print_fn=printed.append,
+    )
+
+    assert len(orchestrator.calls) == 2
+    assert orchestrator.calls[0]["session_id"] == orchestrator.calls[1]["session_id"]

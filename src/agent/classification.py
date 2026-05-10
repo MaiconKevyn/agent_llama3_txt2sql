@@ -3,18 +3,21 @@
 import time
 from typing import Optional, Tuple
 
-from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
-from .llm_manager import OpenAILLMManager, get_llm_manager
-from .state_models import MessagesStateTXT2SQL, QueryRoute, ExecutionPhase, QueryClassification
-from .state_helpers import add_ai_message, update_phase, add_error, clean_conversation_messages
-from ..utils.logging_config import get_nodes_logger
 from ..utils.classification import (
+    combine_scores,
     detect_sql_snippets,
     heuristic_route,
     try_extract_json_block,
-    combine_scores,
 )
+from ..utils.logging_config import get_nodes_logger
+from .intent_router import classify_intent
+from .llm_manager import get_llm_manager
+from .state_helpers import add_ai_message, add_error, clean_conversation_messages, update_phase
+from .state_models import ExecutionPhase, MessagesStateTXT2SQL, QueryClassification, QueryRoute
+
+SEMANTIC_ROUTER_HIGH_CONFIDENCE = 0.55
 
 logger = get_nodes_logger()
 
@@ -133,11 +136,27 @@ def query_classification_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2S
                 user_query = resolved_query
                 state["user_query"] = resolved_query
 
+        visualization_intent = state.get("visualization_intent") or {}
+        if (
+            isinstance(visualization_intent, dict)
+            and visualization_intent.get("requested")
+        ):
+            query_route = QueryRoute.DATABASE
+            confidence_score = 0.95
+            reasoning = "Explicit chart request requires database query execution."
+            logger.info("Explicit visualization request routed to DATABASE")
+        else:
+            query_route = None
+            confidence_score = 0.0
+            reasoning = ""
+
         # Heuristic pre-pass
         heur_route_str, heur_scores = heuristic_route(user_query)
 
         HEURISTIC_SKIP_THRESHOLD = 2
-        if detect_sql_snippets(user_query):
+        if query_route is not None:
+            pass
+        elif detect_sql_snippets(user_query):
             query_route = QueryRoute.DATABASE
             confidence_score = 0.95
             reasoning = "Explicit SQL detected in input."
@@ -167,6 +186,28 @@ def query_classification_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2S
                 f"score={heur_scores.get('DATABASE', 0)}, skipping LLM"
             )
             logger.info(reasoning)
+        elif (semantic_result := classify_intent(user_query)).route is not None and (
+            semantic_result.score is None
+            or semantic_result.score >= SEMANTIC_ROUTER_HIGH_CONFIDENCE
+        ):
+            query_route = {
+                "DATABASE": QueryRoute.DATABASE,
+                "CONVERSATIONAL": QueryRoute.CONVERSATIONAL,
+                "SCHEMA": QueryRoute.SCHEMA,
+            }[semantic_result.route]
+            # Cosine similarity is not a probability — once it crosses the
+            # high-confidence threshold the router is decisive. Emit a fixed
+            # high routing confidence so downstream gates (e.g. routing.py's
+            # 0.7 cutoff for CONVERSATIONAL) respect the decision.
+            confidence_score = 0.85
+            reasoning = (
+                f"Semantic router (cosine={semantic_result.score}); "
+                f"matched route={semantic_result.route}; heur={heur_scores}"
+            )
+            logger.info(
+                f"Semantic router decision: route={semantic_result.route}, "
+                f"cosine={semantic_result.score}, skipping LLM"
+            )
         else:
             llm_manager = get_llm_manager()
             system_prompt = (

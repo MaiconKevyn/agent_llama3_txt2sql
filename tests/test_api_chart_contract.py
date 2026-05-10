@@ -1,0 +1,28 @@
+import time
+
+from src.interfaces.api.main import _build_query_response
+
+
+def test_query_response_includes_optional_chart_payload():
+    chart = {
+        "requested": True,
+        "source": "explicit_current_query",
+        "uses_last_result": False,
+        "chart_hint": "bar",
+        "spec": {"chartable": True, "chart_type": "bar", "x": "municipio", "y": "total"},
+    }
+
+    response = _build_query_response(
+        {
+            "success": True,
+            "response": "ok",
+            "sql_query": "SELECT 1",
+            "chart": chart,
+            "metadata": {"session_id": "s1"},
+        },
+        started_at=time.time(),
+        session_id=None,
+    )
+
+    assert response.chart == chart
+    assert response.session_id == "s1"
