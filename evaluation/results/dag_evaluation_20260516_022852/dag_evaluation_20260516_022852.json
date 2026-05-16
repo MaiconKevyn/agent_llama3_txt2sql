@@ -1,0 +1,896 @@
+{
+  "evaluation_timestamp": "2026-05-16T02:29:40.741756",
+  "run_context": {
+    "run_id": "20260516_022852",
+    "output_dir": "/home/maiconkevyn/PycharmProjects/txt2sql_refactor_openai_v2/evaluation/results/dag_evaluation_20260516_022852",
+    "ground_truth_path": "/tmp/dag_eval_gt112_gt134_20260516.json",
+    "max_workers": 1,
+    "llamaindex_mode": "context",
+    "llamaindex_requested_mode": "context",
+    "llamaindex_top_k_tables": 6,
+    "llamaindex_index_dir": ".llamaindex_schema",
+    "llamaindex_rebuild_index": false,
+    "enable_llamaindex_context": true,
+    "enable_llamaindex_sql_draft": false
+  },
+  "ground_truth": {
+    "requested_path": "/tmp/dag_eval_gt112_gt134_20260516.json",
+    "loaded_path": "/tmp/dag_eval_gt112_gt134_20260516.json",
+    "total_count": 2,
+    "difficulty_breakdown": {
+      "hard": 2
+    }
+  },
+  "preflight": {
+    "checked_count": 2,
+    "failed_count": 0,
+    "failures": []
+  },
+  "configuration": {
+    "llm_provider": "openai",
+    "llm_model": "gpt-4o-mini"
+  },
+  "agent_config": {
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "llamaindex_mode": "context",
+    "llamaindex_top_k_tables": 6,
+    "llamaindex_index_dir": ".llamaindex_schema",
+    "llamaindex_rebuild_index": false,
+    "enable_llamaindex_context": true,
+    "enable_llamaindex_sql_draft": false
+  },
+  "summary": {
+    "total_questions": 2,
+    "agent_success_rate": 1.0,
+    "agent_failure_rate": 0.0,
+    "total_execution_time": 46.480103731155396,
+    "avg_execution_time": 23.240051865577698
+  },
+  "metrics": {
+    "Execution Accuracy (EX)": {
+      "average_score": 1.0,
+      "accuracy": 1.0,
+      "perfect_matches": 2,
+      "total_evaluated": 2
+    }
+  },
+  "difficulty_breakdown": {
+    "hard": {
+      "total": 2,
+      "agent_success": 2,
+      "metrics": {
+        "Execution Accuracy (EX)": {
+          "correct": 2,
+          "total": 2,
+          "scores": [
+            1.0,
+            1.0
+          ]
+        }
+      }
+    }
+  },
+  "evaluation_diagnostics": {
+    "agent_stats": {
+      "success_count": 2,
+      "failure_count": 0,
+      "total_time": 46.480103731155396
+    },
+    "future_errors": [],
+    "pre_aggregation_failures": [],
+    "detailed_result_count": 2,
+    "metric_score_counts": {
+      "Execution Accuracy (EX)": 2
+    }
+  },
+  "detailed_results": [
+    {
+      "question_id": "GT112",
+      "difficulty": "hard",
+      "question": "Qual o crescimento percentual anual de internações no estado do RS entre 2008 e 2023, retornando apenas anos com ano anterior disponível?",
+      "ground_truth_sql": "WITH internacoes_por_ano AS (SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE mu.\"SG_UF\" = 'RS' AND i.\"DT_INTER\" IS NOT NULL AND EXTRACT(YEAR FROM i.\"DT_INTER\") BETWEEN 2008 AND 2023 GROUP BY ano), crescimento_percentual AS (SELECT ano, total_internacoes, LAG(total_internacoes) OVER (ORDER BY ano) AS total_anterior FROM internacoes_por_ano) SELECT ano, total_internacoes, ROUND((total_internacoes - total_anterior) * 100.0 / NULLIF(total_anterior, 0), 2) AS crescimento_percentual FROM crescimento_percentual WHERE total_anterior IS NOT NULL ORDER BY ano;",
+      "predicted_sql": "WITH internacoes_por_ano AS ( SELECT EXTRACT(YEAR FROM \"DT_INTER\") AS ano, COUNT(*) AS total_internacoes FROM internacoes WHERE \"MUNIC_RES\" IN (SELECT \"CO_MUNICIPIO_6D\" FROM municipios WHERE \"SG_UF\" = 'RS') AND EXTRACT(YEAR FROM \"DT_INTER\") BETWEEN 2008 AND 2023 GROUP BY ano ), ano_com_crescimento AS ( SELECT ano, total_internacoes, LAG(total_internacoes) OVER (ORDER BY ano) AS total_internacoes_anterior FROM internacoes_por_ano ) SELECT ano, total_internacoes, total_internacoes_anterior, CASE WHEN total_internacoes_anterior IS NOT NULL AND total_internacoes_anterior > 0 THEN ROUND((total_internacoes - total_internacoes_anterior) * 100.0 / total_internacoes_anterior, 2) ELSE NULL END AS crescimento_percentual FROM ano_com_crescimento WHERE total_internacoes_anterior IS NOT NULL ORDER BY ano;",
+      "agent_success": true,
+      "agent_execution_time": 24.897674560546875,
+      "evaluation_source": "sql_query",
+      "stored_rows": null,
+      "agent_metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 4,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 24.364698886871338
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 1.290334701538086
+          },
+          {
+            "name": "sql_db_schema",
+            "success": true,
+            "execution_time": 0.024461030960083008
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 5.001412630081177
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.3592100143432617
+          }
+        ],
+        "message_count": 14,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "socioeconomico",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "schema_context_length": 16216,
+        "latency_by_component": {
+          "query_classification": 0.00032019615173339844,
+          "table_discovery": 1.2904243469238281,
+          "schema_analysis": 0.02453756332397461,
+          "reasoning": 7.551827430725098,
+          "sql_generation": 4.664987087249756,
+          "sql_validation": 5.0014424324035645,
+          "sql_execution": 0.35932254791259766,
+          "completed": 3.251403331756592
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_cte",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "Comparações temporais e lógica global devem permanecer em uma única SQL.",
+            "plan_type": "single_cte",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual o crescimento percentual anual de internações no estado do RS entre 2008 e 2023, retornando apenas anos com ano anterior disponível?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "trend",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "proporcao",
+              "expression_type": "rate",
+              "denominator_scope": "all_rows_matching_scope_filters",
+              "required_filters": []
+            },
+            {
+              "name": "delta_temporal",
+              "expression_type": "delta",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "ano",
+              "source": "EXTRACT(YEAR FROM internacoes.DT_INTER)",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "estado",
+              "values": [
+                "RS"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "ano",
+              "values": [
+                "2008",
+                "2023"
+              ],
+              "operator": "IN"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "time_series",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "ano"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "time_series",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "ano"
+            ],
+            "filter_dimensions": [
+              "estado"
+            ],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope",
+            "temporal_comparison_requires_separate_period_aggregates"
+          ],
+          "null_policy": [],
+          "ambiguities": [
+            "profile_temporal_coverage: internacoes.DT_INTER ranges from 2008-01-01 to 2023-12-31",
+            "profile_cardinality: ano uses high-cardinality identifier internacoes.DT_INTER"
+          ]
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "socioeconomico",
+          "internacao_procedimento"
+        ],
+        "llamaindex_confidence": 0.44716785530109443,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "socioeconomico",
+          "internacao_procedimento"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "socioeconomico",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "table_selection_preset": "llm_best",
+        "table_selection_mode": "llamaindex_context",
+        "table_selection_description_variant": "role_guardrails",
+        "table_selection_prompt_variant": "decision_checklist",
+        "llamaindex_schema_context_length": 12812,
+        "semantic_constraints": [
+          "rate_denominator_must_preserve_full_scope",
+          "temporal_comparison_requires_separate_period_aggregates"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "O plano foi estruturado para calcular o crescimento percentual anual de internações no estado do RS entre 2008 e 2023, garantindo que apenas anos com ano anterior disponível sejam considerados. As métricas foram definidas para capturar a taxa de crescimento e a variação temporal, enquanto as dimensões e filtros foram ajustados para focar no estado e nos anos relevantes.",
+          "conflicts": [
+            "unknown_metric_ignored: crescimento_percentual",
+            "metric_mismatch: heuristic=['delta_temporal', 'proporcao']; llm=['crescimento_percentual', 'delta_temporal']"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 0.9,
+        "sql_generation_reasoning": "The query calculates the annual growth percentage of hospitalizations in the state of RS from 2008 to 2023. It first aggregates the total hospitalizations per year, then uses the LAG function to get the previous year's total for comparison. Finally, it computes the growth percentage while ensuring that only years with available previous data are included in the results.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope",
+            "temporal_comparison_requires_separate_period_aggregates"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "production",
+        "session_id": "session_33633",
+        "query_number": 1,
+        "orchestrator_execution_time": 24.382918119430542
+      },
+      "multi_query": {
+        "is_multi_query": false,
+        "plan_type": "single_cte",
+        "execution_mode": "single",
+        "multi_query_allowed": false,
+        "allowed_multi_plan_types": [
+          "bind_then_query",
+          "fanout_concat",
+          "verification_side_query"
+        ],
+        "query_plan": {
+          "strategy": "single",
+          "reasoning": "Comparações temporais e lógica global devem permanecer em uma única SQL.",
+          "plan_type": "single_cte",
+          "merge_strategy": "none",
+          "output_nodes": [
+            "sq1"
+          ],
+          "required_constraints": [],
+          "expected_output_shape": {},
+          "verifier_checks": [],
+          "fallback_policy": {},
+          "sub_queries": [
+            {
+              "id": "sq1",
+              "description": "Qual o crescimento percentual anual de internações no estado do RS entre 2008 e 2023, retornando apenas anos com ano anterior disponível?",
+              "purpose": "final_output",
+              "output_role": "output",
+              "expected_result_kind": "rowset",
+              "expected_max_rows": null,
+              "required_constraints": [],
+              "selected_tables": [],
+              "bind_keys": [],
+              "sql": null,
+              "validated_sql": null,
+              "result_raw": null,
+              "parsed_rows": null,
+              "success": false,
+              "error": null,
+              "depends_on": [],
+              "repair_attempts": 0
+            }
+          ]
+        },
+        "sub_query_results": [],
+        "merged_rows": null,
+        "merged_rows_source": null,
+        "merge_strategy": "none",
+        "verifier_outcome": null,
+        "single_fallback_active": false,
+        "single_fallback_reason": null,
+        "final_sql_query": null,
+        "failure_taxonomy": []
+      },
+      "agent_error": null,
+      "metrics": {
+        "Execution Accuracy (EX)": {
+          "score": 1.0,
+          "is_correct": true,
+          "error": null,
+          "details": {
+            "ground_truth_executed": true,
+            "predicted_executed": true,
+            "ground_truth_rows": 15,
+            "predicted_rows": 15,
+            "results_match": true,
+            "comparison_details": {
+              "gt_size": 15,
+              "pred_size": 15,
+              "normalized_match": true,
+              "projected_match": true,
+              "gt_col_count": 3,
+              "pred_col_count": 4,
+              "matching_column_indices": [
+                0,
+                1,
+                3
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "question_id": "GT134",
+      "difficulty": "hard",
+      "question": "Qual a média de dias de internação por especialidade médica, comparando lado a lado os estados MA e RS?",
+      "ground_truth_sql": "SELECT e.\"DESCRICAO\" AS especialidade, ROUND(AVG(CASE WHEN mu.\"SG_UF\" = 'MA' THEN i.\"DIAS_PERM\" END), 2) AS media_dias_MA, ROUND(AVG(CASE WHEN mu.\"SG_UF\" = 'RS' THEN i.\"DIAS_PERM\" END), 2) AS media_dias_RS FROM internacoes i JOIN especialidade e ON i.\"ESPEC\" = e.\"ESPEC\" JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY e.\"DESCRICAO\" HAVING COUNT(CASE WHEN mu.\"SG_UF\" = 'MA' THEN 1 END) > 0 AND COUNT(CASE WHEN mu.\"SG_UF\" = 'RS' THEN 1 END) > 0 ORDER BY especialidade;",
+      "predicted_sql": "SELECT e.\"DESCRICAO\" AS especialidade, ROUND(AVG(CASE WHEN mu.\"SG_UF\" = 'MA' THEN i.\"DIAS_PERM\" END), 2) AS media_MA, ROUND(AVG(CASE WHEN mu.\"SG_UF\" = 'RS' THEN i.\"DIAS_PERM\" END), 2) AS media_RS FROM internacoes i JOIN especialidade e ON i.\"ESPEC\" = e.\"ESPEC\" JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY e.\"DESCRICAO\" HAVING COUNT(CASE WHEN mu.\"SG_UF\" = 'MA' THEN 1 END) > 0 AND COUNT(CASE WHEN mu.\"SG_UF\" = 'RS' THEN 1 END) > 0 ORDER BY e.\"DESCRICAO\";",
+      "agent_success": true,
+      "agent_execution_time": 21.58242917060852,
+      "evaluation_source": "sql_query",
+      "stored_rows": null,
+      "agent_metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 4,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 21.54116177558899
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.4521026611328125
+          },
+          {
+            "name": "sql_db_schema",
+            "success": true,
+            "execution_time": 0.008795499801635742
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 4.393684387207031
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.28716564178466797
+          }
+        ],
+        "message_count": 14,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "especialidade",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "schema_context_length": 16261,
+        "latency_by_component": {
+          "query_classification": 0.0002720355987548828,
+          "table_discovery": 0.4521903991699219,
+          "schema_analysis": 0.008855104446411133,
+          "reasoning": 5.224283695220947,
+          "sql_generation": 4.101171970367432,
+          "sql_validation": 4.393712043762207,
+          "sql_execution": 0.2872788906097412,
+          "completed": 4.944598197937012
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "pivot_compare",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "Comparações lado a lado são mais seguras em uma única SQL.",
+            "plan_type": "pivot_compare",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual a média de dias de internação por especialidade médica, comparando lado a lado os estados MA e RS?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "comparison",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "media_dias_permanencia",
+              "expression_type": "avg",
+              "required_filters": [
+                "AVG(DIAS_PERM)"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "especialidade",
+              "source": "especialidade.DESCRICAO",
+              "role": "group"
+            },
+            {
+              "name": "estado",
+              "source": "internacoes.estado",
+              "role": "filter"
+            }
+          ],
+          "filters": [
+            {
+              "field": "estado",
+              "values": [
+                "MA",
+                "RS"
+              ],
+              "operator": "IN"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "especialidade",
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "especialidade",
+              "estado"
+            ],
+            "filter_dimensions": [
+              "estado"
+            ],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "side_by_side_state_pivot_required"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "especialidade",
+          "internacao_procedimento"
+        ],
+        "llamaindex_confidence": 0.4331272366017353,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "especialidade",
+          "internacao_procedimento"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "especialidade",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "table_selection_preset": "llm_best",
+        "table_selection_mode": "llamaindex_context",
+        "table_selection_description_variant": "role_guardrails",
+        "table_selection_prompt_variant": "decision_checklist",
+        "llamaindex_schema_context_length": 13403,
+        "semantic_constraints": [
+          "side_by_side_state_pivot_required"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A média de dias de internação é calculada por especialidade médica, comparando os estados MA e RS. A métrica de média é utilizada para obter a média de dias de permanência, e as dimensões incluem especialidade e estado para permitir a comparação lado a lado. O filtro garante que apenas os estados MA e RS sejam considerados, e a estrutura de resposta é configurada para retornar uma tabela agrupada por especialidade e estado.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics",
+            "dimensions"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query calculates the average length of stay (\"DIAS_PERM\") for each medical specialty, comparing the states of Maranhão (MA) and Rio Grande do Sul (RS). It uses conditional aggregation to compute the averages side by side, ensuring that only specialties with records in both states are included in the results.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "side_by_side_state_pivot_required"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "production",
+        "session_id": "session_58704",
+        "query_number": 2,
+        "orchestrator_execution_time": 21.554588556289673
+      },
+      "multi_query": {
+        "is_multi_query": false,
+        "plan_type": "pivot_compare",
+        "execution_mode": "single",
+        "multi_query_allowed": false,
+        "allowed_multi_plan_types": [
+          "bind_then_query",
+          "fanout_concat",
+          "verification_side_query"
+        ],
+        "query_plan": {
+          "strategy": "single",
+          "reasoning": "Comparações lado a lado são mais seguras em uma única SQL.",
+          "plan_type": "pivot_compare",
+          "merge_strategy": "none",
+          "output_nodes": [
+            "sq1"
+          ],
+          "required_constraints": [],
+          "expected_output_shape": {},
+          "verifier_checks": [],
+          "fallback_policy": {},
+          "sub_queries": [
+            {
+              "id": "sq1",
+              "description": "Qual a média de dias de internação por especialidade médica, comparando lado a lado os estados MA e RS?",
+              "purpose": "final_output",
+              "output_role": "output",
+              "expected_result_kind": "rowset",
+              "expected_max_rows": null,
+              "required_constraints": [],
+              "selected_tables": [],
+              "bind_keys": [],
+              "sql": null,
+              "validated_sql": null,
+              "result_raw": null,
+              "parsed_rows": null,
+              "success": false,
+              "error": null,
+              "depends_on": [],
+              "repair_attempts": 0
+            }
+          ]
+        },
+        "sub_query_results": [],
+        "merged_rows": null,
+        "merged_rows_source": null,
+        "merge_strategy": "none",
+        "verifier_outcome": null,
+        "single_fallback_active": false,
+        "single_fallback_reason": null,
+        "final_sql_query": null,
+        "failure_taxonomy": []
+      },
+      "agent_error": null,
+      "metrics": {
+        "Execution Accuracy (EX)": {
+          "score": 1.0,
+          "is_correct": true,
+          "error": null,
+          "details": {
+            "ground_truth_executed": true,
+            "predicted_executed": true,
+            "ground_truth_rows": 13,
+            "predicted_rows": 13,
+            "results_match": true,
+            "comparison_details": {
+              "gt_size": 13,
+              "pred_size": 13,
+              "normalized_match": true
+            }
+          }
+        }
+      }
+    }
+  ]
+}
