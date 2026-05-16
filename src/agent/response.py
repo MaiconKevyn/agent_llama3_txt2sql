@@ -235,7 +235,7 @@ def _generate_fallback_response(user_query: str, results_text: str, row_count: i
 
 def clarification_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
     """Fallback clarification response when intent cannot be determined."""
-    prompt = (
+    prompt = state.get("clarification_question") or (
         "Não consegui entender totalmente sua pergunta. "
         "Por favor, reformule adicionando contexto (tabelas, filtros, período)."
     )

@@ -92,12 +92,6 @@ VARIANTS: list[VariantSpec] = [
         flags={"disable_repair": True},
     ),
     VariantSpec(
-        id="V5",
-        name="no_table_selection_llm",
-        description="Remove LLM stage from 3-stage table selection cascade",
-        flags={"disable_table_selection_llm": True},
-    ),
-    VariantSpec(
         id="V6",
         name="no_schema_enrichment",
         description="Remove _enhance_sus_schema_context (SUS-specific mappings)",
@@ -143,6 +137,16 @@ VARIANTS: list[VariantSpec] = [
         name="no_semantic_repair_guidance",
         description="Keep repair node, but remove semantic repair guidance and deterministic semantic repairs",
         flags={"disable_semantic_repair_guidance": True},
+    ),
+    VariantSpec(
+        id="LI2",
+        name="llamaindex_sql_draft",
+        description="Use LlamaIndex SQL draft generation before validation/execution",
+        flags={
+            "enable_llamaindex_context": True,
+            "enable_llamaindex_sql_draft": True,
+            "llamaindex_mode": "sql_draft",
+        },
     ),
 ]
 
@@ -489,6 +493,15 @@ def run_query_item(
         "semantic_error": json.dumps(agent_metadata.get("semantic_error", {}), ensure_ascii=False),
         "semantic_repair": json.dumps(agent_metadata.get("semantic_repair", {}), ensure_ascii=False),
         "repair_attempts": json.dumps(agent_metadata.get("repair_attempts", []), ensure_ascii=False),
+        "llamaindex_mode": agent_metadata.get("llamaindex_mode"),
+        "llamaindex_retrieval_mode": agent_metadata.get("llamaindex_retrieval_mode"),
+        "llamaindex_selected_tables": json.dumps(
+            agent_metadata.get("llamaindex_selected_tables", []), ensure_ascii=False
+        ),
+        "sql_generation_source": agent_metadata.get("sql_generation_source"),
+        "latency_by_component": json.dumps(
+            agent_metadata.get("latency_by_component", {}), ensure_ascii=False
+        ),
         "prompt_tokens": cost.get("prompt_tokens", 0),
         "completion_tokens": cost.get("completion_tokens", 0),
         "total_tokens": cost.get("total_tokens", 0),
@@ -562,6 +575,11 @@ def _run_item_in_worker(
             "semantic_error": "{}",
             "semantic_repair": "{}",
             "repair_attempts": "[]",
+            "llamaindex_mode": None,
+            "llamaindex_retrieval_mode": None,
+            "llamaindex_selected_tables": "[]",
+            "sql_generation_source": None,
+            "latency_by_component": "{}",
             "prompt_tokens": 0,
             "completion_tokens": 0,
             "total_tokens": 0,
@@ -755,6 +773,11 @@ def _run_missing_items(
                         "semantic_error": "{}",
                         "semantic_repair": "{}",
                         "repair_attempts": "[]",
+                        "llamaindex_mode": None,
+                        "llamaindex_retrieval_mode": None,
+                        "llamaindex_selected_tables": "[]",
+                        "sql_generation_source": None,
+                        "latency_by_component": "{}",
                         "prompt_tokens": 0,
                         "completion_tokens": 0,
                         "total_tokens": 0,
@@ -1003,6 +1026,11 @@ DETAIL_FIELDS = [
     "semantic_error",
     "semantic_repair",
     "repair_attempts",
+    "llamaindex_mode",
+    "llamaindex_retrieval_mode",
+    "llamaindex_selected_tables",
+    "sql_generation_source",
+    "latency_by_component",
     "flags",
     "prompt_tokens",
     "completion_tokens",

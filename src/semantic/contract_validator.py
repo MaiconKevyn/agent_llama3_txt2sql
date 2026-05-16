@@ -106,7 +106,7 @@ def _validate_metric_expression_contract(
             return
         if plan.answer_shape.top_n_scope != "none" and ast_summary.window_functions:
             if not re.search(
-                r"\border\s+by\s+(?:sum\s*\([^)]*\"?val_tot\"?[^)]*\)|\"?receita_total\"?)",
+                r"\border\s+by\s+(?:sum\s*\([^)]*\"?val_tot\"?[^)]*\)|(?:[a-z_][\w]*\.)?\"?receita_total\"?)",
                 sql_lower,
                 re.I,
             ):
@@ -154,13 +154,28 @@ def _window_matches_any_dimension(partition_by: list[str], dimensions: list[str]
 
 def _text_matches_dimension(text: str, dimension: str) -> bool:
     dimension_patterns = {
-        "estado": [r"\bestado\b"],
-        "estado_hospital": [r"\bestado\b"],
-        "municipio": [r"\bnome\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
-        "municipio_hospital": [r"\bnome\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
+        "estado": [
+            r"\bestado\b",
+            r"\bsg_uf\b",
+            r"\bmu\.\s*\"?sg_uf\"?\b",
+            r"\bm\.\s*\"?sg_uf\"?\b",
+        ],
+        "estado_hospital": [
+            r"\bestado\b",
+            r"\bsg_uf\b",
+            r"\bmu\.\s*\"?sg_uf\"?\b",
+            r"\bm\.\s*\"?sg_uf\"?\b",
+        ],
+        "municipio": [r"\bno_municipio\b", r"\bnome\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
+        "municipio_hospital": [
+            r"\bno_municipio\b",
+            r"\bnome\b",
+            r"\bmunicipio\b",
+            r"\bmunic[ií]pio\b",
+        ],
         "hospital": [r"\bcnes\b"],
         "especialidade": [r"\bespecialidade\b", r"\bdescri[cç][aã]o\b", r"\bespec\b"],
-        "diagnostico": [r"\bcd_descricao\b", r"\bdiag_princ\b", r"\bcid\b"],
+        "diagnostico": [r"\bdescricao\b", r"\bdiag_princ\b", r"\bcid\b"],
         "procedimento": [r"\bnome_proc\b", r"\bproc_rea\b"],
         "contraceptivo": [r"\bcontraceptivo\b", r"\bcontracep1\b", r"\bdescri[cç][aã]o\b"],
         "sexo": [r"\bsexo\b"],
@@ -193,10 +208,25 @@ def _validate_grouping_contract(
         errors.append("AST CONTRACT ERROR: semantic plan requires GROUP BY but SQL has none.")
         return
     dimension_patterns = {
-        "estado": [r"\bestado\b"],
-        "estado_hospital": [r"\bestado\b"],
-        "municipio": [r"\bnome\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
-        "municipio_hospital": [r"\bnome\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
+        "estado": [
+            r"\bestado\b",
+            r"\bsg_uf\b",
+            r"\bmu\.\s*\"?sg_uf\"?\b",
+            r"\bm\.\s*\"?sg_uf\"?\b",
+        ],
+        "estado_hospital": [
+            r"\bestado\b",
+            r"\bsg_uf\b",
+            r"\bmu\.\s*\"?sg_uf\"?\b",
+            r"\bm\.\s*\"?sg_uf\"?\b",
+        ],
+        "municipio": [r"\bno_municipio\b", r"\bnome\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
+        "municipio_hospital": [
+            r"\bno_municipio\b",
+            r"\bnome\b",
+            r"\bmunicipio\b",
+            r"\bmunic[ií]pio\b",
+        ],
         "sexo": [r"\bsexo\b"],
         "raca_cor": [r"\braca_cor\b", r"\bra[cç]a\b", r"\bcor\b", r"\bdescri[cç][aã]o\b"],
         "instrucao": [
@@ -208,7 +238,7 @@ def _validate_grouping_contract(
         "idade": [r"\bidade\b"],
         "hospital": [r"\bcnes\b"],
         "especialidade": [r"\bespecialidade\b", r"\bdescri[cç][aã]o\b", r"\bespec\b"],
-        "diagnostico": [r"\bcd_descricao\b", r"\bdiag_princ\b", r"\bcid\b"],
+        "diagnostico": [r"\bdescricao\b", r"\bdiag_princ\b", r"\bcid\b"],
         "procedimento": [r"\bnome_proc\b", r"\bproc_rea\b"],
         "contraceptivo": [r"\bcontraceptivo\b", r"\bcontracep1\b", r"\bdescri[cç][aã]o\b"],
         "ano": [r"\bano\b", r"\bextract\s*\(\s*year\b"],
@@ -217,6 +247,12 @@ def _validate_grouping_contract(
         "quartil": [r"\bntile\b", r"\bquartil\b", r"\bntile_grupo\b"],
     }
     for dimension in plan.answer_shape.required_dimensions:
+        if "side_by_side_state_pivot_required" in plan.constraints and dimension in {
+            "estado",
+            "SG_UF",
+            "estado_hospital",
+        }:
+            continue
         patterns = dimension_patterns.get(dimension)
         if patterns and not any(re.search(pattern, group_by, re.I) for pattern in patterns):
             errors.append(
@@ -308,6 +344,14 @@ def _join_path_errors(
         right_present = right_table in sql_tables
         if not left_present and not right_present:
             continue
+        if (
+            dimension == "procedimento"
+            and left == "internacoes.N_AIH"
+            and right == "internacao_procedimento.N_AIH"
+            and not left_present
+            and right_present
+        ):
+            continue
         if not left_present or not right_present:
             errors.append(
                 f"AST CONTRACT ERROR: SQL join path for {dimension} does not include catalog edge {edge}."
@@ -325,11 +369,11 @@ def _prefer_contextual_catalog_names(
     dimension_names: list[str],
     base_grain: str,
 ) -> list[str]:
-    if base_grain == "municipio_ano_metrica" and "municipio_socioeconomico" in catalog_names:
+    if base_grain == "municipio_ano" and "municipio_socioeconomico" in catalog_names:
         return ["municipio_socioeconomico"] + [
             name for name in catalog_names if name != "municipio_socioeconomico"
         ]
-    if base_grain == "municipio_ano_metrica" and "estado_residencia" in catalog_names:
+    if base_grain == "municipio_ano" and "estado_residencia" in catalog_names:
         return ["estado_socioeconomico"] + [
             name for name in catalog_names if name != "estado_socioeconomico"
         ]

@@ -1,302 +1,70 @@
 [
-    {
-        "question": "Quantas mortes?",
-        "sql": "SELECT COUNT(*) FROM mortes;"
-    },
-    {
-        "question": "Quantos homens morreram?",
-        "sql": "SELECT COUNT(DISTINCT m.\"N_AIH\") FROM mortes m INNER JOIN internacoes i ON m.\"N_AIH\" = i.\"N_AIH\" WHERE i.\"SEXO\" = 1;"
-    },
-    {
-        "question": "Quantas mulheres morreram?",
-        "sql": "SELECT COUNT(DISTINCT m.\"N_AIH\") FROM mortes m INNER JOIN internacoes i ON m.\"N_AIH\" = i.\"N_AIH\" WHERE i.\"SEXO\" = 3;"
-    },
-    {
-        "question": "Quantas internações?",
-        "sql": "SELECT COUNT(*) FROM internacoes;"
-    },
-    {
-        "question": "Quantas internações de homens?",
-        "sql": "SELECT COUNT(*) FROM internacoes WHERE \"SEXO\" = 1;"
-    },
-    {
-        "question": "Quantas internações de mulheres?",
-        "sql": "SELECT COUNT(*) FROM internacoes WHERE \"SEXO\" = 3;"
-    },
-    {
-        "question": "Total de internações por sexo",
-        "sql": "SELECT \"SEXO\", COUNT(*) as total FROM internacoes GROUP BY \"SEXO\" ORDER BY total DESC;"
-    },
-    {
-        "question": "Qual a média de idade dos pacientes?",
-        "sql": "SELECT AVG(\"IDADE\") FROM internacoes;"
-    },
-    {
-        "question": "Média de idade dos pacientes que faleceram",
-        "sql": "SELECT AVG(i.\"IDADE\") FROM internacoes i INNER JOIN mortes m ON i.\"N_AIH\" = m.\"N_AIH\";"
-    },
-    {
-        "question": "Média de idade por sexo",
-        "sql": "SELECT \"SEXO\", AVG(\"IDADE\") as media_idade FROM internacoes GROUP BY \"SEXO\";"
-    },
-    {
-        "question": "Quantos idosos acima de 60 anos foram internados?",
-        "sql": "SELECT COUNT(*) FROM internacoes WHERE \"IDADE\" > 60;"
-    },
-    {
-        "question": "Quantas crianças menores de 10 anos foram internadas?",
-        "sql": "SELECT COUNT(*) FROM internacoes WHERE \"IDADE\" < 10;"
-    },
-    {
-        "question": "Internações por faixa etária",
-        "sql": "SELECT CASE WHEN \"IDADE\" < 18 THEN 'Menor de 18' WHEN \"IDADE\" BETWEEN 18 AND 59 THEN 'Adulto' ELSE 'Idoso' END as faixa_etaria, COUNT(*) as total FROM internacoes GROUP BY faixa_etaria ORDER BY total DESC;"
-    },
-    {
-        "question": "Qual cidade com mais mortes?",
-        "sql": "SELECT mu.nome, COUNT(DISTINCT m.\"N_AIH\") as total_mortes FROM mortes m INNER JOIN internacoes i ON m.\"N_AIH\" = i.\"N_AIH\" INNER JOIN municipios mu ON i.\"MUNIC_RES\" = mu.codigo_6d GROUP BY mu.nome ORDER BY total_mortes DESC LIMIT 1;"
-    },
-    {
-        "question": "Qual cidade com mais mortes de homens?",
-        "sql": "SELECT mu.nome, COUNT(DISTINCT m.\"N_AIH\") as total FROM mortes m INNER JOIN internacoes i ON m.\"N_AIH\" = i.\"N_AIH\" INNER JOIN municipios mu ON i.\"MUNIC_RES\" = mu.codigo_6d WHERE i.\"SEXO\" = 1 GROUP BY mu.nome ORDER BY total DESC LIMIT 1;"
-    },
-    {
-        "question": "Top 5 cidades com mais internações",
-        "sql": "SELECT mu.nome, COUNT(*) as total FROM internacoes i INNER JOIN municipios mu ON i.\"MUNIC_RES\" = mu.codigo_6d GROUP BY mu.nome ORDER BY total DESC LIMIT 5;"
-    },
-    {
-        "question": "Internações por município",
-        "sql": "SELECT mu.nome, COUNT(*) as total FROM internacoes i INNER JOIN municipios mu ON i.\"MUNIC_RES\" = mu.codigo_6d GROUP BY mu.nome ORDER BY total DESC;"
-    },
-    {
-        "question": "Internações em Porto Alegre",
-        "sql": "SELECT COUNT(*) FROM internacoes i INNER JOIN municipios mu ON i.\"MUNIC_RES\" = mu.codigo_6d WHERE mu.nome ILIKE '%Porto Alegre%';"
-    },
-    {
-        "question": "Mortes em Porto Alegre",
-        "sql": "SELECT COUNT(DISTINCT m.\"N_AIH\") FROM mortes m INNER JOIN internacoes i ON m.\"N_AIH\" = i.\"N_AIH\" INNER JOIN municipios mu ON i.\"MUNIC_RES\" = mu.codigo_6d WHERE mu.nome ILIKE '%Porto Alegre%';"
-    },
-    {
-        "question": "Quais os 5 principais diagnósticos?",
-        "sql": "SELECT c.\"CD_DESCRICAO\", COUNT(*) as total FROM internacoes i INNER JOIN cid10 c ON i.\"DIAG_PRINC\" = c.\"CID\" GROUP BY c.\"CD_DESCRICAO\" ORDER BY total DESC LIMIT 5;"
-    },
-    {
-        "question": "Diagnósticos mais comuns",
-        "sql": "SELECT \"DIAG_PRINC\", COUNT(*) as total FROM internacoes GROUP BY \"DIAG_PRINC\" ORDER BY total DESC LIMIT 10;"
-    },
-    {
-        "question": "Internações por diagnóstico principal",
-        "sql": "SELECT c.\"CD_DESCRICAO\", COUNT(*) as total FROM internacoes i LEFT JOIN cid10 c ON i.\"DIAG_PRINC\" = c.\"CID\" GROUP BY c.\"CD_DESCRICAO\" ORDER BY total DESC LIMIT 20;"
-    },
-    {
-        "question": "Mulheres por diagnóstico",
-        "sql": "SELECT \"DIAG_PRINC\", COUNT(*) as total FROM internacoes WHERE \"SEXO\" = 3 GROUP BY \"DIAG_PRINC\" ORDER BY total DESC;"
-    },
-    {
-        "question": "Internações de diabetes",
-        "sql": "SELECT COUNT(*) FROM internacoes i INNER JOIN cid10 c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE c.\"CD_DESCRICAO\" ILIKE '%diabetes%';"
-    },
-    {
-        "question": "Internações por doenças cardiovasculares",
-        "sql": "SELECT COUNT(*) FROM internacoes i INNER JOIN cid10 c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE c.\"CID\" LIKE 'I%';"
-    },
-    {
-        "question": "Internações por doenças respiratórias",
-        "sql": "SELECT COUNT(*) FROM internacoes i INNER JOIN cid10 c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE c.\"CID\" LIKE 'J%';"
-    },
-    {
-        "question": "Internações por câncer",
-        "sql": "SELECT COUNT(*) FROM internacoes i INNER JOIN cid10 c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE c.\"CID\" LIKE 'C%';"
-    },
-    {
-        "question": "Qual o valor total gasto em internações?",
-        "sql": "SELECT SUM(\"VAL_TOT\") as total_gasto FROM internacoes;"
-    },
-    {
-        "question": "Valor médio por internação",
-        "sql": "SELECT AVG(\"VAL_TOT\") as valor_medio FROM internacoes;"
-    },
-    {
-        "question": "Valor total gasto por sexo",
-        "sql": "SELECT \"SEXO\", SUM(\"VAL_TOT\") as total FROM internacoes GROUP BY \"SEXO\";"
-    },
-    {
-        "question": "Qual hospital com maior gasto?",
-        "sql": "SELECT h.\"CNES\", SUM(i.\"VAL_TOT\") as total_gasto FROM internacoes i INNER JOIN hospital h ON i.\"CNES\" = h.\"CNES\" GROUP BY h.\"CNES\" ORDER BY total_gasto DESC LIMIT 1;"
-    },
-    {
-        "question": "Top 10 hospitais com mais internações",
-        "sql": "SELECT \"CNES\", COUNT(*) as total FROM internacoes GROUP BY \"CNES\" ORDER BY total DESC LIMIT 10;"
-    },
-    {
-        "question": "Quantos hospitais existem?",
-        "sql": "SELECT COUNT(*) FROM hospital;"
-    },
-    {
-        "question": "Hospitais públicos",
-        "sql": "SELECT COUNT(*) FROM hospital WHERE \"NATUREZA\" = '00';"
-    },
-    {
-        "question": "Hospitais privados",
-        "sql": "SELECT COUNT(*) FROM hospital WHERE \"NATUREZA\" IN ('50', '60', '61');"
-    },
-    {
-        "question": "Internações em hospitais públicos",
-        "sql": "SELECT COUNT(*) FROM internacoes i INNER JOIN hospital h ON i.\"CNES\" = h.\"CNES\" WHERE h.\"NATUREZA\" = '00';"
-    },
-    {
-        "question": "Média de dias de permanência",
-        "sql": "SELECT AVG(\"DIAS_PERM\") FROM internacoes;"
-    },
-    {
-        "question": "Internações com mais de 10 dias",
-        "sql": "SELECT COUNT(*) FROM internacoes WHERE \"DIAS_PERM\" > 10;"
-    },
-    {
-        "question": "Tempo médio de internação por sexo",
-        "sql": "SELECT \"SEXO\", AVG(\"DIAS_PERM\") as media_dias FROM internacoes GROUP BY \"SEXO\";"
-    },
-    {
-        "question": "Tempo médio de permanência por faixa etária",
-        "sql": "SELECT CASE WHEN \"IDADE\" < 18 THEN 'Menor' WHEN \"IDADE\" BETWEEN 18 AND 59 THEN 'Adulto' ELSE 'Idoso' END as faixa, AVG(\"DIAS_PERM\") as media FROM internacoes GROUP BY faixa;"
-    },
-    {
-        "question": "Quantos óbitos ocorreram em 2023?",
-        "sql": "SELECT COUNT(DISTINCT m.\"N_AIH\") FROM mortes m INNER JOIN internacoes i ON m.\"N_AIH\" = i.\"N_AIH\" WHERE EXTRACT(YEAR FROM i.\"DT_SAIDA\") = 2023;"
-    },
-    {
-        "question": "Internações em 2023",
-        "sql": "SELECT COUNT(*) FROM internacoes WHERE EXTRACT(YEAR FROM \"DT_INTER\") = 2023;"
-    },
-    {
-        "question": "Internações por ano",
-        "sql": "SELECT EXTRACT(YEAR FROM \"DT_INTER\") as ano, COUNT(*) as total FROM internacoes GROUP BY ano ORDER BY ano DESC;"
-    },
-    {
-        "question": "Mortes por ano",
-        "sql": "SELECT EXTRACT(YEAR FROM i.\"DT_SAIDA\") as ano, COUNT(DISTINCT m.\"N_AIH\") as total FROM mortes m INNER JOIN internacoes i ON m.\"N_AIH\" = i.\"N_AIH\" GROUP BY ano ORDER BY ano DESC;"
-    },
-    {
-        "question": "Taxa de mortalidade por ano",
-        "sql": "SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") as ano, COUNT(DISTINCT m.\"N_AIH\")::float / COUNT(DISTINCT i.\"N_AIH\") * 100 as taxa_mortalidade FROM internacoes i LEFT JOIN mortes m ON i.\"N_AIH\" = m.\"N_AIH\" GROUP BY ano ORDER BY ano DESC;"
-    },
-    {
-        "question": "Taxa de mortalidade geral",
-        "sql": "SELECT ROUND(COUNT(DISTINCT m.\"N_AIH\")::numeric / COUNT(DISTINCT i.\"N_AIH\") * 100, 2) as taxa_mortalidade FROM internacoes i LEFT JOIN mortes m ON i.\"N_AIH\" = m.\"N_AIH\";"
-    },
-    {
-        "question": "Taxa de mortalidade por sexo",
-        "sql": "SELECT i.\"SEXO\", ROUND(COUNT(DISTINCT m.\"N_AIH\")::numeric / COUNT(DISTINCT i.\"N_AIH\") * 100, 2) as taxa FROM internacoes i LEFT JOIN mortes m ON i.\"N_AIH\" = m.\"N_AIH\" GROUP BY i.\"SEXO\";"
-    },
-    {
-        "question": "Taxa de mortalidade por faixa etária",
-        "sql": "SELECT CASE WHEN i.\"IDADE\" < 18 THEN 'Menor' WHEN i.\"IDADE\" BETWEEN 18 AND 59 THEN 'Adulto' ELSE 'Idoso' END as faixa, ROUND(COUNT(DISTINCT m.\"N_AIH\")::numeric / COUNT(DISTINCT i.\"N_AIH\") * 100, 2) as taxa FROM internacoes i LEFT JOIN mortes m ON i.\"N_AIH\" = m.\"N_AIH\" GROUP BY faixa;"
-    },
-    {
-        "question": "Principais causas de morte",
-        "sql": "SELECT c.\"CD_DESCRICAO\", COUNT(*) as total FROM mortes m INNER JOIN cid10 c ON m.\"CID_MORTE\" = c.\"CID\" GROUP BY c.\"CD_DESCRICAO\" ORDER BY total DESC LIMIT 10;"
-    },
-    {
-        "question": "Mortes por CID-10",
-        "sql": "SELECT \"CID_MORTE\", COUNT(*) as total FROM mortes GROUP BY \"CID_MORTE\" ORDER BY total DESC LIMIT 20;"
-    },
-    {
-        "question": "Mortes por doenças cardiovasculares",
-        "sql": "SELECT COUNT(*) FROM mortes m INNER JOIN cid10 c ON m.\"CID_MORTE\" = c.\"CID\" WHERE c.\"CID\" LIKE 'I%';"
-    },
-    {
-        "question": "Casos obstétricos",
-        "sql": "SELECT COUNT(*) FROM obstetricos;"
-    },
-    {
-        "question": "Internações com pré-natal",
-        "sql": "SELECT COUNT(*) FROM obstetricos WHERE \"INSC_PN\" IS NOT NULL;"
-    },
-    {
-        "question": "Internações em UTI",
-        "sql": "SELECT COUNT(*) FROM uti_detalhes;"
-    },
-    {
-        "question": "Custo médio de UTI",
-        "sql": "SELECT AVG(i.\"VAL_TOT\") FROM internacoes i INNER JOIN uti_detalhes u ON i.\"N_AIH\" = u.\"N_AIH\";"
-    },
-    {
-        "question": "Internações por raça/cor",
-        "sql": "SELECT \"RACA_COR\", COUNT(*) as total FROM internacoes WHERE \"RACA_COR\" IS NOT NULL GROUP BY \"RACA_COR\" ORDER BY total DESC;"
-    },
-    {
-        "question": "Top 5 municípios com maior população",
-        "sql": "SELECT m.nome, d.populacao FROM municipios m INNER JOIN dado_ibge d ON m.codigo_ibge = d.codigo_municipio_completo ORDER BY d.populacao DESC LIMIT 5;"
-    },
-    {
-        "question": "Municípios com maior mortalidade infantil",
-        "sql": "SELECT m.nome, d.mortalidade_infantil FROM municipios m INNER JOIN dado_ibge d ON m.codigo_ibge = d.codigo_municipio_completo WHERE d.mortalidade_infantil IS NOT NULL ORDER BY d.mortalidade_infantil DESC LIMIT 10;"
-    },
-    {
-        "question": "Municípios com maior densidade demográfica",
-        "sql": "SELECT m.nome, d.densidade_demografica FROM municipios m INNER JOIN dado_ibge d ON m.codigo_ibge = d.codigo_municipio_completo WHERE d.densidade_demografica IS NOT NULL ORDER BY d.densidade_demografica DESC LIMIT 10;"
-    },
-    {
-        "question": "Relação entre internações e população por cidade",
-        "sql": "SELECT m.nome, COUNT(i.\"N_AIH\") as internacoes, d.populacao, ROUND(COUNT(i.\"N_AIH\")::numeric / d.populacao * 1000, 2) as taxa_por_mil FROM municipios m INNER JOIN dado_ibge d ON m.codigo_ibge = d.codigo_municipio_completo LEFT JOIN internacoes i ON m.codigo_6d = i.\"MUNIC_RES\" WHERE d.populacao > 0 GROUP BY m.nome, d.populacao ORDER BY taxa_por_mil DESC LIMIT 10;"
-    },
-    {
-        "question": "Pacientes mais jovens",
-        "sql": "SELECT \"N_AIH\", \"IDADE\", \"SEXO\" FROM internacoes ORDER BY \"IDADE\" ASC LIMIT 10;"
-    },
-    {
-        "question": "Pacientes mais velhos",
-        "sql": "SELECT \"N_AIH\", \"IDADE\", \"SEXO\" FROM internacoes ORDER BY \"IDADE\" DESC LIMIT 10;"
-    },
-    {
-        "question": "Internações mais caras",
-        "sql": "SELECT \"N_AIH\", \"VAL_TOT\", \"DIAG_PRINC\" FROM internacoes ORDER BY \"VAL_TOT\" DESC LIMIT 10;"
-    },
-    {
-        "question": "Internações mais longas",
-        "sql": "SELECT \"N_AIH\", \"DIAS_PERM\", \"DIAG_PRINC\", \"IDADE\" FROM internacoes ORDER BY \"DIAS_PERM\" DESC LIMIT 10;"
-    },
-    {
-        "question": "Distribuição de internações por mês em 2023",
-        "sql": "SELECT EXTRACT(MONTH FROM \"DT_INTER\") as mes, COUNT(*) as total FROM internacoes WHERE EXTRACT(YEAR FROM \"DT_INTER\") = 2023 GROUP BY mes ORDER BY mes;"
-    },
-    {
-        "question": "Hospital com maior taxa de mortalidade",
-        "sql": "SELECT i.\"CNES\", COUNT(DISTINCT m.\"N_AIH\")::numeric / COUNT(DISTINCT i.\"N_AIH\") * 100 as taxa_mortalidade FROM internacoes i LEFT JOIN mortes m ON i.\"N_AIH\" = m.\"N_AIH\" GROUP BY i.\"CNES\" HAVING COUNT(DISTINCT i.\"N_AIH\") > 100 ORDER BY taxa_mortalidade DESC LIMIT 1;"
-    },
-    {
-        "question": "Comparar internações de homens e mulheres por ano",
-        "sql": "SELECT EXTRACT(YEAR FROM \"DT_INTER\") as ano, \"SEXO\", COUNT(*) as total FROM internacoes GROUP BY ano, \"SEXO\" ORDER BY ano DESC, \"SEXO\";"
-    },
-    {
-        "question": "Percentual de mortes por sexo",
-        "sql": "SELECT i.\"SEXO\", COUNT(DISTINCT m.\"N_AIH\") as mortes, COUNT(DISTINCT i.\"N_AIH\") as total, ROUND(COUNT(DISTINCT m.\"N_AIH\")::numeric / COUNT(DISTINCT i.\"N_AIH\") * 100, 2) as percentual FROM internacoes i LEFT JOIN mortes m ON i.\"N_AIH\" = m.\"N_AIH\" GROUP BY i.\"SEXO\";"
-    },
-    {
-        "question": "Internações com diagnóstico de COVID-19",
-        "sql": "SELECT COUNT(*) FROM internacoes i INNER JOIN cid10 c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE c.\"CID\" LIKE 'U07%' OR c.\"CD_DESCRICAO\" ILIKE '%covid%';"
-    },
-    {
-        "question": "Mortes por COVID-19",
-        "sql": "SELECT COUNT(*) FROM mortes m INNER JOIN cid10 c ON m.\"CID_MORTE\" = c.\"CID\" WHERE c.\"CID\" LIKE 'U07%' OR c.\"CD_DESCRICAO\" ILIKE '%covid%';"
-    },
-    {
-        "question": "Quais são os 10 municípios com mais internações?",
-        "sql": "SELECT m.nome AS municipio, COUNT(i.\"N_AIH\") AS total_internacoes FROM internacoes i JOIN municipios m ON i.\"MUNIC_RES\" = m.codigo_6d GROUP BY m.nome ORDER BY total_internacoes DESC LIMIT 10;"
-    },
-    {
-        "question": "Municípios com maior número de internações (sem filtros)",
-        "sql": "SELECT m.nome AS municipio, COUNT(i.\"N_AIH\") AS total_internacoes FROM internacoes i JOIN municipios m ON i.\"MUNIC_RES\" = m.codigo_6d GROUP BY m.nome ORDER BY total_internacoes DESC LIMIT 10;"
-    },
-    {
-        "question": "Ranking de internações por cidade",
-        "sql": "SELECT m.nome AS municipio, COUNT(i.\"N_AIH\") AS total_internacoes FROM internacoes i JOIN municipios m ON i.\"MUNIC_RES\" = m.codigo_6d GROUP BY m.nome ORDER BY total_internacoes DESC LIMIT 10;"
-    },
-    {
-        "question": "Qual a taxa de mortalidade no estado do Rio Grande do Sul em 2021?",
-        "sql": "SELECT ROUND((COUNT(DISTINCT m.\"N_AIH\")::numeric / COUNT(DISTINCT i.\"N_AIH\") * 100), 2) AS taxa_mortalidade_perc FROM internacoes i LEFT JOIN mortes m ON i.\"N_AIH\" = m.\"N_AIH\" LEFT JOIN municipios mu ON i.\"MUNIC_RES\" = mu.codigo_6d LEFT JOIN dado_ibge d ON mu.codigo_ibge = d.codigo_municipio_completo WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND d.sigla_estado = 'rs';"
-    },
-    {
-        "question": "Qual a taxa de mortalidade por município?",
-        "sql": "SELECT i.\"MUNIC_RES\", COUNT(DISTINCT i.\"N_AIH\") as internacoes, COUNT(DISTINCT m.\"N_AIH\") as mortes, ROUND(COUNT(DISTINCT m.\"N_AIH\")::numeric / COUNT(DISTINCT i.\"N_AIH\") * 100, 2) as taxa_mortalidade FROM internacoes i LEFT JOIN mortes m ON i.\"N_AIH\" = m.\"N_AIH\" WHERE i.\"MUNIC_RES\" IS NOT NULL GROUP BY i.\"MUNIC_RES\" HAVING COUNT(DISTINCT i.\"N_AIH\") > 100 ORDER BY taxa_mortalidade DESC LIMIT 10;"
-    }
+  {
+    "question": "Quantas mortes foram registradas?",
+    "sql": "SELECT COUNT(*) AS total_mortes FROM internacoes WHERE \"MORTE\" = true;"
+  },
+  {
+    "question": "Quantos homens morreram?",
+    "sql": "SELECT COUNT(*) AS total_mortes_homens FROM internacoes WHERE \"MORTE\" = true AND \"SEXO\" = 1;"
+  },
+  {
+    "question": "Quantas mulheres morreram?",
+    "sql": "SELECT COUNT(*) AS total_mortes_mulheres FROM internacoes WHERE \"MORTE\" = true AND \"SEXO\" = 3;"
+  },
+  {
+    "question": "Quantas internacoes foram registradas?",
+    "sql": "SELECT COUNT(*) AS total_internacoes FROM internacoes;"
+  },
+  {
+    "question": "Quantas internacoes de UTI existem?",
+    "sql": "SELECT COUNT(*) AS total_uti FROM internacoes WHERE \"VAL_UTI\" > 0;"
+  },
+  {
+    "question": "Qual o custo medio de UTI?",
+    "sql": "SELECT AVG(\"VAL_UTI\") AS custo_medio_uti FROM internacoes WHERE \"VAL_UTI\" > 0;"
+  },
+  {
+    "question": "Top 5 municipios com mais internacoes",
+    "sql": "SELECT mu.\"NO_MUNICIPIO\" AS municipio, COUNT(*) AS total FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" GROUP BY mu.\"NO_MUNICIPIO\" ORDER BY total DESC LIMIT 5;"
+  },
+  {
+    "question": "Quantas mortes ocorreram no estado do RS?",
+    "sql": "SELECT COUNT(*) AS total_mortes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"MORTE\" = true AND mu.\"SG_UF\" = 'RS';"
+  },
+  {
+    "question": "Qual a taxa de mortalidade por ano?",
+    "sql": "SELECT EXTRACT(YEAR FROM \"DT_INTER\") AS ano, SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_mortalidade FROM internacoes WHERE \"DT_INTER\" IS NOT NULL GROUP BY ano ORDER BY ano;"
+  },
+  {
+    "question": "Quais os 5 principais diagnosticos de obito?",
+    "sql": "SELECT c.\"DESCRICAO\" AS diagnostico, COUNT(*) AS total_mortes FROM internacoes i JOIN cid c ON i.\"CID_MORTE\" = c.\"CID\" WHERE i.\"MORTE\" = true AND i.\"CID_MORTE\" IS NOT NULL GROUP BY c.\"DESCRICAO\" ORDER BY total_mortes DESC LIMIT 5;"
+  },
+  {
+    "question": "Quais os 5 procedimentos mais realizados?",
+    "sql": "SELECT p.\"NOME_PROC\" AS procedimento, COUNT(*) AS total FROM internacao_procedimento ip JOIN procedimentos p ON ip.\"PROC_REA\" = p.\"PROC_REA\" GROUP BY p.\"NOME_PROC\" ORDER BY total DESC LIMIT 5;"
+  },
+  {
+    "question": "Qual a taxa de mortalidade infantil media no Brasil?",
+    "sql": "SELECT AVG(\"VL_MORT_INFANTIL\") AS taxa_media_mortalidade_infantil FROM socioeconomico WHERE \"VL_MORT_INFANTIL\" IS NOT NULL;"
+  },
+  {
+    "question": "Quais municipios tem maior populacao no ano mais recente?",
+    "sql": "WITH ultimo_ano AS (SELECT MAX(\"NU_ANO\") AS ano FROM socioeconomico WHERE \"QT_POPULACAO\" IS NOT NULL) SELECT mu.\"NO_MUNICIPIO\" AS municipio, s.\"QT_POPULACAO\" AS populacao FROM socioeconomico s JOIN ultimo_ano u ON s.\"NU_ANO\" = u.ano JOIN municipios mu ON s.\"CO_MUNICIPIO_6D\" = mu.\"CO_MUNICIPIO_6D\" WHERE s.\"QT_POPULACAO\" IS NOT NULL ORDER BY s.\"QT_POPULACAO\" DESC LIMIT 5;"
+  },
+  {
+    "question": "Qual o PIB per capita medio dos municipios?",
+    "sql": "SELECT AVG(\"VL_PIB_PERCAPITA\") AS pib_per_capita_medio FROM socioeconomico WHERE \"VL_PIB_PERCAPITA\" IS NOT NULL;"
+  },
+  {
+    "question": "Qual o total de medicos registrados por estado?",
+    "sql": "SELECT mu.\"SG_UF\" AS estado, SUM(s.\"QT_MEDICOS\") AS total_medicos FROM socioeconomico s JOIN municipios mu ON s.\"CO_MUNICIPIO_6D\" = mu.\"CO_MUNICIPIO_6D\" GROUP BY mu.\"SG_UF\" ORDER BY total_medicos DESC;"
+  },
+  {
+    "question": "Qual o maior valor de internacao registrado?",
+    "sql": "SELECT MAX(\"VAL_TOT\") AS maior_valor FROM internacoes;"
+  },
+  {
+    "question": "Qual a menor idade registrada nas internacoes?",
+    "sql": "SELECT MIN(\"IDADE\") AS idade_minima FROM internacoes;"
+  }
 ]

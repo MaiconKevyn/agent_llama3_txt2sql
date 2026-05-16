@@ -1,0 +1,526 @@
+[
+  {
+    "id": "DQ001",
+    "title": "Altas anteriores a internacao",
+    "severity": "critical",
+    "why_it_matters": "Datas de saida anteriores a entrada quebram analises de permanencia e desfecho.",
+    "affected_rows": 0,
+    "sql": "SELECT COUNT(*) AS affected_rows FROM internacoes WHERE DT_SAIDA < DT_INTER",
+    "sample_sql": "SELECT N_AIH, DT_INTER, DT_SAIDA, DIAS_PERM FROM internacoes WHERE DT_SAIDA < DT_INTER LIMIT 10",
+    "sample_rows": [],
+    "blocks_ground_truth": false,
+    "duration_seconds": 0.617
+  },
+  {
+    "id": "DQ002",
+    "title": "DT_INTER fora do periodo 2007-2023",
+    "severity": "high",
+    "why_it_matters": "O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro.",
+    "affected_rows": 27,
+    "sql": "SELECT COUNT(*) AS affected_rows FROM internacoes WHERE DT_INTER < DATE '2007-01-01' OR DT_INTER > DATE '2023-12-31'",
+    "sample_sql": "SELECT N_AIH, DT_INTER, DT_SAIDA FROM internacoes WHERE DT_INTER < DATE '2007-01-01' OR DT_INTER > DATE '2023-12-31' ORDER BY DT_INTER LIMIT 10",
+    "sample_rows": [
+      {
+        "N_AIH": 2607104890841,
+        "DT_INTER": "2000-01-01",
+        "DT_SAIDA": "2008-07-31"
+      },
+      {
+        "N_AIH": 4108100249957,
+        "DT_INTER": "2000-03-01",
+        "DT_SAIDA": "2008-03-25"
+      },
+      {
+        "N_AIH": 4108104837177,
+        "DT_INTER": "2000-03-20",
+        "DT_SAIDA": "2008-05-30"
+      },
+      {
+        "N_AIH": 3508111513797,
+        "DT_INTER": "2000-06-11",
+        "DT_SAIDA": "2008-07-25"
+      },
+      {
+        "N_AIH": 3509113569401,
+        "DT_INTER": "2000-06-24",
+        "DT_SAIDA": "2009-08-22"
+      },
+      {
+        "N_AIH": 5208102827290,
+        "DT_INTER": "2000-06-27",
+        "DT_SAIDA": "2008-08-31"
+      },
+      {
+        "N_AIH": 3508110556566,
+        "DT_INTER": "2000-07-18",
+        "DT_SAIDA": "2008-08-06"
+      },
+      {
+        "N_AIH": 3108102537716,
+        "DT_INTER": "2000-11-01",
+        "DT_SAIDA": "2008-11-30"
+      },
+      {
+        "N_AIH": 2308101989523,
+        "DT_INTER": "2000-11-17",
+        "DT_SAIDA": "2009-03-31"
+      },
+      {
+        "N_AIH": 2910100451126,
+        "DT_INTER": "2001-04-01",
+        "DT_SAIDA": "2010-04-03"
+      }
+    ],
+    "blocks_ground_truth": true,
+    "duration_seconds": 0.025
+  },
+  {
+    "id": "DQ003",
+    "title": "DT_SAIDA fora do periodo 2007-2023",
+    "severity": "high",
+    "why_it_matters": "Saidas fora do calendario esperado afetam series temporais por competencia/alta.",
+    "affected_rows": 0,
+    "sql": "SELECT COUNT(*) AS affected_rows FROM internacoes WHERE DT_SAIDA < DATE '2007-01-01' OR DT_SAIDA > DATE '2023-12-31'",
+    "sample_sql": "SELECT N_AIH, DT_INTER, DT_SAIDA FROM internacoes WHERE DT_SAIDA < DATE '2007-01-01' OR DT_SAIDA > DATE '2023-12-31' ORDER BY DT_SAIDA LIMIT 10",
+    "sample_rows": [],
+    "blocks_ground_truth": false,
+    "duration_seconds": 0.002
+  },
+  {
+    "id": "DQ004",
+    "title": "DIAS_PERM diferente da diferenca simples entre saida e entrada",
+    "severity": "medium",
+    "why_it_matters": "Pode ser regra de negocio inclusiva ou divergencia de calculo; deve ser documentado antes de usar como permanencia exata.",
+    "affected_rows": 172581441,
+    "sql": "SELECT COUNT(*) AS affected_rows FROM internacoes WHERE DT_INTER IS NOT NULL AND DT_SAIDA IS NOT NULL AND DIAS_PERM <> date_diff('day', DT_INTER, DT_SAIDA)",
+    "sample_sql": "SELECT N_AIH, DT_INTER, DT_SAIDA, DIAS_PERM, date_diff('day', DT_INTER, DT_SAIDA) AS diff_dias FROM internacoes WHERE DT_INTER IS NOT NULL AND DT_SAIDA IS NOT NULL AND DIAS_PERM <> date_diff('day', DT_INTER, DT_SAIDA) LIMIT 10",
+    "sample_rows": [
+      {
+        "N_AIH": 1222100640134,
+        "DT_INTER": "2022-12-30",
+        "DT_SAIDA": "2023-01-01",
+        "DIAS_PERM": 0,
+        "diff_dias": 2
+      },
+      {
+        "N_AIH": 1222100530332,
+        "DT_INTER": "2022-11-04",
+        "DT_SAIDA": "2022-12-01",
+        "DIAS_PERM": 0,
+        "diff_dias": 27
+      },
+      {
+        "N_AIH": 1223100031681,
+        "DT_INTER": "2023-02-03",
+        "DT_SAIDA": "2023-02-06",
+        "DIAS_PERM": 0,
+        "diff_dias": 3
+      },
+      {
+        "N_AIH": 1222100689084,
+        "DT_INTER": "2022-11-21",
+        "DT_SAIDA": "2022-11-23",
+        "DIAS_PERM": 0,
+        "diff_dias": 2
+      },
+      {
+        "N_AIH": 1223100033463,
+        "DT_INTER": "2023-01-16",
+        "DT_SAIDA": "2023-01-18",
+        "DIAS_PERM": 0,
+        "diff_dias": 2
+      },
+      {
+        "N_AIH": 1223100032858,
+        "DT_INTER": "2023-02-07",
+        "DT_SAIDA": "2023-02-09",
+        "DIAS_PERM": 0,
+        "diff_dias": 2
+      },
+      {
+        "N_AIH": 1223100033628,
+        "DT_INTER": "2023-02-08",
+        "DT_SAIDA": "2023-02-13",
+        "DIAS_PERM": 0,
+        "diff_dias": 5
+      },
+      {
+        "N_AIH": 1222100655996,
+        "DT_INTER": "2023-01-19",
+        "DT_SAIDA": "2023-01-22",
+        "DIAS_PERM": 0,
+        "diff_dias": 3
+      },
+      {
+        "N_AIH": 1223100064780,
+        "DT_INTER": "2023-02-22",
+        "DT_SAIDA": "2023-02-25",
+        "DIAS_PERM": 0,
+        "diff_dias": 3
+      },
+      {
+        "N_AIH": 1223100065210,
+        "DT_INTER": "2023-02-22",
+        "DT_SAIDA": "2023-02-26",
+        "DIAS_PERM": 0,
+        "diff_dias": 4
+      }
+    ],
+    "blocks_ground_truth": false,
+    "duration_seconds": 0.363
+  },
+  {
+    "id": "DQ005",
+    "title": "Valores financeiros negativos",
+    "severity": "critical",
+    "why_it_matters": "Valores negativos em VAL_SH, VAL_SP, VAL_UTI ou VAL_TOT podem distorcer totais financeiros.",
+    "affected_rows": 0,
+    "sql": "SELECT COUNT(*) AS affected_rows FROM internacoes WHERE VAL_SH < 0 OR VAL_SP < 0 OR VAL_UTI < 0 OR VAL_TOT < 0",
+    "sample_sql": "SELECT N_AIH, VAL_SH, VAL_SP, VAL_UTI, VAL_TOT FROM internacoes WHERE VAL_SH < 0 OR VAL_SP < 0 OR VAL_UTI < 0 OR VAL_TOT < 0 LIMIT 10",
+    "sample_rows": [],
+    "blocks_ground_truth": false,
+    "duration_seconds": 0.001
+  },
+  {
+    "id": "DQ006",
+    "title": "Idades fora do intervalo 0-150",
+    "severity": "critical",
+    "why_it_matters": "Idades impossiveis invalidam analises demograficas e coortes.",
+    "affected_rows": 0,
+    "sql": "SELECT COUNT(*) AS affected_rows FROM internacoes WHERE IDADE < 0 OR IDADE > 150",
+    "sample_sql": "SELECT N_AIH, NASC, IDADE, DT_INTER FROM internacoes WHERE IDADE < 0 OR IDADE > 150 LIMIT 10",
+    "sample_rows": [],
+    "blocks_ground_truth": false,
+    "duration_seconds": 0.001
+  },
+  {
+    "id": "DQ007",
+    "title": "Internacoes sem CNES",
+    "severity": "high",
+    "why_it_matters": "CNES ausente impede analise por estabelecimento hospitalar.",
+    "affected_rows": 0,
+    "sql": "SELECT COUNT(*) AS affected_rows FROM internacoes WHERE CNES IS NULL",
+    "sample_sql": null,
+    "sample_rows": [],
+    "blocks_ground_truth": false,
+    "duration_seconds": 0.0
+  },
+  {
+    "id": "DQ008",
+    "title": "Internacoes sem diagnostico principal",
+    "severity": "high",
+    "why_it_matters": "Diagnostico principal ausente limita analises clinicas por CID.",
+    "affected_rows": 0,
+    "sql": "SELECT COUNT(*) AS affected_rows FROM internacoes WHERE DIAG_PRINC IS NULL OR DIAG_PRINC = ''",
+    "sample_sql": null,
+    "sample_rows": [],
+    "blocks_ground_truth": false,
+    "duration_seconds": 0.38
+  },
+  {
+    "id": "DQ009",
+    "title": "Internacoes com CNES sem correspondencia em hospital",
+    "severity": "high",
+    "why_it_matters": "Orfaos de CNES reduzem confianca em rankings e agregacoes por hospital.",
+    "affected_rows": 0,
+    "sql": "SELECT COUNT(*) AS affected_rows FROM internacoes i LEFT JOIN hospital h ON i.CNES = h.CNES WHERE i.CNES IS NOT NULL AND h.CNES IS NULL",
+    "sample_sql": "SELECT i.CNES, COUNT(*) AS internacoes FROM internacoes i LEFT JOIN hospital h ON i.CNES = h.CNES WHERE i.CNES IS NOT NULL AND h.CNES IS NULL GROUP BY 1 ORDER BY 2 DESC LIMIT 10",
+    "sample_rows": [],
+    "blocks_ground_truth": false,
+    "duration_seconds": 1.32
+  },
+  {
+    "id": "DQ010",
+    "title": "Internacoes com municipio de residencia sem correspondencia",
+    "severity": "high",
+    "why_it_matters": "Municipios orfaos prejudicam analises territoriais.",
+    "affected_rows": 1270397,
+    "sql": "SELECT COUNT(*) AS affected_rows FROM internacoes i LEFT JOIN municipios m ON i.MUNIC_RES = m.CO_MUNICIPIO_6D WHERE i.MUNIC_RES IS NOT NULL AND m.CO_MUNICIPIO_6D IS NULL",
+    "sample_sql": "SELECT i.MUNIC_RES, COUNT(*) AS internacoes FROM internacoes i LEFT JOIN municipios m ON i.MUNIC_RES = m.CO_MUNICIPIO_6D WHERE i.MUNIC_RES IS NOT NULL AND m.CO_MUNICIPIO_6D IS NULL GROUP BY 1 ORDER BY 2 DESC LIMIT 10",
+    "sample_rows": [
+      {
+        "MUNIC_RES": 530040,
+        "internacoes": 255165
+      },
+      {
+        "MUNIC_RES": 530180,
+        "internacoes": 136543
+      },
+      {
+        "MUNIC_RES": 530120,
+        "internacoes": 127226
+      },
+      {
+        "MUNIC_RES": 530140,
+        "internacoes": 111526
+      },
+      {
+        "MUNIC_RES": 530060,
+        "internacoes": 100550
+      },
+      {
+        "MUNIC_RES": 530170,
+        "internacoes": 95189
+      },
+      {
+        "MUNIC_RES": 530110,
+        "internacoes": 84318
+      },
+      {
+        "MUNIC_RES": 530150,
+        "internacoes": 81120
+      },
+      {
+        "MUNIC_RES": 530130,
+        "internacoes": 59376
+      },
+      {
+        "MUNIC_RES": 530070,
+        "internacoes": 56689
+      }
+    ],
+    "blocks_ground_truth": true,
+    "duration_seconds": 1.261
+  },
+  {
+    "id": "DQ011",
+    "title": "Diagnosticos principais sem correspondencia na tabela CID",
+    "severity": "high",
+    "why_it_matters": "CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo.",
+    "affected_rows": 1044,
+    "sql": "SELECT COUNT(*) AS affected_rows FROM internacoes i LEFT JOIN cid c ON i.DIAG_PRINC = c.CID WHERE i.DIAG_PRINC IS NOT NULL AND c.CID IS NULL",
+    "sample_sql": "SELECT i.DIAG_PRINC, COUNT(*) AS internacoes FROM internacoes i LEFT JOIN cid c ON i.DIAG_PRINC = c.CID WHERE i.DIAG_PRINC IS NOT NULL AND c.CID IS NULL GROUP BY 1 ORDER BY 2 DESC LIMIT 10",
+    "sample_rows": [
+      {
+        "DIAG_PRINC": "U04",
+        "internacoes": 727
+      },
+      {
+        "DIAG_PRINC": "N185",
+        "internacoes": 101
+      },
+      {
+        "DIAG_PRINC": "U109",
+        "internacoes": 75
+      },
+      {
+        "DIAG_PRINC": "N184",
+        "internacoes": 38
+      },
+      {
+        "DIAG_PRINC": "U10",
+        "internacoes": 26
+      },
+      {
+        "DIAG_PRINC": "N182",
+        "internacoes": 20
+      },
+      {
+        "DIAG_PRINC": "U099",
+        "internacoes": 18
+      },
+      {
+        "DIAG_PRINC": "N183",
+        "internacoes": 15
+      },
+      {
+        "DIAG_PRINC": "U09",
+        "internacoes": 15
+      },
+      {
+        "DIAG_PRINC": "U89",
+        "internacoes": 6
+      }
+    ],
+    "blocks_ground_truth": true,
+    "duration_seconds": 1.674
+  },
+  {
+    "id": "DQ012",
+    "title": "Procedimentos realizados sem descricao",
+    "severity": "high",
+    "why_it_matters": "Procedimentos orfaos impedem interpretacao assistencial do codigo PROC_REA.",
+    "affected_rows": 627,
+    "sql": "SELECT COUNT(*) AS affected_rows FROM internacao_procedimento ip LEFT JOIN procedimentos p ON ip.PROC_REA = p.PROC_REA WHERE ip.PROC_REA IS NOT NULL AND p.PROC_REA IS NULL",
+    "sample_sql": "SELECT ip.PROC_REA, COUNT(*) AS ocorrencias FROM internacao_procedimento ip LEFT JOIN procedimentos p ON ip.PROC_REA = p.PROC_REA WHERE ip.PROC_REA IS NOT NULL AND p.PROC_REA IS NULL GROUP BY 1 ORDER BY 2 DESC LIMIT 10",
+    "sample_rows": [
+      {
+        "PROC_REA": 410010219,
+        "ocorrencias": 607
+      },
+      {
+        "PROC_REA": 506020134,
+        "ocorrencias": 16
+      },
+      {
+        "PROC_REA": 403070171,
+        "ocorrencias": 3
+      },
+      {
+        "PROC_REA": 404020798,
+        "ocorrencias": 1
+      }
+    ],
+    "blocks_ground_truth": true,
+    "duration_seconds": 0.986
+  },
+  {
+    "id": "DQ013",
+    "title": "Hospitais referenciados sem nome cadastrado",
+    "severity": "medium",
+    "why_it_matters": "CNES com nome ausente dificulta comunicacao com gestores e auditoria nominal.",
+    "affected_rows": 59346551,
+    "sql": "SELECT COUNT(*) AS affected_rows FROM internacoes i JOIN hospital h ON i.CNES = h.CNES WHERE h.NO_HOSPITAL IS NULL OR h.NO_HOSPITAL = ''",
+    "sample_sql": "SELECT i.CNES, COUNT(*) AS internacoes FROM internacoes i JOIN hospital h ON i.CNES = h.CNES WHERE h.NO_HOSPITAL IS NULL OR h.NO_HOSPITAL = '' GROUP BY 1 ORDER BY 2 DESC LIMIT 10",
+    "sample_rows": [
+      {
+        "CNES": 2078015,
+        "internacoes": 761959
+      },
+      {
+        "CNES": 2237571,
+        "internacoes": 587240
+      },
+      {
+        "CNES": 2077396,
+        "internacoes": 582168
+      },
+      {
+        "CNES": 655,
+        "internacoes": 522136
+      },
+      {
+        "CNES": 2688689,
+        "internacoes": 467320
+      },
+      {
+        "CNES": 2079798,
+        "internacoes": 442815
+      },
+      {
+        "CNES": 9717,
+        "internacoes": 424481
+      },
+      {
+        "CNES": 2755130,
+        "internacoes": 385833
+      },
+      {
+        "CNES": 2077485,
+        "internacoes": 371173
+      },
+      {
+        "CNES": 2748223,
+        "internacoes": 359852
+      }
+    ],
+    "blocks_ground_truth": false,
+    "duration_seconds": 0.688
+  },
+  {
+    "id": "DQ014",
+    "title": "Tabela sexo possui descricoes duplicadas",
+    "severity": "medium",
+    "why_it_matters": "Codigos distintos com mesma descricao podem distorcer agrupamentos se o usuario agrupar por descricao sem entender os codigos.",
+    "affected_rows": 1,
+    "sql": "SELECT COUNT(*) AS affected_rows FROM (SELECT DESCRICAO FROM sexo GROUP BY DESCRICAO HAVING COUNT(*) > 1) t",
+    "sample_sql": "SELECT DESCRICAO, COUNT(*) AS codigos FROM sexo GROUP BY DESCRICAO HAVING COUNT(*) > 1",
+    "sample_rows": [
+      {
+        "DESCRICAO": "Feminino",
+        "codigos": 2
+      }
+    ],
+    "blocks_ground_truth": false,
+    "duration_seconds": 0.001
+  },
+  {
+    "id": "DQ015",
+    "title": "VAL_TOT menor que a soma VAL_SH + VAL_SP + VAL_UTI",
+    "severity": "medium",
+    "why_it_matters": "Divergencia pode indicar que VAL_TOT nao e soma direta dos componentes ou que ha inconsistencia financeira.",
+    "affected_rows": 0,
+    "sql": "SELECT COUNT(*) AS affected_rows FROM internacoes WHERE VAL_TOT + 0.01 < COALESCE(VAL_SH, 0) + COALESCE(VAL_SP, 0) + COALESCE(VAL_UTI, 0)",
+    "sample_sql": "SELECT N_AIH, VAL_SH, VAL_SP, VAL_UTI, VAL_TOT, COALESCE(VAL_SH, 0) + COALESCE(VAL_SP, 0) + COALESCE(VAL_UTI, 0) AS soma_componentes FROM internacoes WHERE VAL_TOT + 0.01 < COALESCE(VAL_SH, 0) + COALESCE(VAL_SP, 0) + COALESCE(VAL_UTI, 0) LIMIT 10",
+    "sample_rows": [],
+    "blocks_ground_truth": false,
+    "duration_seconds": 2.656
+  },
+  {
+    "id": "DQ016",
+    "title": "municipios.SG_UF contem valores que nao sao UFs brasileiras",
+    "severity": "high",
+    "why_it_matters": "Valores numericos em SG_UF fazem perguntas sobre UFs retornarem 38 categorias em vez das 27 UFs validas.",
+    "affected_rows": 18,
+    "sql": "WITH valid_uf(sg_uf) AS (VALUES ('AC'), ('AL'), ('AP'), ('AM'), ('BA'), ('CE'), ('DF'), ('ES'), ('GO'), ('MA'), ('MT'), ('MS'), ('MG'), ('PA'), ('PB'), ('PR'), ('PE'), ('PI'), ('RJ'), ('RN'), ('RS'), ('RO'), ('RR'), ('SC'), ('SP'), ('SE'), ('TO')) SELECT COUNT(*) AS affected_rows FROM municipios m LEFT JOIN valid_uf v ON m.SG_UF = v.sg_uf WHERE v.sg_uf IS NULL",
+    "sample_sql": "WITH valid_uf(sg_uf) AS (VALUES ('AC'), ('AL'), ('AP'), ('AM'), ('BA'), ('CE'), ('DF'), ('ES'), ('GO'), ('MA'), ('MT'), ('MS'), ('MG'), ('PA'), ('PB'), ('PR'), ('PE'), ('PI'), ('RJ'), ('RN'), ('RS'), ('RO'), ('RR'), ('SC'), ('SP'), ('SE'), ('TO')) SELECT m.SG_UF, COUNT(*) AS municipios FROM municipios m LEFT JOIN valid_uf v ON m.SG_UF = v.sg_uf WHERE v.sg_uf IS NULL GROUP BY 1 ORDER BY 1",
+    "sample_rows": [
+      {
+        "SG_UF": "13",
+        "municipios": 3
+      },
+      {
+        "SG_UF": "14",
+        "municipios": 1
+      },
+      {
+        "SG_UF": "20",
+        "municipios": 1
+      },
+      {
+        "SG_UF": "21",
+        "municipios": 2
+      },
+      {
+        "SG_UF": "25",
+        "municipios": 4
+      },
+      {
+        "SG_UF": "29",
+        "municipios": 1
+      },
+      {
+        "SG_UF": "33",
+        "municipios": 1
+      },
+      {
+        "SG_UF": "42",
+        "municipios": 1
+      },
+      {
+        "SG_UF": "43",
+        "municipios": 2
+      },
+      {
+        "SG_UF": "51",
+        "municipios": 1
+      }
+    ],
+    "blocks_ground_truth": true,
+    "duration_seconds": 0.003
+  },
+  {
+    "id": "DQ017",
+    "title": "CO_MUNICIPIO_6D com formato diferente de seis digitos",
+    "severity": "high",
+    "why_it_matters": "Codigos municipais fora do formato esperado prejudicam joins territoriais e validacao IBGE/DATASUS.",
+    "affected_rows": 0,
+    "sql": "SELECT COUNT(*) AS affected_rows FROM municipios WHERE NOT regexp_full_match(CAST(CO_MUNICIPIO_6D AS VARCHAR), '^[0-9]{6}$')",
+    "sample_sql": "SELECT CO_MUNICIPIO_6D, NO_MUNICIPIO, SG_UF FROM municipios WHERE NOT regexp_full_match(CAST(CO_MUNICIPIO_6D AS VARCHAR), '^[0-9]{6}$') LIMIT 10",
+    "sample_rows": [],
+    "blocks_ground_truth": false,
+    "duration_seconds": 0.003
+  },
+  {
+    "id": "DQ018",
+    "title": "CO_MUNICIPIO_7D nao nulo com formato diferente de sete digitos",
+    "severity": "medium",
+    "why_it_matters": "Codigos municipais de sete digitos fora do formato esperado indicam problema cadastral ou campo com significado distinto.",
+    "affected_rows": 0,
+    "sql": "SELECT COUNT(*) AS affected_rows FROM municipios WHERE CO_MUNICIPIO_7D IS NOT NULL AND NOT regexp_full_match(CAST(CO_MUNICIPIO_7D AS VARCHAR), '^[0-9]{7}$')",
+    "sample_sql": "SELECT CO_MUNICIPIO_7D, NO_MUNICIPIO, SG_UF FROM municipios WHERE CO_MUNICIPIO_7D IS NOT NULL AND NOT regexp_full_match(CAST(CO_MUNICIPIO_7D AS VARCHAR), '^[0-9]{7}$') LIMIT 10",
+    "sample_rows": [],
+    "blocks_ground_truth": false,
+    "duration_seconds": 0.001
+  }
+]

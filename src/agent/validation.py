@@ -29,22 +29,22 @@ def check_semantic_rules(user_query: str, generated_sql: str):
     sql_lower = generated_sql.lower()
     user_query_lower = (user_query or "").lower()
 
-    # Semantic: socioeconomico requires metrica filter
-    if "socioeconomico" in sql_lower and "metrica" not in sql_lower:
+    # Semantic: socioeconomico is wide-format in the current DuckDB schema.
+    if "socioeconomico" in sql_lower and (
+        "metrica" in sql_lower or re.search(r'\bvalor\b|s\."valor"', sql_lower)
+    ):
         return False, (
-            "SEMANTIC ERROR: Query uses 'socioeconomico' table but is missing a "
-            "WHERE metrica = '...' filter. The socioeconomico table is long-format "
-            "(one row per metric × municipality × year). Without a metrica filter, "
-            "the query aggregates across ALL metrics (population, IDHM, bolsa familia, "
-            "etc.) which produces meaningless results. "
+            "SEMANTIC ERROR: Query uses legacy socioeconomico columns. "
+            "The current table is wide-format by municipality/year and does not have "
+            "metrica or valor columns. "
             "FIX EXACTLY: "
-            "SELECT mu.nome AS municipio_maior_populacao "
+            'SELECT mu."NO_MUNICIPIO" AS municipio_maior_populacao '
             "FROM socioeconomico s "
-            "JOIN municipios mu ON s.codigo_6d = mu.codigo_6d "
-            "WHERE s.metrica = 'populacao_total' "
-            "ORDER BY s.valor DESC LIMIT 1; "
+            'JOIN municipios mu ON s."CO_MUNICIPIO_6D" = mu."CO_MUNICIPIO_6D" '
+            'ORDER BY s."QT_POPULACAO" DESC LIMIT 1; '
             "IMPORTANT: SELECT ONLY the column(s) that directly answer the question. "
-            "Do NOT include s.valor or extra columns unless explicitly requested."
+            "Use available columns such as QT_POPULACAO, VL_MORT_INFANTIL, "
+            "QT_LEITOS_SUS, VL_LEITOS_SUS_1000, QT_MEDICOS, and VL_MEDICOS_1000."
         )
 
     # Semantic: tempo table cartesian explosion
@@ -77,7 +77,9 @@ def check_semantic_rules(user_query: str, generated_sql: str):
         )
     )
     has_outer_internacoes_join = bool(
-        re.search(r"\bJOIN\s+\"?internacoes\"?\s+(?:AS\s+)?\"?[a-z_][\w]*\"?\s+ON\b", generated_sql, re.I)
+        re.search(
+            r"\bJOIN\s+\"?internacoes\"?\s+(?:AS\s+)?\"?[a-z_][\w]*\"?\s+ON\b", generated_sql, re.I
+        )
     )
     if has_internacoes_subquery and has_outer_internacoes_join:
         explosive_keys = ["MUNIC_RES", "CNES", "DT_INTER", "IDADE", "MORTE"]
@@ -150,17 +152,17 @@ def check_semantic_rules(user_query: str, generated_sql: str):
     )
     if count_question:
         asks_population_value = any(
-            token in user_query_lower
-            for token in ["habitantes", "população", "populacao"]
-        ) and any(
-            token in sql_lower
-            for token in ["populacao_total", "socioeconomico", "valor"]
-        )
+            token in user_query_lower for token in ["habitantes", "população", "populacao"]
+        ) and any(token in sql_lower for token in ["populacao_total", "socioeconomico", "valor"])
         outer_select = re.sub(
             r"\bWITH\b.*?\)\s*SELECT", "SELECT", generated_sql, flags=re.I | re.DOTALL
         )
         has_count_outer = bool(re.search(r"\bCOUNT\s*\(", outer_select, re.I))
-        if not has_count_outer and not asks_population_value and not ranking_or_lookup_count_context:
+        if (
+            not has_count_outer
+            and not asks_population_value
+            and not ranking_or_lookup_count_context
+        ):
             return False, (
                 "SEMANTIC ERROR: A pergunta pede QUANTIDADE ('quantos'/'quantas') mas a query "
                 "retorna uma lista de registros em vez de COUNT(*). "

@@ -2,18 +2,17 @@
 
 import ast
 import time
-from typing import Dict, List, Optional, Tuple
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from .llm_manager import get_llm_manager
-from .sql_generation import SQLOutput, build_sql_generation_messages
-from .state_models import ExecutionPhase, MessagesStateTXT2SQL, QueryPlan, SubQuery
-from .state_helpers import add_ai_message, add_error, update_phase
-from .table_selection import _select_relevant_tables
-from .validation import check_semantic_rules
 from ..utils.logging_config import get_nodes_logger
 from ..utils.sql_safety import is_select_only
+from .llm_manager import get_llm_manager
+from .sql_generation import SQLOutput, build_sql_generation_messages
+from .state_helpers import add_ai_message, add_error, update_phase
+from .state_models import ExecutionPhase, MessagesStateTXT2SQL, QueryPlan, SubQuery
+from .table_selection import select_tables_with_llamaindex
+from .validation import check_semantic_rules
 
 logger = get_nodes_logger()
 
@@ -32,7 +31,7 @@ _ERROR_INDICATORS = [
 ]
 
 
-def _parse_result_rows(result_raw: str) -> Optional[List]:
+def _parse_result_rows(result_raw: str) -> list | None:
     if not result_raw:
         return []
 
@@ -49,13 +48,13 @@ def _parse_result_rows(result_raw: str) -> Optional[List]:
         return None
 
 
-def _topological_sort(sub_queries: List[SubQuery]) -> List[SubQuery]:
+def _topological_sort(sub_queries: list[SubQuery]) -> list[SubQuery]:
     if not any(sq.depends_on for sq in sub_queries):
         return list(sub_queries)
 
     id_to_sq = {sq.id: sq for sq in sub_queries}
     visited: set = set()
-    ordered: List[SubQuery] = []
+    ordered: list[SubQuery] = []
 
     def _visit(sq_id: str) -> None:
         if sq_id in visited:
@@ -73,7 +72,7 @@ def _topological_sort(sub_queries: List[SubQuery]) -> List[SubQuery]:
     return ordered
 
 
-def _format_dependency_context(prior_results: Dict[str, str]) -> str:
+def _format_dependency_context(prior_results: dict[str, str]) -> str:
     if not prior_results:
         return ""
     lines = ["", "[CONTEXT FROM PRIOR QUERIES]"]
@@ -85,8 +84,8 @@ def _format_dependency_context(prior_results: Dict[str, str]) -> str:
 def _generate_sql_for_subquery(
     sq: SubQuery,
     schema_context: str,
-    selected_tables: List[str],
-    prior_results: Dict[str, str],
+    selected_tables: list[str],
+    prior_results: dict[str, str],
     llm_manager,
 ) -> str:
     subquery_question = sq.description + _format_dependency_context(prior_results)
@@ -110,7 +109,7 @@ def _validate_subquery_sql(
     user_query: str,
     sql: str,
     llm_manager,
-) -> Tuple[bool, str]:
+) -> tuple[bool, str]:
     if not sql:
         return False, "No SQL generated."
 
@@ -146,11 +145,11 @@ def _repair_subquery_sql(
     sq: SubQuery,
     user_query: str,
     schema_context: str,
-    selected_tables: List[str],
+    selected_tables: list[str],
     previous_sql: str,
     error_message: str,
     llm_manager,
-) -> Optional[str]:
+) -> str | None:
     system_prompt = (
         "Você é um especialista em PostgreSQL responsável por corrigir uma subconsulta SQL do banco SUS. "
         "Preserve as constraints da subconsulta, use apenas SELECT e responda somente com a SQL corrigida."
@@ -164,10 +163,12 @@ def _repair_subquery_sql(
         f"Erro/validação:\n{error_message}\n\n"
         "Reescreva a SQL corrigida, preservando a intenção e as constraints."
     )
-    response = llm_manager.invoke_chat([
-        SystemMessage(content=system_prompt),
-        HumanMessage(content=human_prompt),
-    ])
+    response = llm_manager.invoke_chat(
+        [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=human_prompt),
+        ]
+    )
     raw = response.content.strip() if hasattr(response, "content") else str(response)
     return llm_manager._clean_sql_query(raw)
 
@@ -176,7 +177,7 @@ def _select_tables_for_subquery(
     state: MessagesStateTXT2SQL,
     sq: SubQuery,
     llm_manager,
-) -> List[str]:
+) -> list[str]:
     available_tables = state.get("available_tables", []) or state.get("selected_tables", [])
     global_tables = state.get("selected_tables", [])
     subquery_prompt = sq.description
@@ -184,24 +185,34 @@ def _select_tables_for_subquery(
         subquery_prompt += "\nConstraints: " + "; ".join(sq.required_constraints)
 
     try:
-        selected_tables, _ = _select_relevant_tables(
-            subquery_prompt,
-            "",
-            available_tables,
-            llm_manager,
+        selected_tables, _, llama_context = select_tables_with_llamaindex(
+            user_query=subquery_prompt,
+            available_tables=available_tables,
+            ablation_flags=state.get("ablation_flags") or {},
         )
         if selected_tables:
             return selected_tables
+        logger.warning(
+            "Sub-query LlamaIndex table selection returned no tables",
+            extra={
+                "sq_id": sq.id,
+                "retrieval_mode": getattr(llama_context, "retrieval_mode", None),
+                "error": getattr(llama_context, "error", ""),
+            },
+        )
     except Exception as table_error:
-        logger.warning("Sub-query table selection failed", extra={
-            "sq_id": sq.id,
-            "error": str(table_error),
-        })
+        logger.warning(
+            "Sub-query table selection failed",
+            extra={
+                "sq_id": sq.id,
+                "error": str(table_error),
+            },
+        )
 
     return global_tables
 
 
-def _execute_sql(sql: str, llm_manager) -> Tuple[bool, str]:
+def _execute_sql(sql: str, llm_manager) -> tuple[bool, str]:
     query_tool = next(
         (tool for tool in llm_manager.get_sql_tools() if tool.name == "sql_db_query"),
         None,
@@ -244,7 +255,7 @@ def multi_sql_executor_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL
 
         ordered_sqs = _topological_sort(query_plan.sub_queries)
         sub_query_results = []
-        completed_raw: Dict[str, str] = {}
+        completed_raw: dict[str, str] = {}
 
         for sq in ordered_sqs:
             sq_start = time.time()
@@ -272,11 +283,15 @@ def multi_sql_executor_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL
                 sq.success = False
                 sq.error = f"SQL generation failed: {gen_err}"
                 sub_query_results.append(_make_result(sq, time.time() - sq_start))
-                logger.error("Sub-query SQL generation failed", extra={"sq_id": sq.id, "error": str(gen_err)})
+                logger.error(
+                    "Sub-query SQL generation failed", extra={"sq_id": sq.id, "error": str(gen_err)}
+                )
                 continue
 
             validated_sql = sq.sql
-            validation_ok, validation_msg = _validate_subquery_sql(user_query, validated_sql, llm_manager)
+            validation_ok, validation_msg = _validate_subquery_sql(
+                user_query, validated_sql, llm_manager
+            )
             if not validation_ok:
                 if sq.repair_attempts < MAX_SUBQUERY_REPAIRS:
                     try:
@@ -343,12 +358,15 @@ def multi_sql_executor_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL
                 sq.parsed_rows = None
 
             sub_query_results.append(_make_result(sq, time.time() - sq_start))
-            logger.info("Sub-query executed", extra={
-                "sq_id": sq.id,
-                "success": sq.success,
-                "output_role": sq.output_role,
-                "selected_tables": sq.selected_tables,
-            })
+            logger.info(
+                "Sub-query executed",
+                extra={
+                    "sq_id": sq.id,
+                    "success": sq.success,
+                    "output_role": sq.output_role,
+                    "selected_tables": sq.selected_tables,
+                },
+            )
 
         state["sub_query_results"] = sub_query_results
         state["query_plan"] = query_plan
@@ -357,7 +375,7 @@ def multi_sql_executor_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL
         total = len(sub_query_results)
         state = add_ai_message(
             state,
-            f"Multi-query execution complete: {successful}/{total} sub-consultas executadas com sucesso."
+            f"Multi-query execution complete: {successful}/{total} sub-consultas executadas com sucesso.",
         )
 
         state = update_phase(state, ExecutionPhase.SQL_EXECUTION, time.time() - start_time)

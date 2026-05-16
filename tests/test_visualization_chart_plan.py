@@ -244,14 +244,35 @@ def test_chart_plan_validation_accepts_tidy_recent_years_sql():
     assert message is None
 
 
+def test_chart_plan_validation_accepts_extract_year_scalar_subquery_window():
+    query = "gere um grafico da evolucao de mortes totais nos ultimos 5 anos"
+    plan = build_chart_plan(query, detect_visualization_intent(query))
+    sql = """
+        SELECT EXTRACT(YEAR FROM "DT_INTER") AS ano,
+               COUNT(*) AS total_mortes
+        FROM internacoes
+        WHERE "MORTE" = true
+          AND EXTRACT(YEAR FROM "DT_INTER") >= (
+              SELECT MAX(EXTRACT(YEAR FROM "DT_INTER")) - 4 FROM internacoes
+          )
+        GROUP BY ano
+        ORDER BY ano;
+    """
+
+    passed, message = validate_sql_against_chart_plan(plan, sql)
+
+    assert passed is True
+    assert message is None
+
+
 def test_chart_plan_validation_rejects_clinical_categories_without_unfilled_exclusion():
     query = "gere um gráfico de pizza com as 6 principais causas de morte"
     plan = build_chart_plan(query, detect_visualization_intent(query))
     sql = (
-        'SELECT c."CD_DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes '
+        'SELECT c."DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes '
         'FROM internacoes i JOIN cid c ON i."CID_MORTE" = c."CID" '
         'WHERE i."MORTE" = true '
-        'GROUP BY c."CD_DESCRICAO" ORDER BY total_mortes DESC LIMIT 6'
+        'GROUP BY c."DESCRICAO" ORDER BY total_mortes DESC LIMIT 6'
     )
 
     passed, message = validate_sql_against_chart_plan(plan, sql)
@@ -264,12 +285,12 @@ def test_chart_plan_validation_accepts_clinical_categories_with_unfilled_exclusi
     query = "gere um gráfico de pizza com as 6 principais causas de morte"
     plan = build_chart_plan(query, detect_visualization_intent(query))
     sql = (
-        'SELECT c."CD_DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes '
+        'SELECT c."DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes '
         'FROM internacoes i JOIN cid c ON i."CID_MORTE" = c."CID" '
         'WHERE i."MORTE" = true '
-        'AND c."CD_DESCRICAO" <> \'Nao preenchido\' '
-        'AND c."CD_DESCRICAO" IS NOT NULL '
-        'GROUP BY c."CD_DESCRICAO" ORDER BY total_mortes DESC LIMIT 6'
+        'AND c."DESCRICAO" <> \'Nao preenchido\' '
+        'AND c."DESCRICAO" IS NOT NULL '
+        'GROUP BY c."DESCRICAO" ORDER BY total_mortes DESC LIMIT 6'
     )
 
     passed, message = validate_sql_against_chart_plan(plan, sql)

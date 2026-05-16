@@ -70,12 +70,13 @@ The production graph is defined in [`src/agent/workflow.py`](src/agent/workflow.
 
 2. **Discover and Select Tables**
    - Implemented in [`src/agent/table_selection.py`](src/agent/table_selection.py).
-   - Uses table metadata, heuristics, embeddings, and configurable LLM selection presets.
-   - Current default preset is `llm_best`.
+   - Uses LlamaIndex schema retrieval by default (`llamaindex_mode=context`).
+   - The old LangGraph heuristic/embedding/LLM table-selection cascade is no longer used by the runtime agent.
 
 3. **Schema Context**
    - Implemented in [`src/agent/schema_node.py`](src/agent/schema_node.py).
-   - Uses `sql_db_schema` and local SUS metadata to provide table/column context.
+   - Uses the LlamaIndex schema/domain context as the default prompt schema source.
+   - `sql_db_schema` is now an optional live verification/debug path, enabled with `--verify-llamaindex-schema-with-db` or `VERIFY_LLAMAINDEX_SCHEMA_WITH_DB=true`.
 
 4. **Plan Gate and Semantic Plan**
    - `plan_gate` decides whether the query needs semantic planning or multi-query handling.
@@ -135,7 +136,7 @@ Tools used in the pipeline:
 | Tool | Main Step | Purpose |
 |---|---|---|
 | `sql_db_list_tables` / enhanced list tool | Discover and select tables | Database table inventory with curated descriptions |
-| `sql_db_schema` | Schema context | Table schema retrieval for selected tables |
+| `sql_db_schema` | Schema context | Optional live schema verification for LlamaIndex-selected tables |
 | `sql_db_query_checker` | Validate | LLM-assisted SQL query checking |
 | `sql_db_query` | Execute | Query execution against the configured database |
 
@@ -230,7 +231,7 @@ Version constraints are defined in [`pyproject.toml`](pyproject.toml) and [`fron
 | PostgreSQL driver | psycopg2-binary | `>=2.9.10` | PostgreSQL execution |
 | Local analytical DB | DuckDB | `1.4.4` | Local/analytical database runtime |
 | DuckDB SQLAlchemy | duckdb-engine | `0.17.0` | DuckDB URL support |
-| Embeddings | sentence-transformers | `>=2.6.1` | Table-selection embedding stage |
+| Embeddings | sentence-transformers | `>=2.6.1` | Local memory/vector-store support |
 | Frontend runtime | Node.js | `>=16` | Web interface server |
 | Web server | Express | `^4.18.2` | Frontend proxy/server |
 | Charts | Apache ECharts | `5.6.0` via CDN | SVG chart rendering in UI |
@@ -465,7 +466,7 @@ The evaluation system is designed for scientific error analysis, not only leader
 | DAG evaluation | `evaluation.runners.run_dag_evaluation` | End-to-end agent quality |
 | Ablation | `evaluation.runners.run_ablation` | Component-level impact analysis |
 | Regression | `evaluation.runners.run_regression` | CI or targeted quality gates |
-| Table selection | `evaluation.runners.run_table_selection_eval` | Isolated table-selection quality |
+| Table selection | `evaluation.runners.run_table_selection_eval` | Isolated LlamaIndex table-selection quality |
 | Chart evaluation | `evaluation.runners.run_chart_evaluation` | Visualization intent and chart spec quality |
 | Rich prompt baseline | `evaluation/run_rich_prompt_baseline.py` | Single-shot baseline comparison |
 
@@ -524,6 +525,8 @@ Reference run:
 | V11 | `no_semantic_contract_validator` | 92.5% | -2.5 | 100.0% | 93.3% | 86.7% | 0.500 | 559,974 | 13,999 | $0.0733 |
 | V12 | `no_semantic_repair_guidance` | 87.5% | -7.5 | 100.0% | 80.0% | 86.7% | 0.125 | 565,372 | 14,134 | $0.0731 |
 
+Note: this historical run includes the legacy `V5 no_table_selection_llm` variant. Current runtime table selection is LlamaIndex-only, so future ablation runs no longer include that legacy table-selection variant. Since LlamaIndex context is now the baseline, `LI1`/`LI3` context-only variants are also redundant; future ablations keep only `LI2` for the LlamaIndex SQL-draft path.
+
 Interpretation for this run:
 
 - Validation and repair are high-impact reliability components: removing validation reduced EX by 55 pp, and removing repair reduced EX by 20 pp.
@@ -531,15 +534,71 @@ Interpretation for this run:
 - Some variants with ΔEX near zero should not be removed based on this run alone; a 40-query ablation is useful for directional evidence but not enough to prove broad generalization.
 - Cost and token tracking are part of the evaluation contract, so quality improvements can be compared against latency and operating-cost impact.
 
+### DAG Tracing and Resume
+
+Each DAG evaluation run creates a run folder under `evaluation/results/dag_evaluation_<id>/`.
+In addition to the aggregate JSON/report artifacts, the runner writes one trace file per
+question as soon as that question finishes:
+
+```bash
+evaluation/results/dag_evaluation_<id>/queries/<question_id>/trace.json
+```
+
+Each per-query `trace.json` is intended for debugging failed or suspicious queries. It includes:
+
+- the ground-truth question, difficulty, expected SQL, generated SQL, and execution source;
+- the summarized agent output, final response, cost payload, and stored rows when available;
+- workflow phases, component latencies, tool calls, semantic plan/validation, LlamaIndex table-selection metadata, and multi-query metadata;
+- metric details, EX score, result previews, row counts, execution errors, error category, and the final detailed result used by the aggregate report.
+
+The final run folder also keeps aggregate artifacts:
+
+- `dag_evaluation_<id>.json`: complete evaluation summary and detailed results;
+- `dag_evaluation_report_<id>.txt`: human-readable report;
+- `trace.jsonl`: one JSON trace record per evaluated question, rebuilt from the per-query traces;
+- `analysis.md`: markdown analysis focused on matches, failures, and error categories.
+
+If an evaluation crashes or is interrupted, resume it with the same run id:
+
+```bash
+python -m evaluation.runners.run_dag_evaluation \
+  --resume-run-id 20260516_120000 \
+  --ground-truth evaluation/ground_truth.json \
+  --workers 2
+```
+
+Resume reuses only completed per-query traces whose question fingerprint still matches the current ground truth fields (`id`, question text, SQL, and difficulty). If a question changed or has no completed trace, it is evaluated again. To create a run with a stable id up front:
+
+```bash
+python -m evaluation.runners.run_dag_evaluation \
+  --run-id schema_migration_debug \
+  --ground-truth evaluation/ground_truth.json \
+  --workers 2
+```
+
+To ignore existing checkpoints and overwrite the traces in the same run folder:
+
+```bash
+python -m evaluation.runners.run_dag_evaluation \
+  --resume-run-id schema_migration_debug \
+  --force-rerun \
+  --ground-truth evaluation/ground_truth.json \
+  --workers 2
+```
+
+By default, evaluation uses LlamaIndex schema context directly to avoid an extra
+`sql_db_schema` call per query. Add `--verify-llamaindex-schema-with-db` only
+when you want to compare against the live database schema during debugging.
+
 ### Run Evaluations
 
 ```bash
 python -m evaluation.runners.run_dag_evaluation \
-  --ground-truth evaluation/ground_truth_v2.json \
+  --ground-truth evaluation/ground_truth.json \
   --workers 2
 
 python -m evaluation.runners.run_ablation \
-  --dataset evaluation/ground_truth_v2.json \
+  --dataset evaluation/ground_truth.json \
   --workers 4
 
 python -m evaluation.runners.run_regression --threshold 0.90
@@ -558,6 +617,7 @@ Compatibility note:
 
 ```bash
 evaluation/results/dag_evaluation_<id>/       # DAG evaluation run folders
+evaluation/results/dag_evaluation_<id>/queries/<question_id>/trace.json
 evaluation/ablation/results/<run_id>/         # Ablation outputs and checkpoints
 evaluation/table_selection/results/<run_id>/  # Table-selection benchmark outputs
 evaluation/visualization/results/             # Chart evaluation outputs
@@ -568,7 +628,6 @@ evaluation/logs/                              # Evaluation runner logs
 Ground-truth and regression datasets:
 
 - [`evaluation/ground_truth.json`](evaluation/ground_truth.json)
-- [`evaluation/ground_truth_v2.json`](evaluation/ground_truth_v2.json)
 - [`evaluation/regression_set.json`](evaluation/regression_set.json)
 - [`evaluation/table_selection/table_selection_gold.json`](evaluation/table_selection/table_selection_gold.json)
 - [`evaluation/visualization/chart_gold.json`](evaluation/visualization/chart_gold.json)

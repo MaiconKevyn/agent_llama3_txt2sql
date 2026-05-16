@@ -1,25 +1,25 @@
 {
-  "internacoes": "Tabela central do banco sihrd5. Cada registro corresponde a uma AIH (Autorização de Internação Hospitalar). Contém dados do hospital (CNES), datas (DT_INTER, DT_SAIDA, NASC), diagnósticos (DIAG_PRINC, DIAG_SECUN, CID_MORTE), indicador de óbito (MORTE boolean), VDRL (IND_VDRL boolean), dados financeiros (VAL_TOT, VAL_SH, VAL_SP, VAL_UTI), dias de permanência (DIAS_PERM), especialidade (ESPEC) e dados demográficos completos do paciente (SEXO, IDADE, RACA_COR, ETNIA, NACIONAL, INSTRU, VINCPREV, MUNIC_RES). Para procedimentos: JOIN com atendimentos + procedimentos."
+  "internacoes": "Tabela central do banco sihrd5. Cada registro corresponde a uma AIH (Autorização de Internação Hospitalar). Contém dados do hospital (CNES), datas (DT_INTER, DT_SAIDA, NASC), diagnósticos (DIAG_PRINC, DIAG_SECUN, CID_MORTE), indicador de óbito (MORTE boolean), VDRL (IND_VDRL boolean), dados financeiros (VAL_TOT, VAL_SH, VAL_SP, VAL_UTI), dias de permanência (DIAS_PERM), especialidade (ESPEC) e dados demográficos completos do paciente (SEXO, IDADE, RACA_COR, ETNIA, NACIONAL, INSTRU, VINCPREV, MUNIC_RES). Para procedimentos: JOIN com internacao_procedimento + procedimentos."
 }
 
 {
-  "atendimentos": "Tabela de ligação (junction table) entre internacoes e procedimentos. Cada registro representa um procedimento realizado durante uma internação (37M+ registros). Colunas: id_atendimento (PK), N_AIH (FK → internacoes), PROC_REA (FK → procedimentos)."
+  "internacao_procedimento": "Tabela de ligação (junction table) entre internacoes e procedimentos. Cada registro representa um procedimento realizado durante uma internação (37M+ registros). Colunas: id_atendimento (PK), N_AIH (FK → internacoes), PROC_REA (FK → procedimentos)."
 }
 
 {
-  "cid": "Tabela de referência com os códigos da Classificação Internacional de Doenças (CID-10) e suas descrições. Anteriormente chamada cid10. Colunas: CID (PK), CD_DESCRICAO. Usada via JOIN com internacoes.DIAG_PRINC, DIAG_SECUN ou CID_MORTE."
+  "cid": "Tabela de referência com os códigos da Classificação Internacional de Doenças (CID-10) e suas descrições. Anteriormente chamada cid10. Colunas: CID (PK), DESCRICAO. Usada via JOIN com internacoes.DIAG_PRINC, DIAG_SECUN ou CID_MORTE."
 }
 
 {
-  "municipios": "Tabela de referência com os municípios do Brasil. Contém código 6 dígitos (codigo_6d, PK), código IBGE 7 dígitos (codigo_ibge), nome do município, estado (UF) e localização geográfica (latitude, longitude)."
+  "municipios": "Tabela de referência com os municípios do Brasil. Contém código 6 dígitos (CO_MUNICIPIO_6D, PK), código IBGE 7 dígitos (CO_MUNICIPIO_7D), nome do município (NO_MUNICIPIO), estado/UF (SG_UF) e localização geográfica (latitude, longitude)."
 }
 
 {
-  "hospital": "Tabela de referência dos estabelecimentos de saúde. Colunas: CNES (PK), MUNIC_MOV (FK → municipios.codigo_6d), NATUREZA, GESTAO, NAT_JUR."
+  "hospital": "Tabela de referência dos estabelecimentos de saúde. Colunas: CNES (PK), MUNIC_MOV (FK → municipios.CO_MUNICIPIO_6D), NATUREZA, GESTAO, NAT_JUR."
 }
 
 {
-  "procedimentos": "Tabela de referência com códigos e nomes dos procedimentos médicos (SIGTAP). Colunas: PROC_REA (PK), NOME_PROC. Para contar procedimentos realizados: usar atendimentos como junction table."
+  "procedimentos": "Tabela de referência com códigos e nomes dos procedimentos médicos (SIGTAP). Colunas: PROC_REA (PK), NOME_PROC. Para contar procedimentos realizados: usar internacao_procedimento como junction table."
 }
 
 {
@@ -35,7 +35,7 @@
 }
 
 {
-  "raca_cor": "Tabela de lookup com os códigos de raça/cor. Colunas: RACA_COR (PK), DESCRICAO. Valores: 0/99=Sem info, 1=Branca, 2=Preta, 3=Parda, 4=Amarela, 5=Indígena."
+  "raca_cor": "Tabela de lookup com os códigos identificados de raça/cor. Colunas: RACA_COR (PK), DESCRICAO. Valores no lookup: 1=Branca, 2=Preta, 3=Parda, 4=Amarela, 5=Indígena. Em internacoes, código 99 indica Sem informação."
 }
 
 {
@@ -59,5 +59,5 @@
 }
 
 {
-  "socioeconomico": "Tabela com indicadores socioeconômicos dos municípios por ano em formato longo. Colunas: codigo_6d (FK → municipios), ano, metrica, valor, escala. Métricas: populacao_total, idhm, bolsa_familia_total, esgotamento_sanitario_domicilio, mortalidade_infantil_1ano, pop_economicamente_ativa, taxa_envelhecimento. Substitui a antiga tabela dado_ibge."
+  "socioeconomico": "Tabela com indicadores socioeconômicos dos municípios por ano em formato largo. Colunas: CO_MUNICIPIO_6D (FK → municipios), NU_ANO, QT_POPULACAO, VL_PIB_PERCAPITA, QT_OBITOS_INFANTIS, QT_NASCIDOS_VIVOS, VL_MORT_INFANTIL, QT_LEITOS_SUS, VL_LEITOS_SUS_1000, QT_MEDICOS, VL_MEDICOS_1000. Não existem colunas metrica/valor no schema atual."
 }

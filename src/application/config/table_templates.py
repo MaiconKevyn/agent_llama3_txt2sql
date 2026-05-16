@@ -16,7 +16,7 @@ TABLE_TEMPLATES = {
            ❌ JOIN diagnosticos_secundarios  (table does not exist!)
 
         4. PROCEDURES require a JUNCTION TABLE — there is NO PROC_REA column in internacoes:
-           ✅ JOIN atendimentos a ON i."N_AIH" = a."N_AIH" JOIN procedimentos p ON a."PROC_REA" = p."PROC_REA"
+           ✅ JOIN internacao_procedimento ip ON i."N_AIH" = ip."N_AIH" JOIN procedimentos p ON ip."PROC_REA" = p."PROC_REA"
            ❌ i."PROC_REA"                   (column does not exist in internacoes!)
 
         5. DIAS_PERM substitutes QT_DIARIAS:
@@ -37,13 +37,13 @@ TABLE_TEMPLATES = {
 
         MANDATORY VALUE MAPPINGS (NEVER MAKE MISTAKES):
         - SEXO: 1=Masculino, 3=Feminino (NEVER use 2! — use inline value, no JOIN needed)
-        - RACA_COR: 1=Branca, 2=Preta, 3=Parda, 4=Amarela, 5=Indígena, 0/99=Sem info
+        - RACA_COR: 1=Branca, 2=Preta, 3=Parda, 4=Amarela, 5=Indígena; 99=Sem info em internacoes
           · Para FILTRAR: WHERE "RACA_COR" = 5  (sem JOIN)
           · Para DESCRIÇÃO: JOIN raca_cor r ON i."RACA_COR" = r."RACA_COR" → SELECT r."DESCRICAO"
         - MORTE: true=death, false=discharge (boolean)
         - IND_VDRL: true=positive, false=negative (boolean)
           ✅ SELECT COUNT(*) FROM internacoes WHERE "IND_VDRL" = true;
-          ❌ JOIN cid c ON ... WHERE c."CD_DESCRICAO" ILIKE '%vdrl%'  (no CID code for VDRL!)
+          ❌ JOIN cid c ON ... WHERE c."DESCRICAO" ILIKE '%vdrl%'  (no CID code for VDRL!)
         - DIAS_PERM: days of stay (integer)
         - Financial: "VAL_TOT" (total cost), "VAL_SH" (serviço hospitalar), "VAL_SP" (professional), "VAL_UTI" (ICU cost)
           · "valor do serviço hospitalar" → "VAL_SH"  (NÃO VAL_TOT!)
@@ -65,10 +65,10 @@ TABLE_TEMPLATES = {
         - → hospital: internacoes."CNES" = hospital."CNES"
         - → cid: internacoes."DIAG_PRINC" = cid."CID"  (diagnóstico principal)
         - → cid: internacoes."CID_MORTE" = cid."CID"   (causa da morte — apenas quando MORTE=true)
-        - → municipios (residência paciente): internacoes."MUNIC_RES" = municipios."codigo_6d"
+        - → municipios (residência paciente): internacoes."MUNIC_RES" = municipios."CO_MUNICIPIO_6D"
         - → municipios (localização hospital): JOIN hospital h ON i."CNES" = h."CNES"
-                                               JOIN municipios m ON h."MUNIC_MOV" = m.codigo_6d
-        - → atendimentos (for procedures): internacoes."N_AIH" = atendimentos."N_AIH"
+                                               JOIN municipios m ON h."MUNIC_MOV" = m."CO_MUNICIPIO_6D"
+        - → internacao_procedimento (for procedures): internacoes."N_AIH" = internacao_procedimento."N_AIH"
         - → especialidade: internacoes."ESPEC" = especialidade."ESPEC" (para obter nome da especialidade)
         - → raca_cor: internacoes."RACA_COR" = raca_cor."RACA_COR" (para obter descrição da raça)
         - → instrucao: internacoes."INSTRU" = instrucao."INSTRU" (para obter nome do nível de instrução)
@@ -77,7 +77,7 @@ TABLE_TEMPLATES = {
         - "municípios de RESIDÊNCIA dos pacientes" / "onde os pacientes moram" → i."MUNIC_RES" → municipios
         - "municípios que ATENDEM mais pacientes" / "por localização do hospital" / "médias por município (hospital)" →
           JOIN hospital h ON i."CNES" = h."CNES"
-          JOIN municipios m ON h."MUNIC_MOV" = m.codigo_6d  ← usa hospital.MUNIC_MOV!
+          JOIN municipios m ON h."MUNIC_MOV" = m."CO_MUNICIPIO_6D"  ← usa hospital.MUNIC_MOV!
 
         === FEW-SHOT EXAMPLES ===
 
@@ -106,7 +106,7 @@ TABLE_TEMPLATES = {
 
         -- Q: "Quantas internações por doenças cardiovasculares ocorreram no verão (dezembro a fevereiro)?"
         -- NOTE: "cardiovascular" = CID chapter I → use LIKE 'I%' on DIAG_PRINC (no JOIN needed for category)
-        -- NOTE: do NOT use ILIKE '%cardiovascular%' — that term doesn't exist in CD_DESCRICAO!
+        -- NOTE: do NOT use ILIKE '%cardiovascular%' — that term doesn't exist in DESCRICAO!
         SELECT COUNT(*) FROM internacoes
         WHERE "DIAG_PRINC" LIKE 'I%'
           AND EXTRACT(MONTH FROM "DT_INTER") IN (12, 1, 2);
@@ -114,11 +114,11 @@ TABLE_TEMPLATES = {
         -- Q: "Qual o principal diagnóstico de entrada nas internações masculinas?"
         -- NOTE: SINGULAR "qual o X mais Y" → LIMIT 1 (not LIMIT 5 or no LIMIT!)
         -- NOTE: include c."CID" ONLY when question says "com código" — default: only description
-        SELECT c."CD_DESCRICAO" AS diagnostico, COUNT(*) AS total
+        SELECT c."DESCRICAO" AS diagnostico, COUNT(*) AS total
         FROM internacoes i
         JOIN cid c ON i."DIAG_PRINC" = c."CID"
         WHERE i."DIAG_PRINC" IS NOT NULL AND i."SEXO" = 1
-        GROUP BY c."CD_DESCRICAO"
+        GROUP BY c."DESCRICAO"
         ORDER BY total DESC
         LIMIT 1;
 
@@ -133,25 +133,25 @@ TABLE_TEMPLATES = {
 
         -- Q: "Quais doenças mais frequentemente causam óbito em internações hospitalares?"
         -- RULE: (1) use CID_MORTE (not DIAG_PRINC); (2) include c."CID" ONLY when question says "com código";
-        --       (3) GROUP BY c."CD_DESCRICAO" by default; (4) always filter MORTE = true
-        SELECT c."CD_DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes
+        --       (3) GROUP BY c."DESCRICAO" by default; (4) always filter MORTE = true
+        SELECT c."DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes
         FROM internacoes i
         JOIN cid c ON i."CID_MORTE" = c."CID"
         WHERE i."MORTE" = true AND i."CID_MORTE" IS NOT NULL
-        GROUP BY c."CD_DESCRICAO"
+        GROUP BY c."DESCRICAO"
         ORDER BY total_mortes DESC
         LIMIT 10;
 
         -- Q: "Internações por [doença] que ocasionaram morte (óbito)?"
         -- NOTE: doença + óbito → JOIN via CID_MORTE (não DIAG_PRINC!)
         -- TWO filter strategies:
-        --   (A) Search by disease NAME → ILIKE '%nome%' on c."CD_DESCRICAO"
+        --   (A) Search by disease NAME → ILIKE '%nome%' on c."DESCRICAO"
         --   (B) Search by CID chapter prefix → c."CID" LIKE 'X%'
         -- Example A: sepse (pesquisa por nome na descrição):
         SELECT COUNT(*) AS total_obitos_sepse
         FROM internacoes i
         JOIN cid c ON i."CID_MORTE" = c."CID"
-        WHERE c."CD_DESCRICAO" ILIKE '%sepse%'  -- pesquisa por nome, NÃO por código!
+        WHERE c."DESCRICAO" ILIKE '%sepse%'  -- pesquisa por nome, NÃO por código!
           AND i."MORTE" = true;
         -- Example B: neoplasias (pesquisa por capítulo CID):
         SELECT COUNT(*) AS total_obitos_neoplasia
@@ -199,23 +199,23 @@ TABLE_TEMPLATES = {
 
         -- Q: "Quais os 10 municípios com maior custo médio de internação hospitalar?"
         -- NOTE: HAVING COUNT(*) > 100 to exclude low-volume municipalities
-        SELECT mu.nome AS municipio,
+        SELECT mu."NO_MUNICIPIO" AS municipio,
                COUNT(*) AS total_internacoes,
                ROUND(AVG(i."VAL_TOT"), 2) AS custo_medio
         FROM internacoes i
-        JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d
-        GROUP BY mu.nome
+        JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+        GROUP BY mu."NO_MUNICIPIO"
         HAVING COUNT(*) > 100
         ORDER BY custo_medio DESC
         LIMIT 10;
 
         -- Q: "Qual o volume de internações por estado de residência em Goiás e Mato Grosso?"
         -- NOTE: "nos estados do X e Y" or "por estado" → GROUP BY estado to return per-state breakdown (NOT total)
-        SELECT mu.estado, COUNT(*) AS total_internacoes
+        SELECT mu."SG_UF" AS estado, COUNT(*) AS total_internacoes
         FROM internacoes i
-        JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d
-        WHERE mu.estado IN ('GO', 'MT')
-        GROUP BY mu.estado
+        JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+        WHERE mu."SG_UF" IN ('GO', 'MT')
+        GROUP BY mu."SG_UF"
         ORDER BY total_internacoes DESC;
 
         -- Q: "Quantas mortes foram registradas no estado do RS?"
@@ -223,9 +223,9 @@ TABLE_TEMPLATES = {
         -- NOTE: single state requested → return total count, NOT GROUP BY estado
         SELECT COUNT(*) AS total_mortes
         FROM internacoes i
-        JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d
+        JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
         WHERE i."MORTE" = true
-          AND mu.estado = 'RS';
+          AND mu."SG_UF" = 'RS';
 
         -- Q: "Como se distribui o vínculo previdenciário dos pacientes internados?"
         -- NOTE: bare distribution query → use raw numeric column (NOT JOIN lookup table)
@@ -247,8 +247,8 @@ TABLE_TEMPLATES = {
         -- Q: "Qual o procedimento com maior volume de execuções registradas em internações masculinas?"
         SELECT p."NOME_PROC", COUNT(*) AS total
         FROM internacoes i
-        JOIN atendimentos a ON i."N_AIH" = a."N_AIH"
-        JOIN procedimentos p ON a."PROC_REA" = p."PROC_REA"
+        JOIN internacao_procedimento ip ON i."N_AIH" = ip."N_AIH"
+        JOIN procedimentos p ON ip."PROC_REA" = p."PROC_REA"
         WHERE i."SEXO" = 1
         GROUP BY p."NOME_PROC"
         ORDER BY total DESC
@@ -258,13 +258,13 @@ TABLE_TEMPLATES = {
         -- PATTERN: top-N per named dimension → ROW_NUMBER PARTITION BY dimension, never LIMIT global
         SELECT especialidade, diagnostico, total_internacoes
         FROM (
-            SELECT e."DESCRICAO" AS especialidade, c."CD_DESCRICAO" AS diagnostico,
+            SELECT e."DESCRICAO" AS especialidade, c."DESCRICAO" AS diagnostico,
                    COUNT(*) AS total_internacoes,
-                   ROW_NUMBER() OVER (PARTITION BY e."DESCRICAO" ORDER BY COUNT(*) DESC, c."CD_DESCRICAO" ASC) AS rn
+                   ROW_NUMBER() OVER (PARTITION BY e."DESCRICAO" ORDER BY COUNT(*) DESC, c."DESCRICAO" ASC) AS rn
             FROM internacoes i
             JOIN especialidade e ON i."ESPEC" = e."ESPEC"
             JOIN cid c ON i."DIAG_PRINC" = c."CID"
-            GROUP BY e."DESCRICAO", c."CD_DESCRICAO"
+            GROUP BY e."DESCRICAO", c."DESCRICAO"
         ) sub
         WHERE rn <= 3
         ORDER BY especialidade, rn;
@@ -284,31 +284,31 @@ TABLE_TEMPLATES = {
         -- Q: "Qual a média de dias de internação comparando os pacientes do estado A vs estado B?"
         -- PATTERN: side-by-side comparison → CASE WHEN pivot (wide format), not long format
         SELECT e."DESCRICAO" AS especialidade,
-               ROUND(AVG(CASE WHEN mu.estado = 'SC' THEN i."DIAS_PERM" END), 2) AS media_SC,
-               ROUND(AVG(CASE WHEN mu.estado = 'PR' THEN i."DIAS_PERM" END), 2) AS media_PR,
-               COUNT(CASE WHEN mu.estado = 'SC' THEN 1 END) AS total_SC,
-               COUNT(CASE WHEN mu.estado = 'PR' THEN 1 END) AS total_PR
+               ROUND(AVG(CASE WHEN mu."SG_UF" = 'SC' THEN i."DIAS_PERM" END), 2) AS media_SC,
+               ROUND(AVG(CASE WHEN mu."SG_UF" = 'PR' THEN i."DIAS_PERM" END), 2) AS media_PR,
+               COUNT(CASE WHEN mu."SG_UF" = 'SC' THEN 1 END) AS total_SC,
+               COUNT(CASE WHEN mu."SG_UF" = 'PR' THEN 1 END) AS total_PR
         FROM internacoes i
         JOIN especialidade e ON i."ESPEC" = e."ESPEC"
-        JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d
-        WHERE mu.estado IN ('SC', 'PR')
+        JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+        WHERE mu."SG_UF" IN ('SC', 'PR')
         GROUP BY e."DESCRICAO"
-        HAVING COUNT(CASE WHEN mu.estado = 'SC' THEN 1 END) > 100
-           AND COUNT(CASE WHEN mu.estado = 'PR' THEN 1 END) > 100
+        HAVING COUNT(CASE WHEN mu."SG_UF" = 'SC' THEN 1 END) > 100
+           AND COUNT(CASE WHEN mu."SG_UF" = 'PR' THEN 1 END) > 100
         ORDER BY especialidade;
 
         -- Q: "Quais municípios têm taxa de mortalidade acima da média estadual (mínimo 500 internações)?"
         -- PATTERN: global reference CTE + compare local rate vs reference rate
         WITH media_estado AS (
             SELECT SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_ref
-            FROM internacoes i JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d
-            WHERE mu.estado = 'SP'
+            FROM internacoes i JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+            WHERE mu."SG_UF" = 'SP'
         ),
         por_municipio AS (
-            SELECT mu.nome, COUNT(*) AS total, SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa
-            FROM internacoes i JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d
-            WHERE mu.estado = 'SP'
-            GROUP BY mu.nome HAVING COUNT(*) > 500
+            SELECT mu."NO_MUNICIPIO" AS nome, COUNT(*) AS total, SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa
+            FROM internacoes i JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+            WHERE mu."SG_UF" = 'SP'
+            GROUP BY mu."NO_MUNICIPIO" HAVING COUNT(*) > 500
         )
         SELECT pm.nome, pm.total, ROUND(pm.taxa, 2) AS taxa_mortalidade
         FROM por_municipio pm, media_estado me
@@ -322,15 +322,14 @@ TABLE_TEMPLATES = {
                ROUND(SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade
         FROM internacoes i
         JOIN instrucao ins ON i."INSTRU" = ins."INSTRU"
-        JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d
-        WHERE mu.estado = 'PA' AND i."INSTRU" IS NOT NULL AND i."INSTRU" != 0
+        JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+        WHERE mu."SG_UF" = 'PA' AND i."INSTRU" IS NOT NULL AND i."INSTRU" != 0
         GROUP BY ins."DESCRICAO"
         HAVING COUNT(*) > 1000
         ORDER BY taxa_mortalidade DESC;
 """,
-
-    "atendimentos": """
-        ATENDIMENTOS TABLE RULES - PROCEDURES PER HOSPITALIZATION (JUNCTION TABLE):
+    "internacao_procedimento": """
+        PROCEDURE JUNCTION TABLE RULES - PROCEDURES PER HOSPITALIZATION:
 
         MANDATORY USAGE RULES:
         - This is the JUNCTION TABLE between internacoes and procedimentos
@@ -339,15 +338,15 @@ TABLE_TEMPLATES = {
         - 37M+ records in this table
 
         CRITICAL: TO GET PROCEDURE DATA you MUST use a TWO-JOIN pattern:
-        internacoes → atendimentos → procedimentos
+        internacoes → internacao_procedimento → procedimentos
 
         ❌ WRONG (PROC_REA does not exist in internacoes):
         SELECT i."PROC_REA" FROM internacoes i
 
         ✅ CORRECT:
         SELECT p."NOME_PROC", COUNT(*) AS total
-        FROM atendimentos a
-        JOIN procedimentos p ON a."PROC_REA" = p."PROC_REA"
+        FROM internacao_procedimento ip
+        JOIN procedimentos p ON ip."PROC_REA" = p."PROC_REA"
         GROUP BY p."NOME_PROC"
         ORDER BY total DESC;
 
@@ -358,8 +357,8 @@ TABLE_TEMPLATES = {
 
         -- Q: "Qual o procedimento médico mais executado nos registros de atendimento?"
         SELECT p."NOME_PROC", COUNT(*) AS total
-        FROM atendimentos a
-        JOIN procedimentos p ON a."PROC_REA" = p."PROC_REA"
+        FROM internacao_procedimento ip
+        JOIN procedimentos p ON ip."PROC_REA" = p."PROC_REA"
         GROUP BY p."NOME_PROC"
         ORDER BY total DESC
         LIMIT 10;
@@ -368,62 +367,61 @@ TABLE_TEMPLATES = {
         SELECT AVG(proc_count) AS media_procedimentos
         FROM (
           SELECT "N_AIH", COUNT(*) AS proc_count
-          FROM atendimentos
+          FROM internacao_procedimento
           GROUP BY "N_AIH"
         ) t;
 
         -- Q: "Quantos procedimentos cirúrgicos foram realizados?"
         SELECT COUNT(*) AS total
-        FROM atendimentos a
-        JOIN procedimentos p ON a."PROC_REA" = p."PROC_REA"
+        FROM internacao_procedimento ip
+        JOIN procedimentos p ON ip."PROC_REA" = p."PROC_REA"
         WHERE p."NOME_PROC" ILIKE '%cirurgia%';
 
         -- Q: "Procedimentos realizados em internações de mulheres"
         SELECT p."NOME_PROC", COUNT(*) AS total
         FROM internacoes i
-        JOIN atendimentos a ON i."N_AIH" = a."N_AIH"
-        JOIN procedimentos p ON a."PROC_REA" = p."PROC_REA"
+        JOIN internacao_procedimento ip ON i."N_AIH" = ip."N_AIH"
+        JOIN procedimentos p ON ip."PROC_REA" = p."PROC_REA"
         WHERE i."SEXO" = 3
         GROUP BY p."NOME_PROC"
         ORDER BY total DESC
         LIMIT 10;
 
         -- Q: "Qual o custo total de internações por tipo de procedimento em hospitais de MG?" (filtro por ESTADO via hospital)
-        -- PATTERN: filter by HOSPITAL state → join internacoes + atendimentos + procedimentos + hospital + municipios
+        -- PATTERN: filter by HOSPITAL state → join internacoes + internacao_procedimento + procedimentos + hospital + municipios
         -- CRITICAL: hospital.MUNIC_MOV = city where HOSPITAL is located (NOT patient residence!)
         SELECT p."NOME_PROC" AS procedimento, SUM(i."VAL_TOT") AS custo_total
-        FROM atendimentos a
-        JOIN procedimentos p ON a."PROC_REA" = p."PROC_REA"
-        JOIN internacoes i ON a."N_AIH" = i."N_AIH"
+        FROM internacao_procedimento ip
+        JOIN procedimentos p ON ip."PROC_REA" = p."PROC_REA"
+        JOIN internacoes i ON ip."N_AIH" = i."N_AIH"
         JOIN hospital h ON i."CNES" = h."CNES"
-        JOIN municipios m ON h."MUNIC_MOV" = m.codigo_6d
-        WHERE m.estado = 'MG'
+        JOIN municipios m ON h."MUNIC_MOV" = m."CO_MUNICIPIO_6D"
+        WHERE m."SG_UF" = 'MG'
         GROUP BY p."NOME_PROC"
         ORDER BY custo_total DESC
         LIMIT 10;
 """,
-
     "cid": """
          CID TABLE RULES - ICD-10 DISEASE CODES (REFERENCE TABLE):
 
         MANDATORY USAGE RULES:
         - Use for: Disease code lookups, descriptions, JOIN operations
         - "CID" = ICD-10 code column (contains codes like 'J18', 'I21', 'C50')
-        - "CD_DESCRICAO" = TEXT description column (contains 'Pneumonia', 'Infarto', 'Cancer mama')
+        - "DESCRICAO" = TEXT description column (contains 'Pneumonia', 'Infarto', 'Cancer mama')
         - TABLE NAME IS "cid" (NOT "cid10" — name changed in sihrd5!)
 
         ⚠️ CRITICAL COLUMN QUOTING — ALL COLUMNS REQUIRE DOUBLE QUOTES:
         ✅ c."CID"           (correct)   ❌ c.cid   (WRONG — will cause DB error!)
-        ✅ c."CD_DESCRICAO"  (correct)   ❌ c.cd_descricao  (WRONG — will cause DB error!)
-        ✅ c."CD_DESCRICAO"  (correct)   ❌ c.CD_DESCRICAO  (WRONG — must have quotes!)
+        ✅ c."DESCRICAO"  (correct)   ❌ c.cd_descricao  (WRONG — will cause DB error!)
+        ✅ c."DESCRICAO"  (correct)   ❌ c.DESCRICAO  (WRONG — must have quotes!)
 
         POSTGRESQL COLUMN QUOTING:
-        - "CID" (ICD-10 code), "CD_DESCRICAO" (description)
+        - "CID" (ICD-10 code), "DESCRICAO" (description)
 
         CRITICAL SEARCH PATTERNS:
-        - Description search (disease name): WHERE "CD_DESCRICAO" ILIKE '%pneumonia%'
+        - Description search (disease name): WHERE "DESCRICAO" ILIKE '%pneumonia%'
         - Code range search (disease category): WHERE "CID" LIKE 'I%'
-        - NEVER: WHERE "CD_DESCRICAO" LIKE 'I%' (codes are in CID, not in CD_DESCRICAO!)
+        - NEVER: WHERE "DESCRICAO" LIKE 'I%' (codes are in CID, not in DESCRICAO!)
 
         JOIN PATTERNS WITH internacoes:
         - Primary diagnosis: JOIN cid c ON i."DIAG_PRINC" = c."CID"
@@ -432,19 +430,19 @@ TABLE_TEMPLATES = {
 
         EXACT QUERY EXAMPLES:
         -- Find specific code description
-        SELECT "CD_DESCRICAO" FROM cid WHERE "CID" = 'A15';
+        SELECT "DESCRICAO" FROM cid WHERE "CID" = 'A15';
 
         -- Search diabetes codes
-        SELECT "CID", "CD_DESCRICAO"
+        SELECT "CID", "DESCRICAO"
         FROM cid
         WHERE "CID" LIKE 'E1%';
 
         -- Top diagnoses with descriptions (CID explicitly asked = include c."CID")
-        SELECT c."CID", c."CD_DESCRICAO", COUNT(*) AS total
+        SELECT c."CID", c."DESCRICAO", COUNT(*) AS total
         FROM internacoes i
         JOIN cid c ON i."DIAG_PRINC" = c."CID"
         WHERE i."DIAG_PRINC" IS NOT NULL
-        GROUP BY c."CID", c."CD_DESCRICAO"
+        GROUP BY c."CID", c."DESCRICAO"
         ORDER BY total DESC
         LIMIT 10;
 
@@ -463,27 +461,26 @@ TABLE_TEMPLATES = {
 
         -- Q: "Qual o diagnóstico mais frequente para cada especialidade médica?"
         -- PATTERN: top-1 per group → ROW_NUMBER() OVER (PARTITION BY group ORDER BY count DESC) = 1
-        SELECT e."DESCRICAO" AS especialidade, c."CD_DESCRICAO" AS diagnostico_principal, total_internacoes
+        SELECT e."DESCRICAO" AS especialidade, c."DESCRICAO" AS diagnostico_principal, total_internacoes
         FROM (
-            SELECT i."ESPEC", i."DIAG_PRINC", c."CD_DESCRICAO",
+            SELECT i."ESPEC", i."DIAG_PRINC", c."DESCRICAO",
                    COUNT(i."N_AIH") AS total_internacoes,
                    ROW_NUMBER() OVER (PARTITION BY i."ESPEC" ORDER BY COUNT(i."N_AIH") DESC) AS rn
             FROM internacoes i
             JOIN cid c ON i."DIAG_PRINC" = c."CID"
             JOIN especialidade e ON i."ESPEC" = e."ESPEC"
-            GROUP BY i."ESPEC", i."DIAG_PRINC", c."CD_DESCRICAO"
+            GROUP BY i."ESPEC", i."DIAG_PRINC", c."DESCRICAO"
         ) ranked
         WHERE rn = 1
         ORDER BY especialidade;
 """,
-
     "hospital": """
          HOSPITAL TABLE RULES - HEALTHCARE FACILITIES:
 
         MANDATORY USAGE RULES:
         - Use for: Hospital counts, facility analysis, public/private classification
         - "CNES" = National Health Facility Registry code (primary key)
-        - "MUNIC_MOV" = FK → municipios.codigo_6d (municipality where hospital is located)
+        - "MUNIC_MOV" = FK → municipios.CO_MUNICIPIO_6D (municipality where hospital is located)
         - "NATUREZA" = Facility nature (public/private classification)
 
         CRITICAL COUNTING RULES:
@@ -492,14 +489,15 @@ TABLE_TEMPLATES = {
 
         MUNICIPALITY RESOLUTION FOR HOSPITAL:
         ✅ CORRECT (hospital has MUNIC_MOV → municipios directly):
-           JOIN municipios mu ON h."MUNIC_MOV" = mu."codigo_6d"
+           JOIN municipios mu ON h."MUNIC_MOV" = mu."CO_MUNICIPIO_6D"
 
         ❌ WRONG (old pattern with dado_ibge — table does not exist):
-           JOIN dado_ibge d ON mu."codigo_ibge" = d."codigo_municipio_completo"
+           JOIN dado_ibge d ON mu."CO_MUNICIPIO_7D" = d."codigo_municipio_completo"
 
         ✅ For socioeconomic data of hospital's municipality:
-           JOIN municipios mu ON h."MUNIC_MOV" = mu."codigo_6d"
-           JOIN socioeconomico s ON s."codigo_6d" = mu."codigo_6d" WHERE s.metrica = 'populacao_total'
+           JOIN municipios mu ON h."MUNIC_MOV" = mu."CO_MUNICIPIO_6D"
+           JOIN socioeconomico s ON s."CO_MUNICIPIO_6D" = mu."CO_MUNICIPIO_6D"
+           -- then select the explicit indicator column, e.g. s."QT_POPULACAO"
 
         POSTGRESQL COLUMN QUOTING:
         - "CNES", "MUNIC_MOV", "NATUREZA", "GESTAO", "NAT_JUR"
@@ -527,79 +525,78 @@ TABLE_TEMPLATES = {
         LIMIT 10;
 
         -- Hospital by municipality name
-        SELECT h."CNES", mu."nome", mu."estado", h."NATUREZA"
+        SELECT h."CNES", mu."NO_MUNICIPIO", mu."SG_UF", h."NATUREZA"
         FROM hospital h
-        JOIN municipios mu ON h."MUNIC_MOV" = mu."codigo_6d"
-        WHERE mu."estado" = 'RS';
+        JOIN municipios mu ON h."MUNIC_MOV" = mu."CO_MUNICIPIO_6D"
+        WHERE mu."SG_UF" = 'RS';
 """,
-
     "municipios": """
         MUNICIPIOS TABLE RULES - BRAZILIAN MUNICIPALITIES:
 
         MANDATORY USAGE RULES:
         - Use for: Geographic queries, municipality names, state, coordinates
-        - "codigo_6d" = 6-digit code (primary key — used in FKs from internacoes and hospital)
-        - "codigo_ibge" = IBGE code (7 digits)
-        - "nome" = municipality name, "estado" = state abbreviation (RS, SP, RJ...)
+        - "CO_MUNICIPIO_6D" = 6-digit code (primary key — used in FKs from internacoes and hospital)
+        - "CO_MUNICIPIO_7D" = IBGE code (7 digits)
+        - "NO_MUNICIPIO" = municipality name, "SG_UF" = state abbreviation (RS, SP, RJ...)
 
         POSTGRESQL COLUMN QUOTING:
-        - "codigo_6d", "codigo_ibge", "nome", "estado", "latitude", "longitude"
+        - "CO_MUNICIPIO_6D", "CO_MUNICIPIO_7D", "NO_MUNICIPIO", "SG_UF", "latitude", "longitude"
 
         CRITICAL RELATIONSHIPS:
-        - internacoes → municipios: internacoes."MUNIC_RES" = municipios."codigo_6d"
-        - hospital → municipios: hospital."MUNIC_MOV" = municipios."codigo_6d"
-        - socioeconomico → municipios: socioeconomico."codigo_6d" = municipios."codigo_6d"
+        - internacoes → municipios: internacoes."MUNIC_RES" = municipios."CO_MUNICIPIO_6D"
+        - hospital → municipios: hospital."MUNIC_MOV" = municipios."CO_MUNICIPIO_6D"
+        - socioeconomico → municipios: socioeconomico."CO_MUNICIPIO_6D" = municipios."CO_MUNICIPIO_6D"
 
         ❌ WRONG (dado_ibge does not exist in sihrd5):
-           JOIN dado_ibge d ON mu."codigo_ibge" = d."codigo_municipio_completo"
+           JOIN dado_ibge d ON mu."CO_MUNICIPIO_7D" = d."codigo_municipio_completo"
 
         ✅ CORRECT for socioeconomic data:
-           JOIN socioeconomico s ON s."codigo_6d" = mu."codigo_6d" WHERE s.metrica = 'populacao_total'
+           JOIN socioeconomico s ON s."CO_MUNICIPIO_6D" = mu."CO_MUNICIPIO_6D"
+           -- then select the explicit indicator column, e.g. s."QT_POPULACAO"
 
         EXACT QUERY EXAMPLES:
         -- Total municipalities
         SELECT COUNT(*) FROM municipios;
 
         -- RS state municipalities
-        SELECT COUNT(*) FROM municipios WHERE "estado" = 'RS';
+        SELECT COUNT(*) FROM municipios WHERE "SG_UF" = 'RS';
 
         -- Distinct states covered by the database geography reference
-        SELECT COUNT(DISTINCT "estado") FROM municipios;
+        SELECT COUNT(DISTINCT "SG_UF") FROM municipios;
 
         -- Municipalities by state
-        SELECT "estado", COUNT(*) AS total_municipios
+        SELECT "SG_UF", COUNT(*) AS total_municipios
         FROM municipios
-        GROUP BY "estado"
+        GROUP BY "SG_UF"
         ORDER BY total_municipios DESC;
 
         -- Internações by state (via municipality of patient's residence)
-        SELECT mu."estado", COUNT(*) AS total_internacoes
+        SELECT mu."SG_UF" AS estado, COUNT(*) AS total_internacoes
         FROM internacoes i
-        JOIN municipios mu ON i."MUNIC_RES" = mu."codigo_6d"
-        GROUP BY mu."estado"
+        JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+        GROUP BY mu."SG_UF"
         ORDER BY total_internacoes DESC;
 
         -- Q: "Quantas internações ocorreram nos estados da região Norte?" → GROUP BY estado (per-state breakdown!)
         -- PATTERN "nos estados do X e Y" → always GROUP BY estado to return one row per state
-        SELECT mu.estado, COUNT(*) AS total_internacoes
+        SELECT mu."SG_UF" AS estado, COUNT(*) AS total_internacoes
         FROM internacoes i
-        JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d
-        WHERE mu.estado IN ('AM', 'PA', 'AC', 'RO', 'RR', 'AP', 'TO')
-        GROUP BY mu.estado
+        JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+        WHERE mu."SG_UF" IN ('AM', 'PA', 'AC', 'RO', 'RR', 'AP', 'TO')
+        GROUP BY mu."SG_UF"
         ORDER BY total_internacoes DESC;
 """,
-
     "procedimentos": """
          PROCEDIMENTOS TABLE RULES - MEDICAL PROCEDURES REFERENCE:
 
         MANDATORY USAGE RULES:
         - Reference table for procedure codes and descriptions
-        - To count PROCEDURES PERFORMED, MUST use atendimentos as junction table:
-          internacoes → atendimentos → procedimentos
+        - To count PROCEDURES PERFORMED, MUST use internacao_procedimento as junction table:
+          internacoes → internacao_procedimento → procedimentos
         - "PROC_REA" = Procedure code (primary key)
         - "NOME_PROC" = Procedure description/name
 
-        CRITICAL: There is NO PROC_REA column in internacoes — always use atendimentos!
+        CRITICAL: There is NO PROC_REA column in internacoes — always use internacao_procedimento!
 
         ⚠️ CRITICAL: For "quais procedimentos"/"nomes dos procedimentos" queries:
         - ALWAYS SELECT p."NOME_PROC" (the human-readable name), NEVER p."PROC_REA" (the code)!
@@ -618,23 +615,22 @@ TABLE_TEMPLATES = {
         FROM procedimentos
         WHERE "NOME_PROC" ILIKE '%CIRURGIA%';
 
-        -- Most common procedures performed (via atendimentos junction)
+        -- Most common procedures performed (via internacao_procedimento junction)
         SELECT p."NOME_PROC", COUNT(*) AS frequency
-        FROM atendimentos a
-        JOIN procedimentos p ON a."PROC_REA" = p."PROC_REA"
+        FROM internacao_procedimento ip
+        JOIN procedimentos p ON ip."PROC_REA" = p."PROC_REA"
         GROUP BY p."NOME_PROC"
         ORDER BY frequency DESC
         LIMIT 10;
 
         -- Procedures per hospitalization
-        SELECT p."NOME_PROC", COUNT(DISTINCT a."N_AIH") AS internacoes_count
-        FROM atendimentos a
-        JOIN procedimentos p ON a."PROC_REA" = p."PROC_REA"
+        SELECT p."NOME_PROC", COUNT(DISTINCT ip."N_AIH") AS internacoes_count
+        FROM internacao_procedimento ip
+        JOIN procedimentos p ON ip."PROC_REA" = p."PROC_REA"
         GROUP BY p."NOME_PROC"
         ORDER BY internacoes_count DESC
         LIMIT 10;
 """,
-
     "instrucao": """
         INSTRUCAO TABLE RULES - EDUCATION LEVEL LOOKUP:
 
@@ -681,7 +677,6 @@ TABLE_TEMPLATES = {
         GROUP BY ins."INSTRU", ins."DESCRICAO"
         ORDER BY avg_cost DESC;
 """,
-
     "vincprev": """
         VINCPREV TABLE RULES - SOCIAL SECURITY LINKAGE LOOKUP:
 
@@ -730,7 +725,6 @@ TABLE_TEMPLATES = {
         GROUP BY v."VINCPREV", v."DESCRICAO"
         ORDER BY taxa_mortalidade DESC;
 """,
-
     "sexo": """
         SEXO TABLE RULES - SEX LOOKUP:
 
@@ -757,12 +751,13 @@ TABLE_TEMPLATES = {
         ❌ WRONG (unnecessary JOIN):
         SELECT s."DESCRICAO", COUNT(*) FROM internacoes i JOIN sexo s ON i."SEXO" = s."SEXO" ...
 """,
-
     "raca_cor": """
         RACA_COR TABLE RULES - RACE/COLOR LOOKUP:
 
-        RACA_COR VALUE MAPPINGS (7 entries in lookup table):
-        0  = SEM INFORMACAO
+        RACA_COR VALUE MAPPINGS:
+        Lookup raca_cor has identified categories 1..5.
+        internacoes."RACA_COR" can also contain unknown code 99.
+        stg/source data may contain 0 for SEM INFORMACAO.
         1  = BRANCA
         2  = PRETA
         3  = PARDA
@@ -774,7 +769,7 @@ TABLE_TEMPLATES = {
         ⚠️ INCLUDE or EXCLUDE SEM INFORMACAO? Depends on the question:
         • DISTRIBUIÇÃO / COMPOSIÇÃO total → INCLUDE (no filter): shows all patients including unknowns
           "distribuição por raça", "composição racial", "quantas internações por raça"
-          → JOIN raca_cor (groups 0 and 99 together as 'SEM INFORMACAO' automatically)
+          → use CASE/COALESCE with LEFT JOIN to keep SEM INFORMACAO rows
         • ANÁLISE por raça (taxa, média, correlação) → EXCLUDE unknowns: WHERE "RACA_COR" NOT IN (0, 99)
           "taxa de mortalidade por raça", "custo médio por raça"
 
@@ -784,16 +779,18 @@ TABLE_TEMPLATES = {
 
         2. MOSTRAR DESCRIÇÃO/NOME → JOIN raca_cor table (it has the DESCRICAO column):
            JOIN raca_cor r ON i."RACA_COR" = r."RACA_COR" → SELECT r."DESCRICAO"
+           This inner join keeps identified categories 1..5 and excludes SEM INFORMACAO.
            Alternativa para análise (exclui unknowns): CASE WHEN "RACA_COR" = 1 THEN 'Branca' ... END
 
         3. CONTAR CATEGORIAS cadastradas → use the raca_cor lookup table (not internacoes):
-           The raca_cor table has 7 registered categories; querying it gives the catalogue count.
+           The raca_cor table has 5 identified categories; querying it gives the catalogue count.
            Do NOT use COUNT(DISTINCT "RACA_COR") FROM internacoes — that counts only codes
            actually present in patient records, which may differ from the registered catalogue.
 
-        ⚠️ CRITICAL: "quantos PACIENTES/REGISTROS têm raça cadastrada?" → query internacoes:
-          CORRECT: SELECT COUNT(*) FROM internacoes WHERE "RACA_COR" IS NOT NULL;  → ~18M records
-          This is DIFFERENT from counting categories (7) — do not confuse the two.
+        ⚠️ CRITICAL: distinguish populated field from identified race/color:
+          "campo RACA_COR preenchido" → WHERE "RACA_COR" IS NOT NULL (includes 99=SEM INFORMACAO)
+          "raça/cor registrada, informada ou identificada" → WHERE "RACA_COR" IN (1, 2, 3, 4, 5)
+          This is DIFFERENT from counting categories (5) — do not confuse the two.
 
         ✅ CORRECT PATTERNS:
         -- ANÁLISE por raça (exclui unknowns — CASE WHEN inline):
@@ -822,7 +819,6 @@ TABLE_TEMPLATES = {
         GROUP BY r."DESCRICAO"
         ORDER BY total DESC;
 """,
-
     "etnia": """
         ETNIA TABLE RULES - INDIGENOUS ETHNICITY LOOKUP:
 
@@ -858,7 +854,6 @@ TABLE_TEMPLATES = {
         GROUP BY e."ETNIA", e."DESCRICAO"
         ORDER BY mortes DESC;
 """,
-
     "nacionalidade": """
         NACIONALIDADE TABLE RULES - NATIONALITY LOOKUP:
 
@@ -901,7 +896,6 @@ TABLE_TEMPLATES = {
         -- For per-group top-N, apply RULE J: ROW_NUMBER() OVER (PARTITION BY group_col ORDER BY COUNT(*) DESC, tiebreaker ASC)
         -- outer SELECT must reference the subquery alias, NOT the inner table alias (i.)
 """,
-
     "contraceptivos": """
         CONTRACEPTIVOS TABLE RULES - CONTRACEPTIVE METHOD LOOKUP:
 
@@ -942,7 +936,6 @@ TABLE_TEMPLATES = {
         ORDER BY total DESC
         LIMIT 10;
 """,
-
     "especialidade": """
         ESPECIALIDADE TABLE RULES - MEDICAL SPECIALTY LOOKUP:
 
@@ -983,96 +976,75 @@ TABLE_TEMPLATES = {
         GROUP BY e."DESCRICAO"
         ORDER BY avg_cost DESC;
 """,
-
     "socioeconomico": """
         SOCIOECONOMICO TABLE RULES - MUNICIPALITY SOCIOECONOMIC DATA:
 
         MANDATORY USAGE RULES:
         - PRIMARY TABLE for municipality demographic/economic analysis
-        - FORMAT: Long format — each row = one metric for one municipality in one year
-        - ALWAYS filter by "metrica" column when querying
-        - PK is composite: (codigo_6d, ano, metrica)
+        - FORMAT: Wide format — each row = one municipality in one year
+        - PK is composite: ("CO_MUNICIPIO_6D", "NU_ANO")
         - CRITICAL: "taxa de mortalidade infantil" / "mortalidade infantil" data lives HERE,
-          NOT in internacoes. Use: WHERE metrica = 'mortalidade_infantil_1ano'
+          NOT in internacoes. Use "VL_MORT_INFANTIL".
         - CRITICAL: population / "população" data lives HERE:
-          Use: WHERE metrica = 'populacao_total'
+          Use "QT_POPULACAO".
 
         ⚠️ ANTI-PATTERNS TO NEVER USE:
-        ❌ SELECT mu.nome, SUM(s.valor) FROM municipios JOIN socioeconomico ... GROUP BY mu.nome
-           (SUM without metrica filter sums ALL metrics — gives nonsense result!)
-        ✅ SELECT mu.nome FROM socioeconomico s JOIN municipios mu WHERE s.metrica = 'populacao_total' ORDER BY s.valor DESC
+        ❌ WHERE s.metrica = 'populacao_total' or SELECT s.valor
+           (metrica/valor do not exist in the active schema)
+        ✅ SELECT mu."NO_MUNICIPIO" AS municipio
+           FROM socioeconomico s
+           JOIN municipios mu ON s."CO_MUNICIPIO_6D" = mu."CO_MUNICIPIO_6D"
+           ORDER BY s."QT_POPULACAO" DESC
 
         CRITICAL: When looking for "maior X" in socioeconomico:
-        - ALWAYS start FROM socioeconomico (it has .valor)
+        - ALWAYS start FROM socioeconomico
         - JOIN municipios for the name
-        - ALWAYS add WHERE metrica = '<metric_name>' BEFORE ordering
-        - Use ORDER BY s.valor DESC (not SUM/AVG) for finding max
+        - Use the explicit metric column in ORDER BY
 
-        AVAILABLE METRICS (metrica column values):
-        - 'populacao_total'                   — total population
-        - 'idhm'                              — Human Development Index
-        - 'bolsa_familia_total'               — Bolsa Família (R$)
-        - 'esgotamento_sanitario_domicilio'   — sanitation coverage
-        - 'mortalidade_infantil_1ano'         — infant mortality rate
-        - 'pop_economicamente_ativa'          — economically active population
-        - 'taxa_envelhecimento'               — aging rate
+        AVAILABLE COLUMNS:
+        - "QT_POPULACAO"        — total population
+        - "VL_PIB_PERCAPITA"    — GDP per capita
+        - "QT_OBITOS_INFANTIS"  — infant deaths
+        - "QT_NASCIDOS_VIVOS"   — live births
+        - "VL_MORT_INFANTIL"    — infant mortality rate
+        - "QT_LEITOS_SUS"       — SUS beds
+        - "VL_LEITOS_SUS_1000"  — SUS beds per 1000 residents
+        - "QT_MEDICOS"          — physicians
+        - "VL_MEDICOS_1000"     — physicians per 1000 residents
 
         ❌ WRONG (dado_ibge does not exist in sihrd5):
            JOIN dado_ibge d ON ...
 
         ✅ CORRECT:
-           JOIN socioeconomico s ON s."codigo_6d" = mu."codigo_6d"
-           WHERE s.metrica = 'populacao_total'
+           JOIN socioeconomico s ON s."CO_MUNICIPIO_6D" = mu."CO_MUNICIPIO_6D"
 
         POSTGRESQL COLUMN QUOTING:
-        - "codigo_6d", "ano", "metrica", "valor", "escala"
+        - "CO_MUNICIPIO_6D", "NU_ANO", "QT_POPULACAO", "VL_MORT_INFANTIL", etc.
 
         EXACT QUERY EXAMPLES:
-        -- Q: "Quantos municípios distintos possuem registro de IDHM?"
-        SELECT COUNT(DISTINCT codigo_6d) AS total_municipios
-        FROM socioeconomico
-        WHERE metrica = 'idhm';
+        -- Q: "Quantos municípios distintos possuem dados socioeconômicos?"
+        SELECT COUNT(DISTINCT "CO_MUNICIPIO_6D") AS total_municipios
+        FROM socioeconomico;
 
-        -- Q: "Qual o IDHM médio dos municípios brasileiros?"
-        SELECT AVG(valor) AS idhm_medio
+        -- Q: "Qual a taxa média de mortalidade infantil dos municípios brasileiros?"
+        SELECT AVG("VL_MORT_INFANTIL") AS taxa_media_mortalidade_infantil
         FROM socioeconomico
-        WHERE metrica = 'idhm';
+        WHERE "VL_MORT_INFANTIL" IS NOT NULL;
 
-        -- Q: "Qual o município com maior índice de envelhecimento populacional?"
-        -- NOTE: START with socioeconomico (has .valor), JOIN municipios to get .nome
-        -- NEVER write: FROM municipios ORDER BY socioeconomico.valor (no join = WRONG!)
-        SELECT mu.nome AS municipio, s.valor AS taxa_envelhecimento
+        -- Q: "Qual o município com maior população?"
+        SELECT mu."NO_MUNICIPIO" AS municipio, s."QT_POPULACAO" AS populacao
         FROM socioeconomico s
-        JOIN municipios mu ON s.codigo_6d = mu.codigo_6d
-        WHERE s.metrica = 'taxa_envelhecimento'
-        ORDER BY s.valor DESC
+        JOIN municipios mu ON s."CO_MUNICIPIO_6D" = mu."CO_MUNICIPIO_6D"
+        ORDER BY s."QT_POPULACAO" DESC
         LIMIT 1;
 
-        -- Municipalities with highest economically active population
-        SELECT mu."nome", mu."estado", s."valor" AS pop_ativa
+        -- Average SUS beds by state
+        SELECT mu."SG_UF" AS estado, ROUND(AVG(s."VL_LEITOS_SUS_1000"), 2) AS leitos_sus_1000
         FROM socioeconomico s
-        JOIN municipios mu ON s."codigo_6d" = mu."codigo_6d"
-        WHERE s.metrica = 'pop_economicamente_ativa'
-        ORDER BY s."valor" DESC
-        LIMIT 10;
-
-        -- Average sanitation coverage by state
-        SELECT mu."estado", ROUND(AVG(s."valor")::numeric, 2) AS cobertura_saneamento
-        FROM socioeconomico s
-        JOIN municipios mu ON s."codigo_6d" = mu."codigo_6d"
-        WHERE s.metrica = 'esgotamento_sanitario_domicilio'
-        GROUP BY mu."estado"
-        ORDER BY cobertura_saneamento DESC;
-
-        -- Municipalities with lowest infant mortality (best performers)
-        SELECT mu."nome", mu."estado", s."valor" AS taxa_mortalidade_infantil
-        FROM socioeconomico s
-        JOIN municipios mu ON s."codigo_6d" = mu."codigo_6d"
-        WHERE s.metrica = 'mortalidade_infantil_1ano' AND s."valor" > 0
-        ORDER BY s."valor" ASC
-        LIMIT 10;
+        JOIN municipios mu ON s."CO_MUNICIPIO_6D" = mu."CO_MUNICIPIO_6D"
+        GROUP BY mu."SG_UF"
+        ORDER BY leitos_sus_1000 DESC;
 """,
-
     "tempo": """
         TEMPO TABLE RULES - DATE DIMENSION:
 
@@ -1106,7 +1078,7 @@ TABLE_TEMPLATES = {
         JOIN tempo t ON i."DT_INTER" = t."data"
         GROUP BY t."mes"
         ORDER BY t."mes";
-"""
+""",
 }
 
 
@@ -1212,11 +1184,11 @@ CRITICAL JOIN PATTERNS:
 - internacoes ↔ cid (primary diag): internacoes."DIAG_PRINC" = cid."CID"
 - internacoes ↔ cid (secondary diag): internacoes."DIAG_SECUN" = cid."CID"
 - internacoes ↔ cid (death cause): internacoes."CID_MORTE" = cid."CID"
-- internacoes ↔ atendimentos: internacoes."N_AIH" = atendimentos."N_AIH"
-- atendimentos ↔ procedimentos: atendimentos."PROC_REA" = procedimentos."PROC_REA"
-- internacoes ↔ municipios: internacoes."MUNIC_RES" = municipios."codigo_6d"
-- hospital ↔ municipios: hospital."MUNIC_MOV" = municipios."codigo_6d"
-- municipios ↔ socioeconomico: municipios."codigo_6d" = socioeconomico."codigo_6d"
+- internacoes ↔ internacao_procedimento: internacoes."N_AIH" = internacao_procedimento."N_AIH"
+- internacao_procedimento ↔ procedimentos: internacao_procedimento."PROC_REA" = procedimentos."PROC_REA"
+- internacoes ↔ municipios: internacoes."MUNIC_RES" = municipios."CO_MUNICIPIO_6D"
+- hospital ↔ municipios: hospital."MUNIC_MOV" = municipios."CO_MUNICIPIO_6D"
+- municipios ↔ socioeconomico: municipios."CO_MUNICIPIO_6D" = socioeconomico."CO_MUNICIPIO_6D"
 - internacoes ↔ sexo: internacoes."SEXO" = sexo."SEXO"
 - internacoes ↔ raca_cor: internacoes."RACA_COR" = raca_cor."RACA_COR"
 - internacoes ↔ instrucao: internacoes."INSTRU" = instrucao."INSTRU"
@@ -1226,10 +1198,10 @@ CRITICAL JOIN PATTERNS:
 TABLES THAT NO LONGER EXIST IN sihrd5 — NEVER USE:
 - mortes (use internacoes."MORTE" = true instead)
 - cid10 (renamed to cid)
-- dado_ibge (replaced by socioeconomico with long format)
+- dado_ibge (replaced by socioeconomico wide-format columns)
 - uti_detalhes (use internacoes."VAL_UTI" > 0 — do NOT use ESPEC for UTI detection)
 - condicoes_especificas (use internacoes."IND_VDRL" = true)
-- obstetricos (use internacoes."INSC_PN", "GESTRICO", "CONTRACEP1", "CONTRACEP2")
+- obstetricos (use internacoes."INSC_PN", "GESTRISCO", "CONTRACEP1", "CONTRACEP2")
 - diagnosticos_secundarios (use internacoes."DIAG_SECUN")
 - cbor, infehosp (removed from sihrd5)
 
@@ -1274,7 +1246,7 @@ TEMPLATE_CONFIG = {
     "enable_multi_table_rules": True,
     "postgresql_mode": True,
     "quote_columns": True,
-    "include_performance_hints": True
+    "include_performance_hints": True,
 }
 
 
@@ -1287,8 +1259,8 @@ def get_template_stats() -> dict[str, int]:
     """
     return {
         "total_templates": len(TABLE_TEMPLATES),
-        "fact_tables": 2,        # internacoes, atendimentos
-        "reference_tables": 5,   # cid, hospital, municipios, procedimentos, socioeconomico
-        "lookup_tables": 9,      # sexo, raca_cor, instrucao, vincprev, especialidade, tempo, etnia, nacionalidade, contraceptivos
-        "total_db_tables": 16    # total tables in sihrd5
+        "fact_tables": 2,  # internacoes, internacao_procedimento
+        "reference_tables": 5,  # cid, hospital, municipios, procedimentos, socioeconomico
+        "lookup_tables": 9,  # sexo, raca_cor, instrucao, vincprev, especialidade, tempo, etnia, nacionalidade, contraceptivos
+        "total_db_tables": 16,  # total tables in sihrd5
     }

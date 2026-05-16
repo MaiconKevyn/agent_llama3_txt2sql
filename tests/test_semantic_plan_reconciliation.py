@@ -104,8 +104,8 @@ def test_reconciler_preserves_heuristic_no_group_by_for_value_metric_ranking():
     )
     llm = SemanticPlan(
         intent="ranking",
-        base_grain="municipio_ano_metrica",
-        metrics=[SemanticMetric(name="populacao_total", expression_type="value")],
+        base_grain="municipio_ano",
+        metrics=[SemanticMetric(name="populacao_total", expression_type="sum")],
         answer_shape=AnswerShape(
             row_grain="top_n_global",
             top_n=1,

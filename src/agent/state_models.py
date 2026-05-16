@@ -1,10 +1,11 @@
-from typing import TypedDict, Optional, List, Dict, Any, Annotated, Sequence
+from collections.abc import Sequence
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from dataclasses import dataclass, field
+from typing import Annotated, Any, TypedDict
 
-from langgraph.graph.message import add_messages
 from langchain_core.messages import BaseMessage
+from langgraph.graph.message import add_messages
 
 
 class QueryRoute(Enum):
@@ -52,11 +53,11 @@ class ToolCallResult:
     """Result from tool execution."""
 
     tool_name: str
-    tool_input: Dict[str, Any]
+    tool_input: dict[str, Any]
     tool_output: Any
     success: bool
     execution_time: float
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
 
 @dataclass
@@ -68,17 +69,17 @@ class SubQuery:
     purpose: str = "final_output"
     output_role: str = "output"
     expected_result_kind: str = "rowset"
-    expected_max_rows: Optional[int] = None
-    required_constraints: List[str] = field(default_factory=list)
-    selected_tables: List[str] = field(default_factory=list)
-    bind_keys: List[str] = field(default_factory=list)
-    sql: Optional[str] = None
-    validated_sql: Optional[str] = None
-    result_raw: Optional[str] = None
-    parsed_rows: Optional[List[Any]] = None
+    expected_max_rows: int | None = None
+    required_constraints: list[str] = field(default_factory=list)
+    selected_tables: list[str] = field(default_factory=list)
+    bind_keys: list[str] = field(default_factory=list)
+    sql: str | None = None
+    validated_sql: str | None = None
+    result_raw: str | None = None
+    parsed_rows: list[Any] | None = None
     success: bool = False
-    error: Optional[str] = None
-    depends_on: List[str] = field(default_factory=list)
+    error: str | None = None
+    depends_on: list[str] = field(default_factory=list)
     repair_attempts: int = 0
 
 
@@ -90,12 +91,12 @@ class QueryPlan:
     reasoning: str
     plan_type: str = "single_default"
     merge_strategy: str = "none"
-    output_nodes: List[str] = field(default_factory=list)
-    required_constraints: List[Dict[str, Any]] = field(default_factory=list)
-    expected_output_shape: Dict[str, Any] = field(default_factory=dict)
-    verifier_checks: List[str] = field(default_factory=list)
-    fallback_policy: Dict[str, Any] = field(default_factory=dict)
-    sub_queries: List[SubQuery] = field(default_factory=list)
+    output_nodes: list[str] = field(default_factory=list)
+    required_constraints: list[dict[str, Any]] = field(default_factory=list)
+    expected_output_shape: dict[str, Any] = field(default_factory=dict)
+    verifier_checks: list[str] = field(default_factory=list)
+    fallback_policy: dict[str, Any] = field(default_factory=dict)
+    sub_queries: list[SubQuery] = field(default_factory=list)
 
 
 @dataclass
@@ -104,12 +105,12 @@ class SQLExecutionResult:
 
     success: bool
     sql_query: str
-    results: List[Dict[str, Any]]
+    results: list[dict[str, Any]]
     row_count: int
     execution_time: float
     validation_passed: bool
-    error_message: Optional[str] = None
-    warnings: List[str] = None
+    error_message: str | None = None
+    warnings: list[str] = None
 
 
 class MessagesStateTXT2SQL(TypedDict):
@@ -119,24 +120,24 @@ class MessagesStateTXT2SQL(TypedDict):
     user_query: str
     session_id: str
     timestamp: datetime
-    query_route: Optional[QueryRoute]
-    classification: Optional[QueryClassification]
+    query_route: QueryRoute | None
+    classification: QueryClassification | None
     requires_sql: bool
     current_phase: ExecutionPhase
-    completed_phases: List[ExecutionPhase]
-    available_tables: List[str]
-    selected_tables: List[str]
+    completed_phases: list[ExecutionPhase]
+    available_tables: list[str]
+    selected_tables: list[str]
     schema_context: str
-    reasoning_plan: Optional[str]
-    generated_sql: Optional[str]
-    validated_sql: Optional[str]
-    sql_execution_result: Optional[SQLExecutionResult]
-    tool_calls: List[ToolCallResult]
-    pending_tool_calls: List[Dict[str, Any]]
-    final_response: Optional[str]
-    response_metadata: Dict[str, Any]
-    errors: List[Dict[str, Any]]
-    current_error: Optional[str]
+    reasoning_plan: str | None
+    generated_sql: str | None
+    validated_sql: str | None
+    sql_execution_result: SQLExecutionResult | None
+    tool_calls: list[ToolCallResult]
+    pending_tool_calls: list[dict[str, Any]]
+    final_response: str | None
+    response_metadata: dict[str, Any]
+    errors: list[dict[str, Any]]
+    current_error: str | None
     retry_count: int
     max_retries: int
     total_workflow_cycles: int
@@ -144,32 +145,33 @@ class MessagesStateTXT2SQL(TypedDict):
     validation_retry_count: int
     execution_retry_count: int
     execution_time_total: float
-    phase_timings: Dict[str, float]
+    phase_timings: dict[str, float]
     success: bool
     completed: bool
     needs_clarification: bool
-    clarification_question: Optional[str]
-    query_plan: Optional[QueryPlan]
-    sub_query_results: List[Dict[str, Any]]
+    clarification_question: str | None
+    query_plan: QueryPlan | None
+    sub_query_results: list[dict[str, Any]]
     is_multi_query: bool
     force_single_query: bool
-    plan_type: Optional[str]
+    plan_type: str | None
     execution_mode: str
     multi_query_allowed: bool
-    allowed_multi_plan_types: List[str]
-    merged_rows: Optional[List]
-    merged_rows_source: Optional[str]
-    verifier_outcome: Optional[Dict[str, Any]]
+    allowed_multi_plan_types: list[str]
+    merged_rows: list | None
+    merged_rows_source: str | None
+    verifier_outcome: dict[str, Any] | None
     single_fallback_active: bool
-    single_fallback_reason: Optional[str]
-    final_sql_query: Optional[str]
-    failure_taxonomy: List[str]
-    final_result_rows: Optional[List]
-    ablation_flags: Dict[str, bool]
-    semantic_plan: Optional[Dict[str, Any]]
-    visualization_intent: Optional[Dict[str, Any]]
-    chart_plan: Optional[Dict[str, Any]]
-    chart_spec: Optional[Dict[str, Any]]
+    single_fallback_reason: str | None
+    final_sql_query: str | None
+    failure_taxonomy: list[str]
+    final_result_rows: list | None
+    ablation_flags: dict[str, Any]
+    llamaindex_context: dict[str, Any] | None
+    semantic_plan: dict[str, Any] | None
+    visualization_intent: dict[str, Any] | None
+    chart_plan: dict[str, Any] | None
+    chart_spec: dict[str, Any] | None
 
 
 class TX:

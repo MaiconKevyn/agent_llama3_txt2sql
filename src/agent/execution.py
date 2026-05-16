@@ -128,25 +128,25 @@ def _build_filtered_category_period_percentage_sql(
     state_values = [
         str(value)
         for semantic_filter in plan.filters
-        if semantic_filter.field in {"estado", "estado_residencia"}
+        if semantic_filter.field in {"estado", "SG_UF", "estado_residencia", "estado_hospital"}
         for value in semantic_filter.values
     ]
     state_filter = ""
     if state_values:
         if len(state_values) == 1:
-            state_filter = f" AND mu.\"estado\" = '{state_values[0]}'"
+            state_filter = f" AND mu.\"SG_UF\" = '{state_values[0]}'"
         else:
             quoted_states = ", ".join(f"'{state}'" for state in state_values)
-            state_filter = f" AND mu.\"estado\" IN ({quoted_states})"
+            state_filter = f' AND mu."SG_UF" IN ({quoted_states})'
 
     return (
-        "SELECT EXTRACT(QUARTER FROM i.\"DT_INTER\") AS trimestre, "
+        'SELECT EXTRACT(QUARTER FROM i."DT_INTER") AS trimestre, '
         "COUNT(*) AS total_categoria, "
         "ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) AS percentual "
         "FROM internacoes i "
-        "JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"codigo_6d\" "
+        'JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D" '
         f"WHERE i.\"DIAG_PRINC\" LIKE '{diagnosis_prefix}'{state_filter} "
-        "GROUP BY EXTRACT(QUARTER FROM i.\"DT_INTER\") "
+        'GROUP BY EXTRACT(QUARTER FROM i."DT_INTER") '
         "ORDER BY trimestre;"
     )
 
@@ -176,9 +176,9 @@ def _build_death_cause_description_count_sql(
     return (
         "SELECT COUNT(*) AS total_internacoes "
         "FROM internacoes i "
-        "JOIN cid c ON i.\"CID_MORTE\" = c.\"CID\" "
-        "WHERE i.\"MORTE\" = true "
-        f"AND c.\"CD_DESCRICAO\" ILIKE '%{term}%';"
+        'JOIN cid c ON i."CID_MORTE" = c."CID" '
+        'WHERE i."MORTE" = true '
+        f"AND c.\"DESCRICAO\" ILIKE '%{term}%';"
     )
 
 
@@ -197,10 +197,10 @@ def _build_lookup_distribution_sql(
     if plan.answer_shape.required_dimensions != ["raca_cor"]:
         return None
     return (
-        "SELECT r.\"DESCRICAO\" AS raca_cor, COUNT(*) AS total_internacoes "
+        'SELECT r."DESCRICAO" AS raca_cor, COUNT(*) AS total_internacoes '
         "FROM internacoes i "
-        "JOIN raca_cor r ON i.\"RACA_COR\" = r.\"RACA_COR\" "
-        "GROUP BY r.\"DESCRICAO\" "
+        'JOIN raca_cor r ON i."RACA_COR" = r."RACA_COR" '
+        'GROUP BY r."DESCRICAO" '
         "ORDER BY total_internacoes DESC;"
     )
 
@@ -217,7 +217,9 @@ def _build_top_n_count_by_dimension_sql(
     )
     if plan.answer_shape.top_n_scope != "global":
         return None
-    if not any(metric.name == "total" and metric.expression_type == "count" for metric in plan.metrics):
+    if not any(
+        metric.name == "total" and metric.expression_type == "count" for metric in plan.metrics
+    ):
         return None
     if plan.answer_shape.required_dimensions != ["municipio"]:
         return None
@@ -230,11 +232,11 @@ def _build_top_n_count_by_dimension_sql(
         where_conditions.append('i."ESPEC" = 2')
     where_clause = f"WHERE {' AND '.join(where_conditions)} " if where_conditions else ""
     return (
-        "SELECT mu.\"nome\" AS municipio, COUNT(*) AS total_internacoes "
+        'SELECT mu."NO_MUNICIPIO" AS municipio, COUNT(*) AS total_internacoes '
         "FROM internacoes i "
-        "JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"codigo_6d\" "
+        'JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D" '
         f"{where_clause}"
-        "GROUP BY mu.\"nome\" "
+        'GROUP BY mu."NO_MUNICIPIO" '
         "ORDER BY total_internacoes DESC "
         f"LIMIT {top_n};"
     )
@@ -267,19 +269,348 @@ def _build_top_hospital_revenue_by_specialty_sql(
     min_count = min_counts[0] if min_counts else "500"
     return (
         "WITH ranked AS ("
-        " SELECT e.\"DESCRICAO\" AS especialidade,"
-        " i.\"CNES\" AS hospital,"
-        " SUM(i.\"VAL_TOT\") AS receita_total,"
-        " ROW_NUMBER() OVER (PARTITION BY e.\"DESCRICAO\" ORDER BY SUM(i.\"VAL_TOT\") DESC) AS rn"
+        ' SELECT e."DESCRICAO" AS especialidade,'
+        ' i."CNES" AS hospital,'
+        ' SUM(i."VAL_TOT") AS receita_total,'
+        ' ROW_NUMBER() OVER (PARTITION BY e."DESCRICAO" ORDER BY SUM(i."VAL_TOT") DESC) AS rn'
         " FROM internacoes i"
-        " JOIN especialidade e ON i.\"ESPEC\" = e.\"ESPEC\""
-        " GROUP BY e.\"DESCRICAO\", i.\"CNES\""
+        ' JOIN especialidade e ON i."ESPEC" = e."ESPEC"'
+        ' GROUP BY e."DESCRICAO", i."CNES"'
         f" HAVING COUNT(*) > {min_count}"
         ") "
         "SELECT especialidade, hospital, receita_total "
         "FROM ranked "
         "WHERE rn = 1 "
         "ORDER BY especialidade;"
+    )
+
+
+def _plan_filter_values(plan: SemanticPlan, fields: set[str]) -> list[str]:
+    return [
+        str(value)
+        for semantic_filter in plan.filters
+        if semantic_filter.field in fields
+        for value in semantic_filter.values
+    ]
+
+
+def _minimum_group_count(plan: SemanticPlan, default: int) -> int:
+    values = _plan_filter_values(plan, {"minimum_group_count"})
+    if values and values[0].isdigit():
+        return int(values[0])
+    return default
+
+
+def _state_where_clause(plan: SemanticPlan, alias: str = "mu") -> str:
+    states = _plan_filter_values(plan, {"estado", "SG_UF", "estado_residencia", "estado_hospital"})
+    if len(states) == 1:
+        return f" AND {alias}.\"SG_UF\" = '{states[0]}'"
+    if len(states) > 1:
+        quoted_states = ", ".join(f"'{state}'" for state in states)
+        return f' AND {alias}."SG_UF" IN ({quoted_states})'
+    return ""
+
+
+def _build_top_diagnosis_by_state_sql(
+    semantic_plan: SemanticPlan | dict | None,
+) -> str | None:
+    if not semantic_plan:
+        return None
+    plan = (
+        semantic_plan
+        if isinstance(semantic_plan, SemanticPlan)
+        else SemanticPlan.model_validate(semantic_plan)
+    )
+    if plan.answer_shape.top_n_scope != "per_group":
+        return None
+    if plan.answer_shape.partition_dimensions != ["estado"]:
+        return None
+    if plan.answer_shape.ranked_dimensions != ["diagnostico"]:
+        return None
+
+    top_n = plan.answer_shape.top_n or 3
+    age_conditions = []
+    for semantic_filter in plan.filters:
+        if semantic_filter.field == "idade" and semantic_filter.values:
+            age_conditions.append(
+                f'i."IDADE" {semantic_filter.operator} {semantic_filter.values[0]}'
+            )
+    where_conditions = ['i."DIAG_PRINC" IS NOT NULL']
+    state_filter = _state_where_clause(plan)
+    if state_filter:
+        where_conditions.append(state_filter.removeprefix(" AND "))
+    where_conditions.extend(age_conditions)
+    where_clause = " AND ".join(where_conditions)
+    return (
+        "SELECT estado, diagnostico, total_internacoes "
+        "FROM ("
+        ' SELECT mu."SG_UF" AS estado, c."DESCRICAO" AS diagnostico,'
+        " COUNT(*) AS total_internacoes,"
+        ' ROW_NUMBER() OVER (PARTITION BY mu."SG_UF" ORDER BY COUNT(*) DESC) AS rn'
+        " FROM internacoes i"
+        ' JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"'
+        ' JOIN cid c ON i."DIAG_PRINC" = c."CID"'
+        f" WHERE {where_clause}"
+        ' GROUP BY mu."SG_UF", c."DESCRICAO"'
+        ") ranked "
+        f"WHERE rn <= {top_n} "
+        "ORDER BY estado, rn;"
+    )
+
+
+def _build_top_diagnosis_by_age_segment_sql(
+    semantic_plan: SemanticPlan | dict | None,
+) -> str | None:
+    if not semantic_plan:
+        return None
+    plan = (
+        semantic_plan
+        if isinstance(semantic_plan, SemanticPlan)
+        else SemanticPlan.model_validate(semantic_plan)
+    )
+    if plan.answer_shape.top_n_scope != "per_group":
+        return None
+    if plan.answer_shape.partition_dimensions != ["faixa_etaria"]:
+        return None
+    if plan.answer_shape.ranked_dimensions != ["diagnostico"]:
+        return None
+
+    top_n = plan.answer_shape.top_n or 10
+    age_case = (
+        "CASE WHEN i.\"IDADE\" < 18 THEN 'Menor de 18' "
+        "WHEN i.\"IDADE\" BETWEEN 18 AND 64 THEN '18 a 64' "
+        "ELSE '65 ou mais' END"
+    )
+    return (
+        "SELECT faixa_etaria, diagnostico, total_internacoes "
+        "FROM ("
+        f" SELECT {age_case} AS faixa_etaria,"
+        ' c."DESCRICAO" AS diagnostico, COUNT(*) AS total_internacoes,'
+        f" ROW_NUMBER() OVER (PARTITION BY {age_case} ORDER BY COUNT(*) DESC) AS rn"
+        " FROM internacoes i"
+        ' JOIN cid c ON i."DIAG_PRINC" = c."CID"'
+        ' WHERE i."DIAG_PRINC" IS NOT NULL'
+        f' GROUP BY {age_case}, c."DESCRICAO"'
+        ") ranked "
+        f"WHERE rn <= {top_n} "
+        "ORDER BY faixa_etaria, rn;"
+    )
+
+
+def _build_top_hospital_avg_val_sh_by_state_sql(
+    semantic_plan: SemanticPlan | dict | None,
+) -> str | None:
+    if not semantic_plan:
+        return None
+    plan = (
+        semantic_plan
+        if isinstance(semantic_plan, SemanticPlan)
+        else SemanticPlan.model_validate(semantic_plan)
+    )
+    if plan.answer_shape.top_n_scope != "per_group":
+        return None
+    if plan.answer_shape.partition_dimensions != ["estado_hospital"]:
+        return None
+    if plan.answer_shape.ranked_dimensions != ["hospital"]:
+        return None
+    if not any(metric.name == "media_val_sh" for metric in plan.metrics):
+        return None
+
+    top_n = plan.answer_shape.top_n or 3
+    min_count = _minimum_group_count(plan, 500)
+    state_filter = _state_where_clause(plan)
+    return (
+        "SELECT estado, hospital, media_val_sh "
+        "FROM ("
+        ' SELECT mu."SG_UF" AS estado, i."CNES" AS hospital,'
+        ' ROUND(AVG(i."VAL_SH"), 2) AS media_val_sh,'
+        ' ROW_NUMBER() OVER (PARTITION BY mu."SG_UF" ORDER BY AVG(i."VAL_SH") DESC) AS rn'
+        " FROM internacoes i"
+        ' JOIN hospital h ON i."CNES" = h."CNES"'
+        ' JOIN municipios mu ON h."MUNIC_MOV" = mu."CO_MUNICIPIO_6D"'
+        f' WHERE i."VAL_SH" IS NOT NULL{state_filter}'
+        ' GROUP BY mu."SG_UF", i."CNES"'
+        f" HAVING COUNT(*) > {min_count}"
+        ") ranked "
+        f"WHERE rn <= {top_n} "
+        "ORDER BY estado, media_val_sh DESC;"
+    )
+
+
+def _build_cost_per_day_by_hospital_sql(
+    semantic_plan: SemanticPlan | dict | None,
+) -> str | None:
+    if not semantic_plan:
+        return None
+    plan = (
+        semantic_plan
+        if isinstance(semantic_plan, SemanticPlan)
+        else SemanticPlan.model_validate(semantic_plan)
+    )
+    if not any(metric.name == "custo_por_dia" for metric in plan.metrics):
+        return None
+    if plan.answer_shape.required_dimensions != ["hospital"]:
+        return None
+
+    top_n = plan.answer_shape.top_n or 5
+    min_count = _minimum_group_count(plan, 1000)
+    return (
+        'SELECT h."CNES",'
+        ' ROUND(SUM(i."VAL_TOT") / NULLIF(SUM(i."DIAS_PERM"), 0), 2) AS custo_por_dia'
+        " FROM internacoes i"
+        ' JOIN hospital h ON i."CNES" = h."CNES"'
+        ' WHERE i."VAL_TOT" IS NOT NULL'
+        ' GROUP BY h."CNES"'
+        f" HAVING COUNT(*) > {min_count}"
+        " ORDER BY custo_por_dia ASC"
+        f" LIMIT {top_n};"
+    )
+
+
+def _build_absent_uti_hospital_sql(
+    semantic_plan: SemanticPlan | dict | None,
+) -> str | None:
+    if not semantic_plan:
+        return None
+    plan = (
+        semantic_plan
+        if isinstance(semantic_plan, SemanticPlan)
+        else SemanticPlan.model_validate(semantic_plan)
+    )
+    if "absence_condition_requires_antijoin_or_aggregate_zero" not in plan.constraints:
+        return None
+    if "hospital" not in plan.answer_shape.required_dimensions:
+        return None
+    if not any(semantic_filter.field == "uti" for semantic_filter in plan.filters):
+        return None
+
+    top_n = plan.answer_shape.top_n or 10
+    min_count = _minimum_group_count(plan, 1000)
+    return (
+        'SELECT "CNES", COUNT(*) AS total_internacoes'
+        " FROM internacoes"
+        ' GROUP BY "CNES"'
+        f' HAVING COUNT(*) > {min_count} AND SUM(CASE WHEN "VAL_UTI" > 0 THEN 1 ELSE 0 END) = 0'
+        " ORDER BY total_internacoes DESC"
+        f" LIMIT {top_n};"
+    )
+
+
+def _build_cumulative_coverage_sql(
+    semantic_plan: SemanticPlan | dict | None,
+) -> str | None:
+    if not semantic_plan:
+        return None
+    plan = (
+        semantic_plan
+        if isinstance(semantic_plan, SemanticPlan)
+        else SemanticPlan.model_validate(semantic_plan)
+    )
+    if "cumulative_coverage_threshold_required" not in plan.constraints:
+        return None
+    if "procedimento" not in plan.answer_shape.required_dimensions:
+        return None
+
+    threshold_values = _plan_filter_values(plan, {"cumulative_percentage_threshold"})
+    threshold = threshold_values[0] if threshold_values else "80"
+    return (
+        "SELECT nome_proc "
+        "FROM ("
+        ' SELECT p."NOME_PROC" AS nome_proc, COUNT(*) AS total_procedimentos,'
+        " ROUND(SUM(COUNT(*)) OVER ("
+        "ORDER BY COUNT(*) DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW"
+        ") * 100.0 / SUM(COUNT(*)) OVER (), 2) AS pct_acumulado"
+        " FROM internacao_procedimento a"
+        ' JOIN procedimentos p ON a."PROC_REA" = p."PROC_REA"'
+        ' GROUP BY p."NOME_PROC"'
+        ") ranked "
+        f"WHERE pct_acumulado <= {threshold} "
+        "ORDER BY total_procedimentos DESC;"
+    )
+
+
+def _build_reference_uti_rate_sql(
+    semantic_plan: SemanticPlan | dict | None,
+) -> str | None:
+    if not semantic_plan:
+        return None
+    plan = (
+        semantic_plan
+        if isinstance(semantic_plan, SemanticPlan)
+        else SemanticPlan.model_validate(semantic_plan)
+    )
+    if "reference_rate_comparison_required" not in plan.constraints:
+        return None
+    if "municipio" not in plan.answer_shape.required_dimensions:
+        return None
+    if not any(semantic_filter.field == "uti" for semantic_filter in plan.filters):
+        return None
+
+    top_n = plan.answer_shape.top_n
+    limit_clause = f" LIMIT {top_n}" if top_n else ""
+    min_count = _minimum_group_count(plan, 1000)
+    return (
+        "WITH media_nacional AS ("
+        ' SELECT SUM(CASE WHEN "VAL_UTI" > 0 THEN 1 ELSE 0 END) * 100.0 / COUNT(*)'
+        " AS taxa_uti_nacional FROM internacoes"
+        ") "
+        'SELECT mu."NO_MUNICIPIO" AS municipio, mu."SG_UF" AS estado,'
+        " COUNT(*) AS total_internacoes,"
+        ' ROUND(SUM(CASE WHEN i."VAL_UTI" > 0 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2)'
+        " AS taxa_uti_local,"
+        " ROUND(mn.taxa_uti_nacional, 2) AS taxa_uti_nacional"
+        " FROM internacoes i"
+        ' JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D", media_nacional mn'
+        ' GROUP BY mu."NO_MUNICIPIO", mu."SG_UF", mn.taxa_uti_nacional'
+        f" HAVING COUNT(*) > {min_count}"
+        ' AND SUM(CASE WHEN i."VAL_UTI" > 0 THEN 1 ELSE 0 END) * 100.0 / COUNT(*)'
+        " > 2 * mn.taxa_uti_nacional"
+        f" ORDER BY taxa_uti_local DESC{limit_clause};"
+    )
+
+
+def _build_dual_top_n_municipality_intersection_sql(
+    semantic_plan: SemanticPlan | dict | None,
+) -> str | None:
+    if not semantic_plan:
+        return None
+    plan = (
+        semantic_plan
+        if isinstance(semantic_plan, SemanticPlan)
+        else SemanticPlan.model_validate(semantic_plan)
+    )
+    if "dual_top_n_intersection_required" not in plan.constraints:
+        return None
+    if plan.answer_shape.required_dimensions != ["municipio"]:
+        return None
+
+    top_n = plan.answer_shape.top_n or 20
+    min_count = _minimum_group_count(plan, 500)
+    state_filter = _state_where_clause(plan)
+    return (
+        "WITH top_volume AS ("
+        ' SELECT mu."NO_MUNICIPIO" AS municipio'
+        " FROM internacoes i"
+        ' JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"'
+        f" WHERE 1=1{state_filter}"
+        ' GROUP BY mu."NO_MUNICIPIO"'
+        f" HAVING COUNT(*) > {min_count}"
+        " ORDER BY COUNT(*) DESC"
+        f" LIMIT {top_n}"
+        "), top_mortalidade AS ("
+        ' SELECT mu."NO_MUNICIPIO" AS municipio'
+        " FROM internacoes i"
+        ' JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"'
+        f" WHERE 1=1{state_filter}"
+        ' GROUP BY mu."NO_MUNICIPIO"'
+        f" HAVING COUNT(*) > {min_count}"
+        ' ORDER BY SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 1.0 / COUNT(*) DESC'
+        f" LIMIT {top_n}"
+        ") "
+        "SELECT tv.municipio "
+        "FROM top_volume tv "
+        "WHERE tv.municipio IN (SELECT municipio FROM top_mortalidade) "
+        "ORDER BY tv.municipio;"
     )
 
 
@@ -300,14 +631,14 @@ def _build_filtered_cohort_weekday_percentage_sql(
     if not any(semantic_filter.field == "uti" for semantic_filter in plan.filters):
         return None
     return (
-        "SELECT t.\"dia_semana\", "
+        'SELECT t."dia_semana", '
         "COUNT(*) AS total_internacoes_uti, "
         "ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) AS percentual "
         "FROM internacoes i "
-        "JOIN tempo t ON i.\"DT_INTER\" = t.\"data\" "
-        "WHERE i.\"VAL_UTI\" > 0 "
-        "GROUP BY t.\"dia_semana\" "
-        "ORDER BY t.\"dia_semana\";"
+        'JOIN tempo t ON i."DT_INTER" = t."data" '
+        'WHERE i."VAL_UTI" > 0 '
+        'GROUP BY t."dia_semana" '
+        'ORDER BY t."dia_semana";'
     )
 
 
@@ -331,39 +662,40 @@ def _build_side_by_side_state_average_sql(
     state_values = [
         str(value)
         for semantic_filter in plan.filters
-        if semantic_filter.field in {"estado", "estado_residencia"}
+        if semantic_filter.field in {"estado", "SG_UF", "estado_residencia", "estado_hospital"}
         for value in semantic_filter.values
     ]
     if len(state_values) < 2:
         return None
     states = state_values[:2]
     state_filter = ", ".join(f"'{state}'" for state in states)
+    min_count = _minimum_group_count(plan, 0)
     select_parts = [
         'e."DESCRICAO" AS especialidade',
     ]
     for state in states:
         state_lower = state.lower()
         select_parts.append(
-            "ROUND(AVG(CASE WHEN mu.\"estado\" = "
+            'ROUND(AVG(CASE WHEN mu."SG_UF" = '
             f"'{state}' THEN i.\"DIAS_PERM\" END), 2) AS media_dias_{state_lower}"
         )
-        select_parts.append(
-            "COUNT(CASE WHEN mu.\"estado\" = "
-            f"'{state}' THEN 1 END) AS total_internacoes_{state_lower}"
-        )
+        if min_count > 0:
+            select_parts.append(
+                'COUNT(CASE WHEN mu."SG_UF" = '
+                f"'{state}' THEN 1 END) AS total_internacoes_{state_lower}"
+            )
     having_conditions = [
-        f"COUNT(CASE WHEN mu.\"estado\" = '{state}' THEN 1 END) > 100"
-        for state in states
+        f"COUNT(CASE WHEN mu.\"SG_UF\" = '{state}' THEN 1 END) > {min_count}" for state in states
     ]
     return (
         f"SELECT {', '.join(select_parts)} "
         "FROM internacoes i "
-        "JOIN especialidade e ON i.\"ESPEC\" = e.\"ESPEC\" "
-        "JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"codigo_6d\" "
-        f"WHERE mu.\"estado\" IN ({state_filter}) "
-        "GROUP BY e.\"DESCRICAO\" "
+        'JOIN especialidade e ON i."ESPEC" = e."ESPEC" '
+        'JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D" '
+        f'WHERE mu."SG_UF" IN ({state_filter}) '
+        'GROUP BY e."DESCRICAO" '
         f"HAVING {' AND '.join(having_conditions)} "
-        "ORDER BY e.\"DESCRICAO\";"
+        'ORDER BY e."DESCRICAO";'
     )
 
 
@@ -393,6 +725,7 @@ def _build_temporal_period_comparison_sql(
     p1_start, p1_end = str(period_filters[0].values[0]), str(period_filters[0].values[1])
     p2_start, p2_end = str(period_filters[1].values[0]), str(period_filters[1].values[1])
     top_n = plan.answer_shape.top_n or 10
+    min_count = _minimum_group_count(plan, 0)
     is_decline = "temporal_decline_uses_before_minus_after" in plan.constraints
     delta_alias = "queda_absoluta" if is_decline else "crescimento_absoluto"
     delta_expr = (
@@ -405,28 +738,29 @@ def _build_temporal_period_comparison_sql(
         if is_decline
         else "WHERE p2.total_internacoes > p1.total_internacoes "
     )
+    support_filter = f"AND p1.total_internacoes > {min_count} " if min_count > 0 else ""
     return (
         "WITH periodo_1 AS ("
-        " SELECT i.\"DIAG_PRINC\" AS cid, COUNT(*) AS total_internacoes"
+        ' SELECT i."DIAG_PRINC" AS cid, COUNT(*) AS total_internacoes'
         " FROM internacoes i"
-        f" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") BETWEEN {p1_start} AND {p1_end}"
-        " AND i.\"DIAG_PRINC\" IS NOT NULL"
-        " GROUP BY i.\"DIAG_PRINC\""
+        f' WHERE EXTRACT(YEAR FROM i."DT_INTER") BETWEEN {p1_start} AND {p1_end}'
+        ' AND i."DIAG_PRINC" IS NOT NULL'
+        ' GROUP BY i."DIAG_PRINC"'
         "), periodo_2 AS ("
-        " SELECT i.\"DIAG_PRINC\" AS cid, COUNT(*) AS total_internacoes"
+        ' SELECT i."DIAG_PRINC" AS cid, COUNT(*) AS total_internacoes'
         " FROM internacoes i"
-        f" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") BETWEEN {p2_start} AND {p2_end}"
-        " AND i.\"DIAG_PRINC\" IS NOT NULL"
-        " GROUP BY i.\"DIAG_PRINC\""
+        f' WHERE EXTRACT(YEAR FROM i."DT_INTER") BETWEEN {p2_start} AND {p2_end}'
+        ' AND i."DIAG_PRINC" IS NOT NULL'
+        ' GROUP BY i."DIAG_PRINC"'
         ") "
-        "SELECT COALESCE(c.\"CD_DESCRICAO\", p1.cid) AS diagnostico, "
+        'SELECT COALESCE(c."DESCRICAO", p1.cid) AS diagnostico, '
         f"p1.total_internacoes AS periodo_{p1_start}_{p1_end}, "
         f"p2.total_internacoes AS periodo_{p2_start}_{p2_end}, "
         f"{delta_expr} AS {delta_alias} "
         "FROM periodo_1 p1 "
         "JOIN periodo_2 p2 ON p1.cid = p2.cid "
-        "LEFT JOIN cid c ON p1.cid = c.\"CID\" "
-        f"{direction_filter}"
+        'LEFT JOIN cid c ON p1.cid = c."CID" '
+        f"{direction_filter}{support_filter}"
         f"ORDER BY {delta_alias} DESC "
         f"LIMIT {top_n};"
     )
@@ -446,16 +780,16 @@ def _build_death_cause_cid_antijoin_sql(
         return None
     top_n = plan.answer_shape.top_n or 10
     return (
-        "SELECT c.\"CID\", c.\"CD_DESCRICAO\", COUNT(*) AS total_como_morte "
+        'SELECT c."CID", c."DESCRICAO", COUNT(*) AS total_como_morte '
         "FROM internacoes i "
-        "JOIN cid c ON i.\"CID_MORTE\" = c.\"CID\" "
-        "WHERE i.\"MORTE\" = true "
-        "AND i.\"CID_MORTE\" IS NOT NULL "
+        'JOIN cid c ON i."CID_MORTE" = c."CID" '
+        'WHERE i."MORTE" = true '
+        'AND i."CID_MORTE" IS NOT NULL '
         "AND i.\"CID_MORTE\" != '0' "
         "AND NOT EXISTS ("
-        " SELECT 1 FROM internacoes d WHERE d.\"DIAG_PRINC\" = c.\"CID\""
+        ' SELECT 1 FROM internacoes d WHERE d."DIAG_PRINC" = c."CID"'
         ") "
-        "GROUP BY c.\"CID\", c.\"CD_DESCRICAO\" "
+        'GROUP BY c."CID", c."DESCRICAO" '
         "ORDER BY total_como_morte DESC "
         f"LIMIT {top_n};"
     )
@@ -479,16 +813,16 @@ def _build_moving_average_sql(
     state_values = [
         str(value)
         for semantic_filter in plan.filters
-        if semantic_filter.field in {"estado", "estado_residencia"}
+        if semantic_filter.field in {"estado", "SG_UF", "estado_residencia", "estado_hospital"}
         for value in semantic_filter.values
     ]
     state_filter = ""
     if state_values:
         if len(state_values) == 1:
-            state_filter = f" AND mu.\"estado\" = '{state_values[0]}'"
+            state_filter = f" AND mu.\"SG_UF\" = '{state_values[0]}'"
         else:
             quoted_states = ", ".join(f"'{state}'" for state in state_values)
-            state_filter = f" AND mu.\"estado\" IN ({quoted_states})"
+            state_filter = f' AND mu."SG_UF" IN ({quoted_states})'
 
     year_ranges = [
         semantic_filter.values
@@ -498,23 +832,74 @@ def _build_moving_average_sql(
     year_filter = ""
     if year_ranges:
         start_year, end_year = str(year_ranges[0][0]), str(year_ranges[0][1])
-        year_filter = (
-            f" AND EXTRACT(YEAR FROM i.\"DT_INTER\") BETWEEN {start_year} AND {end_year}"
-        )
+        year_filter = f' AND EXTRACT(YEAR FROM i."DT_INTER") BETWEEN {start_year} AND {end_year}'
 
     return (
         "WITH anuais AS ("
-        " SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_internacoes"
+        ' SELECT EXTRACT(YEAR FROM i."DT_INTER") AS ano, COUNT(*) AS total_internacoes'
         " FROM internacoes i"
-        " JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"codigo_6d\""
-        f" WHERE i.\"DT_INTER\" IS NOT NULL{state_filter}{year_filter}"
-        " GROUP BY EXTRACT(YEAR FROM i.\"DT_INTER\")"
+        ' JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"'
+        f' WHERE i."DT_INTER" IS NOT NULL{state_filter}{year_filter}'
+        ' GROUP BY EXTRACT(YEAR FROM i."DT_INTER")'
         ") "
         "SELECT ano, total_internacoes, "
         "ROUND(AVG(total_internacoes) OVER (ORDER BY ano ROWS BETWEEN 2 PRECEDING AND CURRENT ROW), 0) "
         "AS media_movel_3anos "
         "FROM anuais "
         "ORDER BY ano;"
+    )
+
+
+def _build_annual_growth_rate_sql(
+    semantic_plan: SemanticPlan | dict | None,
+) -> str | None:
+    if not semantic_plan:
+        return None
+    plan = (
+        semantic_plan
+        if isinstance(semantic_plan, SemanticPlan)
+        else SemanticPlan.model_validate(semantic_plan)
+    )
+    metric_names = {metric.name for metric in plan.metrics}
+    if "delta_temporal" not in metric_names:
+        return None
+    if not any(metric.expression_type == "rate" for metric in plan.metrics):
+        return None
+    if "ano" not in plan.answer_shape.required_dimensions:
+        return None
+
+    year_values = sorted(
+        {
+            int(value)
+            for value in _plan_filter_values(plan, {"ano_intervalo", "ano", "ano_internacao"})
+            if str(value).isdigit()
+        }
+    )
+    if len(year_values) < 2:
+        return None
+    start_year, end_year = year_values[0], year_values[-1]
+    state_filter = _state_where_clause(plan, "mu")
+
+    return (
+        "WITH internacoes_por_ano AS ("
+        ' SELECT EXTRACT(YEAR FROM i."DT_INTER") AS ano, COUNT(*) AS total_internacoes'
+        " FROM internacoes i"
+        ' JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"'
+        ' WHERE i."DT_INTER" IS NOT NULL'
+        f"{state_filter}"
+        f' AND EXTRACT(YEAR FROM i."DT_INTER") BETWEEN {start_year} AND {end_year}'
+        " GROUP BY ano"
+        "), crescimento_percentual AS ("
+        " SELECT ano, total_internacoes,"
+        " LAG(total_internacoes) OVER (ORDER BY ano) AS total_anterior"
+        " FROM internacoes_por_ano"
+        ") "
+        "SELECT ano, total_internacoes,"
+        " ROUND((total_internacoes - total_anterior) * 100.0 / NULLIF(total_anterior, 0), 2)"
+        " AS crescimento_percentual"
+        " FROM crescimento_percentual"
+        " WHERE total_anterior IS NOT NULL"
+        " ORDER BY ano;"
     )
 
 
@@ -532,11 +917,11 @@ def _build_quartile_distribution_sql(
         return None
     return (
         "WITH volume_por_hospital AS ("
-        " SELECT \"CNES\", COUNT(*) AS total_internacoes"
+        ' SELECT "CNES", COUNT(*) AS total_internacoes'
         " FROM internacoes"
-        " GROUP BY \"CNES\""
+        ' GROUP BY "CNES"'
         "), quartis AS ("
-        " SELECT \"CNES\", total_internacoes,"
+        ' SELECT "CNES", total_internacoes,'
         " NTILE(4) OVER (ORDER BY total_internacoes) AS ntile_grupo"
         " FROM volume_por_hospital"
         ") "
@@ -554,7 +939,7 @@ def _state_filter_from_plan(plan: SemanticPlan) -> str | None:
     state_values = [
         str(value)
         for semantic_filter in plan.filters
-        if semantic_filter.field in {"estado", "estado_residencia"}
+        if semantic_filter.field in {"estado", "SG_UF", "estado_residencia", "estado_hospital"}
         for value in semantic_filter.values
     ]
     if len(state_values) == 1:
@@ -565,99 +950,13 @@ def _state_filter_from_plan(plan: SemanticPlan) -> str | None:
 def _build_idhm_mortality_cohort_sql(
     semantic_plan: SemanticPlan | dict | None,
 ) -> str | None:
-    if not semantic_plan:
-        return None
-    plan = (
-        semantic_plan
-        if isinstance(semantic_plan, SemanticPlan)
-        else SemanticPlan.model_validate(semantic_plan)
-    )
-    metric_names = {metric.name for metric in plan.metrics}
-    if not {"idhm", "taxa_mortalidade"} <= metric_names:
-        return None
-    state = _state_filter_from_plan(plan)
-    if not state:
-        return None
-    min_counts = [
-        str(value)
-        for semantic_filter in plan.filters
-        if semantic_filter.field == "minimum_group_count"
-        for value in semantic_filter.values
-    ]
-    min_count = min_counts[0] if min_counts else "500"
-    return (
-        "WITH media_estado AS ("
-        " SELECT SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_media"
-        " FROM internacoes i"
-        " JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"codigo_6d\""
-        f" WHERE mu.\"estado\" = '{state}'"
-        "), mortalidade_mun AS ("
-        " SELECT mu.\"codigo_6d\", mu.\"nome\","
-        " SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_mortalidade"
-        " FROM internacoes i"
-        " JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"codigo_6d\""
-        f" WHERE mu.\"estado\" = '{state}'"
-        " GROUP BY mu.\"codigo_6d\", mu.\"nome\""
-        f" HAVING COUNT(*) > {min_count}"
-        ") "
-        "SELECT CASE WHEN mm.taxa_mortalidade > me.taxa_media THEN 'Acima da media' "
-        "ELSE 'Abaixo da media' END AS grupo,"
-        " COUNT(*) AS qtd_municipios,"
-        " ROUND(AVG(s.\"valor\"), 4) AS idhm_medio"
-        " FROM mortalidade_mun mm"
-        " CROSS JOIN media_estado me"
-        " JOIN socioeconomico s ON mm.\"codigo_6d\" = s.\"codigo_6d\""
-        " WHERE s.\"metrica\" = 'idhm'"
-        " GROUP BY CASE WHEN mm.taxa_mortalidade > me.taxa_media THEN 'Acima da media' "
-        "ELSE 'Abaixo da media' END"
-        " ORDER BY idhm_medio;"
-    )
+    return None
 
 
 def _build_socioeconomic_multi_metric_sql(
     semantic_plan: SemanticPlan | dict | None,
 ) -> str | None:
-    if not semantic_plan:
-        return None
-    plan = (
-        semantic_plan
-        if isinstance(semantic_plan, SemanticPlan)
-        else SemanticPlan.model_validate(semantic_plan)
-    )
-    metric_names = {metric.name for metric in plan.metrics}
-    if not {"bolsa_familia_total", "mortalidade_infantil_1ano"} <= metric_names:
-        return None
-    state = _state_filter_from_plan(plan)
-    if not state:
-        return None
-    top_n = plan.answer_shape.top_n or 10
-    return (
-        "WITH media_estado AS ("
-        " SELECT"
-        " AVG(CASE WHEN s.\"metrica\" = 'bolsa_familia_total' THEN s.\"valor\" END) AS avg_bolsa_familia,"
-        " AVG(CASE WHEN s.\"metrica\" = 'mortalidade_infantil_1ano' THEN s.\"valor\" END) AS avg_mortalidade_infantil"
-        " FROM socioeconomico s"
-        " JOIN municipios mu ON s.\"codigo_6d\" = mu.\"codigo_6d\""
-        f" WHERE mu.\"estado\" = '{state}'"
-        "), por_municipio AS ("
-        " SELECT mu.\"nome\","
-        " MAX(CASE WHEN s.\"metrica\" = 'bolsa_familia_total' THEN s.\"valor\" END) AS bolsa_familia,"
-        " MAX(CASE WHEN s.\"metrica\" = 'mortalidade_infantil_1ano' THEN s.\"valor\" END) AS mortalidade_infantil"
-        " FROM socioeconomico s"
-        " JOIN municipios mu ON s.\"codigo_6d\" = mu.\"codigo_6d\""
-        f" WHERE mu.\"estado\" = '{state}'"
-        " GROUP BY mu.\"nome\""
-        ") "
-        "SELECT pm.\"nome\", pm.bolsa_familia, pm.mortalidade_infantil"
-        " FROM por_municipio pm"
-        " CROSS JOIN media_estado me"
-        " WHERE pm.bolsa_familia > me.avg_bolsa_familia"
-        " AND pm.mortalidade_infantil < me.avg_mortalidade_infantil"
-        " AND pm.bolsa_familia IS NOT NULL"
-        " AND pm.mortalidade_infantil IS NOT NULL"
-        " ORDER BY pm.bolsa_familia DESC"
-        f" LIMIT {top_n};"
-    )
+    return None
 
 
 def _build_mortality_rate_time_series_sql(
@@ -681,27 +980,30 @@ def _build_mortality_rate_time_series_sql(
     state_values = [
         str(value)
         for semantic_filter in plan.filters
-        if semantic_filter.field in {"estado", "estado_residencia"}
+        if semantic_filter.field in {"estado", "SG_UF", "estado_residencia", "estado_hospital"}
         for value in semantic_filter.values
     ]
     where_conditions = ['i."DT_INTER" IS NOT NULL']
     if len(state_values) == 1:
-        where_conditions.append(f"mu.\"estado\" = '{state_values[0]}'")
+        where_conditions.append(f"mu.\"SG_UF\" = '{state_values[0]}'")
     elif len(state_values) > 1:
         states = ", ".join(f"'{state}'" for state in state_values)
-        where_conditions.append(f"mu.\"estado\" IN ({states})")
+        where_conditions.append(f'mu."SG_UF" IN ({states})')
 
-    by_state = "estado" in plan.answer_shape.required_dimensions
-    state_select = 'mu."estado", ' if by_state else ""
-    state_group = 'mu."estado", ' if by_state else ""
+    by_state = bool(
+        {"estado", "SG_UF", "estado_residencia", "estado_hospital"}
+        & set(plan.answer_shape.required_dimensions)
+    )
+    state_select = 'mu."SG_UF" AS estado, ' if by_state else ""
+    state_group = 'mu."SG_UF", ' if by_state else ""
     where_clause = " AND ".join(where_conditions)
     return (
-        f"SELECT {state_select}EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano,"
+        f'SELECT {state_select}EXTRACT(YEAR FROM i."DT_INTER") AS ano,'
         " COUNT(*) AS total_internacoes,"
-        " SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes,"
-        " ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade"
+        ' SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) AS total_mortes,'
+        ' ROUND(SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade'
         " FROM internacoes i"
-        " JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"codigo_6d\""
+        ' JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"'
         f" WHERE {where_clause}"
         f" GROUP BY {state_group}ano"
         f" ORDER BY {state_group}ano;"
@@ -746,20 +1048,20 @@ def _build_recent_years_mortality_by_sex_sql(
     years = max(1, recent_windows[0])
     return (
         "WITH max_ano AS ("
-        " SELECT MAX(EXTRACT(YEAR FROM \"DT_INTER\")) AS ano_max"
+        ' SELECT MAX(EXTRACT(YEAR FROM "DT_INTER")) AS ano_max'
         " FROM internacoes"
-        " WHERE \"DT_INTER\" IS NOT NULL"
+        ' WHERE "DT_INTER" IS NOT NULL'
         ") "
-        "SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano,"
+        'SELECT EXTRACT(YEAR FROM i."DT_INTER") AS ano,'
         " CASE WHEN i.\"SEXO\" = 1 THEN 'homens' WHEN i.\"SEXO\" = 3 THEN 'mulheres' END AS sexo,"
         " COUNT(*) AS total_mortes"
         " FROM internacoes i"
         " CROSS JOIN max_ano m"
-        " WHERE i.\"MORTE\" = true"
-        " AND i.\"SEXO\" IN (1, 3)"
-        " AND i.\"DT_INTER\" IS NOT NULL"
-        f" AND EXTRACT(YEAR FROM i.\"DT_INTER\") BETWEEN m.ano_max - {years - 1} AND m.ano_max"
-        " GROUP BY EXTRACT(YEAR FROM i.\"DT_INTER\"), i.\"SEXO\""
+        ' WHERE i."MORTE" = true'
+        ' AND i."SEXO" IN (1, 3)'
+        ' AND i."DT_INTER" IS NOT NULL'
+        f' AND EXTRACT(YEAR FROM i."DT_INTER") BETWEEN m.ano_max - {years - 1} AND m.ano_max'
+        ' GROUP BY EXTRACT(YEAR FROM i."DT_INTER"), i."SEXO"'
         " ORDER BY ano, sexo;"
     )
 
@@ -801,13 +1103,13 @@ def _dimension_select_indexes(select_items: list[str], dimensions: list[str]) ->
 def _select_item_matches_dimension(select_item: str, dimension: str) -> bool:
     item = select_item.lower()
     dimension_patterns = {
-        "estado": [r"\bestado\b"],
+        "SG_UF": [r"\bestado\b"],
         "estado_hospital": [r"\bestado\b"],
         "municipio": [r"\bnome\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
         "municipio_hospital": [r"\bnome\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
         "hospital": [r"\bcnes\b"],
         "especialidade": [r"\bespecialidade\b", r"\bdescri[cç][aã]o\b", r"\bespec\b"],
-        "diagnostico": [r"\bcd_descricao\b", r"\bdiag_princ\b", r"\bcid\b"],
+        "diagnostico": [r"\bdescricao\b", r"\bdiag_princ\b", r"\bcid\b"],
         "procedimento": [r"\bnome_proc\b", r"\bproc_rea\b", r"\bprocedimento\b"],
         "sexo": [r"\bsexo\b"],
         "raca_cor": [r"\braca_cor\b", r"\bra[cç]a\b", r"\bcor\b"],
@@ -1163,18 +1465,18 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 )
                 return state
 
-        if (
-            semantic_repair_enabled
-            and (
-                "top-n per group" in error_message.lower()
-                or "top-n-per-group" in error_message.lower()
-                or "row_number" in error_message.lower()
-                or "partition by" in error_message.lower()
-                or "group/partition dimension" in error_message.lower()
-            )
+        if semantic_repair_enabled and (
+            "top-n per group" in error_message.lower()
+            or "top-n-per-group" in error_message.lower()
+            or "row_number" in error_message.lower()
+            or "partition by" in error_message.lower()
+            or "group/partition dimension" in error_message.lower()
         ):
-            deterministic_sql = _build_top_hospital_revenue_by_specialty_sql(
-                state.get("semantic_plan"),
+            deterministic_sql = (
+                _build_top_hospital_revenue_by_specialty_sql(state.get("semantic_plan"))
+                or _build_top_diagnosis_by_state_sql(state.get("semantic_plan"))
+                or _build_top_diagnosis_by_age_segment_sql(state.get("semantic_plan"))
+                or _build_top_hospital_avg_val_sh_by_state_sql(state.get("semantic_plan"))
             )
             if deterministic_sql and deterministic_sql != previous_sql:
                 metadata = state.get("response_metadata", {}) or {}
@@ -1186,7 +1488,7 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                         "semantic_category": semantic_repair_context.error.category.value,
                         "semantic_guidance": semantic_repair_context.guidance.title,
                         "violated_contract": semantic_repair_context.violated_contract,
-                        "repair_strategy": "top_hospital_revenue_by_specialty_macro",
+                        "repair_strategy": "top_n_per_group_macro",
                         "timestamp": datetime.now().isoformat(),
                     }
                 )
@@ -1202,14 +1504,14 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 state["current_error"] = None
                 state = add_ai_message(
                     state,
-                    "Reparo semantico aplicado: macro de maior hospital por especialidade.",
+                    "Reparo semantico aplicado: macro reutilizavel de top-N por grupo.",
                 )
                 execution_time = time.time() - start_time
                 state = update_phase(state, ExecutionPhase.SQL_REPAIR, execution_time)
                 logger.info(
                     "Deterministic semantic SQL repair completed",
                     extra={
-                        "strategy": "top_hospital_revenue_by_specialty_macro",
+                        "strategy": "top_n_per_group_macro",
                         "previous_sql": previous_sql[:200],
                         "repaired_sql": deterministic_sql[:200],
                     },
@@ -1264,7 +1566,10 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 )
                 return state
 
-        if semantic_repair_enabled and "top-1 per group should use row_number" in error_message.lower():
+        if (
+            semantic_repair_enabled
+            and "top-1 per group should use row_number" in error_message.lower()
+        ):
             deterministic_sql = _replace_top1_rank_with_row_number(previous_sql)
             if deterministic_sql and deterministic_sql != previous_sql:
                 metadata = state.get("response_metadata", {}) or {}
@@ -1306,13 +1611,10 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 )
                 return state
 
-        if (
-            semantic_repair_enabled
-            and (
-                "percentage denominator must match" in error_message.lower()
-                or "diagnosis/category mention is a filter" in error_message.lower()
-                or "must appear in the group by clause" in error_message.lower()
-            )
+        if semantic_repair_enabled and (
+            "percentage denominator must match" in error_message.lower()
+            or "diagnosis/category mention is a filter" in error_message.lower()
+            or "must appear in the group by clause" in error_message.lower()
         ):
             deterministic_sql = _build_filtered_category_period_percentage_sql(
                 state.get("semantic_plan"),
@@ -1357,35 +1659,50 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 )
                 return state
 
-        if (
-            semantic_repair_enabled
-            and (
-                "disease death-cause" in error_message.lower()
-                or "cid_morte" in error_message.lower()
-                or "race/color distributions" in error_message.lower()
-                or "raca_cor lookup" in error_message.lower()
-                or "global top-n" in error_message.lower()
-                or "ranked top-n" in error_message.lower()
-                or "requires grouping by municipio" in error_message.lower()
-                or "filtered cohort" in error_message.lower()
-                or "weekday distributions" in error_message.lower()
-                or "uti distribution" in error_message.lower()
-                or "side-by-side state comparisons" in error_message.lower()
-                or "length-of-stay" in error_message.lower()
-                or "recent-year requests" in error_message.lower()
-                or "recent-year window" in error_message.lower()
-                or "last_n_available_years charts" in error_message.lower()
-                or "chart plan" in error_message.lower()
-                or "cannot compare values of type date and type bigint" in error_message.lower()
-                or "max(extract(year" in error_message.lower()
-            )
+        if semantic_repair_enabled and (
+            "disease death-cause" in error_message.lower()
+            or "cid_morte" in error_message.lower()
+            or "race/color distributions" in error_message.lower()
+            or "raca_cor lookup" in error_message.lower()
+            or "global top-n" in error_message.lower()
+            or "ranked top-n" in error_message.lower()
+            or "requires grouping by municipio" in error_message.lower()
+            or "filtered cohort" in error_message.lower()
+            or "weekday distributions" in error_message.lower()
+            or "uti distribution" in error_message.lower()
+            or "side-by-side state comparisons" in error_message.lower()
+            or "length-of-stay" in error_message.lower()
+            or "cost-per-day" in error_message.lower()
+            or "custo por dia" in error_message.lower()
+            or "requested uti filter" in error_message.lower()
+            or "reference average" in error_message.lower()
+            or "reference-rate" in error_message.lower()
+            or "ratio threshold" in error_message.lower()
+            or "cumulative coverage" in error_message.lower()
+            or "window functions" in error_message.lower()
+            or "intersection of two top-n" in error_message.lower()
+            or "recent-year requests" in error_message.lower()
+            or "recent-year window" in error_message.lower()
+            or "last_n_available_years charts" in error_message.lower()
+            or "requested year filter" in error_message.lower()
+            or "requested estado filter" in error_message.lower()
+            or "chart plan" in error_message.lower()
+            or "cannot compare values of type date and type bigint" in error_message.lower()
+            or "max(extract(year" in error_message.lower()
         ):
             deterministic_sql = (
                 _build_death_cause_description_count_sql(state.get("semantic_plan"))
                 or _build_lookup_distribution_sql(state.get("semantic_plan"))
                 or _build_top_n_count_by_dimension_sql(state.get("semantic_plan"))
+                or _build_filtered_category_period_percentage_sql(state.get("semantic_plan"))
+                or _build_cost_per_day_by_hospital_sql(state.get("semantic_plan"))
+                or _build_absent_uti_hospital_sql(state.get("semantic_plan"))
+                or _build_cumulative_coverage_sql(state.get("semantic_plan"))
+                or _build_reference_uti_rate_sql(state.get("semantic_plan"))
+                or _build_dual_top_n_municipality_intersection_sql(state.get("semantic_plan"))
                 or _build_filtered_cohort_weekday_percentage_sql(state.get("semantic_plan"))
                 or _build_side_by_side_state_average_sql(state.get("semantic_plan"))
+                or _build_annual_growth_rate_sql(state.get("semantic_plan"))
                 or _build_recent_years_mortality_by_sex_sql(state.get("semantic_plan"))
             )
             if deterministic_sql and deterministic_sql != previous_sql:
@@ -1428,13 +1745,10 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 )
                 return state
 
-        if (
-            semantic_repair_enabled
-            and (
-                "temporal comparison" in error_message.lower()
-                or "growth comparisons" in error_message.lower()
-                or "decline comparisons" in error_message.lower()
-            )
+        if semantic_repair_enabled and (
+            "temporal comparison" in error_message.lower()
+            or "growth comparisons" in error_message.lower()
+            or "decline comparisons" in error_message.lower()
         ):
             deterministic_sql = _build_temporal_period_comparison_sql(
                 state.get("semantic_plan"),
@@ -1479,14 +1793,11 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 )
                 return state
 
-        if (
-            semantic_repair_enabled
-            and (
-                "death-cause" in error_message.lower()
-                or "death cause" in error_message.lower()
-                or "support counts per cid" in error_message.lower()
-                or "high-cardinality anti-condition" in error_message.lower()
-            )
+        if semantic_repair_enabled and (
+            "death-cause" in error_message.lower()
+            or "death cause" in error_message.lower()
+            or "support counts per cid" in error_message.lower()
+            or "high-cardinality anti-condition" in error_message.lower()
         ):
             deterministic_sql = _build_death_cause_cid_antijoin_sql(
                 state.get("semantic_plan"),
@@ -1531,13 +1842,10 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 )
                 return state
 
-        if (
-            semantic_repair_enabled
-            and (
-                "time-series evolution" in error_message.lower()
-                or "top-n periods" in error_message.lower()
-                or "rank periods" in error_message.lower()
-            )
+        if semantic_repair_enabled and (
+            "time-series evolution" in error_message.lower()
+            or "top-n periods" in error_message.lower()
+            or "rank periods" in error_message.lower()
         ):
             deterministic_sql = _build_mortality_rate_time_series_sql(
                 state.get("semantic_plan"),
@@ -1582,13 +1890,10 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 )
                 return state
 
-        if (
-            semantic_repair_enabled
-            and (
-                "moving average" in error_message.lower()
-                or "média móvel" in error_message.lower()
-                or "media movel" in error_message.lower()
-            )
+        if semantic_repair_enabled and (
+            "moving average" in error_message.lower()
+            or "média móvel" in error_message.lower()
+            or "media movel" in error_message.lower()
         ):
             deterministic_sql = _build_moving_average_sql(state.get("semantic_plan"))
             if deterministic_sql and deterministic_sql != previous_sql:
@@ -1673,17 +1978,13 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 )
                 return state
 
-        if (
-            semantic_repair_enabled
-            and (
-                "multi-metric socioeconomic" in error_message.lower()
-                or "socioeconomic questions" in error_message.lower()
-                or "socioeconomic indicator" in error_message.lower()
-                or "socioeconomico" in error_message.lower()
-                or "socioeconomic total metrics" in error_message.lower()
-                or "idhm mortality cohort" in error_message.lower()
-                or "state-level mortality rate" in error_message.lower()
-            )
+        if semantic_repair_enabled and (
+            "multi-metric socioeconomic" in error_message.lower()
+            or "socioeconomic questions" in error_message.lower()
+            or "socioeconomic indicator" in error_message.lower()
+            or "socioeconomico" in error_message.lower()
+            or "socioeconomic total metrics" in error_message.lower()
+            or "state-level mortality rate" in error_message.lower()
         ):
             deterministic_sql = _build_socioeconomic_multi_metric_sql(
                 state.get("semantic_plan"),
@@ -1714,7 +2015,7 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 state["current_error"] = None
                 state = add_ai_message(
                     state,
-                    "Reparo semantico aplicado: macro socioeconomica com metricas long-format.",
+                    "Reparo semantico aplicado: macro socioeconomica wide-format.",
                 )
                 execution_time = time.time() - start_time
                 state = update_phase(state, ExecutionPhase.SQL_REPAIR, execution_time)
@@ -1778,7 +2079,7 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             "corrija os JOINs usando chaves que existam em ambas as tabelas. "
             "CRÍTICO — ASPAS DUPLAS: em PostgreSQL TODOS os nomes de colunas DEVEM usar aspas duplas. "
             "Se o erro mencionar 'coluna X não existe', quase sempre é falta de aspas duplas — adicione-as: "
-            'c.cd_descricao → c."CD_DESCRICAO"; c.cid → c."CID"; alias.coluna → alias."COLUNA". '
+            'c.descricao → c."DESCRICAO"; c.cid → c."CID"; alias.coluna → alias."COLUNA". '
             "Responda apenas com a SQL válida, sem comentários, markdown ou texto adicional."
         )
 

@@ -58,7 +58,7 @@ def test_absence_guidance_rejects_negative_filter_pattern():
 
 def test_join_path_guidance_includes_catalog_path_instruction():
     context = build_semantic_repair_context(
-        "AST CONTRACT ERROR: SQL join path for estado does not include catalog edge internacoes.MUNIC_RES -> municipios.codigo_6d",
+        "AST CONTRACT ERROR: SQL join path for estado does not include catalog edge internacoes.MUNIC_RES -> municipios.CO_MUNICIPIO_6D",
         build_semantic_plan("Quais hospitais nunca registraram cobrança de UTI por estado?"),
     )
 

@@ -4,7 +4,7 @@ from src.visualization.data import build_chart_planning_input, normalize_result_
 def test_normalize_result_rows_uses_sql_aliases_for_tuple_results():
     rows, columns = normalize_result_rows(
         [{"result": ("Porto Alegre", 10)}],
-        'SELECT mu."nome" AS municipio, COUNT(*) AS total_internacoes FROM internacoes i',
+        'SELECT mu."NO_MUNICIPIO" AS municipio, COUNT(*) AS total_internacoes FROM internacoes i',
     )
 
     assert columns == ["municipio", "total_internacoes"]
@@ -59,7 +59,7 @@ def test_normalize_result_rows_repairs_mojibake_city_names_for_chart_display():
             {"result": ("ViamÃ£o", 15029)},
             {"result": ("ArmaÃ§Ã£o dos BÃºzios", 12)},
         ],
-        'SELECT mu."nome" AS municipio, COUNT(*) AS total_mortes FROM internacoes i',
+        'SELECT mu."NO_MUNICIPIO" AS municipio, COUNT(*) AS total_mortes FROM internacoes i',
     )
 
     assert columns == ["municipio", "total_mortes"]

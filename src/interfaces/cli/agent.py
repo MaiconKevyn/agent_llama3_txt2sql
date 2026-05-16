@@ -88,10 +88,13 @@ def create_orchestrator_config(args) -> OrchestratorConfig:
         session_timeout=3600,
         enable_conversational_response=True,  # Enable multi-LLM conversational responses
         conversational_fallback=True,  # Enable fallback if conversational LLM fails
-        table_selection_preset=args.table_selection_preset,
-        table_selection_mode=args.table_selection_mode,
-        table_selection_description_variant=args.table_selection_description_variant,
-        table_selection_prompt_variant=args.table_selection_prompt_variant,
+        enable_llamaindex_context=args.llamaindex_mode in {"context", "sql_draft", "hybrid"},
+        enable_llamaindex_sql_draft=args.llamaindex_mode == "sql_draft",
+        llamaindex_mode=args.llamaindex_mode,
+        llamaindex_top_k_tables=args.llamaindex_top_k_tables,
+        llamaindex_index_dir=args.llamaindex_index_dir,
+        llamaindex_rebuild_index=args.llamaindex_rebuild_index,
+        verify_llamaindex_schema_with_db=args.verify_llamaindex_schema_with_db,
     )
 
 
@@ -194,9 +197,9 @@ def debug_query_execution(orchestrator, user_query: str):
                     print(f"     Selected: {selected}")
 
                     if selected:
-                        if "atendimentos" in selected:
+                        if "internacao_procedimento" in selected:
                             print(
-                                "     Great! Selected 'atendimentos' junction for procedure queries"
+                                "     Great! Selected 'internacao_procedimento' junction for procedure queries"
                             )
                         if "procedimentos" in selected:
                             print(
@@ -272,7 +275,7 @@ def debug_query_execution(orchestrator, user_query: str):
                             print("     Count query detected")
                         if any(
                             table in sql.lower()
-                            for table in ["atendimentos", "procedimentos", "cid"]
+                            for table in ["internacao_procedimento", "procedimentos", "cid"]
                         ):
                             print("     Using specialized healthcare tables")
                         if "SELECT *" in sql.upper():
@@ -599,42 +602,35 @@ def main():
         action="store_true",
         help="Mostrar estados detalhados de cada step do workflow durante execução",
     )
-    from src.application.prompts.table_selection.catalog import (
-        get_available_description_variants,
-        get_available_prompt_variants,
-        get_available_table_selection_presets,
-    )
-
     parser.add_argument(
-        "--table-selection-preset",
-        default="llm_best",
-        choices=get_available_table_selection_presets(),
-        help="Preset nomeado do selector de tabelas usado pelo agente.",
+        "--llamaindex-mode",
+        default="context",
+        choices=["context", "sql_draft", "hybrid"],
+        help=(
+            "Modo LlamaIndex: context usa retrieval de contexto; "
+            "sql_draft usa draft SQL; hybrid usa contexto com gerador atual."
+        ),
     )
     parser.add_argument(
-        "--table-selection-mode",
-        default=None,
-        choices=[
-            "full_cascade",
-            "heuristic_only",
-            "embedding_only",
-            "heuristic_embedding_only",
-            "llm_only",
-            "llm_disabled_current_fallback",
-        ],
-        help="Modo do selector de tabelas para a execução atual.",
+        "--llamaindex-top-k-tables",
+        type=int,
+        default=6,
+        help="Quantidade de tabelas recuperadas pelo índice LlamaIndex.",
     )
     parser.add_argument(
-        "--table-selection-description-variant",
-        default=None,
-        choices=get_available_description_variants(),
-        help="Variante das descrições de tabelas usada no fallback/selector com LLM.",
+        "--llamaindex-index-dir",
+        default=".llamaindex_schema",
+        help="Diretório local do índice de schema LlamaIndex.",
     )
     parser.add_argument(
-        "--table-selection-prompt-variant",
-        default=None,
-        choices=get_available_prompt_variants(),
-        help="Variante do prompt usada no selector com LLM.",
+        "--llamaindex-rebuild-index",
+        action="store_true",
+        help="Recria o índice LlamaIndex antes da consulta.",
+    )
+    parser.add_argument(
+        "--verify-llamaindex-schema-with-db",
+        action="store_true",
+        help="Chama sql_db_schema para verificar o contexto de schema recuperado pelo LlamaIndex.",
     )
 
     args = parser.parse_args()
@@ -668,7 +664,7 @@ Melhorias da V3:
      Debug interativo com retry mechanisms
      OpenAI tool calling (gpt-4o / gpt-4o-mini)
 
-Database: PostgreSQL sihrd5 (18M+ internacoes, 37M+ atendimentos)
+Database: PostgreSQL sihrd5 (18M+ internacoes, 37M+ internacao_procedimento)
 Domínio: Healthcare brasileiro (internações, procedimentos, diagnósticos)
 """)
         return

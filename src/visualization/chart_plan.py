@@ -33,7 +33,9 @@ def build_chart_plan(
     x_dimension = _infer_x_dimension(normalized)
     series_dimension = _infer_series_dimension(normalized)
     time_window = _infer_time_window(normalized)
-    chart_type = _infer_chart_type(intent, x_dimension=x_dimension, series_dimension=series_dimension)
+    chart_type = _infer_chart_type(
+        intent, x_dimension=x_dimension, series_dimension=series_dimension
+    )
     if chart_type == "scatter":
         scatter_axes = _infer_scatter_axes(normalized)
         if scatter_axes:
@@ -99,7 +101,11 @@ def validate_sql_against_chart_plan(
                 "CHART PLAN ERROR: last_n_available_years charts must subtract integer years "
                 "from the numeric max year, not subtract an INTERVAL from MAX(EXTRACT(YEAR ...))."
             )
-        if re.search(r"\bdt_inter\b[\s\S]{0,80}>=\s*\(\s*select\s+max\s*\(\s*extract\s*\(\s*year", text):
+        if re.search(
+            r"\b(?:where|and|or)\s+\(?\s*(?:\w+\.)?\"?dt_inter\"?\s*>=\s*"
+            r"\(\s*select\s+max\s*\(\s*extract\s*\(\s*year",
+            text,
+        ):
             return False, (
                 "CHART PLAN ERROR: last_n_available_years charts must compare extracted years "
                 "to MAX(EXTRACT(YEAR FROM DT_INTER)), not compare DT_INTER dates directly to "
@@ -160,7 +166,9 @@ def _normalize(text: str) -> str:
 
 
 def _infer_metric(normalized_query: str) -> str:
-    if any(token in normalized_query for token in ["taxa de mortalidade", "mortalidade hospitalar"]):
+    if any(
+        token in normalized_query for token in ["taxa de mortalidade", "mortalidade hospitalar"]
+    ):
         return "taxa_mortalidade"
     if any(
         token in normalized_query
@@ -175,11 +183,25 @@ def _infer_metric(normalized_query: str) -> str:
         ]
     ):
         return "receita_total"
-    if any(token in normalized_query for token in ["idade media", "idade média", "media de idade", "média de idade"]):
+    if any(
+        token in normalized_query
+        for token in ["idade media", "idade média", "media de idade", "média de idade"]
+    ):
         return "idade_media"
-    if any(token in normalized_query for token in ["media de permanencia", "média de permanência", "dias de permanencia", "dias de permanência"]):
+    if any(
+        token in normalized_query
+        for token in [
+            "media de permanencia",
+            "média de permanência",
+            "dias de permanencia",
+            "dias de permanência",
+        ]
+    ):
         return "media_dias_permanencia"
-    if any(token in normalized_query for token in ["morte", "mortes", "obito", "obitos", "death", "deaths"]):
+    if any(
+        token in normalized_query
+        for token in ["morte", "mortes", "obito", "obitos", "death", "deaths"]
+    ):
         return "total_mortes"
     if any(
         token in normalized_query
@@ -207,15 +229,24 @@ def _infer_x_dimension(normalized_query: str) -> str | None:
         return "municipio"
     if "por estado" in normalized_query or "by state" in normalized_query:
         return "estado"
-    if any(token in normalized_query for token in ["raca cor", "raça cor", "por raca", "por raça", "por cor"]):
+    if any(
+        token in normalized_query
+        for token in ["raca cor", "raça cor", "por raca", "por raça", "por cor"]
+    ):
         return "raca_cor"
-    if any(token in normalized_query for token in ["por especialidade", "especialidade medica", "especialidade médica"]):
+    if any(
+        token in normalized_query
+        for token in ["por especialidade", "especialidade medica", "especialidade médica"]
+    ):
         return "especialidade"
     if any(token in normalized_query for token in ["por procedimento", "procedimentos"]):
         return "procedimento"
     if any(token in normalized_query for token in ["por hospital", "hospitais"]):
         return "hospital"
-    if any(token in normalized_query for token in ["por faixa etaria", "por faixa etária", "faixa etaria", "faixa etária"]):
+    if any(
+        token in normalized_query
+        for token in ["por faixa etaria", "por faixa etária", "faixa etaria", "faixa etária"]
+    ):
         return "faixa_etaria"
     if any(token in normalized_query for token in ["causa de morte", "causas de morte"]):
         return "causa_morte"
@@ -272,9 +303,13 @@ def _infer_series_dimension(normalized_query: str) -> str | None:
 def _infer_time_window(normalized_query: str) -> ChartTimeWindow:
     recent_years = _recent_year_window(normalized_query)
     if recent_years is not None:
-        return ChartTimeWindow(type="last_n_available_years", n=recent_years, date_column="DT_INTER")
+        return ChartTimeWindow(
+            type="last_n_available_years", n=recent_years, date_column="DT_INTER"
+        )
 
-    year_range = re.search(r"\b((?:19|20)\d{2})\s*(?:-|a|ate|até)\s*((?:19|20)\d{2})\b", normalized_query)
+    year_range = re.search(
+        r"\b((?:19|20)\d{2})\s*(?:-|a|ate|até)\s*((?:19|20)\d{2})\b", normalized_query
+    )
     if year_range:
         return ChartTimeWindow(
             type="year_range",
@@ -346,7 +381,11 @@ def _required_columns(
     y_column: str,
     expected_shape: ExpectedResultShape,
 ) -> list[str]:
-    if expected_shape in {"time_series_metric", "category_metric"} and x_dimension and series_dimension:
+    if (
+        expected_shape in {"time_series_metric", "category_metric"}
+        and x_dimension
+        and series_dimension
+    ):
         return [x_dimension, series_dimension, y_column]
     if expected_shape == "time_metric" and x_dimension:
         return [x_dimension, y_column]
@@ -369,7 +408,11 @@ def _shape_guidance(
         "not raw codes."
     )
     window_hint = _window_shape_hint(time_window)
-    if expected_shape == "time_series_metric" and x_dimension == "ano" and series_dimension == "sexo":
+    if (
+        expected_shape == "time_series_metric"
+        and x_dimension == "ano"
+        and series_dimension == "sexo"
+    ):
         return (
             f"Return tidy long rows with columns: ano, sexo, {y_column}. "
             "Group by ano and sexo so each year has one row per sex."
@@ -382,9 +425,7 @@ def _shape_guidance(
             f"Group by {x_dimension} and {series_dimension}.{sex_hint}{window_hint}"
         )
     if expected_shape == "time_metric" and x_dimension:
-        return (
-            f"Return one row per {x_dimension} with columns: {x_dimension}, {y_column}.{window_hint}"
-        )
+        return f"Return one row per {x_dimension} with columns: {x_dimension}, {y_column}.{window_hint}"
     if expected_shape == "category_metric" and x_dimension:
         sex_hint = sex_label_hint if x_dimension == "sexo" else ""
         missing_hint = _clinical_missing_shape_hint(x_dimension)
@@ -457,7 +498,7 @@ def _metric_expression(metric: str) -> str | None:
     return {
         "total_mortes": 'COUNT rows where "MORTE" = true',
         "total_internacoes": "COUNT rows",
-        "taxa_mortalidade": 'SUM(MORTE=true) * 100.0 / COUNT(*)',
+        "taxa_mortalidade": "SUM(MORTE=true) * 100.0 / COUNT(*)",
         "idade_media": 'AVG("IDADE")',
         "media_dias_permanencia": 'AVG("DIAS_PERM")',
         "receita_total": 'SUM("VAL_TOT")',

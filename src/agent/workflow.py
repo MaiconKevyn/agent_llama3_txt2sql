@@ -102,6 +102,7 @@ def create_langgraph_sql_workflow(config=None):
         "query_planner": "query_planner",
         "reasoning": _reasoning_target,
         "generate_sql": "generate_sql",
+        "clarification": "clarification",
     }
     if cfg.disable_semantic_planner:
         workflow.add_conditional_edges("plan_gate", route_after_plan_gate, _after_plan_gate_targets)

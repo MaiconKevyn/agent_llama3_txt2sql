@@ -1,8 +1,8 @@
 from src.agent.plan_gate import plan_gate_node
+from src.agent.sql_generation import _build_deterministic_scalar_sql
 from src.agent.state_helpers import create_initial_messages_state
 from src.agent.validation import check_semantic_rules
 from src.application.config.simple_config import OrchestratorConfig
-from src.application.prompts.table_selection.catalog import resolve_table_selection_strategy
 from src.semantic.catalog import (
     catalog_summary,
     load_semantic_catalog,
@@ -20,6 +20,7 @@ from src.semantic.error_taxonomy import (
     build_semantic_error_record,
     classify_semantic_error,
 )
+from src.semantic.plan_schema import SemanticFilter
 from src.semantic.planner import build_semantic_plan
 from src.semantic.validators import validate_sql_against_semantic_plan
 
@@ -49,14 +50,14 @@ def test_semantic_plan_treats_city_mention_as_filter_for_top_procedures_in_state
 def test_semantic_validator_rejects_unrequested_city_grouping_for_top_procedures():
     plan = build_semantic_plan("Quais são os 10 procedimentos mais comuns nas cidades do RS?")
     sql = """
-        SELECT mu."nome", p."NOME_PROC", COUNT(*) AS total
+        SELECT mu."NO_MUNICIPIO", p."NOME_PROC", COUNT(*) AS total
         FROM internacoes i
         JOIN hospital h ON i."CNES" = h."CNES"
-        JOIN municipios mu ON h."MUNIC_MOV" = mu."codigo_6d"
-        JOIN atendimentos a ON i."N_AIH" = a."N_AIH"
-        JOIN procedimentos p ON a."PROC_REA" = p."PROC_REA"
-        WHERE mu."estado" = 'RS'
-        GROUP BY mu."nome", p."NOME_PROC"
+        JOIN municipios mu ON h."MUNIC_MOV" = mu."CO_MUNICIPIO_6D"
+        JOIN internacao_procedimento ip ON i."N_AIH" = ip."N_AIH"
+        JOIN procedimentos p ON ip."PROC_REA" = p."PROC_REA"
+        WHERE mu."SG_UF" = 'RS'
+        GROUP BY mu."NO_MUNICIPIO", p."NOME_PROC"
         ORDER BY total DESC
         LIMIT 10
     """
@@ -73,10 +74,10 @@ def test_semantic_validator_accepts_state_scoped_top_procedures_without_city_gro
         SELECT p."NOME_PROC", COUNT(*) AS total
         FROM internacoes i
         JOIN hospital h ON i."CNES" = h."CNES"
-        JOIN municipios mu ON h."MUNIC_MOV" = mu."codigo_6d"
-        JOIN atendimentos a ON i."N_AIH" = a."N_AIH"
-        JOIN procedimentos p ON a."PROC_REA" = p."PROC_REA"
-        WHERE mu."estado" = 'RS'
+        JOIN municipios mu ON h."MUNIC_MOV" = mu."CO_MUNICIPIO_6D"
+        JOIN internacao_procedimento ip ON i."N_AIH" = ip."N_AIH"
+        JOIN procedimentos p ON ip."PROC_REA" = p."PROC_REA"
+        WHERE mu."SG_UF" = 'RS'
         GROUP BY p."NOME_PROC"
         ORDER BY total DESC
         LIMIT 10
@@ -86,6 +87,39 @@ def test_semantic_validator_accepts_state_scoped_top_procedures_without_city_gro
 
     assert valid is True
     assert message is None
+
+
+def test_semantic_validator_accepts_scalar_max_min_answers_without_limit():
+    cases = [
+        (
+            "Qual o maior valor de internação registrado?",
+            'SELECT MAX("VAL_TOT") AS maior_valor FROM internacoes;',
+        ),
+        (
+            "Qual a menor idade registrada nas internações?",
+            'SELECT MIN("IDADE") AS idade_minima FROM internacoes;',
+        ),
+    ]
+
+    for question, sql in cases:
+        plan = build_semantic_plan(question)
+        valid, message = validate_sql_against_semantic_plan(plan, sql)
+
+        assert valid is True, message
+
+
+def test_semantic_validator_ignores_legacy_socioeconomico_metrica_filter_for_wide_sql():
+    plan = build_semantic_plan("Qual a taxa de mortalidade infantil média no Brasil?")
+    plan.filters.append(SemanticFilter(field="metrica", values=["mortalidade_infantil_1ano"]))
+    sql = """
+        SELECT AVG("VL_MORT_INFANTIL") AS taxa_media_mortalidade_infantil
+        FROM socioeconomico
+        WHERE "VL_MORT_INFANTIL" IS NOT NULL
+    """
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert valid is True, message
 
 
 def test_semantic_plan_treats_respiratory_cid_as_filter_for_quarter_percentage():
@@ -242,17 +276,20 @@ def test_semantic_plan_detects_top_n_death_causes_as_ranked_groups():
     assert "diagnostico" in plan.answer_shape.output_dimensions
     assert "sexo" in plan.answer_shape.filter_dimensions
     assert any(filter_.field == "sexo" and filter_.values == ["3"] for filter_ in plan.filters)
-    assert any(filter_.field == "desfecho" and filter_.values == ["MORTE = true"] for filter_ in plan.filters)
+    assert any(
+        filter_.field == "desfecho" and filter_.values == ["MORTE = true"]
+        for filter_ in plan.filters
+    )
 
 
 def test_semantic_validator_accepts_top_n_death_causes_for_women():
     plan = build_semantic_plan("Quais são as três causas de morte mais frequentes entre mulheres?")
     sql = """
-        SELECT c."CD_DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes
+        SELECT c."DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes
         FROM internacoes i
         JOIN cid c ON i."CID_MORTE" = c."CID"
         WHERE i."MORTE" = true AND i."SEXO" = 3
-        GROUP BY c."CD_DESCRICAO"
+        GROUP BY c."DESCRICAO"
         ORDER BY total_mortes DESC
         LIMIT 3
     """
@@ -268,7 +305,10 @@ def test_semantic_plan_does_not_treat_temporal_grouping_as_death_cause_descripti
 
     assert "death_cause_description_requires_cid_morte" not in plan.constraints
     assert not any(filter_.field == "cid_morte_descricao" for filter_ in plan.filters)
-    assert any(filter_.field == "desfecho" and filter_.values == ["MORTE = true"] for filter_ in plan.filters)
+    assert any(
+        filter_.field == "desfecho" and filter_.values == ["MORTE = true"]
+        for filter_ in plan.filters
+    )
     assert "ano" in plan.answer_shape.required_dimensions
 
 
@@ -374,7 +414,10 @@ def test_semantic_plan_detects_static_death_distribution_by_sex_with_typo():
         filter_.field == "sexo" and filter_.operator == "IN" and filter_.values == ["1", "3"]
         for filter_ in plan.filters
     )
-    assert any(filter_.field == "desfecho" and filter_.values == ["MORTE = true"] for filter_ in plan.filters)
+    assert any(
+        filter_.field == "desfecho" and filter_.values == ["MORTE = true"]
+        for filter_ in plan.filters
+    )
 
 
 def test_semantic_plan_detects_moving_average_contract_without_state_false_positive():
@@ -399,8 +442,8 @@ def test_semantic_validator_rejects_moving_average_over_raw_average():
                    ORDER BY EXTRACT(YEAR FROM i."DT_INTER") ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
                ) AS media_movel
         FROM internacoes i
-        JOIN municipios mu ON i."MUNIC_RES" = mu."codigo_6d"
-        WHERE mu."estado" = 'RS'
+        JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+        WHERE mu."SG_UF" = 'RS'
     """
 
     valid, message = validate_sql_against_semantic_plan(plan, sql)
@@ -417,8 +460,8 @@ def test_semantic_validator_accepts_moving_average_over_annual_counts():
         WITH anuais AS (
             SELECT EXTRACT(YEAR FROM i."DT_INTER") AS ano, COUNT(*) AS total_internacoes
             FROM internacoes i
-            JOIN municipios mu ON i."MUNIC_RES" = mu."codigo_6d"
-            WHERE mu."estado" = 'RS'
+            JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+            WHERE mu."SG_UF" = 'RS'
               AND EXTRACT(YEAR FROM i."DT_INTER") BETWEEN 2008 AND 2023
             GROUP BY EXTRACT(YEAR FROM i."DT_INTER")
         )
@@ -447,58 +490,55 @@ def test_semantic_plan_detects_quartile_distribution_without_se_state_filter():
     assert "quartile_distribution_requires_ntile_interval" in plan.constraints
 
 
-def test_semantic_plan_detects_idhm_and_hospital_mortality_mixed_sources():
+def test_semantic_plan_marks_idhm_as_unsupported_for_current_schema():
     plan = build_semantic_plan(
         "Compare o IDHM médio dos municípios do RS com taxa de mortalidade hospitalar acima e abaixo da média estadual (mínimo de 500 internações)."
     )
 
     metric_names = {metric.name for metric in plan.metrics}
-    assert {"idhm", "taxa_mortalidade"} <= metric_names
-    assert any(filter_.field == "metrica" and "idhm" in filter_.values for filter_ in plan.filters)
-    assert "socioeconomico_metric_filter_required" in plan.constraints
-    assert "rate_denominator_must_preserve_full_scope" in plan.constraints
-    assert "idhm_mortality_cohort_requires_state_rate_split" in plan.constraints
+    assert "idhm" not in metric_names
+    assert any("unsupported_metric:idhm" in item for item in plan.ambiguities)
+    assert "idhm_mortality_cohort_requires_state_rate_split" not in plan.constraints
 
 
-def test_semantic_plan_detects_socioeconomico_multi_metric_pivot():
+def test_semantic_plan_marks_bolsa_familia_as_unsupported_for_current_schema():
     plan = build_semantic_plan(
         "Quais são os 10 municípios do Maranhão com Bolsa Família acima da média estadual e mortalidade infantil abaixo da média estadual?"
     )
 
     metric_names = {metric.name for metric in plan.metrics}
-    assert {"bolsa_familia_total", "mortalidade_infantil_1ano"} <= metric_names
-    metrica_filter = next(filter_ for filter_ in plan.filters if filter_.field == "metrica")
-    assert set(metrica_filter.values) == {"bolsa_familia_total", "mortalidade_infantil_1ano"}
-    assert "socioeconomico_multi_metric_requires_conditional_pivot" in plan.constraints
+    assert "bolsa_familia_total" not in metric_names
+    assert "mortalidade_infantil_1ano" in metric_names
+    assert any("unsupported_metric:bolsa_familia" in item for item in plan.ambiguities)
 
 
-def test_semantic_validator_rejects_idhm_mortality_cohort_using_municipality_rate_average():
+def test_semantic_validator_rejects_old_idhm_long_format_sql():
     plan = build_semantic_plan(
         "Compare o IDHM médio dos municípios do RS com taxa de mortalidade hospitalar acima e abaixo da média estadual (mínimo de 500 internações)."
     )
     sql = """
         WITH taxa_mortalidade AS (
-            SELECT mu.nome,
+            SELECT mu."NO_MUNICIPIO",
                    SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa
             FROM internacoes i
-            JOIN municipios mu ON i."MUNIC_RES" = mu."codigo_6d"
-            WHERE mu.estado = 'RS'
-            GROUP BY mu.nome
+            JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+            WHERE mu."SG_UF" = 'RS'
+            GROUP BY mu."NO_MUNICIPIO"
             HAVING COUNT(*) > 500
         ),
         idhm_municipios AS (
-            SELECT s."codigo_6d", AVG(s."valor") AS idhm
+            SELECT s."CO_MUNICIPIO_6D", AVG(s.valor) AS idhm
             FROM socioeconomico s
-            JOIN municipios mu ON s."codigo_6d" = mu."codigo_6d"
-            WHERE s.metrica = 'idhm' AND mu.estado = 'RS'
-            GROUP BY s."codigo_6d"
+            JOIN municipios mu ON s."CO_MUNICIPIO_6D" = mu."CO_MUNICIPIO_6D"
+            WHERE s.metrica = 'idhm' AND mu."SG_UF" = 'RS'
+            GROUP BY s."CO_MUNICIPIO_6D"
         )
         SELECT CASE WHEN tm.taxa > (SELECT AVG(taxa) FROM taxa_mortalidade)
                     THEN 'Acima da média' ELSE 'Abaixo da média' END AS grupo,
                AVG(i.idhm) AS idhm_medio
         FROM taxa_mortalidade tm
-        JOIN idhm_municipios i ON tm.nome = (
-            SELECT mu.nome FROM municipios mu WHERE mu.codigo_6d = i.codigo_6d
+        JOIN idhm_municipios i ON tm."NO_MUNICIPIO" = (
+            SELECT mu."NO_MUNICIPIO" FROM municipios mu WHERE mu.CO_MUNICIPIO_6D = i.CO_MUNICIPIO_6D
         )
         GROUP BY grupo
     """
@@ -506,95 +546,35 @@ def test_semantic_validator_rejects_idhm_mortality_cohort_using_municipality_rat
     valid, message = validate_sql_against_semantic_plan(plan, sql)
 
     assert valid is False
-    assert "state-level mortality rate" in (message or "")
+    assert "metrica/valor" in (message or "")
 
 
-def test_semantic_validator_accepts_idhm_mortality_cohort_macro_shape():
-    plan = build_semantic_plan(
-        "Compare o IDHM médio dos municípios do RS com taxa de mortalidade hospitalar acima e abaixo da média estadual (mínimo de 500 internações)."
-    )
+def test_semantic_validator_rejects_old_long_format_socioeconomico_sql():
+    plan = build_semantic_plan("Qual a taxa de mortalidade infantil média no Brasil?")
     sql = """
-        WITH media_estado AS (
-            SELECT SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_media
-            FROM internacoes i
-            JOIN municipios mu ON i."MUNIC_RES" = mu."codigo_6d"
-            WHERE mu."estado" = 'RS'
-        ),
-        mortalidade_mun AS (
-            SELECT mu."codigo_6d", mu."nome",
-                   SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_mortalidade
-            FROM internacoes i
-            JOIN municipios mu ON i."MUNIC_RES" = mu."codigo_6d"
-            WHERE mu."estado" = 'RS'
-            GROUP BY mu."codigo_6d", mu."nome"
-            HAVING COUNT(*) > 500
-        )
-        SELECT CASE WHEN mm.taxa_mortalidade > me.taxa_media
-                    THEN 'Acima da media' ELSE 'Abaixo da media' END AS grupo,
-               COUNT(*) AS qtd_municipios,
-               ROUND(AVG(s."valor"), 4) AS idhm_medio
-        FROM mortalidade_mun mm
-        CROSS JOIN media_estado me
-        JOIN socioeconomico s ON mm."codigo_6d" = s."codigo_6d"
-        WHERE s."metrica" = 'idhm'
-        GROUP BY CASE WHEN mm.taxa_mortalidade > me.taxa_media
-                      THEN 'Acima da media' ELSE 'Abaixo da media' END
-    """
-
-    valid, message = validate_sql_against_semantic_plan(plan, sql)
-
-    assert valid is True
-    assert message is None
-
-
-def test_semantic_validator_rejects_multi_metric_socioeconomico_without_pivot():
-    plan = build_semantic_plan(
-        "Quais são os 10 municípios do Maranhão com Bolsa Família acima da média estadual e mortalidade infantil abaixo da média estadual?"
-    )
-    sql = """
-        SELECT mu."nome", SUM(s."valor") AS valor
+        SELECT AVG(s.valor) AS media
         FROM socioeconomico s
-        JOIN municipios mu ON s."codigo_6d" = mu."codigo_6d"
-        WHERE mu."estado" = 'MA'
-          AND s."metrica" IN ('bolsa_familia_total', 'mortalidade_infantil_1ano')
-        GROUP BY mu."nome"
-        ORDER BY valor DESC
-        LIMIT 10
+        WHERE s.metrica = 'mortalidade_infantil_1ano'
     """
 
     valid, message = validate_sql_against_semantic_plan(plan, sql)
 
     assert valid is False
-    assert "conditional pivot" in (message or "")
+    assert "metrica/valor" in (message or "")
 
 
-def test_semantic_validator_accepts_multi_metric_socioeconomico_pivot():
+def test_semantic_validator_accepts_multi_metric_wide_socioeconomico_sql():
     plan = build_semantic_plan(
-        "Quais são os 10 municípios do Maranhão com Bolsa Família acima da média estadual e mortalidade infantil abaixo da média estadual?"
+        "Compare o total de leitos SUS e o total de médicos nos estados do MA e RS."
     )
     sql = """
-        WITH media_estado AS (
-            SELECT AVG(CASE WHEN s."metrica" = 'bolsa_familia_total' THEN s."valor" END) AS avg_bf,
-                   AVG(CASE WHEN s."metrica" = 'mortalidade_infantil_1ano' THEN s."valor" END) AS avg_mi
-            FROM socioeconomico s
-            JOIN municipios mu ON s."codigo_6d" = mu."codigo_6d"
-            WHERE mu."estado" = 'MA'
-        ),
-        por_municipio AS (
-            SELECT mu."nome",
-                   MAX(CASE WHEN s."metrica" = 'bolsa_familia_total' THEN s."valor" END) AS bolsa_familia,
-                   MAX(CASE WHEN s."metrica" = 'mortalidade_infantil_1ano' THEN s."valor" END) AS mortalidade_infantil
-            FROM socioeconomico s
-            JOIN municipios mu ON s."codigo_6d" = mu."codigo_6d"
-            WHERE mu."estado" = 'MA'
-            GROUP BY mu."nome"
-        )
-        SELECT pm."nome", pm.bolsa_familia, pm.mortalidade_infantil
-        FROM por_municipio pm CROSS JOIN media_estado me
-        WHERE pm.bolsa_familia > me.avg_bf
-          AND pm.mortalidade_infantil < me.avg_mi
-        ORDER BY pm.bolsa_familia DESC
-        LIMIT 10
+        SELECT mu."SG_UF",
+               SUM(s."QT_LEITOS_SUS") AS total_leitos_sus,
+               SUM(s."QT_MEDICOS") AS total_medicos
+        FROM socioeconomico s
+        JOIN municipios mu ON s."CO_MUNICIPIO_6D" = mu."CO_MUNICIPIO_6D"
+        WHERE mu."SG_UF" IN ('MA', 'RS')
+        GROUP BY mu."SG_UF"
     """
 
     valid, message = validate_sql_against_semantic_plan(plan, sql)
@@ -660,7 +640,7 @@ def test_semantic_validator_rejects_death_cause_antijoin_on_diag_princ_only():
         "Quais códigos CID aparecem como causa de morte em óbitos registrados mas nunca foram registrados como diagnóstico principal de internação?"
     )
     sql = """
-        SELECT c."CID", c."CD_DESCRICAO"
+        SELECT c."CID", c."DESCRICAO"
         FROM cid c
         WHERE NOT EXISTS (
             SELECT 1 FROM internacoes d WHERE d."DIAG_PRINC" = c."CID"
@@ -678,7 +658,7 @@ def test_semantic_validator_accepts_death_cause_cid_antijoin():
         "Quais códigos CID aparecem como causa de morte em óbitos registrados mas nunca foram registrados como diagnóstico principal de internação?"
     )
     sql = """
-        SELECT c."CID", c."CD_DESCRICAO", COUNT(*) AS total_como_morte
+        SELECT c."CID", c."DESCRICAO", COUNT(*) AS total_como_morte
         FROM internacoes i
         JOIN cid c ON i."CID_MORTE" = c."CID"
         WHERE i."MORTE" = true
@@ -686,7 +666,7 @@ def test_semantic_validator_accepts_death_cause_cid_antijoin():
           AND NOT EXISTS (
               SELECT 1 FROM internacoes d WHERE d."DIAG_PRINC" = c."CID"
           )
-        GROUP BY c."CID", c."CD_DESCRICAO"
+        GROUP BY c."CID", c."DESCRICAO"
         ORDER BY total_como_morte DESC
         LIMIT 10
     """
@@ -702,7 +682,7 @@ def test_semantic_validator_rejects_unbounded_death_cause_antijoin_list():
         "Quais códigos CID aparecem como causa de morte em óbitos registrados mas nunca foram registrados como diagnóstico principal de internação?"
     )
     sql = """
-        SELECT c."CID", c."CD_DESCRICAO"
+        SELECT c."CID", c."DESCRICAO"
         FROM cid c
         WHERE EXISTS (
             SELECT 1 FROM internacoes i WHERE i."CID_MORTE" = c."CID" AND i."MORTE" = true
@@ -726,16 +706,16 @@ def test_semantic_validator_rejects_diagnosis_grouping_for_category_percentage()
         WITH total_internacoes AS (
             SELECT COUNT(*) AS total
             FROM internacoes i
-            JOIN municipios mu ON i."MUNIC_RES" = mu."codigo_6d"
-            WHERE mu."estado" = 'RS'
+            JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+            WHERE mu."SG_UF" = 'RS'
         ),
         respiratorias AS (
             SELECT EXTRACT(QUARTER FROM i."DT_INTER") AS trimestre,
                    i."DIAG_PRINC",
                    COUNT(*) AS total_resp
             FROM internacoes i
-            JOIN municipios mu ON i."MUNIC_RES" = mu."codigo_6d"
-            WHERE mu."estado" = 'RS' AND i."DIAG_PRINC" LIKE 'J%'
+            JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+            WHERE mu."SG_UF" = 'RS' AND i."DIAG_PRINC" LIKE 'J%'
             GROUP BY trimestre, i."DIAG_PRINC"
         )
         SELECT r.trimestre, r.total_resp, r.total_resp * 100.0 / t.total
@@ -757,8 +737,8 @@ def test_semantic_validator_accepts_filtered_category_quarter_percentage():
                COUNT(*) AS total_respiratorio,
                COUNT(*) * 100.0 / SUM(COUNT(*)) OVER () AS pct_anual
         FROM internacoes i
-        JOIN municipios mu ON i."MUNIC_RES" = mu."codigo_6d"
-        WHERE i."DIAG_PRINC" LIKE 'J%' AND mu."estado" = 'RS'
+        JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+        WHERE i."DIAG_PRINC" LIKE 'J%' AND mu."SG_UF" = 'RS'
         GROUP BY trimestre
         ORDER BY trimestre
     """
@@ -778,8 +758,14 @@ def test_semantic_plan_detects_two_period_growth_comparison():
     assert plan.intent == "trend"
     assert plan.answer_shape.top_n == 10
     assert "diagnostico" in plan.answer_shape.required_dimensions
-    assert any(filter_.field == "period_1" and filter_.values == ["2008", "2012"] for filter_ in plan.filters)
-    assert any(filter_.field == "period_2" and filter_.values == ["2019", "2023"] for filter_ in plan.filters)
+    assert any(
+        filter_.field == "period_1" and filter_.values == ["2008", "2012"]
+        for filter_ in plan.filters
+    )
+    assert any(
+        filter_.field == "period_2" and filter_.values == ["2019", "2023"]
+        for filter_ in plan.filters
+    )
     assert "temporal_comparison_requires_matched_period_entities" in plan.constraints
     assert "temporal_growth_uses_after_minus_before" in plan.constraints
 
@@ -888,7 +874,9 @@ def test_semantic_plan_detects_decline_as_positive_drop():
 
 
 def test_semantic_plan_keeps_ranked_year_for_top_year_per_state():
-    plan = build_semantic_plan("Em qual ano ocorreu o maior número de mortes em cada estado (MA e RS)?")
+    plan = build_semantic_plan(
+        "Em qual ano ocorreu o maior número de mortes em cada estado (MA e RS)?"
+    )
 
     assert plan.answer_shape.row_grain == "top_n_per_group"
     assert plan.answer_shape.top_n == 1
@@ -900,20 +888,22 @@ def test_semantic_plan_keeps_ranked_year_for_top_year_per_state():
 
 
 def test_semantic_validator_accepts_ranked_year_per_state_subquery():
-    plan = build_semantic_plan("Em qual ano ocorreu o maior número de mortes em cada estado (MA e RS)?")
+    plan = build_semantic_plan(
+        "Em qual ano ocorreu o maior número de mortes em cada estado (MA e RS)?"
+    )
     sql = """
         SELECT estado, ano, total_mortes
         FROM (
-            SELECT mu.estado,
+            SELECT mu."SG_UF",
                    EXTRACT(YEAR FROM i."DT_INTER") AS ano,
                    COUNT(*) AS total_mortes,
-                   ROW_NUMBER() OVER (PARTITION BY mu.estado ORDER BY COUNT(*) DESC) AS rn
+                   ROW_NUMBER() OVER (PARTITION BY mu."SG_UF" ORDER BY COUNT(*) DESC) AS rn
             FROM internacoes i
-            JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d
+            JOIN municipios mu ON i."MUNIC_RES" = mu.CO_MUNICIPIO_6D
             WHERE i."MORTE" = true
-              AND mu.estado IN ('MA', 'RS')
+              AND mu."SG_UF" IN ('MA', 'RS')
               AND i."DT_INTER" IS NOT NULL
-            GROUP BY mu.estado, ano
+            GROUP BY mu."SG_UF", ano
         ) sub
         WHERE rn = 1
     """
@@ -925,7 +915,9 @@ def test_semantic_validator_accepts_ranked_year_per_state_subquery():
 
 
 def test_semantic_plan_keeps_ranked_month_per_year():
-    plan = build_semantic_plan("Em qual mês de cada ano (2008-2023) ocorreu o maior número de internações em UTI?")
+    plan = build_semantic_plan(
+        "Em qual mês de cada ano (2008-2023) ocorreu o maior número de internações em UTI?"
+    )
 
     assert plan.answer_shape.row_grain == "top_n_per_group"
     assert plan.answer_shape.top_n == 1
@@ -941,7 +933,9 @@ def test_semantic_plan_keeps_ranked_month_per_year():
 
 
 def test_semantic_validator_accepts_exclusive_end_date_for_year_range():
-    plan = build_semantic_plan("Em qual mês de cada ano (2008-2023) ocorreu o maior número de internações em UTI?")
+    plan = build_semantic_plan(
+        "Em qual mês de cada ano (2008-2023) ocorreu o maior número de internações em UTI?"
+    )
     sql = """
         SELECT ano, mes, total
         FROM (
@@ -991,13 +985,13 @@ def test_goalv2_validator_rejects_residence_state_for_hospital_state_ranking():
     sql = """
         SELECT estado, "CNES", total_internacoes, avg_val_sh, rk
         FROM (
-            SELECT mu.estado, i."CNES", COUNT(*) AS total_internacoes,
+            SELECT mu."SG_UF", i."CNES", COUNT(*) AS total_internacoes,
                    ROUND(AVG(i."VAL_SH"), 2) AS avg_val_sh,
-                   RANK() OVER (PARTITION BY mu.estado ORDER BY AVG(i."VAL_SH") DESC) AS rk
+                   RANK() OVER (PARTITION BY mu."SG_UF" ORDER BY AVG(i."VAL_SH") DESC) AS rk
             FROM internacoes i
-            JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d
-            WHERE mu.estado IN ('MA', 'RS') AND i."VAL_SH" IS NOT NULL
-            GROUP BY mu.estado, i."CNES"
+            JOIN municipios mu ON i."MUNIC_RES" = mu.CO_MUNICIPIO_6D
+            WHERE mu."SG_UF" IN ('MA', 'RS') AND i."VAL_SH" IS NOT NULL
+            GROUP BY mu."SG_UF", i."CNES"
             HAVING COUNT(*) > 500
         ) sub
         WHERE rk <= 3
@@ -1019,12 +1013,12 @@ def test_semantic_validator_rejects_uti_rate_where_filter_denominator_leakage():
             SELECT AVG(CASE WHEN "VAL_UTI" > 0 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_uti
             FROM internacoes
         )
-        SELECT mu.nome, COUNT(*) AS total, COUNT(*) * 100.0 / COUNT(*) AS taxa_uti
+        SELECT mu."NO_MUNICIPIO", COUNT(*) AS total, COUNT(*) * 100.0 / COUNT(*) AS taxa_uti
         FROM internacoes i
-        JOIN municipios mu ON i."MUNIC_RES" = mu."codigo_6d"
+        JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
         CROSS JOIN media_nacional mn
         WHERE i."VAL_UTI" > 0
-        GROUP BY mu.nome, mn.taxa_uti
+        GROUP BY mu."NO_MUNICIPIO", mn.taxa_uti
         HAVING COUNT(*) > 1000 AND COUNT(*) * 100.0 / COUNT(*) > 2 * mn.taxa_uti
     """
 
@@ -1043,13 +1037,13 @@ def test_semantic_validator_accepts_uti_rate_reference_comparison():
             SELECT SUM(CASE WHEN "VAL_UTI" > 0 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_uti
             FROM internacoes
         )
-        SELECT mu.nome,
+        SELECT mu."NO_MUNICIPIO",
                COUNT(*) AS total_internacoes,
                SUM(CASE WHEN i."VAL_UTI" > 0 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_uti
         FROM internacoes i
-        JOIN municipios mu ON i."MUNIC_RES" = mu."codigo_6d"
+        JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
         CROSS JOIN media_nacional mn
-        GROUP BY mu.nome, mn.taxa_uti
+        GROUP BY mu."NO_MUNICIPIO", mn.taxa_uti
         HAVING COUNT(*) > 1000
            AND SUM(CASE WHEN i."VAL_UTI" > 0 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) > 2 * mn.taxa_uti
     """
@@ -1058,6 +1052,38 @@ def test_semantic_validator_accepts_uti_rate_reference_comparison():
 
     assert valid is True
     assert message is None
+
+
+def test_semantic_validator_rejects_reference_rate_top_n_ordered_by_volume():
+    plan = build_semantic_plan(
+        "Quais são os 10 municípios com mais de 1000 internações que têm taxa de internação em UTI "
+        "mais de duas vezes acima da média nacional?"
+    )
+    sql = """
+        WITH media_nacional AS (
+            SELECT SUM(CASE WHEN "VAL_UTI" > 0 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_uti_nacional
+            FROM internacoes
+        ),
+        por_municipio AS (
+            SELECT mu."NO_MUNICIPIO" AS municipio,
+                   COUNT(*) AS total_internacoes,
+                   SUM(CASE WHEN i."VAL_UTI" > 0 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_uti
+            FROM internacoes i
+            JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+            GROUP BY mu."NO_MUNICIPIO"
+            HAVING COUNT(*) > 1000
+        )
+        SELECT pm.municipio, pm.total_internacoes, pm.taxa_uti
+        FROM por_municipio pm, media_nacional mn
+        WHERE pm.taxa_uti > 2 * mn.taxa_uti_nacional
+        ORDER BY pm.total_internacoes DESC
+        LIMIT 10
+    """
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert valid is False
+    assert "rank by the local rate metric" in (message or "")
 
 
 def test_semantic_plan_tracks_revenue_ranking_metric_and_scope():
@@ -1254,9 +1280,7 @@ def test_semantic_plan_canonicalizes_under_one_year_age_filter():
 
     assert plan.intent == "count"
     assert plan.answer_shape.row_grain == "single_scalar"
-    assert [(f.field, f.operator, f.values) for f in plan.filters] == [
-        ("idade", "=", ["0"])
-    ]
+    assert [(f.field, f.operator, f.values) for f in plan.filters] == [("idade", "=", ["0"])]
 
 
 def test_semantic_plan_detects_age_above_filter_without_patient_prefix():
@@ -1264,9 +1288,7 @@ def test_semantic_plan_detects_age_above_filter_without_patient_prefix():
 
     assert plan.intent == "count"
     assert plan.answer_shape.row_grain == "single_scalar"
-    assert [(f.field, f.operator, f.values) for f in plan.filters] == [
-        ("idade", ">", ["60"])
-    ]
+    assert [(f.field, f.operator, f.values) for f in plan.filters] == [("idade", ">", ["60"])]
 
 
 def test_semantic_plan_detects_cid_catalog_cardinality():
@@ -1351,7 +1373,7 @@ def test_semantic_validator_requires_municipios_for_state_coverage():
 
     valid, message = validate_sql_against_semantic_plan(
         plan,
-        'SELECT COUNT(DISTINCT mu."estado") FROM municipios mu JOIN internacoes i ON mu."codigo_6d" = i."MUNIC_RES";',
+        'SELECT COUNT(DISTINCT mu."SG_UF") FROM municipios mu JOIN internacoes i ON mu."CO_MUNICIPIO_6D" = i."MUNIC_RES";',
     )
 
     assert valid is False
@@ -1390,6 +1412,7 @@ def test_semantic_plan_preserves_plural_multi_state_comparison_dimension():
 
     assert plan.answer_shape.row_grain == "one_row_per_group"
     assert "estado" in plan.answer_shape.required_dimensions
+    assert any("unsupported_metric:saneamento" in item for item in plan.ambiguities)
 
 
 def test_semantic_plan_does_not_treat_recebem_as_hospital_location():
@@ -1399,6 +1422,7 @@ def test_semantic_plan_does_not_treat_recebem_as_hospital_location():
 
     assert "join_path_hospital_location_required" not in plan.constraints
     assert "estado" in plan.answer_shape.required_dimensions
+    assert any("unsupported_metric:bolsa_familia" in item for item in plan.ambiguities)
 
 
 def test_semantic_plan_allows_explicit_combined_multi_state_total():
@@ -1483,11 +1507,11 @@ def test_semantic_validator_rejects_grouped_sql_for_scalar_count():
         "Quantas internações por doença respiratória ocorrem no inverno (junho a agosto)?"
     )
     sql = """
-        SELECT c."CD_DESCRICAO", COUNT(*) AS total
+        SELECT c."DESCRICAO", COUNT(*) AS total
         FROM internacoes i
         JOIN cid c ON i."DIAG_PRINC" = c."CID"
         WHERE c."CID" LIKE 'J%' AND EXTRACT(MONTH FROM i."DT_INTER") IN (6, 7, 8)
-        GROUP BY c."CD_DESCRICAO"
+        GROUP BY c."DESCRICAO"
     """
 
     valid, message = validate_sql_against_semantic_plan(plan, sql)
@@ -1537,16 +1561,13 @@ def test_semantic_plan_supports_population_value_metric():
     )
 
     assert plan.intent == "ranking"
-    assert plan.base_grain == "municipio_ano_metrica"
+    assert plan.base_grain == "municipio_ano"
     assert [metric.name for metric in plan.metrics] == ["populacao_total"]
-    assert plan.metrics[0].expression_type == "value"
+    assert plan.metrics[0].expression_type == "sum"
     assert plan.answer_shape.row_grain == "top_n_global"
     assert plan.answer_shape.top_n == 1
     assert plan.answer_shape.requires_group_by is False
-    assert any(
-        filter_.field == "metrica" and filter_.values == ["populacao_total"]
-        for filter_ in plan.filters
-    )
+    assert "socioeconomico_column_metric_required" in plan.constraints
 
 
 def test_semantic_validator_accepts_population_value_ranking_without_group_by():
@@ -1554,11 +1575,11 @@ def test_semantic_validator_accepts_population_value_ranking_without_group_by():
         "Quantos habitantes tem o município que tem a maior população segundo dados do IBGE?"
     )
     sql = """
-        SELECT mu."nome", s."valor" AS total_habitantes
+        SELECT mu."NO_MUNICIPIO", s."QT_POPULACAO" AS total_habitantes
         FROM socioeconomico s
-        JOIN municipios mu ON s."codigo_6d" = mu."codigo_6d"
-        WHERE s."metrica" = 'populacao_total'
-        ORDER BY s."valor" DESC
+        JOIN municipios mu ON s."CO_MUNICIPIO_6D" = mu."CO_MUNICIPIO_6D"
+        WHERE s."QT_POPULACAO" IS NOT NULL
+        ORDER BY s."QT_POPULACAO" DESC
         LIMIT 1
     """
 
@@ -1713,35 +1734,35 @@ def test_semantic_error_taxonomy_classifies_validator_messages():
 
 def test_semantic_sql_signature_captures_structural_features():
     sql = """
-        SELECT mu.estado, COUNT(*),
+        SELECT mu."SG_UF", COUNT(*),
                SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa
         FROM internacoes i
-        JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d
-        WHERE mu.estado IN ('SP', 'RJ')
-        GROUP BY mu.estado
+        JOIN municipios mu ON i."MUNIC_RES" = mu.CO_MUNICIPIO_6D
+        WHERE mu."SG_UF" IN ('SP', 'RJ')
+        GROUP BY mu."SG_UF"
     """
 
     signature = semantic_sql_signature(sql)
 
     assert signature.tables == {"internacoes", "municipios"}
     assert signature.has_conditional_mortality_numerator
-    assert "estado" in signature.group_by
+    assert "sg_uf" in signature.group_by
 
 
 def test_semantic_sql_equivalence_ignores_alias_and_formatting_differences():
     left = """
-        SELECT mu.estado, COUNT(*)
+        SELECT mu."SG_UF", COUNT(*)
         FROM internacoes i
-        JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d
-        WHERE mu.estado IN ('SP', 'RJ')
-        GROUP BY mu.estado
+        JOIN municipios mu ON i."MUNIC_RES" = mu.CO_MUNICIPIO_6D
+        WHERE mu."SG_UF" IN ('SP', 'RJ')
+        GROUP BY mu."SG_UF"
     """
     right = """
-        SELECT m.estado, COUNT(*)
+        SELECT m."SG_UF", COUNT(*)
         FROM internacoes AS x
-        JOIN municipios AS m ON x."MUNIC_RES" = m.codigo_6d
-        WHERE m.estado IN ('SP', 'RJ')
-        GROUP BY m.estado
+        JOIN municipios AS m ON x."MUNIC_RES" = m.CO_MUNICIPIO_6D
+        WHERE m."SG_UF" IN ('SP', 'RJ')
+        GROUP BY m."SG_UF"
     """
 
     assert same_semantic_pattern(left, right)
@@ -1764,7 +1785,7 @@ def test_default_profile_specs_cover_core_semantic_columns():
     assert ("internacoes", "MORTE") in pairs
     assert ("internacoes", "VAL_UTI") in pairs
     assert ("internacoes", "DT_INTER") in pairs
-    assert ("municipios", "estado") in pairs
+    assert ("municipios", "SG_UF") in pairs
 
 
 def test_semantic_plan_detects_para_cada_as_top_n_per_group():
@@ -1797,11 +1818,11 @@ def test_semantic_plan_does_not_confuse_mortalidade_with_idade_dimension():
 def test_semantic_validator_rejects_global_limit_for_per_group_top_n():
     plan = build_semantic_plan("Quais são os 3 hospitais com maior custo médio de UTI por estado?")
     sql = """
-        SELECT mu.estado, i."CNES", AVG(i."VAL_UTI") AS custo
+        SELECT mu."SG_UF", i."CNES", AVG(i."VAL_UTI") AS custo
         FROM internacoes i
-        JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d
+        JOIN municipios mu ON i."MUNIC_RES" = mu.CO_MUNICIPIO_6D
         WHERE i."VAL_UTI" > 0
-        GROUP BY mu.estado, i."CNES"
+        GROUP BY mu."SG_UF", i."CNES"
         ORDER BY custo DESC
         LIMIT 3
     """
@@ -1817,13 +1838,13 @@ def test_semantic_validator_accepts_per_group_window_pattern():
     sql = """
         SELECT estado, "CNES", custo
         FROM (
-            SELECT mu.estado, i."CNES", AVG(i."VAL_UTI") AS custo,
-                   ROW_NUMBER() OVER (PARTITION BY mu.estado ORDER BY AVG(i."VAL_UTI") DESC) AS rn
+            SELECT mu."SG_UF", i."CNES", AVG(i."VAL_UTI") AS custo,
+                   ROW_NUMBER() OVER (PARTITION BY mu."SG_UF" ORDER BY AVG(i."VAL_UTI") DESC) AS rn
             FROM internacoes i
             JOIN hospital h ON i."CNES" = h."CNES"
-            JOIN municipios mu ON h."MUNIC_MOV" = mu.codigo_6d
+            JOIN municipios mu ON h."MUNIC_MOV" = mu.CO_MUNICIPIO_6D
             WHERE i."VAL_UTI" > 0
-            GROUP BY mu.estado, i."CNES"
+            GROUP BY mu."SG_UF", i."CNES"
             HAVING COUNT(*) > 100
         ) sub
         WHERE rn <= 3
@@ -1847,10 +1868,10 @@ def test_semantic_plan_detects_hospital_location_join_path_for_care_municipality
 def test_semantic_validator_rejects_residence_join_for_care_municipality():
     plan = build_semantic_plan("Quais são os 10 municípios que atendem mais pacientes?")
     sql = """
-        SELECT mu.nome, COUNT(i."N_AIH") AS total
+        SELECT mu."NO_MUNICIPIO", COUNT(i."N_AIH") AS total
         FROM internacoes i
-        JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d
-        GROUP BY mu.nome
+        JOIN municipios mu ON i."MUNIC_RES" = mu.CO_MUNICIPIO_6D
+        GROUP BY mu."NO_MUNICIPIO"
         ORDER BY total DESC
         LIMIT 10
     """
@@ -1864,11 +1885,11 @@ def test_semantic_validator_rejects_residence_join_for_care_municipality():
 def test_semantic_validator_accepts_hospital_location_join_for_care_municipality():
     plan = build_semantic_plan("Quais são os 10 municípios que atendem mais pacientes?")
     sql = """
-        SELECT mu.nome, COUNT(i."N_AIH") AS total
+        SELECT mu."NO_MUNICIPIO", COUNT(i."N_AIH") AS total
         FROM internacoes i
         JOIN hospital h ON i."CNES" = h."CNES"
-        JOIN municipios mu ON h."MUNIC_MOV" = mu.codigo_6d
-        GROUP BY mu.nome
+        JOIN municipios mu ON h."MUNIC_MOV" = mu.CO_MUNICIPIO_6D
+        GROUP BY mu."NO_MUNICIPIO"
         ORDER BY total DESC
         LIMIT 10
     """
@@ -1897,13 +1918,13 @@ def test_semantic_validator_rejects_hospital_average_top_n_without_support():
     sql = """
         SELECT estado, "CNES", custo
         FROM (
-            SELECT mu.estado, i."CNES", AVG(i."VAL_UTI") AS custo,
-                   ROW_NUMBER() OVER (PARTITION BY mu.estado ORDER BY AVG(i."VAL_UTI") DESC) AS rn
+            SELECT mu."SG_UF", i."CNES", AVG(i."VAL_UTI") AS custo,
+                   ROW_NUMBER() OVER (PARTITION BY mu."SG_UF" ORDER BY AVG(i."VAL_UTI") DESC) AS rn
             FROM internacoes i
             JOIN hospital h ON i."CNES" = h."CNES"
-            JOIN municipios mu ON h."MUNIC_MOV" = mu.codigo_6d
-            WHERE i."VAL_UTI" > 0 AND mu.estado IN ('MA', 'RS')
-            GROUP BY mu.estado, i."CNES"
+            JOIN municipios mu ON h."MUNIC_MOV" = mu.CO_MUNICIPIO_6D
+            WHERE i."VAL_UTI" > 0 AND mu."SG_UF" IN ('MA', 'RS')
+            GROUP BY mu."SG_UF", i."CNES"
         ) ranked
         WHERE rn <= 3
     """
@@ -1921,13 +1942,13 @@ def test_semantic_validator_accepts_hospital_average_top_n_with_support():
     sql = """
         SELECT estado, "CNES", custo
         FROM (
-            SELECT mu.estado, i."CNES", AVG(i."VAL_UTI") AS custo,
-                   ROW_NUMBER() OVER (PARTITION BY mu.estado ORDER BY AVG(i."VAL_UTI") DESC) AS rn
+            SELECT mu."SG_UF", i."CNES", AVG(i."VAL_UTI") AS custo,
+                   ROW_NUMBER() OVER (PARTITION BY mu."SG_UF" ORDER BY AVG(i."VAL_UTI") DESC) AS rn
             FROM internacoes i
             JOIN hospital h ON i."CNES" = h."CNES"
-            JOIN municipios mu ON h."MUNIC_MOV" = mu.codigo_6d
-            WHERE i."VAL_UTI" > 0 AND mu.estado IN ('MA', 'RS')
-            GROUP BY mu.estado, i."CNES"
+            JOIN municipios mu ON h."MUNIC_MOV" = mu.CO_MUNICIPIO_6D
+            WHERE i."VAL_UTI" > 0 AND mu."SG_UF" IN ('MA', 'RS')
+            GROUP BY mu."SG_UF", i."CNES"
             HAVING COUNT(*) > 100
         ) ranked
         WHERE rn <= 3
@@ -1943,13 +1964,13 @@ def test_semantic_validator_accepts_per_group_rank_alias_not_named_rn():
     sql = """
         SELECT estado, "CNES", custo
         FROM (
-            SELECT mu.estado, i."CNES", AVG(i."VAL_UTI") AS custo,
-                   RANK() OVER (PARTITION BY mu.estado ORDER BY AVG(i."VAL_UTI") DESC) AS ranking
+            SELECT mu."SG_UF", i."CNES", AVG(i."VAL_UTI") AS custo,
+                   RANK() OVER (PARTITION BY mu."SG_UF" ORDER BY AVG(i."VAL_UTI") DESC) AS ranking
             FROM internacoes i
             JOIN hospital h ON i."CNES" = h."CNES"
-            JOIN municipios mu ON h."MUNIC_MOV" = mu.codigo_6d
+            JOIN municipios mu ON h."MUNIC_MOV" = mu.CO_MUNICIPIO_6D
             WHERE i."VAL_UTI" > 0
-            GROUP BY mu.estado, i."CNES"
+            GROUP BY mu."SG_UF", i."CNES"
             HAVING COUNT(*) > 100
         ) ranked
         WHERE ranking <= 3
@@ -1963,13 +1984,13 @@ def test_semantic_validator_accepts_per_group_rank_alias_not_named_rn():
 def test_semantic_validator_rejects_mortality_rate_with_filtered_denominator():
     plan = build_semantic_plan("Qual a evolução anual da taxa de mortalidade por estado?")
     sql = """
-        SELECT mu.estado, EXTRACT(YEAR FROM i."DT_INTER") AS ano,
+        SELECT mu."SG_UF", EXTRACT(YEAR FROM i."DT_INTER") AS ano,
                COUNT(*) AS total,
                ROUND(COUNT(*) * 100.0 / COUNT(*), 2) AS taxa_mortalidade
         FROM internacoes i
-        JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d
+        JOIN municipios mu ON i."MUNIC_RES" = mu.CO_MUNICIPIO_6D
         WHERE i."MORTE" = true
-        GROUP BY mu.estado, ano
+        GROUP BY mu."SG_UF", ano
     """
 
     passed, message = validate_sql_against_semantic_plan(plan, sql)
@@ -1981,14 +2002,14 @@ def test_semantic_validator_rejects_mortality_rate_with_filtered_denominator():
 def test_semantic_validator_does_not_treat_conditional_numerator_as_filtered_denominator():
     plan = build_semantic_plan("Qual a evolução anual da taxa de mortalidade por estado?")
     sql = """
-        SELECT mu.estado, EXTRACT(YEAR FROM i."DT_INTER") AS ano,
+        SELECT mu."SG_UF", EXTRACT(YEAR FROM i."DT_INTER") AS ano,
                SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) AS mortes,
                COUNT(*) AS total,
                SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa
         FROM internacoes i
-        JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d
-        WHERE mu.estado IN ('SP', 'RJ')
-        GROUP BY mu.estado, ano
+        JOIN municipios mu ON i."MUNIC_RES" = mu.CO_MUNICIPIO_6D
+        WHERE mu."SG_UF" IN ('SP', 'RJ')
+        GROUP BY mu."SG_UF", ano
     """
 
     passed, message = validate_sql_against_semantic_plan(plan, sql)
@@ -2000,11 +2021,11 @@ def test_semantic_validator_rejects_unrequested_nonzero_filter_in_time_series():
     plan = build_semantic_plan("Qual a evolução anual da taxa de mortalidade por estado?")
     sql = """
         WITH taxa_mortalidade AS (
-            SELECT mu.estado, EXTRACT(YEAR FROM i."DT_INTER") AS ano,
+            SELECT mu."SG_UF", EXTRACT(YEAR FROM i."DT_INTER") AS ano,
                    SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa
             FROM internacoes i
-            JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d
-            GROUP BY mu.estado, ano
+            JOIN municipios mu ON i."MUNIC_RES" = mu.CO_MUNICIPIO_6D
+            GROUP BY mu."SG_UF", ano
         )
         SELECT estado, ano, taxa
         FROM taxa_mortalidade tm
@@ -2021,14 +2042,14 @@ def test_semantic_validator_rejects_rank_filter_in_time_series_without_top_n_int
     plan = build_semantic_plan("Qual a evolução anual da taxa de mortalidade por estado (MA e RS)?")
     sql = """
         WITH taxa_mortalidade AS (
-            SELECT mu.estado, EXTRACT(YEAR FROM i."DT_INTER") AS ano,
+            SELECT mu."SG_UF", EXTRACT(YEAR FROM i."DT_INTER") AS ano,
                    COUNT(*) AS total_internacoes,
                    SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) AS total_mortes,
                    ROUND(SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa
             FROM internacoes i
-            JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d
-            WHERE mu.estado IN ('MA', 'RS')
-            GROUP BY mu.estado, ano
+            JOIN municipios mu ON i."MUNIC_RES" = mu.CO_MUNICIPIO_6D
+            WHERE mu."SG_UF" IN ('MA', 'RS')
+            GROUP BY mu."SG_UF", ano
         ),
         por_estado AS (
             SELECT estado, ano, total_internacoes, total_mortes, taxa,
@@ -2043,16 +2064,16 @@ def test_semantic_validator_rejects_rank_filter_in_time_series_without_top_n_int
     passed, message = validate_sql_against_semantic_plan(plan, sql)
 
     assert not passed
-    assert "return every requested period" in (message or "")
+    assert "complete temporal aggregation" in (message or "")
 
 
 def test_semantic_validator_rejects_group_by_missing_required_dimension():
     plan = build_semantic_plan("Qual a evolução anual da taxa de mortalidade por estado?")
     sql = """
-        SELECT mu.estado, EXTRACT(YEAR FROM i."DT_INTER") AS ano,
+        SELECT mu."SG_UF", EXTRACT(YEAR FROM i."DT_INTER") AS ano,
                SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa
         FROM internacoes i
-        JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d
+        JOIN municipios mu ON i."MUNIC_RES" = mu.CO_MUNICIPIO_6D
         GROUP BY ano
     """
 
@@ -2065,33 +2086,33 @@ def test_semantic_validator_rejects_group_by_missing_required_dimension():
 def test_semantic_validator_rejects_missing_required_state_filter():
     plan = build_semantic_plan("Quantas mortes foram registradas no estado do RS?")
     sql = """
-        SELECT mu.estado, COUNT(*) AS total_mortes
+        SELECT mu."SG_UF", COUNT(*) AS total_mortes
         FROM internacoes i
-        JOIN municipios mu ON i."MUNIC_RES" = mu."codigo_6d"
+        JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
         WHERE i."MORTE" = true
-        GROUP BY mu.estado
+        GROUP BY mu."SG_UF"
     """
 
     passed, message = validate_sql_against_semantic_plan(plan, sql)
 
     assert not passed
-    assert "estado filter" in (message or "")
+    assert "single scalar answer" in (message or "") or "estado filter" in (message or "")
 
 
 def test_semantic_rules_reject_internacoes_self_join_row_explosion():
     sql = """
-        SELECT mu.estado, ano,
+        SELECT mu."SG_UF", ano,
                ROUND(SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade
         FROM (
             SELECT EXTRACT(YEAR FROM i."DT_INTER") AS ano, i."MUNIC_RES", i."MORTE"
             FROM internacoes i
-            JOIN municipios mu ON i."MUNIC_RES" = mu."codigo_6d"
-            WHERE mu.estado IN ('MA', 'RS')
+            JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+            WHERE mu."SG_UF" IN ('MA', 'RS')
         ) sub
         JOIN internacoes i ON sub."MUNIC_RES" = i."MUNIC_RES"
-        JOIN municipios mu ON i."MUNIC_RES" = mu."codigo_6d"
-        GROUP BY mu.estado, ano
-        ORDER BY mu.estado, ano
+        JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+        GROUP BY mu."SG_UF", ano
+        ORDER BY mu."SG_UF", ano
     """
 
     passed, message = check_semantic_rules(
@@ -2105,11 +2126,11 @@ def test_semantic_rules_reject_internacoes_self_join_row_explosion():
 
 def test_semantic_rules_allow_population_value_question_without_count():
     sql = """
-        SELECT mu."nome", s."valor" AS total_habitantes
+        SELECT mu."NO_MUNICIPIO", s."QT_POPULACAO" AS total_habitantes
         FROM socioeconomico s
-        JOIN municipios mu ON s."codigo_6d" = mu."codigo_6d"
-        WHERE s."metrica" = 'populacao_total'
-        ORDER BY s."valor" DESC
+        JOIN municipios mu ON s."CO_MUNICIPIO_6D" = mu."CO_MUNICIPIO_6D"
+        WHERE s."QT_POPULACAO" IS NOT NULL
+        ORDER BY s."QT_POPULACAO" DESC
         LIMIT 1
     """
 
@@ -2126,15 +2147,15 @@ def test_semantic_rules_allow_count_metric_inside_top_year_question():
     sql = """
         SELECT estado, ano, total_mortes
         FROM (
-            SELECT mu.estado,
+            SELECT mu."SG_UF",
                    EXTRACT(YEAR FROM i."DT_INTER") AS ano,
                    COUNT(*) AS total_mortes,
-                   ROW_NUMBER() OVER (PARTITION BY mu.estado ORDER BY COUNT(*) DESC) AS rn
+                   ROW_NUMBER() OVER (PARTITION BY mu."SG_UF" ORDER BY COUNT(*) DESC) AS rn
             FROM internacoes i
-            JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d
+            JOIN municipios mu ON i."MUNIC_RES" = mu.CO_MUNICIPIO_6D
             WHERE i."MORTE" = true
-              AND mu.estado IN ('MA', 'RS')
-            GROUP BY mu.estado, ano
+              AND mu."SG_UF" IN ('MA', 'RS')
+            GROUP BY mu."SG_UF", ano
         ) sub
         WHERE rn = 1
     """
@@ -2205,13 +2226,13 @@ def test_semantic_validator_accepts_aggregate_zero_absence_condition():
 def test_semantic_validator_accepts_count_case_zero_absence_condition_by_dimension():
     plan = build_semantic_plan("Quais hospitais nunca registraram cobrança de UTI por estado?")
     sql = """
-        SELECT mu.estado, h."CNES"
+        SELECT mu."SG_UF", h."CNES"
         FROM hospital h
         JOIN internacoes i ON h."CNES" = i."CNES"
-        JOIN municipios mu ON h."MUNIC_MOV" = mu.codigo_6d
-        GROUP BY mu.estado, h."CNES"
+        JOIN municipios mu ON h."MUNIC_MOV" = mu.CO_MUNICIPIO_6D
+        GROUP BY mu."SG_UF", h."CNES"
         HAVING COUNT(CASE WHEN i."VAL_UTI" > 0 THEN 1 END) = 0
-        ORDER BY mu.estado, h."CNES"
+        ORDER BY mu."SG_UF", h."CNES"
     """
 
     passed, message = validate_sql_against_semantic_plan(plan, sql)
@@ -2257,9 +2278,9 @@ def test_semantic_validator_rejects_instrucao_group_without_valid_code_filter():
         SELECT inst."DESCRICAO",
                SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa
         FROM internacoes i
-        JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d
+        JOIN municipios mu ON i."MUNIC_RES" = mu.CO_MUNICIPIO_6D
         JOIN instrucao inst ON i."INSTRU" = inst."INSTRU"
-        WHERE mu.estado = 'RS'
+        WHERE mu."SG_UF" = 'RS'
         GROUP BY inst."DESCRICAO"
         HAVING COUNT(*) > 1000
     """
@@ -2279,9 +2300,9 @@ def test_semantic_validator_accepts_instrucao_group_with_valid_code_filter():
         SELECT inst."DESCRICAO",
                SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa
         FROM internacoes i
-        JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d
+        JOIN municipios mu ON i."MUNIC_RES" = mu.CO_MUNICIPIO_6D
         JOIN instrucao inst ON i."INSTRU" = inst."INSTRU"
-        WHERE mu.estado = 'RS' AND i."INSTRU" IS NOT NULL AND i."INSTRU" != 0
+        WHERE mu."SG_UF" = 'RS' AND i."INSTRU" IS NOT NULL AND i."INSTRU" != 0
         GROUP BY inst."DESCRICAO"
         HAVING COUNT(*) > 1000
     """
@@ -2291,38 +2312,38 @@ def test_semantic_validator_accepts_instrucao_group_with_valid_code_filter():
     assert passed, message
 
 
-def test_semantic_plan_resolves_infant_mortality_to_socioeconomico_metric():
+def test_semantic_plan_resolves_infant_mortality_to_wide_socioeconomico_column():
     plan = build_semantic_plan("Qual a taxa de mortalidade infantil média no Brasil?")
 
-    assert plan.base_grain == "municipio_ano_metrica"
+    assert plan.base_grain == "municipio_ano"
     assert any(metric.name == "mortalidade_infantil_1ano" for metric in plan.metrics)
-    assert "socioeconomico_metric_filter_required" in plan.constraints
+    assert "socioeconomico_column_metric_required" in plan.constraints
     assert any(
-        filter_.field == "metrica" and filter_.values == ["mortalidade_infantil_1ano"]
-        for filter_ in plan.filters
+        required == 'AVG(s."VL_MORT_INFANTIL")'
+        for metric in plan.metrics
+        for required in metric.required_filters
     )
 
 
-def test_semantic_validator_rejects_wrong_socioeconomico_metric_for_infant_mortality():
+def test_semantic_validator_rejects_long_format_metric_for_infant_mortality():
     plan = build_semantic_plan("Qual a taxa de mortalidade infantil média no Brasil?")
     sql = """
-        SELECT AVG(s."valor") AS media
+        SELECT AVG(s.valor) AS media
         FROM socioeconomico s
-        WHERE s."metrica" = 'bolsa_familia_total'
+        WHERE s.metrica = 'bolsa_familia_total'
     """
 
     passed, message = validate_sql_against_semantic_plan(plan, sql)
 
     assert not passed
-    assert "mortalidade_infantil_1ano" in (message or "")
+    assert "metrica/valor" in (message or "")
 
 
-def test_semantic_validator_accepts_infant_mortality_metric_filter():
+def test_semantic_validator_accepts_infant_mortality_wide_column():
     plan = build_semantic_plan("Qual a taxa de mortalidade infantil média no Brasil?")
     sql = """
-        SELECT AVG(s."valor") AS media
+        SELECT AVG(s."VL_MORT_INFANTIL") AS media
         FROM socioeconomico s
-        WHERE s."metrica" = 'mortalidade_infantil_1ano'
     """
 
     passed, message = validate_sql_against_semantic_plan(plan, sql)
@@ -2330,54 +2351,32 @@ def test_semantic_validator_accepts_infant_mortality_metric_filter():
     assert passed, message
 
 
-def test_semantic_plan_resolves_socioeconomico_sum_metric():
+def test_semantic_plan_marks_saneamento_as_unsupported_for_current_schema():
     plan = build_semantic_plan("Qual o total de esgotamento sanitário nos estados do MA e RS?")
 
-    assert plan.base_grain == "municipio_ano_metrica"
-    assert [metric.name for metric in plan.metrics] == ["esgotamento_sanitario_domicilio"]
-    assert plan.metrics[0].expression_type == "sum"
-    assert "estado" in plan.answer_shape.required_dimensions
-    assert any(
-        filter_.field == "metrica"
-        and filter_.values == ["esgotamento_sanitario_domicilio"]
-        for filter_ in plan.filters
-    )
+    assert all(metric.name != "esgotamento_sanitario_domicilio" for metric in plan.metrics)
+    assert any("unsupported_metric:saneamento" in item for item in plan.ambiguities)
 
 
-def test_semantic_validator_rejects_count_for_socioeconomico_total_metric():
-    plan = build_semantic_plan("Qual o total de esgotamento sanitário nos estados do MA e RS?")
-    sql = """
-        SELECT mu."estado", COUNT(*) AS total_esgotamento_sanitario
-        FROM socioeconomico s
-        JOIN municipios mu ON s."codigo_6d" = mu."codigo_6d"
-        WHERE s."metrica" = 'esgotamento_sanitario_domicilio'
-          AND mu."estado" IN ('MA', 'RS')
-        GROUP BY mu."estado"
-    """
+def test_semantic_plan_resolves_total_medicos_to_wide_column():
+    plan = build_semantic_plan("Qual o total de medicos registrados nos estados do MA e RS?")
 
-    passed, message = validate_sql_against_semantic_plan(plan, sql)
-
-    assert not passed
-    assert "SUM(valor)" in (message or "")
+    assert plan.base_grain == "municipio_ano"
+    assert any(metric.name == "medicos_total" for metric in plan.metrics)
+    assert any(dim.name in {"estado", "SG_UF"} for dim in plan.dimensions)
 
 
-def test_orchestrator_config_defaults_do_not_mask_table_selection_preset_without_langchain():
+def test_orchestrator_config_defaults_use_llamaindex_context_without_langchain():
     cfg = OrchestratorConfig()
-    strategy = resolve_table_selection_strategy(
-        preset_name=cfg.table_selection_preset,
-        mode=cfg.table_selection_mode,
-        description_variant=cfg.table_selection_description_variant,
-        prompt_variant=cfg.table_selection_prompt_variant,
-    )
 
-    assert strategy["preset_name"] == "llm_best"
-    assert strategy["mode"] == "llm_only"
-    assert strategy["description_variant"] == "role_guardrails"
-    assert strategy["prompt_variant"] == "decision_checklist"
+    assert cfg.enable_llamaindex_context is True
+    assert cfg.llamaindex_mode == "context"
 
 
 def test_goalv2_plan_detects_written_top_n_obstetric_municipality():
-    plan = build_semantic_plan("Quais os cinco municípios com mais internações obstétricas registradas?")
+    plan = build_semantic_plan(
+        "Quais os cinco municípios com mais internações obstétricas registradas?"
+    )
 
     assert plan.intent == "ranking"
     assert plan.answer_shape.top_n == 5
@@ -2387,7 +2386,9 @@ def test_goalv2_plan_detects_written_top_n_obstetric_municipality():
 
 
 def test_semantic_plan_preserves_ranked_entity_dimension_without_explicit_top_n():
-    plan = build_semantic_plan("Gere um grafico de barras com os municipios que tiveram mais mortes.")
+    plan = build_semantic_plan(
+        "Gere um grafico de barras com os municipios que tiveram mais mortes."
+    )
 
     assert plan.intent in {"distribution", "unknown"}
     assert plan.answer_shape.row_grain == "one_row_per_group"
@@ -2397,7 +2398,9 @@ def test_semantic_plan_preserves_ranked_entity_dimension_without_explicit_top_n(
 
 
 def test_semantic_plan_adds_year_dimension_for_over_years_trend():
-    plan = build_semantic_plan("Gere um grafico de linhas das internacoes por estado ao longo dos anos.")
+    plan = build_semantic_plan(
+        "Gere um grafico de linhas das internacoes por estado ao longo dos anos."
+    )
 
     assert plan.intent == "trend"
     assert plan.answer_shape.row_grain == "time_series"
@@ -2416,7 +2419,9 @@ def test_semantic_plan_adds_month_dimension_for_monthly_chart():
 
 
 def test_goalv2_validator_rejects_scalar_for_top_n_municipality():
-    plan = build_semantic_plan("Quais os cinco municípios com mais internações obstétricas registradas?")
+    plan = build_semantic_plan(
+        "Quais os cinco municípios com mais internações obstétricas registradas?"
+    )
     sql = 'SELECT COUNT(*) AS total_internacoes FROM internacoes i WHERE i."ESPEC" = 2'
 
     passed, message = validate_sql_against_semantic_plan(plan, sql)
@@ -2440,7 +2445,7 @@ def test_goalv2_validator_rejects_primary_diagnosis_for_death_cause_description(
         FROM internacoes i
         JOIN cid c ON i."DIAG_PRINC" = c."CID"
         WHERE i."MORTE" = true
-          AND c."CD_DESCRICAO" ILIKE '%meningite%'
+          AND c."DESCRICAO" ILIKE '%meningite%'
     """
 
     passed, message = validate_sql_against_semantic_plan(plan, sql)
@@ -2468,12 +2473,12 @@ def test_goalv2_validator_rejects_unbounded_grouped_top_n_per_state():
         "no estado de MA e no estado do RS?"
     )
     sql = """
-        SELECT mu.estado, c."CD_DESCRICAO", COUNT(*) AS total
+        SELECT mu."SG_UF", c."DESCRICAO", COUNT(*) AS total
         FROM internacoes i
-        JOIN municipios mu ON i."MUNIC_RES" = mu."codigo_6d"
+        JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
         JOIN cid c ON i."DIAG_PRINC" = c."CID"
-        WHERE i."IDADE" > 60 AND mu.estado IN ('MA', 'RS')
-        GROUP BY mu.estado, c."CD_DESCRICAO"
+        WHERE i."IDADE" > 60 AND mu."SG_UF" IN ('MA', 'RS')
+        GROUP BY mu."SG_UF", c."DESCRICAO"
         ORDER BY total DESC
     """
 
@@ -2484,7 +2489,9 @@ def test_goalv2_validator_rejects_unbounded_grouped_top_n_per_state():
 
 
 def test_goalv2_plan_detects_uti_weekday_percentage_distribution():
-    plan = build_semantic_plan("Qual a distribuição e percentual de internações em UTI por dia da semana?")
+    plan = build_semantic_plan(
+        "Qual a distribuição e percentual de internações em UTI por dia da semana?"
+    )
 
     assert plan.intent == "distribution"
     assert plan.answer_shape.required_dimensions == ["dia_semana"]
@@ -2493,7 +2500,9 @@ def test_goalv2_plan_detects_uti_weekday_percentage_distribution():
 
 
 def test_goalv2_validator_rejects_scalar_uti_percentage_for_weekday_distribution():
-    plan = build_semantic_plan("Qual a distribuição e percentual de internações em UTI por dia da semana?")
+    plan = build_semantic_plan(
+        "Qual a distribuição e percentual de internações em UTI por dia da semana?"
+    )
     sql = """
         SELECT COUNT(*) AS total,
                SUM(CASE WHEN "VAL_UTI" > 0 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS percentual
@@ -2521,15 +2530,373 @@ def test_goalv2_validator_rejects_long_format_for_side_by_side_state_average():
         "Qual a média de dias de internação por especialidade médica, comparando lado a lado os estados MA e RS?"
     )
     sql = """
-        SELECT e."DESCRICAO", mu.estado, AVG(i."DIAS_PERM") AS media_dias
+        SELECT e."DESCRICAO", mu."SG_UF", AVG(i."DIAS_PERM") AS media_dias
         FROM internacoes i
         JOIN especialidade e ON i."ESPEC" = e."ESPEC"
-        JOIN municipios mu ON i."MUNIC_RES" = mu."codigo_6d"
-        WHERE mu.estado IN ('MA', 'RS')
-        GROUP BY e."DESCRICAO", mu.estado
+        JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+        WHERE mu."SG_UF" IN ('MA', 'RS')
+        GROUP BY e."DESCRICAO", mu."SG_UF"
     """
 
     passed, message = validate_sql_against_semantic_plan(plan, sql)
 
     assert not passed
     assert "Side-by-side" in (message or "")
+
+
+def test_goalv2_plan_treats_scalar_extreme_value_questions_as_single_aggregate():
+    cases = [
+        (
+            "Qual o maior valor de serviço profissional registrado em uma internação?",
+            "valor_servico_profissional",
+            "max",
+        ),
+        (
+            "Qual a maior permanência hospitalar registrada?",
+            "permanencia_hospitalar",
+            "max",
+        ),
+    ]
+
+    for question, metric_name, expression_type in cases:
+        plan = build_semantic_plan(question)
+
+        assert plan.answer_shape.row_grain == "single_scalar"
+        assert plan.answer_shape.top_n_scope == "none"
+        assert any(
+            metric.name == metric_name and metric.expression_type == expression_type
+            for metric in plan.metrics
+        )
+
+
+def test_goalv2_plan_uses_sum_for_total_days_and_total_cost_values():
+    cases = [
+        (
+            "Qual o total de dias de internação registrados?",
+            "total_dias_permanencia",
+            "SUM(DIAS_PERM)",
+        ),
+        (
+            "Qual o total gasto em serviços profissionais nas internações?",
+            "total_servico_profissional",
+            "SUM(VAL_SP)",
+        ),
+        (
+            "Qual o valor total gasto em internações?",
+            "valor_total_internacoes",
+            "SUM(VAL_TOT)",
+        ),
+    ]
+
+    for question, metric_name, required_filter in cases:
+        plan = build_semantic_plan(question)
+
+        assert plan.answer_shape.row_grain == "single_scalar"
+        assert any(
+            metric.name == metric_name
+            and metric.expression_type == "sum"
+            and required_filter in metric.required_filters
+            for metric in plan.metrics
+        )
+
+
+def test_goalv2_deterministic_scalar_sql_handles_value_extremes_and_sums():
+    cases = [
+        (
+            "Qual o maior valor de serviço profissional registrado em uma internação?",
+            'SELECT MAX("VAL_SP") AS maior_valor_servico_profissional FROM internacoes;',
+        ),
+        (
+            "Qual a maior permanência hospitalar registrada?",
+            'SELECT MAX("DIAS_PERM") AS maior_permanencia_hospitalar FROM internacoes;',
+        ),
+        (
+            "Qual o total de dias de internação registrados?",
+            'SELECT SUM("DIAS_PERM") AS total_dias_permanencia FROM internacoes;',
+        ),
+        (
+            "Qual o total gasto em serviços profissionais nas internações?",
+            'SELECT SUM("VAL_SP") AS total_servico_profissional FROM internacoes;',
+        ),
+    ]
+
+    for question, expected_sql in cases:
+        plan = build_semantic_plan(question)
+
+        assert _build_deterministic_scalar_sql(plan) == expected_sql
+
+
+def test_goalv2_plan_filters_identified_race_color_counts():
+    plan = build_semantic_plan(
+        "Quantas internações possuem raça/cor identificada, excluindo sem informação?"
+    )
+
+    assert plan.answer_shape.row_grain == "single_scalar"
+    assert any(
+        filter_.field == "raca_cor_identificada"
+        and filter_.values == ["RACA_COR IN (1, 2, 3, 4, 5)"]
+        for filter_ in plan.filters
+    )
+    assert _build_deterministic_scalar_sql(plan) == (
+        'SELECT COUNT(*) AS total_internacoes FROM internacoes '
+        'WHERE "RACA_COR" IN (1, 2, 3, 4, 5);'
+    )
+
+
+def test_goalv2_validator_rejects_populated_race_color_for_identified_scope():
+    plan = build_semantic_plan(
+        "Quantas internações possuem raça/cor identificada, excluindo sem informação?"
+    )
+
+    passed, message = validate_sql_against_semantic_plan(
+        plan,
+        'SELECT COUNT(*) FROM internacoes WHERE "RACA_COR" IS NOT NULL;',
+    )
+
+    assert not passed
+    assert "identified race/color" in (message or "")
+
+
+def test_goalv2_validator_accepts_identified_race_color_filter():
+    plan = build_semantic_plan(
+        "Quantas internações possuem raça/cor identificada, excluindo sem informação?"
+    )
+
+    passed, message = validate_sql_against_semantic_plan(
+        plan,
+        'SELECT COUNT(*) FROM internacoes WHERE "RACA_COR" IN (1, 2, 3, 4, 5);',
+    )
+
+    assert passed, message
+
+
+def test_goalv2_validator_accepts_between_for_expanded_year_filter():
+    plan = build_semantic_plan(
+        "Qual o crescimento percentual anual de internações no estado do RS entre 2008 e 2023, "
+        "retornando apenas anos com ano anterior disponível?"
+    )
+    plan.filters.append(
+        SemanticFilter(
+            field="ano",
+            values=[str(year) for year in range(2008, 2024)],
+            operator="IN",
+        )
+    )
+    sql = """
+        WITH internacoes_por_ano AS (
+            SELECT EXTRACT(YEAR FROM i."DT_INTER") AS ano, COUNT(*) AS total_internacoes
+            FROM internacoes i
+            JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+            WHERE i."DT_INTER" IS NOT NULL
+              AND mu."SG_UF" = 'RS'
+              AND EXTRACT(YEAR FROM i."DT_INTER") BETWEEN 2008 AND 2023
+            GROUP BY ano
+        )
+        SELECT ano, total_internacoes
+        FROM internacoes_por_ano
+        ORDER BY ano
+    """
+
+    passed, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert passed, message
+
+
+def test_goalv2_plan_detects_top_n_reasons_per_explicit_age_segments():
+    plan = build_semantic_plan(
+        "Quais são os 10 principais motivos de internação para pacientes com menos de 18 anos, "
+        "entre 18 e 64 anos, e acima de 64 anos?"
+    )
+
+    assert plan.answer_shape.top_n_scope == "per_group"
+    assert plan.answer_shape.partition_dimensions == ["faixa_etaria"]
+    assert "faixa_etaria" in plan.answer_shape.required_dimensions
+    assert "diagnostico" in plan.answer_shape.required_dimensions
+    assert "top_n_per_group_requires_window_partition" in plan.constraints
+
+
+def test_goalv2_plan_treats_states_as_filter_for_combined_municipality_intersection():
+    plan = build_semantic_plan(
+        "Quais municípios com mais de 500 internações aparecem simultaneamente no top-20 "
+        "de volume e no top-20 de taxa de mortalidade nos estados MA e RS?"
+    )
+
+    assert plan.answer_shape.top_n_scope == "global"
+    assert plan.answer_shape.required_dimensions == ["municipio"]
+    assert plan.answer_shape.partition_dimensions == []
+    assert any(filter_.field == "estado" and filter_.values == ["MA", "RS"] for filter_ in plan.filters)
+
+
+def test_goalv2_validator_rejects_grouping_by_sg_uf_when_state_is_only_filter():
+    plan = build_semantic_plan(
+        "Quais municípios com mais de 500 internações aparecem simultaneamente no top-20 "
+        "de volume e no top-20 de taxa de mortalidade nos estados MA e RS?"
+    )
+    sql = """
+        WITH ranked AS (
+            SELECT mu."NO_MUNICIPIO" AS municipio,
+                   mu."SG_UF" AS estado,
+                   COUNT(*) AS total_internacoes,
+                   SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa,
+                   ROW_NUMBER() OVER (PARTITION BY mu."SG_UF" ORDER BY COUNT(*) DESC) AS rn_volume
+            FROM internacoes i
+            JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+            WHERE mu."SG_UF" IN ('MA', 'RS')
+            GROUP BY mu."NO_MUNICIPIO", mu."SG_UF"
+            HAVING COUNT(*) > 500
+        )
+        SELECT municipio, estado
+        FROM ranked
+        WHERE rn_volume <= 20
+    """
+
+    passed, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert not passed
+    assert "state mention is a filter" in (message or "")
+
+
+def test_goalv2_validator_accepts_side_by_side_pivot_using_sg_uf_cases():
+    plan = build_semantic_plan(
+        "Qual a média de dias de internação por especialidade médica, comparando lado a lado os estados MA e RS?"
+    )
+    sql = """
+        SELECT e."DESCRICAO" AS especialidade,
+               ROUND(AVG(CASE WHEN mu."SG_UF" = 'MA' THEN i."DIAS_PERM" END), 2) AS media_dias_ma,
+               ROUND(AVG(CASE WHEN mu."SG_UF" = 'RS' THEN i."DIAS_PERM" END), 2) AS media_dias_rs,
+               COUNT(CASE WHEN mu."SG_UF" = 'MA' THEN 1 END) AS total_ma,
+               COUNT(CASE WHEN mu."SG_UF" = 'RS' THEN 1 END) AS total_rs
+        FROM internacoes i
+        JOIN especialidade e ON i."ESPEC" = e."ESPEC"
+        JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+        WHERE mu."SG_UF" IN ('MA', 'RS')
+        GROUP BY e."DESCRICAO"
+        HAVING COUNT(CASE WHEN mu."SG_UF" = 'MA' THEN 1 END) > 100
+           AND COUNT(CASE WHEN mu."SG_UF" = 'RS' THEN 1 END) > 100
+    """
+
+    passed, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert passed, message
+
+
+def test_goalv2_plan_detects_cost_per_day_efficiency_as_ratio_metric():
+    plan = build_semantic_plan(
+        "Quais são os 5 hospitais mais eficientes em custo por dia de internação "
+        "(com mais de 1000 internações)?"
+    )
+
+    assert any(metric.name == "custo_por_dia" for metric in plan.metrics)
+    assert plan.answer_shape.required_dimensions == ["hospital"]
+    assert any(filter_.field == "minimum_group_count" for filter_ in plan.filters)
+
+
+def test_goalv2_validator_requires_nullif_sum_days_for_cost_per_day():
+    plan = build_semantic_plan(
+        "Quais são os 5 hospitais mais eficientes em custo por dia de internação "
+        "(com mais de 1000 internações)?"
+    )
+    sql = """
+        SELECT h."CNES",
+               ROUND(SUM(i."VAL_TOT") / NULLIF(SUM(i."DIAS_PERM"), 0), 2) AS custo_por_dia
+        FROM internacoes i
+        JOIN hospital h ON i."CNES" = h."CNES"
+        WHERE i."VAL_TOT" IS NOT NULL
+        GROUP BY h."CNES"
+        HAVING COUNT(*) > 1000
+        ORDER BY custo_por_dia ASC
+        LIMIT 5
+    """
+
+    passed, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert passed, message
+
+
+def test_goalv2_plan_detects_cumulative_coverage_threshold():
+    plan = build_semantic_plan(
+        "Quais procedimentos, ordenados por volume decrescente, cobrem até 80% "
+        "do total de atendimentos realizados?"
+    )
+
+    assert "cumulative_coverage_threshold_required" in plan.constraints
+    assert any(metric.name == "percentual_acumulado" for metric in plan.metrics)
+    assert any(
+        filter_.field == "cumulative_percentage_threshold" and filter_.values == ["80"]
+        for filter_ in plan.filters
+    )
+
+
+def test_goalv2_validator_accepts_cumulative_coverage_query():
+    plan = build_semantic_plan(
+        "Quais procedimentos, ordenados por volume decrescente, cobrem até 80% "
+        "do total de atendimentos realizados?"
+    )
+    sql = """
+        SELECT nome_proc
+        FROM (
+            SELECT p."NOME_PROC" AS nome_proc,
+                   COUNT(*) AS total_procedimentos,
+                   ROUND(SUM(COUNT(*)) OVER (
+                       ORDER BY COUNT(*) DESC
+                       ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+                   ) * 100.0 / SUM(COUNT(*)) OVER (), 2) AS pct_acumulado
+            FROM internacao_procedimento a
+            JOIN procedimentos p ON a."PROC_REA" = p."PROC_REA"
+            GROUP BY p."NOME_PROC"
+        ) ranked
+        WHERE pct_acumulado <= 80
+        ORDER BY total_procedimentos DESC
+    """
+
+    passed, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert passed, message
+
+
+def test_goalv2_plan_uses_uti_rate_not_average_cost_for_reference_rate():
+    plan = build_semantic_plan(
+        "Quais são os 10 municípios com mais de 1000 internações que têm taxa de internação em UTI "
+        "mais de duas vezes acima da média nacional?"
+    )
+
+    metric_names = {metric.name for metric in plan.metrics}
+    assert "taxa_uti" in metric_names
+    assert "custo_medio_uti" not in metric_names
+    assert plan.answer_shape.top_n == 10
+    assert "reference_rate_comparison_required" in plan.constraints
+
+
+def test_goalv2_plan_detects_dual_top_n_intersection():
+    plan = build_semantic_plan(
+        "Quais municípios com mais de 500 internações aparecem simultaneamente no top-20 "
+        "de volume e no top-20 de taxa de mortalidade nos estados MA e RS?"
+    )
+
+    assert "dual_top_n_intersection_required" in plan.constraints
+    assert plan.answer_shape.required_dimensions == ["municipio"]
+
+
+def test_goalv2_validator_accepts_side_by_side_pivot_even_if_llm_keeps_state_dimension():
+    plan = build_semantic_plan(
+        "Qual a média de dias de internação por especialidade médica, comparando lado a lado os estados MA e RS?"
+    )
+    plan.answer_shape.required_dimensions.append("estado")
+    sql = """
+        SELECT e."DESCRICAO" AS especialidade,
+               ROUND(AVG(CASE WHEN mu."SG_UF" = 'MA' THEN i."DIAS_PERM" END), 2) AS media_dias_ma,
+               ROUND(AVG(CASE WHEN mu."SG_UF" = 'RS' THEN i."DIAS_PERM" END), 2) AS media_dias_rs,
+               COUNT(CASE WHEN mu."SG_UF" = 'MA' THEN 1 END) AS total_ma,
+               COUNT(CASE WHEN mu."SG_UF" = 'RS' THEN 1 END) AS total_rs
+        FROM internacoes i
+        JOIN especialidade e ON i."ESPEC" = e."ESPEC"
+        JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+        WHERE mu."SG_UF" IN ('MA', 'RS')
+        GROUP BY e."DESCRICAO"
+        HAVING COUNT(CASE WHEN mu."SG_UF" = 'MA' THEN 1 END) > 100
+           AND COUNT(CASE WHEN mu."SG_UF" = 'RS' THEN 1 END) > 100
+    """
+
+    passed, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert passed, message

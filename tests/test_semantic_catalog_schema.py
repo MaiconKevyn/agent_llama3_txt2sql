@@ -44,7 +44,7 @@ def test_catalog_schema_rejects_dimension_join_without_join_path():
                     "label": "Estado",
                     "source": "municipios.estado",
                     "grain": "internacao",
-                    "joins": ["internacoes.MUNIC_RES -> municipios.codigo_6d"],
+                    "joins": ["internacoes.MUNIC_RES -> municipios.CO_MUNICIPIO_6D"],
                 }
             },
             "macros": {},

@@ -44,6 +44,10 @@ def route_after_schema(
     state: MessagesStateTXT2SQL,
 ) -> Literal["plan_gate", "generate_response"]:
     """Route after schema analysis."""
+    if state.get("current_error") or (
+        "schema_context" in state and not state.get("schema_context")
+    ):
+        return "generate_response"
     if state.get("query_route") == QueryRoute.SCHEMA:
         return "generate_response"
     return "plan_gate"
@@ -51,8 +55,10 @@ def route_after_schema(
 
 def route_after_plan_gate(
     state: MessagesStateTXT2SQL,
-) -> Literal["query_planner", "reasoning", "generate_sql"]:
+) -> Literal["query_planner", "reasoning", "generate_sql", "clarification"]:
     """Route after deterministic plan gate."""
+    if state.get("needs_clarification"):
+        return "clarification"
     if state.get("multi_query_allowed") and not state.get("force_single_query"):
         return "query_planner"
     if state.get("plan_type") in COMPLEX_PLAN_TYPES_FOR_COT:

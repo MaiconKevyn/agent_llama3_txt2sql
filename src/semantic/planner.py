@@ -63,6 +63,20 @@ _STATE_NAME_TO_UF = {
     "tocantins": "TO",
 }
 
+_SOCIOECONOMIC_WIDE_METRICS = {
+    "mortalidade_infantil_1ano",
+    "populacao_total",
+    "pib_per_capita",
+    "leitos_sus_total",
+    "medicos_total",
+}
+
+_UNSUPPORTED_SCHEMA_METRIC_PATTERNS = {
+    "idhm": ["idhm", "índice de desenvolvimento humano", "indice de desenvolvimento humano"],
+    "bolsa_familia": ["bolsa família", "bolsa familia"],
+    "saneamento": ["saneamento", "esgotamento sanitário", "esgotamento sanitario"],
+}
+
 
 def _is_scalar_age_extrema_query(query_lower: str) -> bool:
     has_age = re.search(r"\bidade(?:s)?\b", query_lower)
@@ -72,6 +86,125 @@ def _is_scalar_age_extrema_query(query_lower: str) -> bool:
     )
     asks_min_or_max = re.search(r"\b(?:menor|mínima|minima|maior|máxima|maxima)\b", query_lower)
     return bool(has_age and has_fact_scope and asks_min_or_max)
+
+
+def _is_scalar_value_extrema_query(query_lower: str) -> bool:
+    """Detect scalar extrema questions over fact measures, not ranked entity lists."""
+    if not re.search(
+        r"\bqual\b[\s\S]{0,80}\b(?:maior|menor|máxima|maxima|mínima|minima)\b", query_lower
+    ):
+        return False
+    if re.search(r"\bquais\b", query_lower):
+        return False
+    if _contains_any(
+        query_lower,
+        [
+            "por estado",
+            "por município",
+            "por municipio",
+            "por hospital",
+            "por especialidade",
+            "em cada",
+            "de cada",
+            "para cada",
+        ],
+    ):
+        return False
+    return _contains_any(
+        query_lower,
+        [
+            "valor de serviço profissional",
+            "valor de servico profissional",
+            "serviço profissional",
+            "servico profissional",
+            "permanência hospitalar",
+            "permanencia hospitalar",
+            "dias de internação",
+            "dias de internacao",
+            "dias internados",
+            "valor de internação",
+            "valor de internacao",
+            "valor da internação",
+            "valor da internacao",
+            "valor gasto",
+            "custo",
+            "val_sp",
+            "val_sh",
+            "val_tot",
+        ],
+    )
+
+
+def _is_scalar_extrema_query(query_lower: str) -> bool:
+    return _is_scalar_age_extrema_query(query_lower) or _is_scalar_value_extrema_query(query_lower)
+
+
+def _has_identified_race_color_filter(query_lower: str) -> bool:
+    has_race_color = _contains_any(query_lower, ["raça", "raca", "raça/cor", "raca/cor"])
+    has_identified_scope = _contains_any(
+        query_lower,
+        [
+            "identificada",
+            "identificado",
+            "identificadas",
+            "identificados",
+            "informada",
+            "informado",
+            "informadas",
+            "informados",
+            "registrada",
+            "registrado",
+            "registradas",
+            "registrados",
+            "excluindo sem informação",
+            "excluindo sem informacao",
+            "sem informação exclu",
+            "sem informacao exclu",
+        ],
+    )
+    return has_race_color and has_identified_scope
+
+
+def _has_explicit_age_segments(query_lower: str) -> bool:
+    return bool(
+        re.search(r"\bmenos\s+de\s+\d+\s+anos?", query_lower)
+        and re.search(r"\bentre\s+\d+\s+e\s+\d+\s+anos?", query_lower)
+        and re.search(r"\b(?:acima|mais)\s+de\s+\d+\s+anos?", query_lower)
+    )
+
+
+def _has_cumulative_coverage_request(query_lower: str) -> bool:
+    return bool(
+        _contains_any(
+            query_lower,
+            [
+                "cobrem até",
+                "cobrem ate",
+                "cobrir até",
+                "cobrir ate",
+                "percentual acumulado",
+                "acumulado",
+                "pareto",
+            ],
+        )
+        and re.search(r"\b\d{1,3}\s*%", query_lower)
+    )
+
+
+def _extract_cumulative_threshold(query_lower: str) -> int | None:
+    match = re.search(r"\b(\d{1,3})\s*%", query_lower)
+    if not match:
+        return None
+    threshold = int(match.group(1))
+    return threshold if 0 < threshold <= 100 else None
+
+
+def _has_dual_top_n_intersection_request(query_lower: str) -> bool:
+    return bool(
+        _contains_any(query_lower, ["simultaneamente", "interseção", "intersecao"])
+        and "top" in query_lower
+        and _contains_any(query_lower, ["volume", "taxa de mortalidade"])
+    )
 
 
 def _extract_top_n(query_lower: str) -> int | None:
@@ -112,7 +245,7 @@ def _extract_top_n(query_lower: str) -> int | None:
         match = re.search(pattern, query_lower)
         if match:
             return number_words[match.group(1)]
-    if _is_scalar_age_extrema_query(query_lower):
+    if _is_scalar_extrema_query(query_lower):
         return None
     if re.search(r"\b(?:maior|menor|mais\s+comum|mais\s+frequente)\b", query_lower):
         return 1
@@ -197,6 +330,8 @@ def _extract_min_age(query_lower: str) -> int | None:
 
 def _extract_age_filters(query_lower: str) -> list[SemanticFilter]:
     filters: list[SemanticFilter] = []
+    if _has_explicit_age_segments(query_lower):
+        return filters
     for pattern in [
         r"\b(?:com|pacientes\s+com)\s+menos\s+de\s+(\d+)\s+anos?\b",
         r"\bmenores\s+de\s+(\d+)\s+anos?\b",
@@ -228,7 +363,9 @@ def _extract_death_cause_description_term(query_lower: str) -> str | None:
         match = re.search(pattern, query_lower)
         if not match:
             continue
-        term = re.sub(r"\b(?:registradas?|ocasionadas?|em|internacoes|internações)\b", " ", match.group(1))
+        term = re.sub(
+            r"\b(?:registradas?|ocasionadas?|em|internacoes|internações)\b", " ", match.group(1)
+        )
         term = re.sub(r"[^\wÀ-ÿ -]", " ", term)
         term = re.sub(r"\s+", " ", term).strip()
         if term and not _is_grouping_or_temporal_term(term):
@@ -301,6 +438,8 @@ def _has_side_by_side_state_comparison(query_lower: str) -> bool:
 def _has_parallel_state_top_n_context(query_lower: str) -> bool:
     if _contains_any(query_lower, ["combinado", "combinada", "total combinado"]):
         return False
+    if _contains_any(query_lower, ["simultaneamente", "interseção", "intersecao"]):
+        return False
     return bool(
         re.search(
             r"\b(?:no|na|do|da)\s+estado\s+d[eo]\s+\w+[\s\S]{0,80}\be\s+(?:no|na|do|da)\s+estado\s+d[eo]\s+\w+",
@@ -360,10 +499,7 @@ def _catalog_cardinality_target(query_lower: str) -> str | None:
     if has_fact_observation_language:
         return None
 
-    if (
-        _contains_any(query_lower, ["cid", "cid-10", "cids"])
-        and has_catalog_language
-    ):
+    if _contains_any(query_lower, ["cid", "cid-10", "cids"]) and has_catalog_language:
         return "cid_catalog_count"
 
     if (
@@ -382,9 +518,8 @@ def _catalog_cardinality_target(query_lower: str) -> str | None:
     ):
         return "vincprev_catalog_count"
 
-    if (
-        _contains_any(query_lower, ["estado", "estados", "uf", "ufs"])
-        and _contains_any(query_lower, ["banco de dados", "cobertos", "cobertas", "cobertura"])
+    if _contains_any(query_lower, ["estado", "estados", "uf", "ufs"]) and _contains_any(
+        query_lower, ["banco de dados", "cobertos", "cobertas", "cobertura"]
     ):
         return "estado_coverage_count"
 
@@ -413,7 +548,7 @@ def _has_hospital_location_context(query_lower: str) -> bool:
             "atende",
             "atendem",
             "atendimento",
-            "atendimentos",
+            "internacao_procedimento",
             "localização do hospital",
             "localizacao do hospital",
             "cidade do hospital",
@@ -426,7 +561,9 @@ def _has_hospital_location_context(query_lower: str) -> bool:
     )
     procedure_city_context = bool(
         re.search(r"\bnas\s+cidades?\b", query_lower)
-        and _contains_any(query_lower, ["procedimento", "procedimentos", "atendimento", "atendimentos"])
+        and _contains_any(
+            query_lower, ["procedimento", "procedimentos", "atendimento", "internacao_procedimento"]
+        )
     )
     return explicit_hospital_context or procedure_city_context
 
@@ -447,7 +584,12 @@ def _has_group_phrase(query_lower: str, dimension: str) -> bool:
         "especialidade": ["especialidade"],
         "diagnostico": ["diagnóstico", "diagnostico", "cid", "doença", "doenca"],
         "procedimento": ["procedimento"],
-        "contraceptivo": ["contraceptivo", "contraceptivos", "método contraceptivo", "metodo contraceptivo"],
+        "contraceptivo": [
+            "contraceptivo",
+            "contraceptivos",
+            "método contraceptivo",
+            "metodo contraceptivo",
+        ],
         "sexo": ["sexo"],
         "raca_cor": ["raça", "raca", "cor"],
         "instrucao": [
@@ -538,7 +680,9 @@ def _is_temporal_entity_question(query_lower: str, dimension: str) -> bool:
             r"\bm[eê]s\s+de\s+cada\s+ano\b",
         ],
     }
-    return any(re.search(pattern, query_lower, re.I) for pattern in temporal_patterns.get(dimension, []))
+    return any(
+        re.search(pattern, query_lower, re.I) for pattern in temporal_patterns.get(dimension, [])
+    )
 
 
 def _geography_mention_is_filter_context(query_lower: str, dimension: str) -> bool:
@@ -562,6 +706,17 @@ def _geography_mention_is_filter_context(query_lower: str, dimension: str) -> bo
             "cid",
             "hospital",
             "hospitais",
+            "instrução",
+            "instrucao",
+            "escolaridade",
+            "nível de instrução",
+            "nivel de instrucao",
+            "município",
+            "municipio",
+            "municípios",
+            "municipios",
+            "cidade",
+            "cidades",
         ],
     )
     return has_geo_filter and has_non_geo_rank_target
@@ -602,7 +757,11 @@ def _filter_output_dimensions(
                 or _has_group_phrase(query_lower, dim.name)
             )
         elif dim.name in {"idade", "faixa_etaria"}:
-            keep = has_distribution or _has_group_phrase(query_lower, dim.name)
+            keep = (
+                has_distribution
+                or _has_group_phrase(query_lower, dim.name)
+                or _has_explicit_age_segments(query_lower)
+            )
         else:
             keep = (
                 has_distribution
@@ -783,6 +942,8 @@ def _should_preserve_multi_value_filter_dimension(query_lower: str) -> bool:
         ],
     ):
         return False
+    if _contains_any(query_lower, ["simultaneamente", "interseção", "intersecao"]):
+        return False
     return True
 
 
@@ -795,19 +956,19 @@ def _infer_dimensions(query_lower: str) -> list[SemanticDimension]:
     checks = [
         (
             "estado_hospital" if hospital_location_context else "estado",
-            "municipios.estado",
+            "municipios.SG_UF",
             ["estado", "estados", "uf", "ufs"],
         ),
         (
             "municipio_hospital" if hospital_location_context else "municipio",
-            "municipios.nome",
+            "municipios.NO_MUNICIPIO",
             ["município", "municipio", "municípios", "municipios", "cidade", "cidades"],
         ),
         ("hospital", "internacoes.CNES", ["hospital", "hospitais", "cnes"]),
         ("especialidade", "especialidade.DESCRICAO", ["especialidade"]),
         (
             "diagnostico",
-            "cid.CD_DESCRICAO",
+            "cid.DESCRICAO",
             [
                 "diagnóstico",
                 "diagnostico",
@@ -820,6 +981,10 @@ def _infer_dimensions(query_lower: str) -> list[SemanticDimension]:
                 "causas do óbito",
                 "causa do obito",
                 "causas do obito",
+                "motivo de internação",
+                "motivo de internacao",
+                "motivos de internação",
+                "motivos de internacao",
                 "doença",
                 "doenca",
                 "doenças",
@@ -835,7 +1000,17 @@ def _infer_dimensions(query_lower: str) -> list[SemanticDimension]:
         (
             "sexo",
             "internacoes.SEXO",
-            ["sexo", "homem", "homens", "mulher", "mulheres", "ulher", "ulheres", "masculino", "feminino"],
+            [
+                "sexo",
+                "homem",
+                "homens",
+                "mulher",
+                "mulheres",
+                "ulher",
+                "ulheres",
+                "masculino",
+                "feminino",
+            ],
         ),
         ("raca_cor", "internacoes.RACA_COR", ["raça", "raca", "cor"]),
         (
@@ -877,6 +1052,10 @@ def _infer_dimensions(query_lower: str) -> list[SemanticDimension]:
     for name, source, tokens in checks:
         if _contains_any(query_lower, tokens):
             dims.append(_dimension(name, source))
+    if _has_explicit_age_segments(query_lower) and not any(
+        dim.name == "faixa_etaria" for dim in dims
+    ):
+        dims.append(_dimension("faixa_etaria", "internacoes.IDADE"))
     if _extract_recent_year_window(query_lower) is not None and not any(
         dim.name == "ano" for dim in dims
     ):
@@ -891,54 +1070,212 @@ def _infer_metrics(query_lower: str) -> list[SemanticMetric]:
     if catalog_metric:
         metrics.append(SemanticMetric(name=catalog_metric, expression_type="count"))
     else:
+        if _has_cumulative_coverage_request(query_lower):
+            metrics.append(
+                SemanticMetric(
+                    name="percentual_acumulado",
+                    expression_type="rate",
+                    required_filters=["SUM(COUNT(*)) OVER"],
+                )
+            )
+        if _contains_any(
+            query_lower,
+            ["custo por dia", "custo/dia", "custo por diária", "custo por diaria"],
+        ):
+            metrics.append(
+                SemanticMetric(
+                    name="custo_por_dia",
+                    expression_type="ratio",
+                    required_filters=["SUM(VAL_TOT)", "SUM(DIAS_PERM)"],
+                )
+            )
+        if _contains_any(
+            query_lower,
+            [
+                "taxa de internação em uti",
+                "taxa de internacao em uti",
+                "taxa de uti",
+                "percentual de internações em uti",
+                "percentual de internacoes em uti",
+            ],
+        ):
+            metrics.append(
+                SemanticMetric(
+                    name="taxa_uti",
+                    expression_type="rate",
+                    numerator_condition="VAL_UTI > 0",
+                    denominator_scope="all_rows_matching_scope_filters",
+                )
+            )
+        is_extreme_max = re.search(r"\b(?:maior|máxima|maxima)\b", query_lower)
+        is_extreme_min = re.search(r"\b(?:menor|mínima|minima)\b", query_lower)
+        extreme_type = "max" if is_extreme_max else "min" if is_extreme_min else None
         if _is_scalar_age_extrema_query(query_lower):
-            if re.search(r"\b(?:menor|mínima|minima)\b", query_lower):
+            if extreme_type == "min":
                 metrics.append(SemanticMetric(name="idade_minima", expression_type="min"))
-            elif re.search(r"\b(?:maior|máxima|maxima)\b", query_lower):
+            elif extreme_type == "max":
                 metrics.append(SemanticMetric(name="idade_maxima", expression_type="max"))
+        if _is_scalar_value_extrema_query(query_lower) and extreme_type is not None:
+            if _contains_any(
+                query_lower,
+                [
+                    "serviço profissional",
+                    "servico profissional",
+                    "valor de serviço profissional",
+                    "valor de servico profissional",
+                    "val_sp",
+                ],
+            ):
+                metrics.append(
+                    SemanticMetric(
+                        name="valor_servico_profissional",
+                        expression_type=extreme_type,
+                        required_filters=[f"{extreme_type.upper()}(VAL_SP)"],
+                    )
+                )
+            elif _contains_any(
+                query_lower,
+                [
+                    "permanência hospitalar",
+                    "permanencia hospitalar",
+                    "dias de internação",
+                    "dias de internacao",
+                    "dias internados",
+                ],
+            ):
+                metrics.append(
+                    SemanticMetric(
+                        name="permanencia_hospitalar",
+                        expression_type=extreme_type,
+                        required_filters=[f"{extreme_type.upper()}(DIAS_PERM)"],
+                    )
+                )
+            elif _contains_any(
+                query_lower,
+                [
+                    "serviço hospitalar",
+                    "servico hospitalar",
+                    "valor de serviço hospitalar",
+                    "valor de servico hospitalar",
+                    "val_sh",
+                ],
+            ):
+                metrics.append(
+                    SemanticMetric(
+                        name="valor_servico_hospitalar",
+                        expression_type=extreme_type,
+                        required_filters=[f"{extreme_type.upper()}(VAL_SH)"],
+                    )
+                )
+            else:
+                metrics.append(
+                    SemanticMetric(
+                        name="valor_internacao",
+                        expression_type=extreme_type,
+                        required_filters=[f"{extreme_type.upper()}(VAL_TOT)"],
+                    )
+                )
+        if _contains_any(query_lower, ["total", "valor total", "total gasto"]) and _contains_any(
+            query_lower,
+            [
+                "dias de internação",
+                "dias de internacao",
+                "dias internados",
+                "dias de permanência",
+                "dias de permanencia",
+            ],
+        ):
+            metrics.append(
+                SemanticMetric(
+                    name="total_dias_permanencia",
+                    expression_type="sum",
+                    required_filters=["SUM(DIAS_PERM)"],
+                )
+            )
+        elif _contains_any(query_lower, ["total", "valor total", "total gasto"]) and _contains_any(
+            query_lower,
+            [
+                "serviços profissionais",
+                "servicos profissionais",
+                "serviço profissional",
+                "servico profissional",
+                "val_sp",
+            ],
+        ):
+            metrics.append(
+                SemanticMetric(
+                    name="total_servico_profissional",
+                    expression_type="sum",
+                    required_filters=["SUM(VAL_SP)"],
+                )
+            )
+        elif _contains_any(query_lower, ["total", "valor total", "total gasto"]) and _contains_any(
+            query_lower,
+            [
+                "serviço hospitalar",
+                "servico hospitalar",
+                "val_sh",
+            ],
+        ):
+            metrics.append(
+                SemanticMetric(
+                    name="total_servico_hospitalar",
+                    expression_type="sum",
+                    required_filters=["SUM(VAL_SH)"],
+                )
+            )
+        elif _contains_any(query_lower, ["valor total", "total gasto"]) and _contains_any(
+            query_lower, ["internação", "internacao", "internações", "internacoes"]
+        ):
+            metrics.append(
+                SemanticMetric(
+                    name="valor_total_internacoes",
+                    expression_type="sum",
+                    required_filters=["SUM(VAL_TOT)"],
+                )
+            )
         if "mortalidade infantil" in query_lower:
             metrics.append(
                 SemanticMetric(
                     name="mortalidade_infantil_1ano",
                     expression_type="avg",
-                    required_filters=["metrica = 'mortalidade_infantil_1ano'"],
-                )
-            )
-        if _contains_any(query_lower, ["bolsa família", "bolsa familia"]):
-            metrics.append(
-                SemanticMetric(
-                    name="bolsa_familia_total",
-                    expression_type="sum",
-                    required_filters=["metrica = 'bolsa_familia_total'"],
-                )
-            )
-        if _contains_any(query_lower, ["idhm", "índice de desenvolvimento humano", "indice de desenvolvimento humano"]):
-            metrics.append(
-                SemanticMetric(
-                    name="idhm",
-                    expression_type="avg",
-                    required_filters=["metrica = 'idhm'"],
-                )
-            )
-        if _contains_any(query_lower, ["esgotamento sanitário", "esgotamento sanitario", "saneamento"]):
-            metrics.append(
-                SemanticMetric(
-                    name="esgotamento_sanitario_domicilio",
-                    expression_type="sum",
-                    required_filters=["metrica = 'esgotamento_sanitario_domicilio'"],
+                    required_filters=['AVG(s."VL_MORT_INFANTIL")'],
                 )
             )
         if _contains_any(query_lower, ["população", "populacao", "habitantes"]):
             metrics.append(
                 SemanticMetric(
                     name="populacao_total",
-                    expression_type="value",
-                    required_filters=["metrica = 'populacao_total'"],
+                    expression_type="sum",
+                    required_filters=['SUM(s."QT_POPULACAO")'],
                 )
             )
-    if (
-        "mortalidade infantil" not in query_lower
-        and any(token in query_lower for token in ["taxa de mortalidade", "mortalidade hospitalar"])
+        if _contains_any(query_lower, ["pib per capita", "produto interno bruto per capita"]):
+            metrics.append(
+                SemanticMetric(
+                    name="pib_per_capita",
+                    expression_type="avg",
+                    required_filters=['AVG(s."VL_PIB_PERCAPITA")'],
+                )
+            )
+        if _contains_any(query_lower, ["leitos sus", "leito sus"]):
+            metrics.append(
+                SemanticMetric(
+                    name="leitos_sus_total",
+                    expression_type="sum",
+                    required_filters=['SUM(s."QT_LEITOS_SUS")'],
+                )
+            )
+        if _contains_any(query_lower, ["médicos", "medicos"]):
+            metrics.append(
+                SemanticMetric(
+                    name="medicos_total",
+                    expression_type="sum",
+                    required_filters=['SUM(s."QT_MEDICOS")'],
+                )
+            )
+    if "mortalidade infantil" not in query_lower and any(
+        token in query_lower for token in ["taxa de mortalidade", "mortalidade hospitalar"]
     ):
         metrics.append(
             SemanticMetric(
@@ -948,7 +1285,9 @@ def _infer_metrics(query_lower: str) -> list[SemanticMetric]:
                 denominator_scope="all_rows_matching_non_outcome_filters",
             )
         )
-    elif not metrics and any(token in query_lower for token in ["taxa", "percentual", "proporção", "proporcao"]):
+    elif not metrics and any(
+        token in query_lower for token in ["taxa", "percentual", "proporção", "proporcao"]
+    ):
         metrics.append(
             SemanticMetric(
                 name="proporcao",
@@ -1002,16 +1341,18 @@ def _infer_metrics(query_lower: str) -> list[SemanticMetric]:
 
     if (
         "mortalidade infantil" not in query_lower
+        and not any(metric.expression_type == "rate" for metric in metrics)
         and not _contains_any(
             query_lower,
             [
-                "idhm",
-                "bolsa família",
-                "bolsa familia",
-                "esgotamento sanitário",
-                "esgotamento sanitario",
+                "mortalidade infantil",
                 "população",
                 "populacao",
+                "habitantes",
+                "pib per capita",
+                "leitos sus",
+                "médicos",
+                "medicos",
             ],
         )
         and not has_specific_average_metric
@@ -1034,29 +1375,26 @@ def _infer_metrics(query_lower: str) -> list[SemanticMetric]:
         )
 
     has_socioeconomico_metric = any(
-        metric.name
-        in {
-            "bolsa_familia_total",
-            "esgotamento_sanitario_domicilio",
-            "populacao_total",
-            "mortalidade_infantil_1ano",
-            "idhm",
-        }
-        for metric in metrics
+        metric.name in _SOCIOECONOMIC_WIDE_METRICS for metric in metrics
     )
 
     has_explicit_non_count_metric = any(
-        metric.expression_type in {"sum", "avg", "min", "max", "rate", "delta", "value"}
+        metric.expression_type in {"sum", "avg", "min", "max", "rate", "delta", "value", "ratio"}
         for metric in metrics
     )
-    if not catalog_metric and not has_socioeconomico_metric and not has_explicit_non_count_metric and (
-        any(
-            token in query_lower
-            for token in ["total", "quantos", "quantas", "número de", "numero de", "quantidade"]
-        )
-        or any(
-            token in query_lower
-            for token in ["pacientes", "internacoes", "internaçoes", "internações"]
+    if (
+        not catalog_metric
+        and not has_socioeconomico_metric
+        and not has_explicit_non_count_metric
+        and (
+            any(
+                token in query_lower
+                for token in ["total", "quantos", "quantas", "número de", "numero de", "quantidade"]
+            )
+            or any(
+                token in query_lower
+                for token in ["pacientes", "internacoes", "internaçoes", "internações"]
+            )
         )
     ):
         metrics.append(SemanticMetric(name="total", expression_type="count"))
@@ -1079,6 +1417,14 @@ def _infer_metrics(query_lower: str) -> list[SemanticMetric]:
         metrics.append(SemanticMetric(name="requested_metric", expression_type="unknown"))
 
     return metrics
+
+
+def _unsupported_schema_metrics(query_lower: str) -> list[str]:
+    unsupported: list[str] = []
+    for metric_name, aliases in _UNSUPPORTED_SCHEMA_METRIC_PATTERNS.items():
+        if _contains_any(query_lower, aliases):
+            unsupported.append(metric_name)
+    return unsupported
 
 
 def _infer_filters(query: str, query_lower: str) -> list[SemanticFilter]:
@@ -1150,9 +1496,13 @@ def _infer_filters(query: str, query_lower: str) -> list[SemanticFilter]:
             "gestantes",
         ],
     ):
-        filters.append(SemanticFilter(field="obstetrico", values=["ESPEC = 2"], operator="semantic"))
+        filters.append(
+            SemanticFilter(field="obstetrico", values=["ESPEC = 2"], operator="semantic")
+        )
     if _contains_any(query_lower, ["inverno", "junho a agosto", "junho até agosto"]):
-        filters.append(SemanticFilter(field="mes_internacao", values=["6", "7", "8"], operator="IN"))
+        filters.append(
+            SemanticFilter(field="mes_internacao", values=["6", "7", "8"], operator="IN")
+        )
     if _contains_any(
         query_lower,
         [
@@ -1162,7 +1512,9 @@ def _infer_filters(query: str, query_lower: str) -> list[SemanticFilter]:
             "doencas respiratorias",
         ],
     ):
-        filters.append(SemanticFilter(field="diagnostico_principal_prefix", values=["J%"], operator="LIKE"))
+        filters.append(
+            SemanticFilter(field="diagnostico_principal_prefix", values=["J%"], operator="LIKE")
+        )
     if (
         _contains_any(query_lower, ["diagnóstico principal", "diagnostico principal"])
         and _contains_any(
@@ -1172,10 +1524,14 @@ def _infer_filters(query: str, query_lower: str) -> list[SemanticFilter]:
         and _contains_any(query_lower, ["tanto", "ambos", "ambas"])
     ):
         filters.append(
-            SemanticFilter(field="diagnostico_principal_required", values=["IS NOT NULL"], operator="semantic")
+            SemanticFilter(
+                field="diagnostico_principal_required", values=["IS NOT NULL"], operator="semantic"
+            )
         )
         filters.append(
-            SemanticFilter(field="diagnostico_secundario_required", values=["IS NOT NULL"], operator="semantic")
+            SemanticFilter(
+                field="diagnostico_secundario_required", values=["IS NOT NULL"], operator="semantic"
+            )
         )
     if _mentions_both_sexes(query_lower):
         filters.append(SemanticFilter(field="sexo", values=["1", "3"], operator="IN"))
@@ -1184,6 +1540,14 @@ def _infer_filters(query: str, query_lower: str) -> list[SemanticFilter]:
             filters.append(SemanticFilter(field="sexo", values=["1"], operator="="))
         if _mentions_female(query_lower):
             filters.append(SemanticFilter(field="sexo", values=["3"], operator="="))
+    if _has_identified_race_color_filter(query_lower):
+        filters.append(
+            SemanticFilter(
+                field="raca_cor_identificada",
+                values=["RACA_COR IN (1, 2, 3, 4, 5)"],
+                operator="semantic",
+            )
+        )
     filters.extend(_extract_age_filters(query_lower))
     death_cause_term = _extract_death_cause_description_term(query_lower)
     if death_cause_term:
@@ -1192,25 +1556,6 @@ def _infer_filters(query: str, query_lower: str) -> list[SemanticFilter]:
                 field="cid_morte_descricao",
                 values=[death_cause_term],
                 operator="ILIKE",
-            )
-        )
-    metrica_values: list[str] = []
-    if "mortalidade infantil" in query_lower:
-        metrica_values.append("mortalidade_infantil_1ano")
-    if _contains_any(query_lower, ["bolsa família", "bolsa familia"]):
-        metrica_values.append("bolsa_familia_total")
-    if _contains_any(query_lower, ["idhm", "índice de desenvolvimento humano", "indice de desenvolvimento humano"]):
-        metrica_values.append("idhm")
-    if _contains_any(query_lower, ["esgotamento sanitário", "esgotamento sanitario", "saneamento"]):
-        metrica_values.append("esgotamento_sanitario_domicilio")
-    if _contains_any(query_lower, ["população", "populacao", "habitantes"]):
-        metrica_values.append("populacao_total")
-    if metrica_values:
-        filters.append(
-            SemanticFilter(
-                field="metrica",
-                values=sorted(set(metrica_values)),
-                operator="IN" if len(set(metrica_values)) > 1 else "=",
             )
         )
     asks_rate = any(
@@ -1236,6 +1581,7 @@ def build_semantic_plan(
     q = query.lower()
 
     top_n = _extract_top_n(q)
+    unsupported_schema_metrics = _unsupported_schema_metrics(q)
     explicit_min_group_count = _extract_min_group_count(q)
     raw_dimensions = _infer_dimensions(q)
     metrics = _infer_metrics(q)
@@ -1250,39 +1596,62 @@ def build_semantic_plan(
     is_catalog_cardinality = bool(metric_names & catalog_cardinality_metrics)
 
     has_monthly_trend = _contains_any(q, ["mensal", "mensais", "por mês", "por mes", "monthly"])
-    has_temporal_trend = has_monthly_trend or any(
-        token in q
-        for token in [
-            "evolução",
-            "evolucao",
-            "série temporal",
-            "serie temporal",
-            "ao longo",
-            "anual",
-        ]
-    ) or _extract_recent_year_window(q) is not None
-    has_sex_breakdown = not has_temporal_trend and _mentions_both_sexes(q) and _contains_any(
-        q,
-        [
-            "entre",
-            "comparando",
-            "comparar",
-            "compare",
-            "comparação",
-            "comparacao",
-            "pizza",
-            "pie",
-            "donut",
-            "rosca",
-        ],
+    has_temporal_trend = (
+        has_monthly_trend
+        or any(
+            token in q
+            for token in [
+                "evolução",
+                "evolucao",
+                "série temporal",
+                "serie temporal",
+                "ao longo",
+                "anual",
+            ]
+        )
+        or _extract_recent_year_window(q) is not None
     )
-    has_distribution = any(
-        token in q for token in ["distribuição", "distribuicao", "como se distribui"]
-    ) or has_sex_breakdown
+    has_sex_breakdown = (
+        not has_temporal_trend
+        and _mentions_both_sexes(q)
+        and _contains_any(
+            q,
+            [
+                "entre",
+                "comparando",
+                "comparar",
+                "compare",
+                "comparação",
+                "comparacao",
+                "pizza",
+                "pie",
+                "donut",
+                "rosca",
+            ],
+        )
+    )
+    has_distribution = (
+        any(token in q for token in ["distribuição", "distribuicao", "como se distribui"])
+        or has_sex_breakdown
+    )
     has_moving_average = _contains_any(q, ["média móvel", "media movel"])
     has_quartile_distribution = _contains_any(q, ["quartil", "quartis"])
+    has_cumulative_coverage = _has_cumulative_coverage_request(q)
+    has_dual_top_n_intersection = _has_dual_top_n_intersection_request(q)
     has_attribute_profile = _has_attribute_profile_intent(q, raw_dimensions)
-    has_unknown_bucket = any(
+    has_explicit_age_segments = _has_explicit_age_segments(q)
+    excludes_unknown_bucket = _contains_any(
+        q,
+        [
+            "excluindo sem informação",
+            "excluindo sem informacao",
+            "excluir sem informação",
+            "excluir sem informacao",
+            "sem informação exclu",
+            "sem informacao exclu",
+        ],
+    )
+    has_unknown_bucket = (not excludes_unknown_bucket) and any(
         token in q
         for token in [
             "sem informação",
@@ -1292,10 +1661,20 @@ def build_semantic_plan(
             "incluindo os casos sem",
         ]
     )
-    has_absence = any(
-        token in q
-        for token in ["nunca", "nenhum", "nenhuma", "sem registro", "não tiveram", "nao tiveram"]
-    ) or ("sem " in q and not has_unknown_bucket)
+    has_absence = (not excludes_unknown_bucket) and (
+        any(
+            token in q
+            for token in [
+                "nunca",
+                "nenhum",
+                "nenhuma",
+                "sem registro",
+                "não tiveram",
+                "nao tiveram",
+            ]
+        )
+        or ("sem " in q and not has_unknown_bucket)
+    )
     has_above_below_cohort = _contains_any(q, ["acima e abaixo", "abaixo e acima"]) or (
         _contains_any(q, ["compare", "comparar", "comparação", "comparacao"])
         and _contains_any(q, ["acima da média", "acima da media"])
@@ -1331,9 +1710,7 @@ def build_semantic_plan(
         )
     if _should_preserve_multi_value_filter_dimension(q):
         multi_value_filter_fields = {
-            semantic_filter.field
-            for semantic_filter in filters
-            if len(semantic_filter.values) > 1
+            semantic_filter.field for semantic_filter in filters if len(semantic_filter.values) > 1
         }
         if multi_value_filter_fields & {"estado", "estado_residencia"} and not any(
             dim.name in {"estado", "estado_hospital"} for dim in dimensions
@@ -1344,6 +1721,16 @@ def build_semantic_plan(
             )
             if state_dimension is not None:
                 dimensions.append(state_dimension)
+
+    dimensions = [
+        dim
+        for dim in dimensions
+        if not (
+            dim.name in {"estado", "estado_hospital", "municipio", "municipio_hospital"}
+            and _geography_mention_is_filter_context(q, dim.name)
+            and not _should_preserve_multi_value_filter_dimension(q)
+        )
+    ]
 
     if has_side_by_side_state:
         dimensions = [dim for dim in dimensions if dim.name not in {"estado", "estado_hospital"}]
@@ -1376,8 +1763,7 @@ def build_semantic_plan(
         "em cada grupo",
     ]
     has_multi_state_filter = any(
-        semantic_filter.field in {"estado", "estado_residencia"}
-        and len(semantic_filter.values) > 1
+        semantic_filter.field in {"estado", "estado_residencia"} and len(semantic_filter.values) > 1
         for semantic_filter in filters
     )
     top_n_scope = (
@@ -1385,6 +1771,7 @@ def build_semantic_plan(
         if top_n
         and (
             any(token in q for token in per_group_tokens)
+            or has_explicit_age_segments
             or (has_multi_state_filter and _has_parallel_state_top_n_context(q))
         )
         else ("global" if top_n else "none")
@@ -1440,6 +1827,8 @@ def build_semantic_plan(
         q,
         top_n_scope=top_n_scope,
     )
+    if top_n_scope == "per_group" and has_explicit_age_segments and not partition_dimensions:
+        partition_dimensions = ["faixa_etaria"]
     if (
         top_n_scope == "per_group"
         and has_multi_state_filter
@@ -1473,6 +1862,17 @@ def build_semantic_plan(
             )
         if "quartil" not in required_dimensions:
             required_dimensions.append("quartil")
+    if has_cumulative_coverage:
+        constraints.append("cumulative_coverage_threshold_required")
+        cumulative_threshold = _extract_cumulative_threshold(q)
+        if cumulative_threshold is not None:
+            filters.append(
+                SemanticFilter(
+                    field="cumulative_percentage_threshold",
+                    values=[str(cumulative_threshold)],
+                    operator="<=",
+                )
+            )
     if top_n_scope == "per_group":
         constraints.append("top_n_per_group_requires_window_partition")
     if has_side_by_side_state:
@@ -1483,7 +1883,8 @@ def build_semantic_plan(
         dim.name in {"municipio_hospital", "estado_hospital"} for dim in raw_dimensions
     )
     if any(dim.name in {"municipio_hospital", "estado_hospital"} for dim in dimensions) or (
-        raw_hospital_location_context and _geography_mention_is_filter_context(q, "municipio_hospital")
+        raw_hospital_location_context
+        and _geography_mention_is_filter_context(q, "municipio_hospital")
     ):
         constraints.append("join_path_hospital_location_required")
     if any(
@@ -1514,27 +1915,10 @@ def build_semantic_plan(
             )
     if "raca_cor" in required_dimensions:
         constraints.append("categorical_lookup_label_required")
-    if metric_names & {
-        "mortalidade_infantil_1ano",
-        "bolsa_familia_total",
-        "esgotamento_sanitario_domicilio",
-        "populacao_total",
-        "idhm",
-    }:
-        constraints.append("socioeconomico_metric_filter_required")
-    if len(
-        metric_names
-        & {
-            "mortalidade_infantil_1ano",
-            "bolsa_familia_total",
-            "esgotamento_sanitario_domicilio",
-            "populacao_total",
-            "idhm",
-        }
-    ) >= 2:
-        constraints.append("socioeconomico_multi_metric_requires_conditional_pivot")
-    if {"idhm", "taxa_mortalidade"} <= metric_names and has_above_below_cohort:
-        constraints.append("idhm_mortality_cohort_requires_state_rate_split")
+    if metric_names & _SOCIOECONOMIC_WIDE_METRICS:
+        constraints.append("socioeconomico_column_metric_required")
+    if len(metric_names & _SOCIOECONOMIC_WIDE_METRICS) >= 2:
+        constraints.append("socioeconomico_multi_column_metrics_required")
     if has_absence:
         constraints.append("absence_condition_requires_antijoin_or_aggregate_zero")
     if (
@@ -1546,7 +1930,11 @@ def build_semantic_plan(
         constraints.append("death_cause_cid_requires_cid_morte_antijoin")
     if any(semantic_filter.field == "cid_morte_descricao" for semantic_filter in filters):
         constraints.append("death_cause_description_requires_cid_morte")
-    period_filters = [semantic_filter for semantic_filter in filters if semantic_filter.field.startswith("period_")]
+    period_filters = [
+        semantic_filter
+        for semantic_filter in filters
+        if semantic_filter.field.startswith("period_")
+    ]
     if has_delta or "entre" in q and len([f for f in filters if f.field == "ano"]) >= 1:
         constraints.append("temporal_comparison_requires_separate_period_aggregates")
     if has_delta and len(period_filters) >= 2:
@@ -1560,7 +1948,9 @@ def build_semantic_plan(
         null_policy.append("include_unknown_bucket_with_left_join_or_coalesce")
     if (
         has_rate
-        and any(semantic_filter.field == "diagnostico_principal_prefix" for semantic_filter in filters)
+        and any(
+            semantic_filter.field == "diagnostico_principal_prefix" for semantic_filter in filters
+        )
         and "trimestre" in required_dimensions
     ):
         constraints.append("percentage_denominator_matches_filtered_category")
@@ -1580,12 +1970,16 @@ def build_semantic_plan(
         ],
     ):
         constraints.append("reference_rate_comparison_required")
+    if has_dual_top_n_intersection:
+        constraints.append("dual_top_n_intersection_required")
 
     high_cardinality_average_rank = (
         top_n
         and top_n_scope == "per_group"
         and any(metric.expression_type in {"avg", "rate"} for metric in metrics)
-        and any(dim in {"hospital", "municipio", "municipio_hospital"} for dim in required_dimensions)
+        and any(
+            dim in {"hospital", "municipio", "municipio_hospital"} for dim in required_dimensions
+        )
     )
     if high_cardinality_average_rank:
         constraints.append("top_n_average_high_cardinality_requires_minimum_group_size")
@@ -1599,9 +1993,7 @@ def build_semantic_plan(
             )
         )
     elif high_cardinality_average_rank:
-        filters.append(
-            SemanticFilter(field="minimum_group_count", values=["100"], operator=">")
-        )
+        filters.append(SemanticFilter(field="minimum_group_count", values=["100"], operator=">"))
 
     if intent == "count" and not required_dimensions and not top_n:
         row_grain = "single_scalar"
@@ -1627,9 +2019,9 @@ def build_semantic_plan(
         row_grain = "unknown"
 
     requires_group_by = bool(required_dimensions and row_grain != "single_scalar")
-    value_metric_ranking = (
-        row_grain == "top_n_global"
-        and any(metric.expression_type == "value" for metric in metrics)
+    value_metric_ranking = row_grain == "top_n_global" and (
+        any(metric.expression_type == "value" for metric in metrics)
+        or any(metric.name == "populacao_total" for metric in metrics)
     )
     if value_metric_ranking:
         requires_group_by = False
@@ -1679,18 +2071,17 @@ def build_semantic_plan(
     elif any(
         token in q
         for token in [
-            "idhm",
             "mortalidade infantil",
-            "bolsa família",
-            "bolsa familia",
             "população",
             "populacao",
             "habitantes",
-            "saneamento",
-            "esgotamento",
+            "pib per capita",
+            "leitos sus",
+            "médicos",
+            "medicos",
         ]
     ):
-        base_grain = "municipio_ano_metrica"
+        base_grain = "municipio_ano"
     elif "procedimento" in q:
         base_grain = "procedimento_ocorrencia"
 
@@ -1703,6 +2094,9 @@ def build_semantic_plan(
         answer_shape=answer_shape,
         constraints=constraints,
         null_policy=null_policy,
+        ambiguities=[
+            f"unsupported_metric:{metric_name}" for metric_name in unsupported_schema_metrics
+        ],
     )
     if profile_store is not None:
         _enrich_plan_with_profile(plan, query, profile_store)
@@ -1710,9 +2104,9 @@ def build_semantic_plan(
 
 
 _DIMENSION_PROFILE_COLUMNS = {
-    "estado": ("municipios", "estado"),
+    "estado": ("municipios", "SG_UF"),
     "hospital": ("internacoes", "CNES"),
-    "procedimento": ("atendimentos", "PROC_REA"),
+    "procedimento": ("internacao_procedimento", "PROC_REA"),
     "sexo": ("internacoes", "SEXO"),
     "raca_cor": ("internacoes", "RACA_COR"),
     "ano": ("internacoes", "DT_INTER"),

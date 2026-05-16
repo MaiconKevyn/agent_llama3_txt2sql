@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from ..semantic.plan_schema import SemanticPlan
 from ..utils.logging_config import get_nodes_logger
+from .llamaindex_context import should_use_llamaindex_sql_draft
 from .llm_manager import get_llm_manager
 from .prompt_builder import build_pregeneration_hints, build_sql_generation_messages
 from .state_helpers import add_ai_message, add_error, update_phase
@@ -117,10 +118,30 @@ def _build_deterministic_scalar_sql(semantic_plan) -> str | None:
     if plan.base_grain != "internacao" or plan.answer_shape.row_grain != "single_scalar":
         return None
 
+    race_color_code_map = {
+        "branca": "1",
+        "preta": "2",
+        "parda": "3",
+        "amarela": "4",
+        "indigena": "5",
+        "indígena": "5",
+    }
     age_filter_conditions: list[tuple[str, int]] = []
+    where_conditions: list[str] = []
     for semantic_filter in plan.filters:
-        if semantic_filter.field != "idade" or not semantic_filter.values:
+        field = semantic_filter.field.lower()
+        if field == "raca_cor_identificada":
+            where_conditions.append('"RACA_COR" IN (1, 2, 3, 4, 5)')
             continue
+        if field == "raca_cor" and semantic_filter.values:
+            values = [str(value).strip().lower() for value in semantic_filter.values]
+            codes = [race_color_code_map.get(value, value) for value in values]
+            if not codes or not all(re.fullmatch(r"[1-5]", code) for code in codes):
+                return None
+            where_conditions.append(f'"RACA_COR" IN ({", ".join(sorted(set(codes)))})')
+            continue
+        if field != "idade" or not semantic_filter.values:
+            return None
         operator = semantic_filter.operator.strip()
         if operator not in {"=", "<", "<=", ">", ">="}:
             return None
@@ -140,22 +161,56 @@ def _build_deterministic_scalar_sql(semantic_plan) -> str | None:
     ):
         age_filter_conditions = [("=", 0)]
 
-    where_conditions = [
+    where_conditions.extend(
         f'"IDADE" {operator} {value}' for operator, value in age_filter_conditions
-    ]
+    )
     where_clause = f" WHERE {' AND '.join(where_conditions)}" if where_conditions else ""
     metric_names = {metric.name for metric in plan.metrics}
-    metric_types = {metric.expression_type for metric in plan.metrics}
-    if "idade_minima" in metric_names or "min" in metric_types:
+    scalar_metric_sql = {
+        "valor_servico_profissional": {
+            "max": ('MAX("VAL_SP")', "maior_valor_servico_profissional"),
+            "min": ('MIN("VAL_SP")', "menor_valor_servico_profissional"),
+        },
+        "permanencia_hospitalar": {
+            "max": ('MAX("DIAS_PERM")', "maior_permanencia_hospitalar"),
+            "min": ('MIN("DIAS_PERM")', "menor_permanencia_hospitalar"),
+        },
+        "valor_servico_hospitalar": {
+            "max": ('MAX("VAL_SH")', "maior_valor_servico_hospitalar"),
+            "min": ('MIN("VAL_SH")', "menor_valor_servico_hospitalar"),
+        },
+        "valor_internacao": {
+            "max": ('MAX("VAL_TOT")', "maior_valor_internacao"),
+            "min": ('MIN("VAL_TOT")', "menor_valor_internacao"),
+        },
+        "total_dias_permanencia": {
+            "sum": ('SUM("DIAS_PERM")', "total_dias_permanencia"),
+        },
+        "total_servico_profissional": {
+            "sum": ('SUM("VAL_SP")', "total_servico_profissional"),
+        },
+        "total_servico_hospitalar": {
+            "sum": ('SUM("VAL_SH")', "total_servico_hospitalar"),
+        },
+        "valor_total_internacoes": {
+            "sum": ('SUM("VAL_TOT")', "valor_total_internacoes"),
+        },
+    }
+    for metric in plan.metrics:
+        expression = scalar_metric_sql.get(metric.name, {}).get(metric.expression_type)
+        if expression:
+            aggregate_sql, alias = expression
+            return f"SELECT {aggregate_sql} AS {alias} FROM internacoes{where_clause};"
+
+    if "idade_minima" in metric_names:
         return f'SELECT MIN("IDADE") AS idade_minima FROM internacoes{where_clause};'
-    if "idade_maxima" in metric_names or "max" in metric_types:
+    if "idade_maxima" in metric_names:
         return f'SELECT MAX("IDADE") AS idade_maxima FROM internacoes{where_clause};'
     if (
         any(metric.name == "total" and metric.expression_type == "count" for metric in plan.metrics)
         and where_conditions
-        and all(semantic_filter.field == "idade" for semantic_filter in plan.filters)
     ):
-        return f'SELECT COUNT(*) AS total_internacoes FROM internacoes{where_clause};'
+        return f"SELECT COUNT(*) AS total_internacoes FROM internacoes{where_clause};"
     return None
 
 
@@ -228,7 +283,9 @@ def generate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 parsed_chart_plan = ChartPlan.model_validate(chart_plan)
                 chart_prompt = parsed_chart_plan.to_prompt_block()
             except Exception:
-                chart_prompt = f"[CHART PLAN - SQL RESULT MUST SUPPORT THIS VISUALIZATION]\n{chart_plan}"
+                chart_prompt = (
+                    f"[CHART PLAN - SQL RESULT MUST SUPPORT THIS VISUALIZATION]\n{chart_plan}"
+                )
             user_query = (
                 f"{user_query}\n\n"
                 f"{chart_prompt}\n"
@@ -257,30 +314,73 @@ def generate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
 
         sql_query: str | None = None
         generation_method = "structured"
-        try:
-            structured_result = llm_manager.invoke_chat_structured(formatted_messages, SQLOutput)
-            sql_query = llm_manager._clean_sql_query(structured_result.sql)
-            logger.info(
-                "SQL generated via structured output",
-                extra={
-                    "sql": sql_query[:200],
-                    "reasoning": structured_result.reasoning[:120],
-                    "confidence": structured_result.confidence,
-                },
-            )
-            meta = state.get("response_metadata", {}) or {}
-            meta["sql_generation_confidence"] = structured_result.confidence
-            meta["sql_generation_reasoning"] = structured_result.reasoning
-            state["response_metadata"] = meta
-        except Exception as struct_err:
-            logger.warning(
-                "Structured output failed, falling back to text parse",
-                extra={"error": str(struct_err)},
-            )
-            generation_method = "text_fallback"
-            response = llm_manager.invoke_chat(formatted_messages)
-            sql_query = response.content.strip() if hasattr(response, "content") else str(response)
-            sql_query = llm_manager._clean_sql_query(sql_query)
+        if should_use_llamaindex_sql_draft(ablation_flags):
+            try:
+                from .llamaindex_sql_generator import generate_llamaindex_sql_draft
+
+                draft = generate_llamaindex_sql_draft(
+                    user_query=user_query,
+                    schema_context=schema_context,
+                    selected_tables=selected_tables,
+                    semantic_plan=semantic_plan if isinstance(semantic_plan, dict) else None,
+                    chart_plan=chart_plan if isinstance(chart_plan, dict) else None,
+                    model=llm_manager.config.llm_model,
+                    temperature=llm_manager.config.llm_temperature,
+                )
+                sql_query = llm_manager._clean_sql_query(draft.sql)
+                if sql_query:
+                    generation_method = draft.source
+                    meta = state.get("response_metadata", {}) or {}
+                    meta["sql_generation_source"] = draft.source
+                    meta["sql_generation_confidence"] = draft.confidence
+                    meta["sql_generation_reasoning"] = draft.reasoning
+                    state["response_metadata"] = meta
+                    logger.info(
+                        "SQL generated via LlamaIndex draft",
+                        extra={
+                            "sql": sql_query[:200],
+                            "confidence": draft.confidence,
+                        },
+                    )
+            except Exception as llama_err:
+                meta = state.get("response_metadata", {}) or {}
+                meta["llamaindex_sql_draft_error"] = str(llama_err)
+                state["response_metadata"] = meta
+                logger.warning(
+                    "LlamaIndex SQL draft failed, falling back to current generator",
+                    extra={"error": str(llama_err)},
+                )
+
+        if not sql_query:
+            try:
+                structured_result = llm_manager.invoke_chat_structured(
+                    formatted_messages, SQLOutput
+                )
+                sql_query = llm_manager._clean_sql_query(structured_result.sql)
+                logger.info(
+                    "SQL generated via structured output",
+                    extra={
+                        "sql": sql_query[:200],
+                        "reasoning": structured_result.reasoning[:120],
+                        "confidence": structured_result.confidence,
+                    },
+                )
+                meta = state.get("response_metadata", {}) or {}
+                meta["sql_generation_confidence"] = structured_result.confidence
+                meta["sql_generation_reasoning"] = structured_result.reasoning
+                meta["sql_generation_source"] = "current_structured_output"
+                state["response_metadata"] = meta
+            except Exception as struct_err:
+                logger.warning(
+                    "Structured output failed, falling back to text parse",
+                    extra={"error": str(struct_err)},
+                )
+                generation_method = "text_fallback"
+                response = llm_manager.invoke_chat(formatted_messages)
+                sql_query = (
+                    response.content.strip() if hasattr(response, "content") else str(response)
+                )
+                sql_query = llm_manager._clean_sql_query(sql_query)
 
         if sql_query:
             state["generated_sql"] = sql_query

@@ -12,22 +12,58 @@ from .contract_validator import validate_sql_contract
 from .plan_schema import SemanticPlan
 from .sql_inspector import SQLInspector
 
+_SOCIOECONOMIC_WIDE_METRIC_COLUMNS = {
+    "mortalidade_infantil_1ano": "vl_mort_infantil",
+    "populacao_total": "qt_populacao",
+    "pib_per_capita": "vl_pib_percapita",
+    "leitos_sus_total": "qt_leitos_sus",
+    "medicos_total": "qt_medicos",
+}
+
+
+def _socioeconomic_expected_columns(plan: SemanticPlan) -> list[str]:
+    metric_names = {metric.name for metric in plan.metrics}
+    return sorted(
+        {
+            _SOCIOECONOMIC_WIDE_METRIC_COLUMNS[name]
+            for name in metric_names
+            if name in _SOCIOECONOMIC_WIDE_METRIC_COLUMNS
+        }
+    )
+
+
+def _sql_mentions_column(sql_lower: str, column: str) -> bool:
+    return bool(re.search(rf'(?<!\w)"?{re.escape(column)}"?\b', sql_lower, re.I))
+
 
 def _has_group_by_dimension(inspector: SQLInspector, dimension: str) -> bool:
     group_by_lower = inspector.clause_lower("GROUP BY")
     search_space = group_by_lower
     if inspector.has_window_partition():
         search_space = f"{group_by_lower} {inspector.text_lower}"
-    if dimension == "sexo" and re.search(r"\bcase\s+when[\s\S]{0,120}\bsexo\b", inspector.text_lower, re.I):
+    if dimension == "sexo" and re.search(
+        r"\bcase\s+when[\s\S]{0,120}\bsexo\b", inspector.text_lower, re.I
+    ):
         return True
     patterns = {
-        "estado": [r"\bestado\b", r"\bmu\.estado\b", r"\bm\.estado\b"],
-        "estado_hospital": [r"\bestado\b", r"\bmu\.estado\b", r"\bm\.estado\b"],
-        "municipio": [r"\b(?:nome|municipio|município)\b"],
-        "municipio_hospital": [r"\b(?:nome|municipio|município)\b"],
+        "estado": [
+            r"\bestado\b",
+            r"\bsg_uf\b",
+            r"\bmu\.\s*\"?sg_uf\"?\b",
+            r"\bm\.\s*\"?sg_uf\"?\b",
+        ],
+        "SG_UF": [r"\bestado\b", r"\bsg_uf\b", r"\bmu\.\s*\"?sg_uf\"?\b", r"\bm\.\s*\"?sg_uf\"?\b"],
+        "estado_hospital": [
+            r"\bestado\b",
+            r"\bsg_uf\b",
+            r"\bmu\.\s*\"?sg_uf\"?\b",
+            r"\bm\.\s*\"?sg_uf\"?\b",
+        ],
+        "municipio": [r"\b(?:no_municipio|nome|municipio|município)\b"],
+        "municipio_hospital": [r"\b(?:no_municipio|nome|municipio|município)\b"],
         "hospital": [r"\b(?:cnes|\"cnes\")\b"],
         "especialidade": [r"\bespecialidade\b", r"\bdescri[cç][aã]o\b", r"\bespec\b"],
-        "diagnostico": [r"\b(?:cd_descricao|\"cd_descricao\"|diag_princ|cid)\b"],
+        "diagnostico": [r"\b(?:descricao|\"descricao\"|diag_princ|cid)\b"],
         "procedimento": [r"\b(?:nome_proc|\"nome_proc\"|proc_rea)\b"],
         "contraceptivo": [r"\b(?:contraceptivo|contracep1|descricao|descri[cç][aã]o)\b"],
         "sexo": [r"\bsexo\b"],
@@ -40,6 +76,20 @@ def _has_group_by_dimension(inspector: SQLInspector, dimension: str) -> bool:
         "quartil": [r"\b(?:ntile|quartil|ntile_grupo)\b"],
     }
     return any(re.search(pattern, search_space, re.I) for pattern in patterns.get(dimension, []))
+
+
+def _is_scalar_extreme_aggregate_answer(
+    plan: SemanticPlan,
+    inspector: SQLInspector,
+) -> bool:
+    if plan.answer_shape.required_dimensions or inspector.has_group_by():
+        return False
+
+    select_items = _split_select_items(inspector.clause_text("SELECT"))
+    if not select_items:
+        return False
+
+    return all(re.search(r"\b(?:max|min)\s*\(", item, re.I) for item in select_items)
 
 
 def validate_sql_against_semantic_plan(
@@ -57,7 +107,27 @@ def validate_sql_against_semantic_plan(
 
     inspector = SQLInspector.from_sql(sql)
     sql_lower = inspector.text_lower
+    if "socioeconomico" in sql_lower and re.search(
+        r'(?:\bs\b|\bsocioeconomico\b)\s*\.\s*"?(?:metrica|valor)"?|\b"metrica"\b|\b"valor"\b',
+        sql_lower,
+        re.I,
+    ):
+        return False, (
+            "SEMANTIC PLAN ERROR: socioeconomico uses wide-format columns in the current schema; "
+            "do not use metrica/valor."
+        )
     answer_shape = plan.answer_shape
+    if (
+        "geographic_filter_dimension_not_output" in plan.constraints
+        and not (set(answer_shape.required_dimensions) & {"estado", "SG_UF", "estado_hospital"})
+        and (
+            re.search(r"\bsg_uf\b", inspector.clause_lower("GROUP BY"), re.I)
+            or re.search(r"\bpartition\s+by[^\)]*\bsg_uf\b", sql_lower, re.I)
+        )
+    ):
+        return False, (
+            "SEMANTIC PLAN ERROR: The state mention is a filter, not an output grouping dimension."
+        )
 
     if answer_shape.top_n_scope == "per_group":
         if not re.search(
@@ -83,14 +153,21 @@ def validate_sql_against_semantic_plan(
         if not output_order_passed:
             return False, output_order_message
     elif answer_shape.top_n_scope == "global":
-        if answer_shape.top_n is not None and not re.search(
-            rf"\blimit\s+{answer_shape.top_n}\b", sql_lower, re.I
+        scalar_extreme_aggregate = _is_scalar_extreme_aggregate_answer(plan, inspector)
+        if (
+            answer_shape.top_n is not None
+            and not scalar_extreme_aggregate
+            and not re.search(rf"\blimit\s+{answer_shape.top_n}\b", sql_lower, re.I)
         ):
             return False, (
                 "SEMANTIC PLAN ERROR: The plan requires a global top-N answer, but SQL does not "
                 f"limit the result to top_n={answer_shape.top_n}."
             )
-        if answer_shape.top_n is not None and "order by" not in sql_lower:
+        if (
+            answer_shape.top_n is not None
+            and not scalar_extreme_aggregate
+            and "order by" not in sql_lower
+        ):
             return False, (
                 "SEMANTIC PLAN ERROR: The plan requires a ranked top-N answer, but SQL has no ORDER BY."
             )
@@ -115,10 +192,17 @@ def validate_sql_against_semantic_plan(
         )
         if not absence_antijoin:
             for dim in answer_shape.required_dimensions:
+                if "side_by_side_state_pivot_required" in plan.constraints and dim in {
+                    "estado",
+                    "SG_UF",
+                    "estado_hospital",
+                }:
+                    continue
                 if dim in {"faixa_etaria", "mes"}:
                     continue
                 if dim in {
                     "estado",
+                    "SG_UF",
                     "estado_hospital",
                     "municipio",
                     "municipio_hospital",
@@ -239,7 +323,7 @@ def _validate_additional_semantic_constraints(
         ):
             return False, (
                 "SEMANTIC PLAN ERROR: The question refers to municipality/state of care or hospital location, "
-                "but SQL does not use internacoes.CNES -> hospital.CNES -> hospital.MUNIC_MOV -> municipios.codigo_6d."
+                "but SQL does not use internacoes.CNES -> hospital.CNES -> hospital.MUNIC_MOV -> municipios.CO_MUNICIPIO_6D."
             )
         if re.search(r"\bmunic_res\b", text) and not re.search(r"\bmunic_mov\b", text):
             return False, (
@@ -251,7 +335,7 @@ def _validate_additional_semantic_constraints(
         required_dimensions = set(plan.answer_shape.required_dimensions)
         if not (required_dimensions & {"municipio", "municipio_hospital"}):
             if re.search(
-                r"\b(?:mu|m)\s*\.\s*\"?nome\"?\b|\bmunicipio\b|\bmunic[ií]pio\b",
+                r"\b(?:mu|m)\s*\.\s*\"?(?:nome|no_municipio)\"?\b|\bmunicipio\b|\bmunic[ií]pio\b",
                 group_by,
                 re.I,
             ):
@@ -260,15 +344,15 @@ def _validate_additional_semantic_constraints(
                     "not an output grouping dimension. Do not GROUP BY municipality/city unless "
                     "the question explicitly asks for municipalities/cities as rows."
                 )
-        if not (required_dimensions & {"estado", "estado_hospital"}):
-            if re.search(r"\bestado\b", group_by, re.I):
+        if not (required_dimensions & {"estado", "SG_UF", "estado_hospital"}):
+            if re.search(r"\bestado\b|\bsg_uf\b", group_by, re.I):
                 return False, (
                     "SEMANTIC PLAN ERROR: The state mention is a filter, not an output grouping dimension."
                 )
 
     if "diagnosis_filter_dimension_not_output" in plan.constraints:
         group_by = inspector.clause_lower("GROUP BY")
-        if re.search(r"\bdiag_princ\b|\bcd_descricao\b|\bcid\b", group_by, re.I):
+        if re.search(r"\bdiag_princ\b|\bdescricao\b|\bcid\b", group_by, re.I):
             return False, (
                 "SEMANTIC PLAN ERROR: The diagnosis/category mention is a filter, "
                 "not an output grouping dimension. Do not GROUP BY diagnosis/CID unless "
@@ -276,7 +360,22 @@ def _validate_additional_semantic_constraints(
             )
 
     metric_names = {metric.name for metric in plan.metrics}
-    if "proporcao" in metric_names:
+    if "custo_por_dia" in metric_names:
+        if not re.search(r"\bsum\s*\([^)]*\"?val_tot\"?[^)]*\)", text, re.I):
+            return False, (
+                "SEMANTIC PLAN ERROR: Cost-per-day efficiency must use SUM(VAL_TOT) as numerator."
+            )
+        if not re.search(
+            r"\bnullif\s*\(\s*sum\s*\([^)]*\"?dias_perm\"?[^)]*\)\s*,\s*0\s*\)",
+            text,
+            re.I,
+        ):
+            return False, (
+                "SEMANTIC PLAN ERROR: Cost-per-day efficiency must divide by "
+                "NULLIF(SUM(DIAS_PERM), 0) to avoid dropping support rows or dividing by zero."
+            )
+
+    if metric_names & {"proporcao", "taxa_uti"}:
         if re.search(
             r"\bavg\s*\(\s*case\s+when[\s\S]{0,240}then\s+1\s+else\s+0\s+end\s*\)"
             r"\s*\*\s*100(?:\.0+)?\s*/\s*count\s*\(",
@@ -298,6 +397,15 @@ def _validate_additional_semantic_constraints(
                     "which removes non-UTI rows from the denominator. Use conditional "
                     "aggregation for the numerator."
                 )
+            if not re.search(
+                r"\bsum\s*\(\s*case\s+when[\s\S]{0,160}\bval_uti\b[\s\S]{0,80}>\s*0",
+                text,
+                re.I,
+            ):
+                return False, (
+                    "SEMANTIC PLAN ERROR: UTI rate SQL must use conditional aggregation over "
+                    "VAL_UTI > 0 for the numerator."
+                )
 
     if "percentage_denominator_matches_filtered_category" in plan.constraints:
         if "sum(count(" not in text and re.search(
@@ -315,6 +423,66 @@ def _validate_additional_semantic_constraints(
             return False, (
                 "SEMANTIC PLAN ERROR: The SQL does not apply the requested ratio threshold "
                 "against the reference average."
+            )
+        if not re.search(
+            r"\bwith\b[\s\S]{0,240}\b(?:media|m[eé]dia|nacional|referencia|referência)",
+            text,
+            re.I,
+        ):
+            return False, (
+                "SEMANTIC PLAN ERROR: Reference-rate comparisons must compute the reference "
+                "average/rate separately before comparing each group."
+            )
+        order_by = inspector.clause_lower("ORDER BY")
+        if plan.answer_shape.top_n is not None:
+            rate_order = re.search(
+                r"\b(?:taxa|rate|percent|propor|sum\s*\(\s*case[\s\S]{0,160}\bval_uti\b)",
+                order_by,
+                re.I,
+            )
+            if not order_by or not rate_order:
+                return False, (
+                    "SEMANTIC PLAN ERROR: Reference-rate top-N comparisons must rank by the "
+                    "local rate metric, not by support volume."
+                )
+
+    if "dual_top_n_intersection_required" in plan.constraints:
+        if not re.search(r"\bwith\b[\s\S]{0,240}\btop", text, re.I):
+            return False, (
+                "SEMANTIC PLAN ERROR: Intersection of two top-N rankings should compute each "
+                "ranking separately before intersecting the entity lists."
+            )
+        if not re.search(r"\b(?:in\s*\(\s*select|intersect|join)\b", text, re.I):
+            return False, (
+                "SEMANTIC PLAN ERROR: SQL does not intersect the requested top-N rankings."
+            )
+
+    if "cumulative_coverage_threshold_required" in plan.constraints:
+        if not re.search(r"\bsum\s*\(\s*count\s*\(", text, re.I):
+            return False, (
+                "SEMANTIC PLAN ERROR: Cumulative coverage must compute a cumulative "
+                "SUM(COUNT(*)) window over entities ordered by volume."
+            )
+        if not re.search(
+            r"\brows\s+between\s+unbounded\s+preceding\s+and\s+current\s+row\b",
+            text,
+            re.I,
+        ):
+            return False, (
+                "SEMANTIC PLAN ERROR: Cumulative coverage should use an explicit cumulative "
+                "ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW frame."
+            )
+        thresholds = [
+            str(value)
+            for semantic_filter in plan.filters
+            if semantic_filter.field == "cumulative_percentage_threshold"
+            for value in semantic_filter.values
+        ]
+        expected = thresholds[0] if thresholds else "80"
+        if not re.search(rf"\b(?:pct|percentual|acumulad)[\w_]*\s*<=\s*{expected}\b", text, re.I):
+            return False, (
+                "SEMANTIC PLAN ERROR: SQL does not filter rows by the requested cumulative "
+                f"coverage threshold <= {expected}%."
             )
 
     if "contraceptive_obstetric_filter_required" in plan.constraints:
@@ -372,7 +540,9 @@ def _validate_additional_semantic_constraints(
                 "SEMANTIC PLAN ERROR: Death-cause anti-condition lists should include support "
                 "counts per CID, grouped by CID/description, so the result is auditable and ranked."
             )
-        if not re.search(r"\border\s+by[\s\S]{0,120}\bcount\s*\(|\border\s+by[\s\S]{0,120}total", text, re.I):
+        if not re.search(
+            r"\border\s+by[\s\S]{0,120}\bcount\s*\(|\border\s+by[\s\S]{0,120}total", text, re.I
+        ):
             return False, (
                 "SEMANTIC PLAN ERROR: Death-cause anti-condition lists should be ordered by "
                 "support count descending."
@@ -439,12 +609,13 @@ def _validate_additional_semantic_constraints(
 
     if "side_by_side_state_pivot_required" in plan.constraints:
         group_by = inspector.clause_lower("GROUP BY")
-        if re.search(r"\bestado\b", group_by, re.I):
+        if re.search(r"\bestado\b|\bsg_uf\b", group_by, re.I):
             return False, (
                 "SEMANTIC PLAN ERROR: Side-by-side state comparisons must pivot states into "
                 "separate columns, not return long-format rows grouped by state."
             )
-        if not re.search(r"\bcase\s+when[\s\S]{0,220}\bestado\b", text, re.I):
+        state_case_pattern = r"\bcase\s+when[\s\S]{0,220}\b(?:estado|sg_uf)\b"
+        if not re.search(state_case_pattern, text, re.I):
             return False, (
                 "SEMANTIC PLAN ERROR: Side-by-side state comparisons require conditional "
                 "aggregates with CASE WHEN estado = ... for each compared state."
@@ -452,7 +623,7 @@ def _validate_additional_semantic_constraints(
         state_values = [
             str(value).lower()
             for semantic_filter in plan.filters
-            if semantic_filter.field in {"estado", "estado_residencia"}
+            if semantic_filter.field in {"estado", "SG_UF", "estado_residencia", "estado_hospital"}
             for value in semantic_filter.values
         ]
         for state in state_values:
@@ -461,13 +632,13 @@ def _validate_additional_semantic_constraints(
                     f"SEMANTIC PLAN ERROR: Side-by-side pivot is missing state column/filter for {state.upper()}."
                 )
             if not re.search(
-                rf"\bcount\s*\(\s*case\s+when[\s\S]{{0,160}}\bestado\b[\s\S]{{0,80}}{re.escape(state)}",
+                rf"\bcount\s*\(\s*case\s+when[\s\S]{{0,160}}\b(?:estado|sg_uf)\b[\s\S]{{0,80}}{re.escape(state)}",
                 text,
                 re.I,
             ):
                 return False, (
-                    "SEMANTIC PLAN ERROR: Side-by-side state comparisons must output support "
-                    f"counts for {state.upper()} so averages are auditable."
+                    "SEMANTIC PLAN ERROR: Side-by-side state comparisons must compute support "
+                    f"counts for {state.upper()} so averages do not include missing sides."
                 )
         having = inspector.clause_lower("HAVING")
         if state_values and not having:
@@ -477,7 +648,7 @@ def _validate_additional_semantic_constraints(
             )
         for state in state_values:
             if not re.search(
-                rf"\bcount\s*\(\s*case\s+when[\s\S]{{0,160}}\bestado\b[\s\S]{{0,80}}{re.escape(state)}[\s\S]{{0,120}}\)\s*(?:>|>=)\s*(?:0|1|100)\b",
+                rf"\bcount\s*\(\s*case\s+when[\s\S]{{0,160}}\b(?:estado|sg_uf)\b[\s\S]{{0,80}}{re.escape(state)}[\s\S]{{0,120}}\)\s*(?:>|>=)\s*(?:0|1|100)\b",
                 having,
                 re.I,
             ):
@@ -522,89 +693,52 @@ def _validate_additional_semantic_constraints(
                 "SEMANTIC PLAN ERROR: Education-level analysis must exclude INSTRU=0 unless unknown bucket is requested."
             )
 
-    if "socioeconomico_metric_filter_required" in plan.constraints:
-        expected_metrics = [
-            value
-            for semantic_filter in plan.filters
-            if semantic_filter.field == "metrica"
-            for value in semantic_filter.values
-        ]
+    if "socioeconomico_column_metric_required" in plan.constraints:
+        expected_columns = _socioeconomic_expected_columns(plan)
         if "socioeconomico" not in text:
             return False, (
                 "SEMANTIC PLAN ERROR: The requested metric belongs to socioeconomico, but SQL does not use socioeconomico."
             )
-        for expected_metric in expected_metrics:
-            if expected_metric.lower() not in text:
+        for expected_column in expected_columns:
+            if not _sql_mentions_column(text, expected_column):
                 return False, (
-                    f"SEMANTIC PLAN ERROR: SQL does not filter socioeconomico.metrica='{expected_metric}'."
+                    "SEMANTIC PLAN ERROR: SQL does not use the current socioeconomico "
+                    f"column {expected_column.upper()} for the requested metric."
                 )
-        sum_value_metrics = {"bolsa_familia_total", "esgotamento_sanitario_domicilio"}
-        if (
-            "socioeconomico_multi_metric_requires_conditional_pivot" not in plan.constraints
-            and metric_names & sum_value_metrics
-            and not re.search(
-            r"\bsum\s*\(\s*(?:[a-z_][\w]*\.)?\"?valor\"?\s*\)",
-            text,
-            re.I,
-            )
-        ):
+        if expected_columns and re.search(r'\b(?:metrica|"valor"|\.valor)\b', text, re.I):
             return False, (
-                "SEMANTIC PLAN ERROR: Socioeconomic total metrics must aggregate "
-                "socioeconomico.valor with SUM(valor), not COUNT(*)."
+                "SEMANTIC PLAN ERROR: socioeconomico is wide-format in the current schema; "
+                "use explicit indicator columns instead of metrica/valor."
             )
 
-    if "socioeconomico_multi_metric_requires_conditional_pivot" in plan.constraints:
-        expected_metrics = [
-            value
-            for semantic_filter in plan.filters
-            if semantic_filter.field == "metrica"
-            for value in semantic_filter.values
-        ]
+    if "socioeconomico_multi_column_metrics_required" in plan.constraints:
+        expected_columns = _socioeconomic_expected_columns(plan)
         if "socioeconomico" not in text or "municipios" not in text:
             return False, (
                 "SEMANTIC PLAN ERROR: Multi-metric socioeconomic questions must join "
                 "socioeconomico to municipios."
             )
-        if not re.search(r"\bcase\s+when[\s\S]{0,200}\bmetrica\b", text, re.I):
-            return False, (
-                "SEMANTIC PLAN ERROR: Multi-metric socioeconomic questions require conditional "
-                "pivot expressions over socioeconomico.metrica."
-            )
-        if re.search(r"\bsum\s*\(\s*case\s+when[\s\S]{0,120}\bmetrica\b", text, re.I):
-            return False, (
-                "SEMANTIC PLAN ERROR: Multi-year socioeconomic indicator pivots should not SUM "
-                "conditional metric values unless the question asks for a time-total. Use MAX/AVG "
-                "per municipality metric to avoid accumulating the long-format time series."
-            )
-        for expected_metric in expected_metrics:
-            if expected_metric.lower() not in text:
+        for expected_column in expected_columns:
+            if not _sql_mentions_column(text, expected_column):
                 return False, (
-                    f"SEMANTIC PLAN ERROR: SQL does not pivot socioeconomico.metrica='{expected_metric}'."
+                    "SEMANTIC PLAN ERROR: Multi-metric socioeconomic SQL must select or aggregate "
+                    f"the current column {expected_column.upper()}."
                 )
 
-    if "idhm_mortality_cohort_requires_state_rate_split" in plan.constraints:
-        select_clause = inspector.clause_lower("SELECT")
-        if not all(token in text for token in ["internacoes", "municipios", "socioeconomico"]):
-            return False, (
-                "SEMANTIC PLAN ERROR: IDHM mortality cohort questions must combine internacoes "
-                "for hospital mortality with socioeconomico for IDHM through municipios.codigo_6d."
-            )
-        if re.search(r"\bselect\s+avg\s*\(\s*taxa\w*\s*\)\s+from\s+taxa_mortalidade\b", text, re.I):
-            return False, (
-                "SEMANTIC PLAN ERROR: IDHM mortality cohort must compare each municipality rate "
-                "against the state-level mortality rate over all admissions, not AVG(taxa) across "
-                "municipalities."
-            )
-        if not re.search(r"\bcount\s*\(", select_clause, re.I):
-            return False, (
-                "SEMANTIC PLAN ERROR: IDHM mortality cohort output must include the municipality "
-                "support count per above/below group."
-            )
-        if not re.search(r"\bavg\s*\(\s*(?:[a-z_][\w]*\.)?\"?valor\"?\s*\)", text, re.I):
-            return False, (
-                "SEMANTIC PLAN ERROR: IDHM mortality cohort output must aggregate IDHM with "
-                "AVG(socioeconomico.valor) after filtering metrica='idhm'."
-            )
+    if "socioeconomico_multi_metric_requires_conditional_pivot" in plan.constraints:
+        expected_columns = _socioeconomic_expected_columns(plan)
+        if expected_columns:
+            if "socioeconomico" not in text or "municipios" not in text:
+                return False, (
+                    "SEMANTIC PLAN ERROR: Multi-metric socioeconomic questions must join "
+                    "socioeconomico to municipios."
+                )
+            for expected_column in expected_columns:
+                if not _sql_mentions_column(text, expected_column):
+                    return False, (
+                        "SEMANTIC PLAN ERROR: SQL uses a legacy long-format metric plan; "
+                        f"use socioeconomico.{expected_column.upper()} in the current wide schema."
+                    )
 
     if "catalog_cardinality_must_use_reference_table" in plan.constraints:
         metric_names = {metric.name for metric in plan.metrics}
@@ -612,7 +746,12 @@ def _validate_additional_semantic_constraints(
             "cid_catalog_count": {
                 "table": "cid",
                 "label": "CID catalog",
-                "forbidden": [r"\binternacoes\b", r"\bdiag_princ\b", r"\bdiag_secun\b", r"\bcid_morte\b"],
+                "forbidden": [
+                    r"\binternacoes\b",
+                    r"\bdiag_princ\b",
+                    r"\bdiag_secun\b",
+                    r"\bcid_morte\b",
+                ],
             },
             "vincprev_catalog_count": {
                 "table": "vincprev",
@@ -656,9 +795,18 @@ def _validate_additional_semantic_constraints(
     if min_counts:
         min_count = min_counts[0]
         having = inspector.clause_lower("HAVING") or text
-        if not re.search(
-            rf"\bcount\s*\([^)]*\)\s*(?:>|>=)\s*{min_count}\b", having, re.I
-        ):
+        has_count_threshold = re.search(
+            rf"\bcount\s*\([^)]*\)\s*(?:>|>=)\s*{min_count}\b",
+            having,
+            re.I,
+        )
+        has_period_support_threshold = re.search(
+            rf"\b(?:p1|periodo_?1|base|antes)\.(?:n1|total_internacoes|total)"
+            rf"\s*(?:>|>=)\s*{min_count}\b",
+            text,
+            re.I,
+        )
+        if not (has_count_threshold or has_period_support_threshold):
             return False, (
                 "SEMANTIC PLAN ERROR: SQL must apply the requested minimum group support "
                 f"with HAVING COUNT(*) > {min_count} or an equivalent threshold."
@@ -667,9 +815,7 @@ def _validate_additional_semantic_constraints(
     if "top_n_average_high_cardinality_requires_minimum_group_size" in plan.constraints:
         min_count = min_counts[0] if min_counts else 100
         having = inspector.clause_lower("HAVING") or text
-        if not re.search(
-            rf"\bcount\s*\([^)]*\)\s*(?:>|>=)\s*{min_count}\b", having, re.I
-        ):
+        if not re.search(rf"\bcount\s*\([^)]*\)\s*(?:>|>=)\s*{min_count}\b", having, re.I):
             return False, (
                 "SEMANTIC PLAN ERROR: Top-N ranking by average/rate over high-cardinality entities "
                 f"must apply HAVING COUNT(*) > {min_count} or an equivalent group-support threshold."
@@ -885,13 +1031,14 @@ def _split_select_items(select_clause: str) -> list[str]:
 
 def _first_dimension_select_position(select_items: list[str], dimension: str) -> int | None:
     patterns = {
-        "estado": [r"\bestado\b"],
-        "estado_hospital": [r"\bestado\b"],
+        "estado": [r"\bestado\b", r"\bsg_uf\b"],
+        "SG_UF": [r"\bestado\b", r"\bsg_uf\b"],
+        "estado_hospital": [r"\bestado\b", r"\bsg_uf\b"],
         "municipio": [r"\bnome\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
         "municipio_hospital": [r"\bnome\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
         "hospital": [r"\bcnes\b"],
         "especialidade": [r"\bespecialidade\b", r"\bdescri[cç][aã]o\b", r"\bespec\b"],
-        "diagnostico": [r"\bcd_descricao\b", r"\bdiag_princ\b", r"\bcid\b"],
+        "diagnostico": [r"\bdescricao\b", r"\bdiag_princ\b", r"\bcid\b"],
         "procedimento": [r"\bnome_proc\b", r"\bproc_rea\b", r"\bprocedimento\b"],
         "contraceptivo": [r"\bcontraceptivo\b", r"\bcontracep1\b", r"\bdescri[cç][aã]o\b"],
         "sexo": [r"\bsexo\b"],
@@ -918,7 +1065,7 @@ def _validate_required_filters(
     for semantic_filter in plan.filters:
         field = semantic_filter.field.lower()
         values = [str(value).lower() for value in semantic_filter.values]
-        if field in {"estado", "estado_residencia"} and values:
+        if field in {"estado", "sg_uf", "estado_residencia", "estado_hospital"} and values:
             if not all(
                 re.search(rf"['\"]?{re.escape(value.lower())}['\"]?", text) for value in values
             ):
@@ -926,7 +1073,20 @@ def _validate_required_filters(
                     "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter."
                 )
         elif field in {"ano", "ano_internacao"} and values:
-            if not all(value in text for value in values):
+            numeric_years = sorted({int(value) for value in values if value.isdigit()})
+            has_all_values = all(value in text for value in values)
+            has_year_range = False
+            if len(numeric_years) >= 2:
+                start_year, end_year = str(numeric_years[0]), str(numeric_years[-1])
+                has_year_range = bool(
+                    re.search(
+                        rf"\bbetween\s+{re.escape(start_year)}\s+and\s+{re.escape(end_year)}\b",
+                        text,
+                        re.I,
+                    )
+                    and any(token in text for token in ["extract(year", "dt_inter", "year"])
+                )
+            if not (has_all_values or has_year_range):
                 return False, "SEMANTIC PLAN ERROR: SQL does not apply the requested year filter."
         elif field == "ano_intervalo" and len(values) >= 2:
             start_year, end_year = values[0], values[1]
@@ -937,7 +1097,10 @@ def _validate_required_filters(
                 token in text for token in ["extract(year", "dt_inter", "between"]
             )
             if not (has_start and has_end and has_temporal_expression):
-                return False, "SEMANTIC PLAN ERROR: SQL does not apply the requested year range filter."
+                return (
+                    False,
+                    "SEMANTIC PLAN ERROR: SQL does not apply the requested year range filter.",
+                )
         elif field == "recent_years_available" and values:
             if "current_date" in text or "now()" in text:
                 return False, (
@@ -953,9 +1116,31 @@ def _validate_required_filters(
         elif field == "sexo" and values:
             if "sexo" not in text or not any(value in text for value in values):
                 return False, "SEMANTIC PLAN ERROR: SQL does not apply the requested sex filter."
+        elif field == "raca_cor_identificada":
+            has_identified_in_list = re.search(
+                r'"?raca_cor"?\s+in\s*\((?=[^)]*\b1\b)(?=[^)]*\b2\b)'
+                r"(?=[^)]*\b3\b)(?=[^)]*\b4\b)(?=[^)]*\b5\b)[^)]*\)",
+                text,
+                re.I,
+            )
+            has_unknown_exclusion = re.search(
+                r'"?raca_cor"?\s+not\s+in\s*\((?=[^)]*\b0\b)(?=[^)]*\b99\b)[^)]*\)',
+                text,
+                re.I,
+            )
+            has_lookup_inner_join = re.search(r"\bjoin\s+raca_cor\b", text, re.I)
+            if not (has_identified_in_list or has_unknown_exclusion or has_lookup_inner_join):
+                return False, (
+                    "SEMANTIC PLAN ERROR: SQL must count identified race/color records by "
+                    "excluding SEM INFORMACAO codes, not only checking RACA_COR IS NOT NULL."
+                )
         elif field == "idade" and values:
             expected = values[0]
-            if not re.search(rf"\bidade\b\"?\s*{re.escape(semantic_filter.operator)}\s*{re.escape(expected)}\b", text, re.I):
+            if not re.search(
+                rf"\bidade\b\"?\s*{re.escape(semantic_filter.operator)}\s*{re.escape(expected)}\b",
+                text,
+                re.I,
+            ):
                 return False, "SEMANTIC PLAN ERROR: SQL does not apply the requested age filter."
         elif field == "uti":
             if "val_uti" not in text:
@@ -971,7 +1156,10 @@ def _validate_required_filters(
             )
             has_between = re.search(r"\bbetween\s+6\s+and\s+8\b", text, re.I)
             if "month" not in text or not (month_values_present or has_between):
-                return False, "SEMANTIC PLAN ERROR: SQL does not apply the requested month/season filter."
+                return (
+                    False,
+                    "SEMANTIC PLAN ERROR: SQL does not apply the requested month/season filter.",
+                )
         elif field == "diagnostico_principal_prefix" and values:
             expected_prefix = values[0].replace("%", "").lower()
             has_diag_column = re.search(r"\bdiag_princ\b|\bcid\b", text, re.I)
@@ -1002,13 +1190,6 @@ def _validate_required_filters(
             if not any(value in text for value in values):
                 return False, (
                     "SEMANTIC PLAN ERROR: SQL does not apply the requested death-cause description term."
-                )
-        elif field == "metrica" and values:
-            if "metrica" not in text or not all(value in text for value in values):
-                expected = ", ".join(values)
-                return False, (
-                    "SEMANTIC PLAN ERROR: SQL does not apply the requested metrica "
-                    f"filter ({expected})."
                 )
         elif field == "instrucao_valid":
             if not re.search(r"\binstru\b[\s\S]{0,80}\bis\s+not\s+null\b", text, re.I):
