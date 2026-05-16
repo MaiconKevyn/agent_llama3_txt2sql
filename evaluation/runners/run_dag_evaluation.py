@@ -10,23 +10,28 @@ Usage:
     python -m evaluation.runners.run_dag_evaluation
 
     # Run with a specific ground-truth file
-    python -m evaluation.runners.run_dag_evaluation --ground-truth evaluation/ground_truth_v2.json
+    python -m evaluation.runners.run_dag_evaluation --ground-truth evaluation/ground_truth_v2_revised.json
 
     # Run with parallel workers
-    python -m evaluation.runners.run_dag_evaluation --ground-truth evaluation/ground_truth_v2.json --workers 4
+    python -m evaluation.runners.run_dag_evaluation --ground-truth evaluation/ground_truth_v2_revised.json --workers 4
 
     # Generate visualization only
     python -m evaluation.runners.run_dag_evaluation --visualize-only
 
     # Run and save DAG visualization
     python -m evaluation.runners.run_dag_evaluation --save-dag-visualization
+
+    # Resume a crashed/interrupted run from its existing run id
+    python -m evaluation.runners.run_dag_evaluation --resume-run-id 20260516_120000
 """
 
-import sys
 import argparse
-from pathlib import Path
+import os
+import sys
 from datetime import datetime
-from typing import Dict, Any, Optional, List, Tuple
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
 from dotenv import load_dotenv
 
 # Add project root to path
@@ -36,7 +41,7 @@ sys.path.insert(0, str(project_root))
 # Load environment variables
 load_dotenv(project_root / ".env")
 
-from evaluation.dag import create_evaluation_pipeline
+from evaluation.dag import create_evaluation_pipeline  # noqa: E402
 
 
 def _positive_int(value: str) -> int:
@@ -44,6 +49,16 @@ def _positive_int(value: str) -> int:
     if parsed < 1:
         raise argparse.ArgumentTypeError("value must be >= 1")
     return parsed
+
+
+def _llamaindex_mode(value: str) -> str:
+    valid_modes = {"context", "sql_draft", "hybrid"}
+    normalized = value.strip().lower()
+    if normalized not in valid_modes:
+        raise argparse.ArgumentTypeError(
+            "value must be one of: context, sql_draft, hybrid"
+        )
+    return normalized
 
 
 def export_ex_zero_failures(
@@ -126,37 +141,40 @@ Examples:
   # Run full evaluation
   python -m evaluation.runners.run_dag_evaluation
 
-  # Run full evaluation with ground_truth_v2
-  python -m evaluation.runners.run_dag_evaluation --ground-truth evaluation/ground_truth_v2.json
+  # Run full evaluation with the revised ground truth
+  python -m evaluation.runners.run_dag_evaluation --ground-truth evaluation/ground_truth_v2_revised.json
 
-  # Run full evaluation with ground_truth_v2 and 4 workers
-  python -m evaluation.runners.run_dag_evaluation --ground-truth evaluation/ground_truth_v2.json --workers 4
+  # Run full evaluation with the revised ground truth and 4 workers
+  python -m evaluation.runners.run_dag_evaluation --ground-truth evaluation/ground_truth_v2_revised.json --workers 4
 
   # Generate visualization only (no execution)
   python -m evaluation.runners.run_dag_evaluation --visualize-only
 
   # Run and save visualization
   python -m evaluation.runners.run_dag_evaluation --save-dag-visualization
-        """
+
+  # Resume a crashed/interrupted run
+  python -m evaluation.runners.run_dag_evaluation --resume-run-id 20260516_120000
+        """,
     )
 
     parser.add_argument(
         "--visualize-only",
         action="store_true",
-        help="Only generate DAG visualization without running evaluation"
+        help="Only generate DAG visualization without running evaluation",
     )
 
     parser.add_argument(
         "--save-dag-visualization",
         action="store_true",
-        help="Save DAG visualization after execution"
+        help="Save DAG visualization after execution",
     )
 
     parser.add_argument(
         "--dag-output",
         type=str,
         default="docs/evaluation_pipeline_dag.png",
-        help="Path to save DAG visualization (default: docs/evaluation_pipeline_dag.png)"
+        help="Path to save DAG visualization (default: docs/evaluation_pipeline_dag.png)",
     )
 
     parser.add_argument(
@@ -168,13 +186,38 @@ Examples:
         help=(
             "Path to the ground-truth JSON file to evaluate. Relative paths are resolved "
             "from the project root. Default: evaluation/ground_truth.json"
-        )
+        ),
+    )
+
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
+
+    parser.add_argument(
+        "--run-id",
+        type=str,
+        default=None,
+        help=(
+            "Use a fixed run id and output folder evaluation/results/dag_evaluation_<run-id>. "
+            "By default a timestamp run id is generated."
+        ),
     )
 
     parser.add_argument(
-        "--verbose",
+        "--resume",
         action="store_true",
-        help="Enable verbose output"
+        help="Reuse completed per-query traces in the selected --run-id output folder.",
+    )
+
+    parser.add_argument(
+        "--resume-run-id",
+        type=str,
+        default=None,
+        help="Resume evaluation from evaluation/results/dag_evaluation_<run-id>.",
+    )
+
+    parser.add_argument(
+        "--force-rerun",
+        action="store_true",
+        help="Ignore existing per-query traces and overwrite them as queries are re-evaluated.",
     )
 
     parser.add_argument(
@@ -186,7 +229,43 @@ Examples:
         help=(
             "Number of worker threads for question evaluation. "
             "Use 1 for sequential mode. Default: 1"
-        )
+        ),
+    )
+
+    parser.add_argument(
+        "--llamaindex-mode",
+        type=_llamaindex_mode,
+        default=None,
+        help=(
+            "LlamaIndex mode for the agent inside the DAG: context, "
+            "sql_draft, or hybrid. If omitted, LLAMAINDEX_MODE from .env is used "
+            "when present; otherwise context."
+        ),
+    )
+
+    parser.add_argument(
+        "--llamaindex-top-k-tables",
+        type=_positive_int,
+        default=None,
+        help="Number of schema tables to retrieve with LlamaIndex. Default: env or 6",
+    )
+
+    parser.add_argument(
+        "--llamaindex-index-dir",
+        type=str,
+        default=None,
+        help="Directory for the persisted LlamaIndex schema index. Default: env or .llamaindex_schema",
+    )
+
+    parser.add_argument(
+        "--llamaindex-rebuild-index",
+        action="store_true",
+        help="Force rebuilding the LlamaIndex schema index before retrieval",
+    )
+    parser.add_argument(
+        "--verify-llamaindex-schema-with-db",
+        action="store_true",
+        help="Call sql_db_schema to verify LlamaIndex schema context during evaluation",
     )
 
     return parser.parse_args()
@@ -196,9 +275,9 @@ def main():
     """Main entry point"""
     args = parse_arguments()
 
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("TEXT-TO-SQL EVALUATION - DAG-BASED PIPELINE")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     try:
         # Create pipeline DAG
@@ -224,13 +303,43 @@ def main():
             print("\nNote: Use without --visualize-only to run evaluation")
             return
 
+        if args.resume_run_id and args.run_id and args.resume_run_id != args.run_id:
+            print("❌ Use either --run-id or --resume-run-id, or pass the same value to both")
+            sys.exit(2)
+
         # Execute pipeline
         print("Starting pipeline execution...\n")
         print(f"Ground truth: {args.ground_truth_path}")
         print(f"Workers: {args.max_workers}\n")
-        run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        effective_llamaindex_mode = (
+            args.llamaindex_mode or os.getenv("LLAMAINDEX_MODE") or "context"
+        )
+        print(f"LlamaIndex mode: {effective_llamaindex_mode}")
+        if args.llamaindex_top_k_tables:
+            print(f"LlamaIndex top-k tables: {args.llamaindex_top_k_tables}")
+        if args.llamaindex_index_dir:
+            print(f"LlamaIndex index dir: {args.llamaindex_index_dir}")
+        if args.llamaindex_rebuild_index:
+            print("LlamaIndex rebuild index: true")
+        if args.verify_llamaindex_schema_with_db:
+            print("Verify LlamaIndex schema with DB: true")
+        print("")
+        run_id = args.resume_run_id or args.run_id or datetime.now().strftime("%Y%m%d_%H%M%S")
         run_output_dir = project_root / "evaluation" / "results" / f"dag_evaluation_{run_id}"
+        resume_enabled = bool(args.resume or args.resume_run_id)
+        if args.resume_run_id and not run_output_dir.exists():
+            print(f"❌ Cannot resume: output directory not found: {run_output_dir}")
+            sys.exit(2)
+        if args.run_id and run_output_dir.exists() and not resume_enabled and not args.force_rerun:
+            print(f"❌ Output directory already exists: {run_output_dir}")
+            print("   Use --resume to reuse completed traces, or --force-rerun to overwrite them.")
+            sys.exit(2)
+        run_output_dir.mkdir(parents=True, exist_ok=True)
         print(f"Output directory: {run_output_dir}\n")
+        if resume_enabled and not args.force_rerun:
+            print(f"Resume: enabled (completed traces in {run_output_dir / 'queries'} will be reused)\n")
+        elif args.force_rerun:
+            print("Resume: disabled by --force-rerun\n")
         start_time = datetime.now()
 
         results = dag.execute(
@@ -239,6 +348,14 @@ def main():
                 "max_workers": args.max_workers,
                 "run_id": run_id,
                 "output_dir": str(run_output_dir),
+                "resume": resume_enabled,
+                "resume_run_id": args.resume_run_id,
+                "force_rerun": args.force_rerun,
+                "llamaindex_mode": args.llamaindex_mode,
+                "llamaindex_top_k_tables": args.llamaindex_top_k_tables,
+                "llamaindex_index_dir": args.llamaindex_index_dir,
+                "llamaindex_rebuild_index": args.llamaindex_rebuild_index,
+                "verify_llamaindex_schema_with_db": args.verify_llamaindex_schema_with_db,
             }
         )
 
@@ -249,10 +366,10 @@ def main():
         successful_tasks = sum(1 for r in results.values() if r.success)
         failed_tasks = len(results) - successful_tasks
 
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         print("PIPELINE EXECUTION SUMMARY")
-        print(f"{'='*80}")
-        print(f"Total time: {total_time:.2f}s ({total_time/60:.1f} minutes)")
+        print(f"{'=' * 80}")
+        print(f"Total time: {total_time:.2f}s ({total_time / 60:.1f} minutes)")
         print(f"Successful tasks: {successful_tasks}/{len(results)}")
         print(f"Failed tasks: {failed_tasks}/{len(results)}")
 
@@ -269,7 +386,7 @@ def main():
                 dag_output = run_output_dir / dag_output.name
             print(f"\nSaving DAG visualization: {dag_output}")
             dag.visualize(output_path=str(dag_output), show_descriptions=True)
-            print(f"✅ DAG visualization saved")
+            print("✅ DAG visualization saved")
 
         # Export ground truths com EX = 0
         export_ex_zero_failures(
@@ -279,22 +396,24 @@ def main():
         )
 
         # Final status
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         if failed_tasks == 0:
             print("✅ EVALUATION COMPLETED SUCCESSFULLY")
-            print(f"{'='*80}\n")
+            print(f"{'=' * 80}\n")
 
             # Print summary from save_results task
-            if 'save_results' in results and results['save_results'].success:
-                save_data = results['save_results'].data
-                print(f"📊 Results saved to:")
+            if "save_results" in results and results["save_results"].success:
+                save_data = results["save_results"].data
+                print("📊 Results saved to:")
                 print(f"   - Directory: {save_data['output_dir']}")
                 print(f"   - JSON: {save_data['json_path']}")
                 print(f"   - Report: {save_data['report_path']}")
+                print(f"   - Trace: {save_data['trace_path']}")
+                print(f"   - Analysis: {save_data['analysis_path']}")
 
         else:
             print("⚠️  EVALUATION COMPLETED WITH ERRORS")
-            print(f"{'='*80}\n")
+            print(f"{'=' * 80}\n")
             sys.exit(1)
 
     except KeyboardInterrupt:
@@ -304,6 +423,7 @@ def main():
     except Exception as e:
         print(f"\n❌ Evaluation failed: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

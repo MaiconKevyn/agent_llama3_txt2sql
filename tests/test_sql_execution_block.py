@@ -65,16 +65,16 @@ def test_remove_unrequested_nonzero_metric_filter_preserves_order_by():
     from src.agent.execution import _remove_unrequested_nonzero_metric_filter
 
     sql = (
-        "SELECT tm.estado, tm.ano, tm.taxa "
+        'SELECT tm."SG_UF", tm.ano, tm.taxa '
         "FROM taxa_mortalidade tm "
         "WHERE tm.taxa > 0 "
-        "ORDER BY tm.estado, tm.ano;"
+        'ORDER BY tm."SG_UF", tm.ano;'
     )
 
     repaired = _remove_unrequested_nonzero_metric_filter(sql)
 
     assert "taxa > 0" not in repaired
-    assert "ORDER BY tm.estado, tm.ano" in repaired
+    assert 'ORDER BY tm."SG_UF", tm.ano' in repaired
 
 
 def test_reorder_top_n_per_group_select_places_group_before_entity():
@@ -101,9 +101,7 @@ def test_reorder_top_n_per_group_select_places_group_before_entity():
 def test_replace_top1_rank_with_row_number():
     from src.agent.execution import _replace_top1_rank_with_row_number
 
-    sql = (
-        'SELECT RANK() OVER (PARTITION BY e."DESCRICAO" ORDER BY SUM(i."VAL_TOT") DESC) AS rk'
-    )
+    sql = 'SELECT RANK() OVER (PARTITION BY e."DESCRICAO" ORDER BY SUM(i."VAL_TOT") DESC) AS rk'
 
     repaired = _replace_top1_rank_with_row_number(sql)
 
@@ -122,8 +120,8 @@ def test_build_filtered_category_period_percentage_sql_from_semantic_plan():
     sql = _build_filtered_category_period_percentage_sql(plan)
 
     assert sql is not None
-    assert 'i."DIAG_PRINC" LIKE \'J%\'' in sql
-    assert 'mu."estado" = \'RS\'' in sql
+    assert "i.\"DIAG_PRINC\" LIKE 'J%'" in sql
+    assert "mu.\"SG_UF\" = 'RS'" in sql
     assert "SUM(COUNT(*)) OVER ()" in sql
     assert "GROUP BY EXTRACT(QUARTER" in sql
 
@@ -181,7 +179,7 @@ def test_build_moving_average_sql_from_semantic_plan():
 
     assert sql is not None
     assert "COUNT(*) AS total_internacoes" in sql
-    assert 'mu."estado" = \'RS\'' in sql
+    assert "mu.\"SG_UF\" = 'RS'" in sql
     assert "BETWEEN 2008 AND 2023" in sql
     assert "AVG(total_internacoes) OVER" in sql
     assert "ROWS BETWEEN 2 PRECEDING AND CURRENT ROW" in sql
@@ -215,12 +213,8 @@ def test_build_idhm_mortality_cohort_sql_from_semantic_plan():
 
     sql = _build_idhm_mortality_cohort_sql(plan)
 
-    assert sql is not None
-    assert 's."metrica" = \'idhm\'' in sql
-    assert 'mu."estado" = \'RS\'' in sql
-    assert "HAVING COUNT(*) > 500" in sql
-    assert "AVG(s.\"valor\")" in sql
-    assert "Acima da media" in sql
+    assert sql is None
+    assert any("unsupported_metric:idhm" in item for item in plan.ambiguities)
 
 
 def test_build_socioeconomic_multi_metric_sql_from_semantic_plan():
@@ -233,12 +227,8 @@ def test_build_socioeconomic_multi_metric_sql_from_semantic_plan():
 
     sql = _build_socioeconomic_multi_metric_sql(plan)
 
-    assert sql is not None
-    assert "bolsa_familia_total" in sql
-    assert "mortalidade_infantil_1ano" in sql
-    assert 'mu."estado" = \'MA\'' in sql
-    assert "MAX(CASE WHEN" in sql
-    assert "LIMIT 10" in sql
+    assert sql is None
+    assert any("unsupported_metric:bolsa_familia" in item for item in plan.ambiguities)
 
 
 def test_build_mortality_rate_time_series_sql_from_semantic_plan():
@@ -250,11 +240,11 @@ def test_build_mortality_rate_time_series_sql_from_semantic_plan():
     sql = _build_mortality_rate_time_series_sql(plan)
 
     assert sql is not None
-    assert 'mu."estado" IN (\'MA\', \'RS\')' in sql
+    assert "mu.\"SG_UF\" IN ('MA', 'RS')" in sql
     assert 'EXTRACT(YEAR FROM i."DT_INTER") AS ano' in sql
     assert 'SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END)' in sql
-    assert 'GROUP BY mu."estado", ano' in sql
-    assert 'ORDER BY mu."estado", ano' in sql
+    assert 'GROUP BY mu."SG_UF", ano' in sql
+    assert 'ORDER BY mu."SG_UF", ano' in sql
 
 
 def test_build_recent_years_mortality_by_sex_sql_from_semantic_plan():
@@ -288,7 +278,7 @@ def test_build_goalv2_death_cause_description_count_sql():
     assert sql is not None
     assert 'i."CID_MORTE" = c."CID"' in sql
     assert 'i."MORTE" = true' in sql
-    assert 'c."CD_DESCRICAO" ILIKE \'%meningite%\'' in sql
+    assert "c.\"DESCRICAO\" ILIKE '%meningite%'" in sql
     assert 'i."DIAG_PRINC"' not in sql
 
 
@@ -296,12 +286,14 @@ def test_build_goalv2_top_n_obstetric_municipality_sql():
     from src.agent.execution import _build_top_n_count_by_dimension_sql
     from src.semantic.planner import build_semantic_plan
 
-    plan = build_semantic_plan("Quais os cinco municípios com mais internações obstétricas registradas?")
+    plan = build_semantic_plan(
+        "Quais os cinco municípios com mais internações obstétricas registradas?"
+    )
 
     sql = _build_top_n_count_by_dimension_sql(plan)
 
     assert sql is not None
-    assert 'JOIN municipios mu ON i."MUNIC_RES" = mu."codigo_6d"' in sql
+    assert 'JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"' in sql
     assert 'i."ESPEC" = 2' in sql
     assert "ORDER BY total_internacoes DESC" in sql
     assert "LIMIT 5" in sql
@@ -325,7 +317,9 @@ def test_build_goalv2_filtered_cohort_weekday_percentage_sql():
     from src.agent.execution import _build_filtered_cohort_weekday_percentage_sql
     from src.semantic.planner import build_semantic_plan
 
-    plan = build_semantic_plan("Qual a distribuição e percentual de internações em UTI por dia da semana?")
+    plan = build_semantic_plan(
+        "Qual a distribuição e percentual de internações em UTI por dia da semana?"
+    )
 
     sql = _build_filtered_cohort_weekday_percentage_sql(plan)
 
@@ -367,7 +361,99 @@ def test_build_goalv2_side_by_side_state_average_sql():
     sql = _build_side_by_side_state_average_sql(plan)
 
     assert sql is not None
-    assert 'AVG(CASE WHEN mu."estado" = \'MA\' THEN i."DIAS_PERM" END)' in sql
-    assert 'AVG(CASE WHEN mu."estado" = \'RS\' THEN i."DIAS_PERM" END)' in sql
+    assert 'AVG(CASE WHEN mu."SG_UF" = \'MA\' THEN i."DIAS_PERM" END)' in sql
+    assert 'AVG(CASE WHEN mu."SG_UF" = \'RS\' THEN i."DIAS_PERM" END)' in sql
     assert 'GROUP BY e."DESCRICAO"' in sql
-    assert "GROUP BY e.\"DESCRICAO\", mu" not in sql
+    assert 'GROUP BY e."DESCRICAO", mu' not in sql
+    assert "total_internacoes" not in sql
+    assert " > 0" in sql
+
+
+def test_build_goalv2_annual_growth_rate_sql_preserves_filters():
+    from src.agent.execution import _build_annual_growth_rate_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan(
+        "Qual o crescimento percentual anual de internações no estado do RS entre 2008 e 2023, "
+        "retornando apenas anos com ano anterior disponível?"
+    )
+
+    sql = _build_annual_growth_rate_sql(plan)
+
+    assert sql is not None
+    assert 'mu."SG_UF" = \'RS\'' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") BETWEEN 2008 AND 2023' in sql
+    assert "LAG(total_internacoes) OVER (ORDER BY ano)" in sql
+    assert "WHERE total_anterior IS NOT NULL" in sql
+
+
+def test_build_goalv2_cost_per_day_hospital_sql():
+    from src.agent.execution import _build_cost_per_day_by_hospital_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan(
+        "Quais são os 5 hospitais mais eficientes em custo por dia de internação "
+        "(com mais de 1000 internações)?"
+    )
+
+    sql = _build_cost_per_day_by_hospital_sql(plan)
+
+    assert sql is not None
+    assert 'SUM(i."VAL_TOT") / NULLIF(SUM(i."DIAS_PERM"), 0)' in sql
+    assert "HAVING COUNT(*) > 1000" in sql
+    assert "LIMIT 5" in sql
+
+
+def test_build_goalv2_reference_uti_rate_sql():
+    from src.agent.execution import _build_reference_uti_rate_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan(
+        "Quais são os 10 municípios com mais de 1000 internações que têm taxa de internação em UTI "
+        "mais de duas vezes acima da média nacional?"
+    )
+
+    sql = _build_reference_uti_rate_sql(plan)
+
+    assert sql is not None
+    assert "WITH media_nacional AS" in sql
+    assert 'SUM(CASE WHEN "VAL_UTI" > 0 THEN 1 ELSE 0 END)' in sql
+    assert 'mu."SG_UF" AS estado' in sql
+    assert "AS taxa_uti_local" in sql
+    assert "AS taxa_uti_nacional" in sql
+    assert "2 * mn.taxa_uti_nacional" in sql
+    assert "ORDER BY taxa_uti_local DESC" in sql
+    assert "LIMIT 10" in sql
+
+
+def test_build_goalv2_cumulative_coverage_sql():
+    from src.agent.execution import _build_cumulative_coverage_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan(
+        "Quais procedimentos, ordenados por volume decrescente, cobrem até 80% "
+        "do total de atendimentos realizados?"
+    )
+
+    sql = _build_cumulative_coverage_sql(plan)
+
+    assert sql is not None
+    assert "ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW" in sql
+    assert "WHERE pct_acumulado <= 80" in sql
+
+
+def test_build_goalv2_dual_top_n_intersection_sql():
+    from src.agent.execution import _build_dual_top_n_municipality_intersection_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan(
+        "Quais municípios com mais de 500 internações aparecem simultaneamente no top-20 "
+        "de volume e no top-20 de taxa de mortalidade nos estados MA e RS?"
+    )
+
+    sql = _build_dual_top_n_municipality_intersection_sql(plan)
+
+    assert sql is not None
+    assert "WITH top_volume AS" in sql
+    assert "top_mortalidade" in sql
+    assert "IN (SELECT municipio FROM top_mortalidade)" in sql

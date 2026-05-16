@@ -116,10 +116,10 @@ check("NOT IN subquery → validation recommends NOT EXISTS", not passed5b and "
 # 5c: per-group top-N with LIMIT, no PARTITION BY
 passed5c, msg5c = check_semantic_rules(
     "Quais são os 3 hospitais com maior custo médio de UTI por estado (MA e RS)?",
-    """SELECT mu.estado, i."CNES", AVG(i."VAL_UTI") AS custo FROM internacoes i
-       JOIN municipios mu ON i."MUNIC_RES"=mu.codigo_6d
-       WHERE i."VAL_UTI">0 AND mu.estado IN ('MA','RS')
-       GROUP BY mu.estado, i."CNES" ORDER BY custo DESC LIMIT 6"""
+    """SELECT mu."SG_UF", i."CNES", AVG(i."VAL_UTI") AS custo FROM internacoes i
+       JOIN municipios mu ON i."MUNIC_RES"=mu.CO_MUNICIPIO_6D
+       WHERE i."VAL_UTI">0 AND mu."SG_UF" IN ('MA','RS')
+       GROUP BY mu."SG_UF", i."CNES" ORDER BY custo DESC LIMIT 6"""
 )
 check("'por estado' + 'maior' + LIMIT (no PARTITION BY) → PARTITION error",
       not passed5c and "PARTITION" in (msg5c or ""), True)
@@ -128,11 +128,11 @@ check("'por estado' + 'maior' + LIMIT (no PARTITION BY) → PARTITION error",
 passed5d, msg5d = check_semantic_rules(
     "Quais são os 3 hospitais com maior custo médio de UTI por estado (MA e RS)?",
     """SELECT estado, "CNES", custo_medio FROM (
-         SELECT mu.estado, i."CNES", AVG(i."VAL_UTI") AS custo_medio,
-                ROW_NUMBER() OVER (PARTITION BY mu.estado ORDER BY AVG(i."VAL_UTI") DESC) AS rn
-         FROM internacoes i JOIN municipios mu ON i."MUNIC_RES"=mu.codigo_6d
-         WHERE i."VAL_UTI">0 AND mu.estado IN ('MA','RS')
-         GROUP BY mu.estado, i."CNES"
+         SELECT mu."SG_UF", i."CNES", AVG(i."VAL_UTI") AS custo_medio,
+                ROW_NUMBER() OVER (PARTITION BY mu."SG_UF" ORDER BY AVG(i."VAL_UTI") DESC) AS rn
+         FROM internacoes i JOIN municipios mu ON i."MUNIC_RES"=mu.CO_MUNICIPIO_6D
+         WHERE i."VAL_UTI">0 AND mu."SG_UF" IN ('MA','RS')
+         GROUP BY mu."SG_UF", i."CNES"
        ) sub WHERE rn <= 3 ORDER BY estado, rn"""
 )
 check("Correct PARTITION BY query passes validation", passed5d, True)

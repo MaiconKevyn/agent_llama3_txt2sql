@@ -166,6 +166,23 @@ def plan_gate_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
     meta["semantic_plan"] = semantic_plan_dump
     meta["semantic_constraints"] = semantic_plan.constraints
     meta["semantic_null_policy"] = semantic_plan.null_policy
+    unsupported_schema_metrics = [
+        item.split(":", 1)[1]
+        for item in semantic_plan.ambiguities
+        if item.startswith("unsupported_metric:")
+    ]
+    if unsupported_schema_metrics:
+        metric_list = ", ".join(unsupported_schema_metrics)
+        state["needs_clarification"] = True
+        state["clarification_question"] = (
+            "A metrica solicitada nao esta disponivel no schema atual "
+            f"({metric_list}). Posso responder usando metricas disponiveis como "
+            "populacao, PIB per capita, mortalidade infantil, leitos SUS ou medicos?"
+        )
+        state["current_error"] = None
+        state["multi_query_allowed"] = False
+        state["execution_mode"] = "clarification"
+        meta["unsupported_schema_metric"] = unsupported_schema_metrics
     state["response_metadata"] = meta
 
     logger.info(

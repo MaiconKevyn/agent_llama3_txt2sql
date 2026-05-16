@@ -6,7 +6,7 @@ symbol so that workflow.py and orchestrator.py continue to work unchanged.
 
 Pipeline execution order (see workflow.py for the full graph):
   1. classification.py   — classify query (DATABASE / CONVERSATIONAL / SCHEMA)
-  2. table_selection.py  — discover and select tables (heuristic → embedding → LLM)
+  2. table_selection.py  — discover and select tables with LlamaIndex schema retrieval
   3. schema_node.py      — fetch schema for selected tables (cached)
   4. semantic_planner.py — reconcile heuristic and structured semantic plans
   5. sql_generation.py   — CoT planning and SQL generation
@@ -16,7 +16,6 @@ Pipeline execution order (see workflow.py for the full graph):
 
 Shared utilities (not pipeline nodes):
   schema_utils.py        — schema parsing, column checks, suggestions
-  table_selector.py      — EmbeddingTableSelector (Stage 2 of table selection)
   llm_manager.py         — OpenAILLMManager + get/set_global_llm_manager singleton
 """
 
@@ -60,12 +59,9 @@ from .sql_generation import (  # noqa: F401  # step 4
     reasoning_node,
 )
 from .table_selection import (  # noqa: F401
-    _get_intelligent_fallback,
-    _heuristic_table_selection,
-    _parse_llm_table_selection,
-    _select_relevant_tables,
     _validate_table_selection,
     list_tables_node,  # noqa: F401  # step 2
+    select_tables_with_llamaindex,
 )
 from .validation import validate_sql_node  # noqa: F401  # step 5
 

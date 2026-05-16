@@ -90,6 +90,10 @@ def run_regression(
     ex_threshold: float = 0.90,
     per_query_timeout: int = 60,
     output_path: str | None = None,
+    llamaindex_mode: str = "context",
+    llamaindex_top_k_tables: int = 6,
+    llamaindex_rebuild_index: bool = False,
+    verify_llamaindex_schema_with_db: bool = False,
     verbose: bool = True,
 ) -> dict:
     """Run the regression suite and return a results dict."""
@@ -103,14 +107,22 @@ def run_regression(
         sys.exit("[ERROR] OPENAI_API_KEY not set.")
 
     from src.agent.orchestrator import LangGraphOrchestrator
-    from src.application.config.simple_config import ApplicationConfig
+    from src.application.config.simple_config import ApplicationConfig, OrchestratorConfig
 
     queries = _load_regression_set(tier)
     if max_queries:
         queries = queries[:max_queries]
 
     config = ApplicationConfig()
-    orchestrator = LangGraphOrchestrator(config)
+    orch_config = OrchestratorConfig(
+        llamaindex_mode=llamaindex_mode,
+        enable_llamaindex_context=llamaindex_mode in {"context", "sql_draft", "hybrid"},
+        enable_llamaindex_sql_draft=llamaindex_mode == "sql_draft",
+        llamaindex_top_k_tables=llamaindex_top_k_tables,
+        llamaindex_rebuild_index=llamaindex_rebuild_index,
+        verify_llamaindex_schema_with_db=verify_llamaindex_schema_with_db,
+    )
+    orchestrator = LangGraphOrchestrator(config, orchestrator_config=orch_config)
     db_manager = orchestrator._llm_manager  # type: ignore[attr-defined]
 
     run_ts = datetime.utcnow().isoformat() + "Z"
@@ -123,7 +135,11 @@ def run_regression(
     by_tier: dict[str, dict] = {}
 
     print(f"\n{'─' * 60}")
-    print(f"  Regression Suite — {len(queries)} queries | model={model_id} | sha={git_sha}")
+    print(
+        f"  Regression Suite — {len(queries)} queries | model={model_id} "
+        f"| sha={git_sha} | llamaindex={llamaindex_mode} "
+        f"| verify_schema_db={verify_llamaindex_schema_with_db}"
+    )
     print(f"{'─' * 60}\n")
 
     for i, q in enumerate(queries, 1):
@@ -137,6 +153,7 @@ def run_regression(
         generated_sql = ""
         error_msg = ""
         taxonomy: list[str] = []
+        metadata: dict[str, Any] = {}
 
         try:
             result = orchestrator.process_query(
@@ -145,6 +162,7 @@ def run_regression(
                 force_single_query=True,
             )
             generated_sql = result.get("sql_query", "")
+            metadata = result.get("metadata", {}) or {}
             agent_rows = result.get("final_result_rows")
             if agent_rows is None:
                 agent_rows = result.get("results", [])
@@ -184,6 +202,11 @@ def run_regression(
                 "ex": ex,
                 "elapsed_s": elapsed,
                 "failure_taxonomy": taxonomy,
+                "llamaindex_mode": metadata.get("llamaindex_mode", llamaindex_mode),
+                "llamaindex_retrieval_mode": metadata.get("llamaindex_retrieval_mode"),
+                "llamaindex_selected_tables": metadata.get("llamaindex_selected_tables", []),
+                "sql_generation_source": metadata.get("sql_generation_source"),
+                "latency_by_component": metadata.get("latency_by_component", {}),
                 "error": error_msg,
                 "critical_rule": q.get("critical_rule"),
             }
@@ -207,6 +230,10 @@ def run_regression(
         "git_sha": git_sha,
         "model_id": model_id,
         "prompt_version": prompt_version,
+        "llamaindex_mode": llamaindex_mode,
+        "llamaindex_top_k_tables": llamaindex_top_k_tables,
+        "llamaindex_rebuild_index": llamaindex_rebuild_index,
+        "verify_llamaindex_schema_with_db": verify_llamaindex_schema_with_db,
         "n_queries": len(queries),
         "ex_overall": round(overall_ex, 4),
         "ex_threshold": ex_threshold,
@@ -234,6 +261,14 @@ def main() -> None:
     parser.add_argument("--threshold", type=float, default=0.90)
     parser.add_argument("--timeout", type=int, default=60)
     parser.add_argument("--output", type=str, default=None)
+    parser.add_argument(
+        "--llamaindex-mode",
+        choices=["context", "sql_draft", "hybrid"],
+        default="context",
+    )
+    parser.add_argument("--llamaindex-top-k-tables", type=int, default=6)
+    parser.add_argument("--llamaindex-rebuild-index", action="store_true")
+    parser.add_argument("--verify-llamaindex-schema-with-db", action="store_true")
     parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args()
 
@@ -248,6 +283,10 @@ def main() -> None:
         ex_threshold=args.threshold,
         per_query_timeout=args.timeout,
         output_path=args.output,
+        llamaindex_mode=args.llamaindex_mode,
+        llamaindex_top_k_tables=args.llamaindex_top_k_tables,
+        llamaindex_rebuild_index=args.llamaindex_rebuild_index,
+        verify_llamaindex_schema_with_db=args.verify_llamaindex_schema_with_db,
         verbose=not args.quiet,
     )
 

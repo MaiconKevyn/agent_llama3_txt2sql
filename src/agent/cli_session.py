@@ -1,5 +1,5 @@
-from typing import Any, Callable, Dict
-
+from collections.abc import Callable
+from typing import Any
 
 WORKFLOW_STRUCTURE_TEXT = """
     START
@@ -40,7 +40,7 @@ WORKFLOW_STRUCTURE_TEXT = """
 
      Features:
     • PostgreSQL with 15 specialized tables
-    • Intelligent table selection (mortes, procedimentos, etc.)
+    • LlamaIndex schema-based table selection
     • OpenAI tool calling (gpt-4o / gpt-4o-mini)
     • Retry mechanisms with error recovery
     • Healthcare domain optimization (SUS data)
@@ -160,7 +160,7 @@ class InteractiveSession:
 
     @staticmethod
     def _print_result(
-        result: Dict[str, Any],
+        result: dict[str, Any],
         print_fn: Callable[[str], None] = print,
     ) -> None:
         if isinstance(result, dict) and result.get("success"):

@@ -139,7 +139,8 @@ app.post('/api/query', async (req, res) => {
     const startTime = Date.now();
 
     try {
-        const { question, session_id } = req.body;
+        const { question, session_id, debug } = req.body;
+        const debugEnabled = Boolean(debug);
 
         if (!question || typeof question !== 'string' || question.trim().length === 0) {
             return res.status(400).json({
@@ -169,7 +170,8 @@ app.post('/api/query', async (req, res) => {
             body: JSON.stringify({
                 query: question,
                 session_id: session_id || null,
-                include_sql: false
+                include_sql: debugEnabled,
+                debug: debugEnabled
             })
         });
 
@@ -182,11 +184,13 @@ app.post('/api/query', async (req, res) => {
             status: response.status,
             response: response.response || response.answer,
             answer: response.answer || response.response,
+            error_message: response.error_message || (!response.success ? response.answer || response.response : null),
             sql_query: response.sql_query || response.sql || null,
             sql: response.sql || response.sql_query || null,
             chart: response.chart || null,
             session_id: response.session_id || session_id || null,
-            metadata: response.metadata || {},
+            metadata: debugEnabled ? response.metadata || {} : {},
+            debug: debugEnabled ? response.debug || null : null,
             execution_time: executionTime,
             timestamp: new Date().toISOString()
         });

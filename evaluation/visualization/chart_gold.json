@@ -8,7 +8,7 @@
     "expected_y": "total_internacoes",
     "expected_series": null,
     "expected_echarts_series_type": "bar",
-    "sql_query": "SELECT mu.\"nome\" AS municipio, COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"codigo_6d\" GROUP BY mu.\"nome\" ORDER BY total_internacoes DESC LIMIT 5;",
+    "sql_query": "SELECT mu.\"NO_MUNICIPIO\" AS municipio, COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" GROUP BY mu.\"NO_MUNICIPIO\" ORDER BY total_internacoes DESC LIMIT 5;",
     "results": [{"result": ["Porto Alegre", 1569537]}, {"result": ["Sao Luis", 891253]}, {"result": ["Canoas", 422780]}],
     "row_count": 3
   },
@@ -21,7 +21,7 @@
     "expected_y": "total_mortes",
     "expected_series": null,
     "expected_echarts_series_type": "bar",
-    "sql_query": "SELECT mu.\"nome\" AS municipio, COUNT(*) AS total_mortes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"codigo_6d\" WHERE i.\"MORTE\" = true GROUP BY mu.\"nome\" ORDER BY total_mortes DESC LIMIT 5;",
+    "sql_query": "SELECT mu.\"NO_MUNICIPIO\" AS municipio, COUNT(*) AS total_mortes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"MORTE\" = true GROUP BY mu.\"NO_MUNICIPIO\" ORDER BY total_mortes DESC LIMIT 5;",
     "results": [{"result": ["Porto Alegre", 52000]}, {"result": ["Canoas", 18000]}, {"result": ["Pelotas", 16000]}],
     "row_count": 3
   },
@@ -47,7 +47,7 @@
     "expected_y": "total_internacoes",
     "expected_series": null,
     "expected_echarts_series_type": "bar",
-    "sql_query": "SELECT mu.\"estado\" AS estado, COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"codigo_6d\" GROUP BY mu.\"estado\" ORDER BY total_internacoes DESC;",
+    "sql_query": "SELECT mu.\"SG_UF\" AS estado, COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" GROUP BY mu.\"SG_UF\" ORDER BY total_internacoes DESC;",
     "results": [{"result": ["RS", 600000]}, {"result": ["SC", 410000]}, {"result": ["PR", 390000]}],
     "row_count": 3
   },
@@ -60,7 +60,7 @@
     "expected_y": "taxa_mortalidade",
     "expected_series": null,
     "expected_echarts_series_type": "bar",
-    "sql_query": "SELECT mu.\"estado\" AS estado, ROUND(SUM(CASE WHEN i.\"MORTE\" THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"codigo_6d\" GROUP BY mu.\"estado\";",
+    "sql_query": "SELECT mu.\"SG_UF\" AS estado, ROUND(SUM(CASE WHEN i.\"MORTE\" THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" GROUP BY mu.\"SG_UF\";",
     "results": [{"result": ["RS", 4.3]}, {"result": ["SC", 3.9]}, {"result": ["PR", 4.1]}],
     "row_count": 3
   },
@@ -73,7 +73,7 @@
     "expected_y": "receita_total",
     "expected_series": null,
     "expected_echarts_series_type": "bar",
-    "sql_query": "SELECT e.\"DESCRICAO\" AS especialidade, SUM(i.\"VAL_TOT\") AS receita_total FROM internacoes i JOIN especialidades e ON i.\"ESPEC\" = e.\"ESPEC\" GROUP BY e.\"DESCRICAO\";",
+    "sql_query": "SELECT e.\"DESCRICAO\" AS especialidade, SUM(i.\"VAL_TOT\") AS receita_total FROM internacoes i JOIN especialidade e ON i.\"ESPEC\" = e.\"ESPEC\" GROUP BY e.\"DESCRICAO\";",
     "results": [{"result": ["Clinica Medica", 1200000.0]}, {"result": ["Cirurgia", 970000.0]}, {"result": ["Obstetricia", 810000.0]}],
     "row_count": 3
   },
@@ -138,7 +138,7 @@
     "expected_y": "total_internacoes",
     "expected_series": "estado",
     "expected_echarts_series_type": "line",
-    "sql_query": "SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, mu.\"estado\" AS estado, COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"codigo_6d\" GROUP BY ano, estado ORDER BY ano, estado;",
+    "sql_query": "SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, mu.\"SG_UF\" AS estado, COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" GROUP BY ano, estado ORDER BY ano, estado;",
     "results": [{"result": [2022, "RS", 100]}, {"result": [2022, "SC", 80]}, {"result": [2023, "RS", 110]}, {"result": [2023, "SC", 90]}],
     "row_count": 4
   },
@@ -203,7 +203,7 @@
     "expected_y": "total_mortes",
     "expected_series": null,
     "expected_echarts_series_type": "pie",
-    "sql_query": "SELECT c.\"CD_DESCRICAO\" AS causa_morte, COUNT(*) AS total_mortes FROM internacoes i JOIN cid c ON i.\"CID_MORTE\" = c.\"CID\" WHERE i.\"MORTE\" = true AND i.\"CID_MORTE\" IS NOT NULL GROUP BY c.\"CD_DESCRICAO\" ORDER BY total_mortes DESC LIMIT 3;",
+    "sql_query": "SELECT c.\"DESCRICAO\" AS causa_morte, COUNT(*) AS total_mortes FROM internacoes i JOIN cid c ON i.\"CID_MORTE\" = c.\"CID\" WHERE i.\"MORTE\" = true AND i.\"CID_MORTE\" IS NOT NULL GROUP BY c.\"DESCRICAO\" ORDER BY total_mortes DESC LIMIT 3;",
     "results": [{"result": ["Nao preenchido", 488330]}, {"result": ["Insuf respirat aguda", 24784]}, {"result": ["Septicemia NE", 17904]}],
     "row_count": 3
   },
@@ -216,7 +216,7 @@
     "expected_y": "total_internacoes",
     "expected_series": null,
     "expected_echarts_series_type": "pie",
-    "sql_query": "SELECT e.\"DESCRICAO\" AS especialidade, COUNT(*) AS total_internacoes FROM internacoes i JOIN especialidades e ON i.\"ESPEC\" = e.\"ESPEC\" GROUP BY e.\"DESCRICAO\";",
+    "sql_query": "SELECT e.\"DESCRICAO\" AS especialidade, COUNT(*) AS total_internacoes FROM internacoes i JOIN especialidade e ON i.\"ESPEC\" = e.\"ESPEC\" GROUP BY e.\"DESCRICAO\";",
     "results": [{"result": ["Clinica Medica", 90]}, {"result": ["Cirurgia", 70]}, {"result": ["Obstetricia", 40]}],
     "row_count": 3
   },
@@ -255,7 +255,7 @@
     "expected_y": "total_internacoes",
     "expected_series": null,
     "expected_echarts_series_type": "pie",
-    "sql_query": "SELECT p.\"NOME_PROC\" AS procedimento, COUNT(*) AS total_internacoes FROM atendimentos a JOIN procedimentos p ON a.\"PROC_REA\" = p.\"PROC_REA\" GROUP BY p.\"NOME_PROC\" ORDER BY total_internacoes DESC LIMIT 5;",
+    "sql_query": "SELECT p.\"NOME_PROC\" AS procedimento, COUNT(*) AS total_internacoes FROM internacao_procedimento a JOIN procedimentos p ON a.\"PROC_REA\" = p.\"PROC_REA\" GROUP BY p.\"NOME_PROC\" ORDER BY total_internacoes DESC LIMIT 5;",
     "results": [{"result": ["Tratamento A", 100]}, {"result": ["Tratamento B", 70]}, {"result": ["Tratamento C", 50]}],
     "row_count": 3
   },
@@ -312,7 +312,7 @@
     "expected_y": "total_mortes",
     "expected_series": null,
     "expected_echarts_series_type": "scatter",
-    "sql_query": "SELECT mu.\"nome\" AS municipio, AVG(i.\"IDADE\") AS idade_media, COUNT(*) AS total_mortes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"codigo_6d\" WHERE i.\"MORTE\" = true GROUP BY mu.\"nome\";",
+    "sql_query": "SELECT mu.\"NO_MUNICIPIO\" AS municipio, AVG(i.\"IDADE\") AS idade_media, COUNT(*) AS total_mortes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"MORTE\" = true GROUP BY mu.\"NO_MUNICIPIO\";",
     "results": [{"result": ["Porto Alegre", 68.2, 52000]}, {"result": ["Canoas", 66.1, 18000]}, {"result": ["Pelotas", 70.0, 16000]}],
     "row_count": 3
   },
@@ -325,7 +325,7 @@
     "expected_y": "taxa_mortalidade",
     "expected_series": null,
     "expected_echarts_series_type": "scatter",
-    "sql_query": "SELECT mu.\"estado\" AS estado, SUM(i.\"VAL_TOT\") AS receita_total, ROUND(SUM(CASE WHEN i.\"MORTE\" THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"codigo_6d\" GROUP BY mu.\"estado\";",
+    "sql_query": "SELECT mu.\"SG_UF\" AS estado, SUM(i.\"VAL_TOT\") AS receita_total, ROUND(SUM(CASE WHEN i.\"MORTE\" THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" GROUP BY mu.\"SG_UF\";",
     "results": [{"result": ["RS", 1200000.0, 4.3]}, {"result": ["SC", 970000.0, 3.9]}, {"result": ["PR", 810000.0, 4.1]}],
     "row_count": 3
   },
@@ -338,7 +338,7 @@
     "expected_y": "media_dias_permanencia",
     "expected_series": null,
     "expected_echarts_series_type": "scatter",
-    "sql_query": "SELECT mu.\"nome\" AS municipio, AVG(i.\"IDADE\") AS idade_media, AVG(i.\"DIAS_PERM\") AS media_dias_permanencia FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"codigo_6d\" GROUP BY mu.\"nome\";",
+    "sql_query": "SELECT mu.\"NO_MUNICIPIO\" AS municipio, AVG(i.\"IDADE\") AS idade_media, AVG(i.\"DIAS_PERM\") AS media_dias_permanencia FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" GROUP BY mu.\"NO_MUNICIPIO\";",
     "results": [{"result": ["Porto Alegre", 62.4, 5.6]}, {"result": ["Canoas", 59.8, 4.9]}, {"result": ["Pelotas", 61.2, 5.1]}],
     "row_count": 3
   },
@@ -377,7 +377,7 @@
     "expected_y": "total_mortes",
     "expected_series": null,
     "expected_echarts_series_type": "bar",
-    "sql_query": "SELECT mu.\"estado\" AS estado, COUNT(*) AS total_mortes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"codigo_6d\" WHERE i.\"MORTE\" = true GROUP BY mu.\"estado\";",
+    "sql_query": "SELECT mu.\"SG_UF\" AS estado, COUNT(*) AS total_mortes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"MORTE\" = true GROUP BY mu.\"SG_UF\";",
     "results": [{"result": ["RS", 52000]}, {"result": ["SC", 18000]}, {"result": ["PR", 16000]}],
     "row_count": 3
   }

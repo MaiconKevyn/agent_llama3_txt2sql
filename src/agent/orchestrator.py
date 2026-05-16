@@ -1,16 +1,26 @@
+import os
 import time
-from typing import Dict, Any, Optional, Union, List
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
+
 from dotenv import load_dotenv
 
-from .workflow import (
-    execute_sql_workflow,
-    stream_sql_workflow
+from ..application.config.simple_config import ApplicationConfig, OrchestratorConfig
+from ..utils.logging_setup import LoggingSetup
+from ..visualization import (
+    build_chart_plan,
+    build_chart_planning_input,
+    detect_visualization_intent,
+    plan_chart,
 )
+from ..visualization.renderer_contract import build_chart_response
+from ..visualization.schema import ChartPlan, ChartSpec, VisualizationIntent
 from .cli_session import InteractiveSession, WorkflowVisualizer
+from .llamaindex_context import normalize_llamaindex_mode
 from .llm_manager import OpenAILLMManager
 from .metrics import MetricsCollector
+from .mlflow_tracker import log_query_run
 from .orchestrator_support import (
     AVAILABLE_OPENAI_MODELS,
     build_application_config,
@@ -21,17 +31,7 @@ from .orchestrator_support import (
     initialize_orchestrator_runtime,
     resolve_database_url,
 )
-from .mlflow_tracker import log_query_run
-from ..utils.logging_setup import LoggingSetup
-from ..application.config.simple_config import ApplicationConfig, OrchestratorConfig
-from ..visualization import (
-    build_chart_plan,
-    build_chart_planning_input,
-    detect_visualization_intent,
-    plan_chart,
-)
-from ..visualization.renderer_contract import build_chart_response
-from ..visualization.schema import ChartPlan, ChartSpec, VisualizationIntent
+from .workflow import execute_sql_workflow, stream_sql_workflow
 
 load_dotenv()
 
@@ -41,12 +41,70 @@ def _orch_config_to_flags(cfg: OrchestratorConfig) -> dict:
     if cfg is None:
         return {}
     import dataclasses
+
     return {k: v for k, v in dataclasses.asdict(cfg).items()}
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_int(name: str, default: int) -> int:
+    value = os.getenv(name)
+    if value is None or value.strip() == "":
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        return default
+
+
+def _orchestrator_config_from_env() -> OrchestratorConfig:
+    """Create optional experimental flags for API/factory-created orchestrators."""
+    mode = normalize_llamaindex_mode(os.getenv("LLAMAINDEX_MODE") or "context")
+    return OrchestratorConfig(
+        enable_llamaindex_context=_env_bool("ENABLE_LLAMAINDEX_CONTEXT")
+        or mode in {"context", "sql_draft", "hybrid"},
+        enable_llamaindex_sql_draft=_env_bool("ENABLE_LLAMAINDEX_SQL_DRAFT") or mode == "sql_draft",
+        llamaindex_mode=mode,
+        llamaindex_top_k_tables=_env_int("LLAMAINDEX_TOP_K_TABLES", 6),
+        llamaindex_index_dir=os.getenv("LLAMAINDEX_INDEX_DIR", ".llamaindex_schema"),
+        llamaindex_rebuild_index=_env_bool("LLAMAINDEX_REBUILD_INDEX"),
+        verify_llamaindex_schema_with_db=_env_bool("VERIFY_LLAMAINDEX_SCHEMA_WITH_DB"),
+    )
+
+
+def build_tracing_context(
+    *,
+    user_query: str,
+    project_name: str,
+    current_model_metadata: dict[str, Any],
+    environment: str,
+    query_number: int,
+) -> tuple[str, list[str], dict[str, Any]]:
+    query_slug = "".join(char if char.isalnum() else "_" for char in user_query.lower()).strip("_")[
+        :48
+    ]
+    run_name = f"{project_name}_{query_number}_{query_slug or 'query'}"
+    return (
+        run_name,
+        ["txt2sql", environment, project_name],
+        {
+            "project_name": project_name,
+            "environment": environment,
+            "query_number": query_number,
+            "model": current_model_metadata,
+        },
+    )
 
 
 @dataclass
 class ModelConfig:
     """Configuration for OpenAI model"""
+
     provider: str  # always "openai"
     model_name: str  # e.g., gpt-4o-mini
     temperature: float = 0.1
@@ -57,7 +115,7 @@ class ModelConfig:
 class LangGraphOrchestrator:
     """
     Main Orchestrator for LangGraph V3 SQL Agent
-    
+
     This is the primary interface that provides:
     - Easy LLM model switching
     - Production-ready SQL Agent workflow
@@ -65,27 +123,27 @@ class LangGraphOrchestrator:
     - Official LangGraph best practices
     - Performance monitoring and metrics
     """
-    
+
     def __init__(
         self,
         app_config: ApplicationConfig = None,
         orchestrator_config: OrchestratorConfig = None,
-        environment: str = "production"
+        environment: str = "production",
     ):
         """
         Initialize LangGraph Orchestrator
-        
+
         Args:
             app_config: Application configuration
             orchestrator_config: Orchestrator configuration
             environment: "production", "development", or "testing"
         """
-        
+
         # Configuration
         self.app_config = app_config or ApplicationConfig()
         self.orchestrator_config = orchestrator_config or OrchestratorConfig()
         self.environment = environment
-        
+
         # State
         self._workflow = None
         self._memory = None
@@ -93,14 +151,14 @@ class LangGraphOrchestrator:
         self._llm_manager = None
         self._current_model = None
         self._metrics = MetricsCollector(max_history=1000)
-        self._last_result_by_session: Dict[str, Dict[str, Any]] = {}
-        
+        self._last_result_by_session: dict[str, dict[str, Any]] = {}
+
         # Setup structured logging first
         self._setup_logging()
-        
+
         # Initialize workflow
         self._initialize_workflow()
-        
+
     def _initialize_workflow(self):
         """Initialize the appropriate workflow based on environment"""
         try:
@@ -118,9 +176,11 @@ class LangGraphOrchestrator:
                 orchestrator_config=self.orchestrator_config,
             )
         except Exception as e:
-            self.logger.error("Failed to initialize LangGraph Orchestrator", extra={"error": str(e)})
+            self.logger.error(
+                "Failed to initialize LangGraph Orchestrator", extra={"error": str(e)}
+            )
             raise
-    
+
     def _setup_logging(self):
         """Setup structured logging for production monitoring"""
         try:
@@ -131,7 +191,7 @@ class LangGraphOrchestrator:
             self.logger = get_orchestrator_logger()
             self.logger.warning("Failed to setup production file handler", extra={"error": str(e)})
 
-    def _current_model_metadata(self) -> Dict[str, Any]:
+    def _current_model_metadata(self) -> dict[str, Any]:
         return {
             "provider": self._current_model.provider,
             "model_name": self._current_model.model_name,
@@ -153,13 +213,8 @@ class LangGraphOrchestrator:
             timeout=timeout,
             max_retries=max_retries,
         )
-    
-    def switch_model(
-        self,
-        model_name: str,
-        temperature: float = None,
-        timeout: int = None
-    ) -> bool:
+
+    def switch_model(self, model_name: str, temperature: float = None, timeout: int = None) -> bool:
         """Switch to a different OpenAI model."""
         try:
             self.logger.info("Switching model", extra={"model": model_name, "provider": "openai"})
@@ -181,25 +236,25 @@ class LangGraphOrchestrator:
             self._llm_manager = new_llm_manager
 
             from .nodes import set_global_llm_manager
+
             set_global_llm_manager(new_llm_manager)
 
             self._current_model = self._create_model_config(
                 model_name=model_name,
                 temperature=temperature or self.app_config.llm_temperature,
                 timeout=timeout or self.app_config.llm_timeout,
-                max_retries=self.app_config.llm_max_retries
+                max_retries=self.app_config.llm_max_retries,
             )
 
-            self.logger.info("Model switched successfully", extra={
-                "model": model_name,
-                "provider": "openai"
-            })
+            self.logger.info(
+                "Model switched successfully", extra={"model": model_name, "provider": "openai"}
+            )
             return True
 
         except Exception as e:
             self.logger.error("Model switch failed", extra={"error": str(e)})
             return False
-    
+
     def process_query(
         self,
         user_query: str,
@@ -207,7 +262,10 @@ class LangGraphOrchestrator:
         streaming: bool = False,
         config: dict = None,
         force_single_query: bool = False,
-    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
+        run_name: str = None,
+        tags: list[str] = None,
+        metadata: dict[str, Any] = None,
+    ) -> dict[str, Any] | list[dict[str, Any]]:
         """Process a user query using the LangGraph workflow.
 
         Args:
@@ -216,6 +274,9 @@ class LangGraphOrchestrator:
             streaming: Whether to return streaming results
             config: Additional LangGraph config (merged with workflow defaults)
             force_single_query: Skip multi-query planner
+            run_name: Optional LangSmith/LangGraph run name
+            tags: Optional tracing tags
+            metadata: Optional tracing metadata
 
         Returns:
             Query result dictionary or list of streaming updates
@@ -226,13 +287,16 @@ class LangGraphOrchestrator:
         if session_id is None:
             session_id = f"session_{int(time.time() * 1000) % 100000}"
 
-        self.logger.info("Query started", extra={
-            "query_id": query_number,
-            "session_id": session_id,
-            "user_query": user_query[:100] + "..." if len(user_query) > 100 else user_query,
-            "streaming": streaming,
-            "model": f"openai/{self._current_model.model_name}",
-        })
+        self.logger.info(
+            "Query started",
+            extra={
+                "query_id": query_number,
+                "session_id": session_id,
+                "user_query": user_query[:100] + "..." if len(user_query) > 100 else user_query,
+                "streaming": streaming,
+                "model": f"openai/{self._current_model.model_name}",
+            },
+        )
 
         try:
             visualization_intent = detect_visualization_intent(user_query)
@@ -256,6 +320,12 @@ class LangGraphOrchestrator:
                 )
 
             workflow_config = build_workflow_config(config=config, session_id=session_id)
+            if run_name:
+                workflow_config["run_name"] = run_name
+            if tags:
+                workflow_config["tags"] = list(tags)
+            if metadata:
+                workflow_config.setdefault("metadata", {}).update(metadata)
 
             if streaming:
                 results = []
@@ -302,19 +372,25 @@ class LangGraphOrchestrator:
             )
 
             if result.get("success", False):
-                self.logger.info("Query completed successfully", extra={
-                    "query_id": query_number,
-                    "session_id": session_id,
-                    "execution_time": execution_time,
-                    "row_count": len(result.get("results", [])),
-                })
+                self.logger.info(
+                    "Query completed successfully",
+                    extra={
+                        "query_id": query_number,
+                        "session_id": session_id,
+                        "execution_time": execution_time,
+                        "row_count": len(result.get("results", [])),
+                    },
+                )
             else:
-                self.logger.error("Query failed", extra={
-                    "query_id": query_number,
-                    "session_id": session_id,
-                    "execution_time": execution_time,
-                    "error_message": result.get("error_message", "Unknown error"),
-                })
+                self.logger.error(
+                    "Query failed",
+                    extra={
+                        "query_id": query_number,
+                        "session_id": session_id,
+                        "execution_time": execution_time,
+                        "error_message": result.get("error_message", "Unknown error"),
+                    },
+                )
 
             log_query_run(
                 result=result,
@@ -325,14 +401,16 @@ class LangGraphOrchestrator:
             )
 
             result["metadata"] = result.get("metadata", {})
-            result["metadata"].update({
-                "orchestrator_v3": True,
-                "current_model": self._current_model_metadata(),
-                "environment": self.environment,
-                "session_id": session_id,
-                "query_number": query_number,
-                "orchestrator_execution_time": execution_time,
-            })
+            result["metadata"].update(
+                {
+                    "orchestrator_v3": True,
+                    "current_model": self._current_model_metadata(),
+                    "environment": self.environment,
+                    "session_id": session_id,
+                    "query_number": query_number,
+                    "orchestrator_execution_time": execution_time,
+                }
+            )
             return result
 
         except Exception as e:
@@ -349,11 +427,11 @@ class LangGraphOrchestrator:
     def _attach_visualization_if_requested(
         self,
         *,
-        result: Dict[str, Any],
+        result: dict[str, Any],
         user_query: str,
         visualization_intent: VisualizationIntent,
         chart_plan: ChartPlan | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Attach a validated chart payload only for explicit chart requests."""
 
         result["metadata"] = result.get("metadata", {}) or {}
@@ -381,7 +459,7 @@ class LangGraphOrchestrator:
     def _append_chart_notice_to_response(
         self,
         *,
-        result: Dict[str, Any],
+        result: dict[str, Any],
         chart_spec: ChartSpec | None,
     ) -> None:
         if not chart_spec or not chart_spec.warnings:
@@ -409,7 +487,7 @@ class LangGraphOrchestrator:
         self,
         *,
         user_query: str,
-        result: Dict[str, Any],
+        result: dict[str, Any],
         visualization_intent: VisualizationIntent,
         chart_plan: ChartPlan | None = None,
     ) -> ChartSpec | None:
@@ -439,7 +517,7 @@ class LangGraphOrchestrator:
                 reason=f"Nao foi possivel gerar grafico validado: {exc}",
             )
 
-    def _remember_result_if_available(self, *, session_id: str, result: Dict[str, Any]) -> None:
+    def _remember_result_if_available(self, *, session_id: str, result: dict[str, Any]) -> None:
         if not result.get("success") or not result.get("results"):
             return
         self._last_result_by_session[session_id] = {
@@ -456,9 +534,9 @@ class LangGraphOrchestrator:
         user_query: str,
         session_id: str,
         visualization_intent: VisualizationIntent,
-        cached_result: Dict[str, Any],
+        cached_result: dict[str, Any],
         started_at: float,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         base_result = {
             "success": True,
             "question": user_query,
@@ -489,7 +567,7 @@ class LangGraphOrchestrator:
         session_id: str,
         visualization_intent: VisualizationIntent,
         started_at: float,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         chart_payload = build_chart_response(intent=visualization_intent, spec=None)
         return {
             "success": True,
@@ -512,18 +590,16 @@ class LangGraphOrchestrator:
                 "visualization_missing_context": True,
             },
         }
-    
-    def get_performance_metrics(self) -> Dict[str, Any]:
+
+    def get_performance_metrics(self) -> dict[str, Any]:
         """
         Get comprehensive performance metrics
-        
+
         Returns:
             Dictionary with performance statistics
         """
         llm_health = (
-            self._llm_manager.health_check()
-            if self._llm_manager
-            else {"status": "unavailable"}
+            self._llm_manager.health_check() if self._llm_manager else {"status": "unavailable"}
         )
         return self._metrics.build_snapshot(
             environment=self.environment,
@@ -531,34 +607,36 @@ class LangGraphOrchestrator:
             llm_health=llm_health,
             version="3.0",
         )
-    
-    def get_available_models(self) -> Dict[str, List[str]]:
+
+    def get_available_models(self) -> dict[str, list[str]]:
         """
         Get list of available models by provider
-        
+
         Returns:
             Dictionary mapping providers to available models
         """
         return {"openai": AVAILABLE_OPENAI_MODELS}
-    
-    def get_current_model(self) -> Dict[str, Any]:
+
+    def get_current_model(self) -> dict[str, Any]:
         """Get current model information"""
         if not self._llm_manager:
             return {"error": "LLM manager not initialized"}
-        
+
         model_info = self._llm_manager.get_model_info()
-        model_info.update({
-            "orchestrator_config": {
-                "provider": self._current_model.provider,
-                "model_name": self._current_model.model_name,
-                "temperature": self._current_model.temperature,
-                "timeout": self._current_model.timeout,
-                "max_retries": self._current_model.max_retries
+        model_info.update(
+            {
+                "orchestrator_config": {
+                    "provider": self._current_model.provider,
+                    "model_name": self._current_model.model_name,
+                    "temperature": self._current_model.temperature,
+                    "timeout": self._current_model.timeout,
+                    "max_retries": self._current_model.max_retries,
+                }
             }
-        })
-        
+        )
+
         return model_info
-    
+
     def get_workflow_visualization(self, xray: bool = True) -> bytes:
         """Generate workflow visualization using LangGraph's built-in method."""
         return WorkflowVisualizer.get_workflow_visualization(self._workflow, xray=xray)
@@ -585,17 +663,17 @@ class LangGraphOrchestrator:
         user_query: str,
         session_id: str = None,
         run_name: str = None,
-        project_name: str = "txt2sql-agent"
-    ) -> Dict[str, Any]:
+        project_name: str = "txt2sql-agent",
+    ) -> dict[str, Any]:
         """
         Process a query with enriched tracing metadata.
-        
+
         Args:
             user_query: User's natural language question
-            session_id: Optional session identifier  
+            session_id: Optional session identifier
             run_name: Custom name for the trace
             project_name: Logical project name stored in tracing metadata
-            
+
         Returns:
             Query result with enhanced tracing metadata
         """
@@ -616,25 +694,27 @@ class LangGraphOrchestrator:
                 environment=self.environment,
                 query_number=self._metrics.total_queries + 1,
             )
-        
+
         # Execute with tracing
         return self.process_query(
             user_query=user_query,
             session_id=session_id,
             run_name=run_name,
             tags=tags,
-            metadata=metadata
+            metadata=metadata,
         )
 
-    def health_check(self) -> Dict[str, Any]:
+    def health_check(self) -> dict[str, Any]:
         """
         Comprehensive health check for the orchestrator
-        
+
         Returns:
             Health status dictionary
         """
         try:
-            llm_health = self._llm_manager.health_check() if self._llm_manager else {"status": "failed"}
+            llm_health = (
+                self._llm_manager.health_check() if self._llm_manager else {"status": "failed"}
+            )
             return build_health_report(
                 environment=self.environment,
                 current_model_metadata=self._current_model_metadata(),
@@ -647,14 +727,14 @@ class LangGraphOrchestrator:
                 "status": "failed",
                 "timestamp": datetime.now().isoformat(),
                 "error": str(e),
-                "orchestrator": {"version": "3.0", "error": True}
+                "orchestrator": {"version": "3.0", "error": True},
             }
-    
+
     def reset_metrics(self):
         """Reset performance metrics"""
         self._metrics.reset()
         self.logger.info("Performance metrics reset")
-    
+
     def start_interactive_session(self):
         """Start the interactive CLI session."""
         InteractiveSession.start(self, self.logger, self.environment)
@@ -681,58 +761,46 @@ def create_orchestrator(
     provider: str = "openai",
     model_name: str = "gpt-4o-mini",
     environment: str = "production",
-    database_url: Optional[str] = None
+    database_url: str | None = None,
 ) -> LangGraphOrchestrator:
     """
     Factory function to create LangGraph Orchestrator
-    
+
     Args:
         provider: LLM provider (only "openai")
         model_name: Model name
         environment: Environment mode
         database_url: PostgreSQL connection URL
-        
+
     Returns:
         Configured LangGraphOrchestrator instance
     """
-    
+
     resolved_db_url = resolve_database_url(database_url)
     app_config = build_factory_app_config(
         database_url=resolved_db_url,
         model_name=model_name,
     )
-    
-    orchestrator_config = OrchestratorConfig()
-    
+
+    orchestrator_config = _orchestrator_config_from_env()
+
     return LangGraphOrchestrator(
-        app_config=app_config,
-        orchestrator_config=orchestrator_config,
-        environment=environment
+        app_config=app_config, orchestrator_config=orchestrator_config, environment=environment
     )
 
 
 def create_production_orchestrator(
-    provider: str = "openai",
-    model_name: str = "gpt-4o-mini"
+    provider: str = "openai", model_name: str = "gpt-4o-mini"
 ) -> LangGraphOrchestrator:
     """Create production-ready orchestrator"""
-    return create_orchestrator(
-        provider=provider,
-        model_name=model_name,
-        environment="production"
-    )
+    return create_orchestrator(provider=provider, model_name=model_name, environment="production")
 
 
 def create_development_orchestrator(
-    provider: str = "openai",
-    model_name: str = "gpt-4o-mini"
+    provider: str = "openai", model_name: str = "gpt-4o-mini"
 ) -> LangGraphOrchestrator:
     """Create development orchestrator with debugging"""
-    return create_orchestrator(
-        provider=provider,
-        model_name=model_name,
-        environment="development"
-    )
+    return create_orchestrator(provider=provider, model_name=model_name, environment="development")
 
 
 # Export main classes and functions
@@ -740,6 +808,6 @@ __all__ = [
     "LangGraphOrchestrator",
     "ModelConfig",
     "create_orchestrator",
-    "create_production_orchestrator", 
-    "create_development_orchestrator"
+    "create_production_orchestrator",
+    "create_development_orchestrator",
 ]

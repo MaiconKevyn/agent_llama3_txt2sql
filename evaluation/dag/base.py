@@ -5,16 +5,16 @@ Provides lightweight DAG structure using NetworkX for task orchestration
 and visualization.
 """
 
-import time
 import logging
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Callable, Dict, Any, List, Optional
 from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
 
-import networkx as nx
-import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+import networkx as nx
 
 
 @dataclass
@@ -179,6 +179,7 @@ class EvaluationDAG:
 
             # Prepare task inputs from dependencies
             task_inputs = {}
+            dependency_failed = False
 
             # Add initial data
             task_inputs.update(initial_data)
@@ -199,7 +200,11 @@ class EvaluationDAG:
                             success=False,
                             error=error_msg
                         )
-                        continue
+                        dependency_failed = True
+                        break
+
+            if dependency_failed:
+                continue
 
             # Execute task
             task_start = time.time()
@@ -239,7 +244,7 @@ class EvaluationDAG:
         failed_tasks = len(self.results) - successful_tasks
 
         self.logger.info(f"\n{'='*80}")
-        self.logger.info(f"DAG EXECUTION COMPLETED")
+        self.logger.info("DAG EXECUTION COMPLETED")
         self.logger.info(f"{'='*80}")
         self.logger.info(f"Total time: {total_time:.2f}s")
         self.logger.info(f"Successful tasks: {successful_tasks}/{len(execution_order)}")
@@ -274,7 +279,6 @@ class EvaluationDAG:
         # Use hierarchical layout for better DAG visualization
         try:
             # Try graphviz first (best for DAGs)
-            import pydot
             pos = nx.nx_pydot.graphviz_layout(self.graph, prog='dot')
         except:
             try:
@@ -400,7 +404,7 @@ class EvaluationDAG:
         print(f"\n{'='*80}")
         print(f"DAG SUMMARY: {self.name}")
         print(f"{'='*80}")
-        print(f"\nStructure:")
+        print("\nStructure:")
         print(f"  Total tasks: {len(self.tasks)}")
         print(f"  Total dependencies: {len(self.graph.edges)}")
 
@@ -408,7 +412,7 @@ class EvaluationDAG:
             successful = sum(1 for r in self.results.values() if r.success)
             failed = len(self.results) - successful
 
-            print(f"\nExecution:")
+            print("\nExecution:")
             print(f"  Executed tasks: {len(self.results)}")
             print(f"  Successful: {successful}")
             print(f"  Failed: {failed}")
@@ -416,7 +420,7 @@ class EvaluationDAG:
             total_time = sum(r.execution_time_ms for r in self.results.values())
             print(f"  Total execution time: {total_time:.1f}ms")
 
-        print(f"\nExecution Order:")
+        print("\nExecution Order:")
         for i, task_name in enumerate(self.get_execution_order(), 1):
             status = ""
             if task_name in self.results:

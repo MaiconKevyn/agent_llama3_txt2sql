@@ -6,6 +6,8 @@ pytest.importorskip("langgraph")
 pytest.importorskip("langchain_core")
 
 from evaluation.runners.run_ablation import VARIANT_MAP
+from src.agent.plan_gate import plan_gate_node
+from src.agent.response import clarification_node
 from src.agent.routing import (
     route_after_classification,
     route_after_multi_verifier,
@@ -17,6 +19,7 @@ from src.agent.routing import (
     route_after_sql_generation,
     route_after_sql_validation,
 )
+from src.agent.state_helpers import create_initial_messages_state
 from src.agent.state_models import QueryRoute
 from src.application.config.simple_config import OrchestratorConfig
 
@@ -37,6 +40,16 @@ def test_route_after_classification_handles_conversational_threshold():
 def test_route_after_schema_routes_schema_queries_to_response():
     assert route_after_schema({"query_route": QueryRoute.SCHEMA}) == "generate_response"
     assert route_after_schema({"query_route": QueryRoute.DATABASE}) == "plan_gate"
+    assert (
+        route_after_schema(
+            {
+                "query_route": QueryRoute.DATABASE,
+                "current_error": "LlamaIndex table selection failed",
+                "schema_context": "",
+            }
+        )
+        == "generate_response"
+    )
 
 
 def test_ablation_variants_cover_semantic_layer_components():
@@ -49,12 +62,31 @@ def test_ablation_variants_cover_semantic_layer_components():
 
 
 def test_route_after_plan_gate_and_query_planner_cover_multi_and_cot():
+    assert route_after_plan_gate({"needs_clarification": True}) == "clarification"
     assert (
         route_after_plan_gate(
             {"multi_query_allowed": True, "force_single_query": False, "plan_type": None}
         )
         == "query_planner"
     )
+
+
+def test_plan_gate_routes_unsupported_schema_metric_to_clarification():
+    state = create_initial_messages_state(
+        "Qual o IDHM medio dos municipios do RS?",
+        session_id="test-unsupported-schema-metric",
+    )
+
+    new_state = plan_gate_node(state)
+
+    assert new_state["needs_clarification"] is True
+    assert "schema atual" in (new_state["clarification_question"] or "")
+    assert new_state["generated_sql"] is None
+    assert new_state["response_metadata"]["unsupported_schema_metric"] == ["idhm"]
+
+    clarified_state = clarification_node(new_state)
+    assert clarified_state["final_response"] == new_state["clarification_question"]
+
     assert (
         route_after_plan_gate(
             {

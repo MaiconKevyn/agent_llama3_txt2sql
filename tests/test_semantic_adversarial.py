@@ -9,8 +9,8 @@ def test_adversarial_top_n_for_each_group_rejects_global_limit():
     sql = """
         SELECT i."SEXO", p."NOME_PROC", COUNT(*) AS total
         FROM internacoes i
-        JOIN atendimentos a ON i."N_AIH" = a."N_AIH"
-        JOIN procedimentos p ON a."PROC_REA" = p."PROC_REA"
+        JOIN internacao_procedimento ip ON i."N_AIH" = ip."N_AIH"
+        JOIN procedimentos p ON ip."PROC_REA" = p."PROC_REA"
         GROUP BY i."SEXO", p."NOME_PROC"
         ORDER BY total DESC
         LIMIT 2
@@ -25,12 +25,12 @@ def test_adversarial_top_n_for_each_group_rejects_global_limit():
 def test_adversarial_rate_rejects_outcome_filter_even_with_valid_grouping():
     plan = build_semantic_plan("Mostre a taxa de mortalidade por ano e por estado.")
     sql = """
-        SELECT mu.estado, EXTRACT(YEAR FROM i."DT_INTER") AS ano,
+        SELECT mu."SG_UF", EXTRACT(YEAR FROM i."DT_INTER") AS ano,
                COUNT(*) * 100.0 / COUNT(*) AS taxa
         FROM internacoes i
-        JOIN municipios mu ON i."MUNIC_RES" = mu.codigo_6d
+        JOIN municipios mu ON i."MUNIC_RES" = mu.CO_MUNICIPIO_6D
         WHERE i."MORTE" = true
-        GROUP BY mu.estado, ano
+        GROUP BY mu."SG_UF", ano
     """
 
     passed, message = validate_sql_against_semantic_plan(plan, sql)

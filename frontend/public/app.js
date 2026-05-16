@@ -2,11 +2,13 @@ const API_BASE_URL = '/api';
 const SESSION_STORAGE_KEY = 'chatSessionId';
 const CHAT_HISTORY_KEY = 'chatHistory';
 const THEME_KEY = 'theme';
+const DEBUG_MODE_KEY = 'debugModeEnabled';
 const MAX_CONVERSATION_TURNS = 10;
 const MAX_HISTORY_MESSAGES = MAX_CONVERSATION_TURNS * 2;
 const MAX_MESSAGE_LENGTH = 1000;
 
 let isLoading = false;
+let isDebugEnabled = false;
 let messageHistory = [];
 let schemaTriggerElement = null;
 
@@ -25,6 +27,7 @@ const elements = {
     schemaContent: document.getElementById('schemaContent'),
     questionButtons: document.querySelectorAll('[data-question]'),
     themeToggle: document.getElementById('themeToggle'),
+    debugToggle: document.getElementById('debugToggle'),
     charCounter: document.getElementById('charCounter')
 };
 
@@ -37,6 +40,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function initializeApp() {
     ensureSessionId();
+    initializeDebugMode();
     loadMessageHistory();
     autoResizeTextarea();
     updateInputState();
@@ -50,6 +54,9 @@ function setupEventListeners() {
     elements.closeSchemaModal.addEventListener('click', hideSchemaModal);
     elements.clearBtn.addEventListener('click', clearChat);
     elements.themeToggle.addEventListener('click', toggleTheme);
+    if (elements.debugToggle) {
+        elements.debugToggle.addEventListener('click', toggleDebugMode);
+    }
 
     elements.schemaModal.addEventListener('click', function(event) {
         if (event.target === elements.schemaModal) {
@@ -147,7 +154,8 @@ async function sendMessage() {
             cache: 'no-cache',
             body: JSON.stringify({
                 question: message,
-                session_id: getSessionId()
+                session_id: getSessionId(),
+                debug: isDebugEnabled
             })
         });
 
@@ -166,10 +174,18 @@ async function sendMessage() {
             addMessage(data.response || data.conversational_response || 'Consulta processada com sucesso.', 'assistant', {
                 executionTime: data.execution_time,
                 sql: data.sql || data.sql_query || null,
-                chart: data.chart || null
+                chart: data.chart || null,
+                debug: isDebugEnabled ? data.debug || null : null,
+                agentMetadata: isDebugEnabled ? data.metadata || {} : null
             });
         } else {
-            addMessage(data.error_message || 'Nao foi possivel processar a consulta.', 'error');
+            const errorMessage = data.error_message || data.answer || data.response || 'Nao foi possivel processar a consulta.';
+            addMessage(errorMessage, 'error', {
+                executionTime: data.execution_time,
+                sql: data.sql || data.sql_query || null,
+                debug: isDebugEnabled ? data.debug || null : null,
+                agentMetadata: isDebugEnabled ? data.metadata || {} : null
+            });
         }
 
         setServerStatus('online');
@@ -288,10 +304,186 @@ function createMessageElement(messageData) {
             contentWrap.appendChild(chartElement);
         }
     }
+    if (metadata && metadata.debug) {
+        const debugPanel = createDebugPanel(metadata);
+        if (debugPanel) {
+            message.classList.add('message-has-debug');
+            contentWrap.appendChild(debugPanel);
+        }
+    }
     contentWrap.appendChild(meta);
     message.appendChild(avatar);
     message.appendChild(contentWrap);
     return message;
+}
+
+function initializeDebugMode() {
+    isDebugEnabled = localStorage.getItem(DEBUG_MODE_KEY) === 'true';
+    updateDebugToggle();
+}
+
+function toggleDebugMode() {
+    isDebugEnabled = !isDebugEnabled;
+    localStorage.setItem(DEBUG_MODE_KEY, String(isDebugEnabled));
+    updateDebugToggle();
+}
+
+function updateDebugToggle() {
+    if (!elements.debugToggle) return;
+    elements.debugToggle.classList.toggle('active', isDebugEnabled);
+    elements.debugToggle.setAttribute('aria-pressed', String(isDebugEnabled));
+    elements.debugToggle.title = isDebugEnabled ? 'Debug ativo' : 'Debug inativo';
+}
+
+function createDebugPanel(metadata) {
+    const debugPayload = metadata.debug;
+    if (!debugPayload || !Array.isArray(debugPayload.steps)) return null;
+
+    const panel = document.createElement('details');
+    panel.className = 'debug-panel';
+    panel.open = true;
+
+    const summary = document.createElement('summary');
+    summary.className = 'debug-summary';
+    summary.innerHTML = '<i class="fas fa-bug" aria-hidden="true"></i><span>Debug</span>';
+
+    const count = document.createElement('span');
+    count.className = 'debug-count';
+    count.textContent = `${debugPayload.steps.length} nodes`;
+    summary.appendChild(count);
+    panel.appendChild(summary);
+
+    const body = document.createElement('div');
+    body.className = 'debug-body';
+
+    if (metadata.sql) {
+        appendDebugCodeSection(body, 'SQL final', metadata.sql);
+    }
+
+    const agentMetadata = metadata.agentMetadata || {};
+    appendDebugFacts(body, [
+        ['Modelo', agentMetadata.current_model && agentMetadata.current_model.model_name],
+        ['Rota', agentMetadata.query_route],
+        ['Tabelas', formatDebugInline(agentMetadata.tables_used)],
+        ['Retries', agentMetadata.retry_count],
+        ['Erros', agentMetadata.error_count]
+    ]);
+
+    const stepsList = document.createElement('div');
+    stepsList.className = 'debug-steps';
+    debugPayload.steps.forEach((step) => {
+        stepsList.appendChild(createDebugStep(step));
+    });
+    body.appendChild(stepsList);
+    panel.appendChild(body);
+
+    return panel;
+}
+
+function createDebugStep(step) {
+    const item = document.createElement('details');
+    item.className = `debug-step debug-step-${step.status || 'completed'}`;
+
+    const summary = document.createElement('summary');
+    summary.className = 'debug-step-summary';
+
+    const label = document.createElement('span');
+    label.className = 'debug-step-label';
+    label.textContent = `${step.index}. ${step.title || step.node}`;
+    summary.appendChild(label);
+
+    const node = document.createElement('code');
+    node.textContent = step.node;
+    summary.appendChild(node);
+    item.appendChild(summary);
+
+    const data = step.data || {};
+    const body = document.createElement('div');
+    body.className = 'debug-step-body';
+
+    if (data.generated_sql) {
+        appendDebugCodeSection(body, 'SQL gerada', data.generated_sql);
+    }
+    if (data.validated_sql && data.validated_sql !== data.generated_sql) {
+        appendDebugCodeSection(body, 'SQL validada', data.validated_sql);
+    }
+    if (data.final_response) {
+        appendDebugTextSection(body, 'Resposta final', data.final_response);
+    }
+
+    const remaining = { ...data };
+    delete remaining.generated_sql;
+    delete remaining.validated_sql;
+    delete remaining.final_response;
+    if (Object.keys(remaining).length > 0) {
+        appendDebugJsonSection(body, 'Estado', remaining);
+    }
+
+    item.appendChild(body);
+    return item;
+}
+
+function appendDebugFacts(container, facts) {
+    const visibleFacts = facts.filter(([, value]) => value !== null && value !== undefined && value !== '');
+    if (visibleFacts.length === 0) return;
+
+    const grid = document.createElement('div');
+    grid.className = 'debug-facts';
+    visibleFacts.forEach(([label, value]) => {
+        const item = document.createElement('div');
+        item.className = 'debug-fact';
+        const labelEl = document.createElement('span');
+        labelEl.textContent = label;
+        const valueEl = document.createElement('strong');
+        valueEl.textContent = String(value);
+        item.appendChild(labelEl);
+        item.appendChild(valueEl);
+        grid.appendChild(item);
+    });
+    container.appendChild(grid);
+}
+
+function appendDebugCodeSection(container, title, code) {
+    const section = createDebugSection(title);
+    const pre = document.createElement('pre');
+    const codeEl = document.createElement('code');
+    codeEl.textContent = code;
+    pre.appendChild(codeEl);
+    section.appendChild(pre);
+    container.appendChild(section);
+}
+
+function appendDebugTextSection(container, title, value) {
+    const section = createDebugSection(title);
+    const text = document.createElement('p');
+    text.textContent = value;
+    section.appendChild(text);
+    container.appendChild(section);
+}
+
+function appendDebugJsonSection(container, title, value) {
+    const section = createDebugSection(title);
+    const pre = document.createElement('pre');
+    const codeEl = document.createElement('code');
+    codeEl.textContent = JSON.stringify(value, null, 2);
+    pre.appendChild(codeEl);
+    section.appendChild(pre);
+    container.appendChild(section);
+}
+
+function createDebugSection(title) {
+    const section = document.createElement('section');
+    section.className = 'debug-section';
+    const heading = document.createElement('h3');
+    heading.textContent = title;
+    section.appendChild(heading);
+    return section;
+}
+
+function formatDebugInline(value) {
+    if (Array.isArray(value)) return value.join(', ');
+    if (value && typeof value === 'object') return JSON.stringify(value);
+    return value;
 }
 
 function createChartElement(chartPayload) {

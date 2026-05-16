@@ -78,7 +78,6 @@ class OrchestratorConfig:
     disable_cot_reasoning: bool = False  # skip reasoning_node (CoT planning)
     disable_validation: bool = False  # skip validate_sql_node (7 semantic rules)
     disable_repair: bool = False  # skip repair_sql_node (retry on execution error)
-    disable_table_selection_llm: bool = False  # stop at embedding stage; skip LLM stage 3
     disable_schema_enrichment: bool = False  # skip _enhance_sus_schema_context
     disable_rules: bool = False  # omit RULES A-O from system prompt
     disable_semantic_planner: bool = False  # skip LLM-assisted semantic plan reconciliation
@@ -87,14 +86,15 @@ class OrchestratorConfig:
     )
     disable_semantic_contract_validation: bool = False  # skip AST contract validator only
     disable_semantic_repair_guidance: bool = False  # keep repair node, omit semantic guidance
-    table_selection_preset: str = "llm_best"  # preferred named selector preset from prompt catalog
-    table_selection_mode: str | None = (
-        None  # optional override over preset: full_cascade | heuristic_only | embedding_only | heuristic_embedding_only | llm_only | llm_disabled_current_fallback
+    enable_llamaindex_context: bool = (
+        True  # use LlamaIndex schema/domain retrieval before schema context
     )
-    table_selection_description_variant: str | None = (
-        None  # optional override over preset; see prompts/table_selection/variants.yml
+    enable_llamaindex_sql_draft: bool = (
+        False  # let LlamaIndex draft SQL before current fallback generator
     )
-    table_selection_prompt_variant: str | None = (
-        None  # optional override over preset; see prompts/table_selection/variants.yml
-    )
+    llamaindex_index_dir: str = ".llamaindex_schema"  # local persisted schema index
+    llamaindex_top_k_tables: int = 6
+    llamaindex_mode: str = "context"  # context | sql_draft | hybrid
+    llamaindex_rebuild_index: bool = False
+    verify_llamaindex_schema_with_db: bool = False  # optional live sql_db_schema verification
     ablation_variant: str = "full_pipeline"  # recorded in every eval result

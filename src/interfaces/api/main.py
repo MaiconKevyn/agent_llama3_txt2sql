@@ -4,17 +4,18 @@ FastAPI REST API for Text-to-SQL Agent
 Uses LangGraphOrchestrator directly — no subprocess overhead.
 """
 
-from contextlib import asynccontextmanager
-from pathlib import Path
 import sys
 import time
+from contextlib import asynccontextmanager
+from dataclasses import asdict, is_dataclass
 from datetime import datetime
-from typing import Any, Dict, Optional
+from enum import Enum
+from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-
 
 # Allow running both as `python -m ...` and `python src/interfaces/api/main.py`
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -32,6 +33,7 @@ _orchestrator = None
 async def lifespan(app: FastAPI):
     global _orchestrator
     from src.agent.orchestrator import create_production_orchestrator
+
     _orchestrator = create_production_orchestrator()
     yield
     # No teardown needed (DB connections are pooled by SQLAlchemy)
@@ -57,7 +59,8 @@ app.add_middleware(
 class QueryRequest(BaseModel):
     query: str
     include_sql: bool = True
-    session_id: Optional[str] = None
+    session_id: str | None = None
+    debug: bool = False
 
 
 class QueryResponse(BaseModel):
@@ -65,29 +68,32 @@ class QueryResponse(BaseModel):
     status: str
     answer: str
     response: str
-    sql: Optional[str] = None
-    sql_query: Optional[str] = None
+    sql: str | None = None
+    sql_query: str | None = None
     execution_time: float
     timestamp: str
-    session_id: Optional[str] = None
-    chart: Optional[Dict[str, Any]] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    session_id: str | None = None
+    chart: dict[str, Any] | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    debug: dict[str, Any] | None = None
 
 
 class SchemaResponse(BaseModel):
     schema_text: str = Field(serialization_alias="schema")
     tables: list[str]
-    selected_table: Optional[str] = None
+    selected_table: str | None = None
     timestamp: str
 
 
 class ModelsResponse(BaseModel):
-    available_models: Dict[str, list[str]]
-    current_model: Dict[str, Any]
+    available_models: dict[str, list[str]]
+    current_model: dict[str, Any]
     timestamp: str
 
 
-def _build_query_response(result: Dict[str, Any], started_at: float, session_id: Optional[str]) -> QueryResponse:
+def _build_query_response(
+    result: dict[str, Any], started_at: float, session_id: str | None
+) -> QueryResponse:
     success = bool(result.get("success"))
     answer = result.get("response") or result.get("error_message") or "Resposta não disponível"
     sql_query = result.get("sql_query")
@@ -105,10 +111,253 @@ def _build_query_response(result: Dict[str, Any], started_at: float, session_id:
         session_id=session_id or metadata.get("session_id"),
         chart=result.get("chart"),
         metadata=metadata,
+        debug=result.get("debug"),
     )
 
 
-def _format_table_schema(table_name: str, info: Dict[str, Any]) -> str:
+_DEBUG_NODE_TITLES = {
+    "classify_query": "Classification",
+    "list_tables": "Table Discovery",
+    "get_schema": "Schema",
+    "plan_gate": "Plan Gate",
+    "query_planner": "Query Planner",
+    "reasoning": "Reasoning",
+    "semantic_planner": "Semantic Planner",
+    "generate_sql": "SQL Generation",
+    "validate_sql": "SQL Validation",
+    "repair_sql": "SQL Repair",
+    "execute_sql": "SQL Execution",
+    "multi_executor": "Multi Query Execution",
+    "multi_verifier": "Multi Query Verification",
+    "result_synthesizer": "Result Synthesis",
+    "generate_response": "Response",
+    "clarification": "Clarification",
+    "error": "Error",
+}
+
+
+def _json_safe(value: Any) -> Any:
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, Enum):
+        return value.value
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if hasattr(value, "model_dump"):
+        return _json_safe(value.model_dump(mode="json", exclude_none=True))
+    if is_dataclass(value):
+        return _json_safe(asdict(value))
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_json_safe(item) for item in value]
+    return str(value)
+
+
+def _node_state_value(node_state: dict[str, Any], key: str) -> Any:
+    value = node_state.get(key)
+    return _json_safe(value) if value is not None else None
+
+
+def _execution_debug_data(node_state: dict[str, Any]) -> dict[str, Any]:
+    execution = _json_safe(node_state.get("sql_execution_result")) or {}
+    if not isinstance(execution, dict):
+        return {"execution": execution}
+    results = execution.get("results") or []
+    return {
+        "success": execution.get("success"),
+        "row_count": execution.get("row_count", len(results) if isinstance(results, list) else 0),
+        "execution_time": execution.get("execution_time"),
+        "error_message": execution.get("error_message"),
+        "preview": results[:3] if isinstance(results, list) else results,
+    }
+
+
+def _debug_step_data(node_name: str, node_state: dict[str, Any]) -> dict[str, Any]:
+    metadata = _json_safe(node_state.get("response_metadata")) or {}
+    data: dict[str, Any] = {}
+
+    if node_name == "error":
+        data["current_error"] = (
+            _node_state_value(node_state, "current_error")
+            or _node_state_value(node_state, "error")
+            or _node_state_value(node_state, "value")
+        )
+    elif node_name == "classify_query":
+        data["route"] = _node_state_value(node_state, "query_route")
+        data["classification"] = _node_state_value(node_state, "classification")
+    elif node_name == "list_tables":
+        data["available_tables"] = _node_state_value(node_state, "available_tables") or []
+        data["selected_tables"] = _node_state_value(node_state, "selected_tables") or []
+    elif node_name == "get_schema":
+        schema_context = node_state.get("schema_context") or ""
+        data["schema_context_length"] = len(schema_context)
+        data["selected_tables"] = _node_state_value(node_state, "selected_tables") or []
+    elif node_name in {"plan_gate", "semantic_planner"}:
+        data["plan_type"] = _node_state_value(node_state, "plan_type")
+        data["semantic_plan"] = _node_state_value(node_state, "semantic_plan")
+        if metadata.get("semantic_planner"):
+            data["semantic_planner"] = metadata["semantic_planner"]
+    elif node_name in {"generate_sql", "repair_sql"}:
+        data["generated_sql"] = _node_state_value(node_state, "generated_sql")
+        data["selected_tables"] = _node_state_value(node_state, "selected_tables") or []
+        if metadata.get("semantic_repair"):
+            data["semantic_repair"] = metadata["semantic_repair"]
+        if metadata.get("repair_attempts"):
+            data["repair_attempts"] = metadata["repair_attempts"]
+    elif node_name == "validate_sql":
+        data["validated_sql"] = _node_state_value(node_state, "validated_sql")
+        data["validation_errors"] = _node_state_value(node_state, "validation_errors") or []
+        if metadata.get("semantic_validation"):
+            data["semantic_validation"] = metadata["semantic_validation"]
+    elif node_name == "execute_sql":
+        data.update(_execution_debug_data(node_state))
+    elif node_name == "generate_response":
+        data["final_response"] = _node_state_value(
+            node_state, "final_response"
+        ) or _node_state_value(node_state, "response")
+        data["success"] = _node_state_value(node_state, "success")
+    else:
+        for key in (
+            "current_phase",
+            "completed_phases",
+            "current_error",
+            "generated_sql",
+            "validated_sql",
+            "final_sql_query",
+            "final_response",
+        ):
+            value = _node_state_value(node_state, key)
+            if value not in (None, [], {}):
+                data[key] = value
+
+    current_error = _node_state_value(node_state, "current_error")
+    if current_error:
+        data["current_error"] = current_error
+    return data
+
+
+def _build_debug_payload_from_updates(updates: list[dict[str, Any]]) -> dict[str, Any]:
+    steps = []
+    for update in updates:
+        for node_name, node_state in update.items():
+            if not isinstance(node_state, dict):
+                node_state = {"value": node_state}
+            current_error = node_state.get("current_error")
+            node_failed = node_name == "error"
+            steps.append(
+                {
+                    "index": len(steps) + 1,
+                    "node": node_name,
+                    "title": _DEBUG_NODE_TITLES.get(node_name, node_name.replace("_", " ").title()),
+                    "status": "error" if current_error or node_failed else "completed",
+                    "data": _debug_step_data(node_name, node_state),
+                }
+            )
+
+    return {
+        "enabled": True,
+        "steps": steps,
+        "summary": {
+            "nodes_executed": len(steps),
+            "nodes": [step["node"] for step in steps],
+        },
+    }
+
+
+def _last_workflow_state(updates: list[dict[str, Any]]) -> dict[str, Any] | None:
+    for update in reversed(updates):
+        for _node_name, node_state in update.items():
+            if isinstance(node_state, dict) and "user_query" in node_state:
+                return node_state
+    return None
+
+
+def _latest_stream_error(updates: list[dict[str, Any]]) -> str | None:
+    for update in reversed(updates):
+        for node_name, node_state in update.items():
+            if node_name == "error":
+                if isinstance(node_state, dict):
+                    return str(
+                        node_state.get("current_error")
+                        or node_state.get("error")
+                        or node_state.get("message")
+                        or node_state
+                    )
+                return str(node_state)
+            if isinstance(node_state, dict) and node_state.get("current_error"):
+                return str(node_state["current_error"])
+    return None
+
+
+def _build_debug_result_from_updates(
+    user_query: str, updates: list[dict[str, Any]]
+) -> dict[str, Any]:
+    from src.agent.state_helpers import state_to_legacy_format
+
+    final_state = _last_workflow_state(updates)
+    debug_payload = _build_debug_payload_from_updates(updates)
+    if final_state is not None:
+        result = state_to_legacy_format(final_state)
+        result["debug"] = debug_payload
+        return result
+
+    error_message = _latest_stream_error(updates) or "Debug execution did not return workflow state"
+    return {
+        "success": False,
+        "question": user_query,
+        "sql_query": None,
+        "results": [],
+        "row_count": 0,
+        "execution_time": 0.0,
+        "error_message": error_message,
+        "response": f"Não foi possível processar sua consulta: {error_message}",
+        "timestamp": datetime.now().isoformat(),
+        "metadata": {},
+        "debug": debug_payload,
+    }
+
+
+def _attach_visualization_to_debug_result(
+    orchestrator: Any,
+    *,
+    result: dict[str, Any],
+    user_query: str,
+) -> dict[str, Any]:
+    """Run the normal chart attachment step for debug/streaming responses."""
+
+    metadata = result.get("metadata") or {}
+    from src.visualization import build_chart_plan, detect_visualization_intent
+    from src.visualization.schema import ChartPlan, VisualizationIntent
+
+    try:
+        visualization_intent = VisualizationIntent.model_validate(
+            metadata.get("visualization_intent") or {}
+        )
+    except Exception:
+        visualization_intent = detect_visualization_intent(user_query)
+
+    try:
+        chart_plan = ChartPlan.model_validate(metadata.get("chart_plan") or {})
+    except Exception:
+        chart_plan = build_chart_plan(user_query, visualization_intent)
+
+    if not visualization_intent.requested:
+        return result
+
+    attach_visualization = getattr(orchestrator, "_attach_visualization_if_requested", None)
+    if attach_visualization is None:
+        return result
+
+    return attach_visualization(
+        result=result,
+        user_query=user_query,
+        visualization_intent=visualization_intent,
+        chart_plan=chart_plan,
+    )
+
+
+def _format_table_schema(table_name: str, info: dict[str, Any]) -> str:
     lines = [
         f"TABELA: {table_name}",
         f"TITULO: {info.get('title', table_name)}",
@@ -144,7 +393,7 @@ def _format_table_schema(table_name: str, info: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _build_schema_response(table: Optional[str]) -> SchemaResponse:
+def _build_schema_response(table: str | None) -> SchemaResponse:
     from src.application.config.table_descriptions import TABLE_DESCRIPTIONS
 
     tables = sorted(TABLE_DESCRIPTIONS.keys())
@@ -188,10 +437,23 @@ async def process_query(request: QueryRequest):
 
     start_time = time.time()
     try:
-        result = _orchestrator.process_query(
-            request.query,
-            session_id=request.session_id,
-        )
+        if request.debug:
+            updates = _orchestrator.process_query(
+                request.query,
+                session_id=request.session_id,
+                streaming=True,
+            )
+            result = _build_debug_result_from_updates(request.query, updates)
+            result = _attach_visualization_to_debug_result(
+                _orchestrator,
+                result=result,
+                user_query=request.query,
+            )
+        else:
+            result = _orchestrator.process_query(
+                request.query,
+                session_id=request.session_id,
+            )
         if not request.include_sql:
             result["sql_query"] = None
         return _build_query_response(result, start_time, request.session_id)
@@ -213,7 +475,7 @@ async def process_query(request: QueryRequest):
 
 @app.get("/api/v1/schema", response_model=SchemaResponse)
 @app.get("/schema", response_model=SchemaResponse)
-async def schema(table: Optional[str] = None):
+async def schema(table: str | None = None):
     return _build_schema_response(table)
 
 
@@ -233,4 +495,5 @@ async def health():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

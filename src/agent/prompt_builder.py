@@ -1,6 +1,5 @@
 """Prompt assembly and pre-generation hints for SQL generation."""
 
-
 from langchain_core.prompts import ChatPromptTemplate
 
 from ..application.config.table_templates import (
@@ -19,52 +18,52 @@ def build_pregeneration_hints(selected_tables: list[str], user_query: str) -> st
 
     if "socioeconomico" in selected_tables:
         hints.append(
-            "🚨 SOCIOECONOMICO ALERT: long-format table. "
-            "MANDATORY: add WHERE metrica = '<metric>' in EVERY query. "
-            "Options: 'populacao_total', 'idhm', 'mortalidade_infantil_1ano', "
-            "'bolsa_familia_total', 'esgotamento_sanitario_domicilio', 'taxa_envelhecimento'. "
-            "Choosing wrong metric OR omitting it produces WRONG aggregations."
+            "🚨 SOCIOECONOMICO ALERT: current table is wide-format by municipality/year. "
+            "Use explicit columns: QT_POPULACAO, VL_PIB_PERCAPITA, "
+            "VL_MORT_INFANTIL, QT_LEITOS_SUS, VL_LEITOS_SUS_1000, "
+            "QT_MEDICOS, VL_MEDICOS_1000. "
+            "There is no metrica/valor long-format pair in the active schema."
         )
 
     if "tempo" in selected_tables:
         hints.append(
             "🚨 TEMPO ALERT: NEVER join tempo table on computed expression. "
             "Use EXTRACT(YEAR/MONTH FROM DT_INTER) directly — NO JOIN. "
-            "✅ WHERE EXTRACT(YEAR FROM \"DT_INTER\") = 2020  "
-            "❌ JOIN tempo t ON EXTRACT(YEAR FROM i.\"DT_INTER\") = t.ano → CARTESIAN PRODUCT"
+            '✅ WHERE EXTRACT(YEAR FROM "DT_INTER") = 2020  '
+            '❌ JOIN tempo t ON EXTRACT(YEAR FROM i."DT_INTER") = t.ano → CARTESIAN PRODUCT'
         )
 
-    if "atendimentos" in selected_tables:
+    if "internacao_procedimento" in selected_tables:
         hints.append(
-            "🚨 ATENDIMENTOS ALERT: junction table pattern MANDATORY. "
-            "internacoes i → JOIN atendimentos a ON i.\"N_AIH\" = a.\"N_AIH\" "
-            "→ JOIN procedimentos p ON a.\"PROC_REA\" = p.\"PROC_REA\". "
-            "NEVER reference a.\"NOME_PROC\" — that column is in procedimentos, not atendimentos."
+            "🚨 PROCEDURE JUNCTION ALERT: junction table pattern MANDATORY. "
+            'internacoes i → JOIN internacao_procedimento ip ON i."N_AIH" = ip."N_AIH" '
+            '→ JOIN procedimentos p ON ip."PROC_REA" = p."PROC_REA". '
+            'NEVER reference ip."NOME_PROC" — that column is in procedimentos, not internacao_procedimento.'
         )
 
     if "especialidade" in selected_tables:
         hints.append(
             "🚨 ESPECIALIDADE ALERT: join on ESPEC code. "
-            "JOIN especialidade e ON i.\"ESPEC\" = e.\"ESPEC\" → SELECT e.\"DESCRICAO\". "
-            "For UTI: use WHERE \"VAL_UTI\" > 0 (NOT ESPEC BETWEEN 74 AND 83)."
+            'JOIN especialidade e ON i."ESPEC" = e."ESPEC" → SELECT e."DESCRICAO". '
+            'For UTI: use WHERE "VAL_UTI" > 0 (NOT ESPEC BETWEEN 74 AND 83).'
         )
 
     if "hospital" in selected_tables:
         hints.append(
             "🚨 HOSPITAL ALERT: hospital table has only CNES, MUNIC_MOV, GESTAO, NATUREZA, NAT_JUR — NO patient counts. "
-            "To count PATIENTS by municipality: COUNT(i.\"N_AIH\") from internacoes (NOT COUNT(DISTINCT h.\"CNES\") which counts hospitals). "
+            'To count PATIENTS by municipality: COUNT(i."N_AIH") from internacoes (NOT COUNT(DISTINCT h."CNES") which counts hospitals). '
             "✅ 'municípios que atendem mais pacientes' → "
-            "SELECT mu.nome, COUNT(i.\"N_AIH\") FROM internacoes i "
-            "JOIN hospital h ON i.\"CNES\" = h.\"CNES\" "
-            "JOIN municipios mu ON h.\"MUNIC_MOV\" = mu.codigo_6d "
-            "GROUP BY mu.nome ORDER BY COUNT(i.\"N_AIH\") DESC. "
-            "❌ COUNT(DISTINCT h.\"CNES\") → conta hospitais, NÃO pacientes."
+            'SELECT mu."NO_MUNICIPIO" AS nome, COUNT(i."N_AIH") FROM internacoes i '
+            'JOIN hospital h ON i."CNES" = h."CNES" '
+            'JOIN municipios mu ON h."MUNIC_MOV" = mu."CO_MUNICIPIO_6D" '
+            'GROUP BY mu."NO_MUNICIPIO" ORDER BY COUNT(i."N_AIH") DESC. '
+            '❌ COUNT(DISTINCT h."CNES") → conta hospitais, NÃO pacientes.'
         )
 
     if "instrucao" in selected_tables:
         hints.append(
             "🚨 INSTRUCAO ALERT: for analyses by education level, join instrucao and exclude invalid/unknown codes unless the question explicitly asks for no-information bucket. "
-            "Use JOIN instrucao inst ON i.\"INSTRU\" = inst.\"INSTRU\" and WHERE i.\"INSTRU\" IS NOT NULL AND i.\"INSTRU\" != 0."
+            'Use JOIN instrucao inst ON i."INSTRU" = inst."INSTRU" and WHERE i."INSTRU" IS NOT NULL AND i."INSTRU" != 0.'
         )
 
     q_lower = user_query.lower()
@@ -100,11 +99,18 @@ def build_pregeneration_hints(selected_tables: list[str], user_query: str) -> st
     if cid_catalog_count:
         hints.append(
             "📚 CID CATALOG COUNT ALERT: a pergunta pede cardinalidade do catálogo CID-10. "
-            "✅ Use SELECT COUNT(DISTINCT \"CID\") FROM cid. "
-            "❌ NÃO conte internacoes.\"DIAG_PRINC\"; isso mede apenas CIDs observados em internações."
+            '✅ Use SELECT COUNT(DISTINCT "CID") FROM cid. '
+            '❌ NÃO conte internacoes."DIAG_PRINC"; isso mede apenas CIDs observados em internações.'
         )
 
-    fact_observed_terms = ["internações", "internacoes", "observados", "usados", "pacientes", "internados"]
+    fact_observed_terms = [
+        "internações",
+        "internacoes",
+        "observados",
+        "usados",
+        "pacientes",
+        "internados",
+    ]
     catalog_count_terms = [
         "quantos",
         "quantas",
@@ -118,27 +124,28 @@ def build_pregeneration_hints(selected_tables: list[str], user_query: str) -> st
         "cobertos",
         "banco de dados",
     ]
-    asks_catalog_count = (
-        any(t in q_lower for t in catalog_count_terms)
-        and not any(t in q_lower for t in fact_observed_terms)
+    asks_catalog_count = any(t in q_lower for t in catalog_count_terms) and not any(
+        t in q_lower for t in fact_observed_terms
     )
     if "vincprev" in selected_tables and asks_catalog_count:
         hints.append(
             "📚 VINCPREV CATALOG COUNT ALERT: se a pergunta pede quantos tipos de vínculo previdenciário existem, "
             "conte a tabela de referência vincprev. Use SELECT COUNT(*) FROM vincprev. "
-            "Não conte internacoes.\"VINCPREV\"; isso mede apenas valores observados em internações."
+            'Não conte internacoes."VINCPREV"; isso mede apenas valores observados em internações.'
         )
     if "municipios" in selected_tables and asks_catalog_count:
-        if any(t in q_lower for t in ["estado", "estados", "uf", "ufs", "cobertos", "banco de dados"]):
+        if any(
+            t in q_lower for t in ["SG_UF", "estados", "uf", "ufs", "cobertos", "banco de dados"]
+        ):
             hints.append(
                 "📚 GEOGRAPHY COVERAGE ALERT: cobertura de estados/municípios do banco vem da dimensão municipios. "
-                "Para estados cobertos, use SELECT COUNT(DISTINCT \"estado\") FROM municipios. "
+                'Para estados cobertos, use SELECT COUNT(DISTINCT "SG_UF") FROM municipios. '
                 "Junte internacoes somente quando a pergunta pedir estados/municípios com internações observadas."
             )
         elif any(t in q_lower for t in ["município", "municipio", "municípios", "municipios"]):
             hints.append(
                 "📚 MUNICIPIOS CATALOG COUNT ALERT: perguntas de quantidade de municípios cadastrados ou por UF "
-                "devem contar diretamente municipios, por exemplo SELECT COUNT(*) FROM municipios WHERE \"estado\" = 'MA'."
+                "devem contar diretamente municipios, por exemplo SELECT COUNT(*) FROM municipios WHERE \"SG_UF\" = 'MA'."
             )
 
     mentioned_ufs = {
@@ -197,28 +204,70 @@ def build_pregeneration_hints(selected_tables: list[str], user_query: str) -> st
     if multi_state_comparison:
         hints.append(
             "📊 MULTI-STATE COMPARISON ALERT: quando a pergunta pede valores para MA e RS sem dizer que quer total combinado, "
-            "retorne uma linha por estado. Inclua mu.\"estado\" no SELECT e GROUP BY; não colapse tudo em um único SUM/COUNT."
+            'retorne uma linha por estado. Inclua mu."SG_UF" no SELECT e GROUP BY; não colapse tudo em um único SUM/COUNT.'
         )
 
     per_named_group_triggers = [
-        "por estado", "em cada estado", "de cada estado", "para cada estado",
-        "por especialidade", "em cada especialidade", "de cada especialidade",
-        "por hospital", "em cada hospital", "de cada hospital", "para cada hospital",
-        "por município", "em cada município", "de cada município",
-        "por cidade", "em cada cidade",
-        "por raça", "por sexo", "por vínculo", "por faixa etária",
-        "por ano", "em cada ano", "de cada ano",
-        "por mês", "em cada mês",
+        "por estado",
+        "em cada estado",
+        "de cada estado",
+        "para cada estado",
+        "por especialidade",
+        "em cada especialidade",
+        "de cada especialidade",
+        "por hospital",
+        "em cada hospital",
+        "de cada hospital",
+        "para cada hospital",
+        "por município",
+        "em cada município",
+        "de cada município",
+        "por cidade",
+        "em cada cidade",
+        "por raça",
+        "por sexo",
+        "por vínculo",
+        "por faixa etária",
+        "por ano",
+        "em cada ano",
+        "de cada ano",
+        "por mês",
+        "em cada mês",
     ]
-    per_computed_group_triggers = ["de cada", "por cada", "por grupo", "por faixa", "por nacionalidade"]
+    per_computed_group_triggers = [
+        "de cada",
+        "por cada",
+        "por grupo",
+        "por faixa",
+        "por nacionalidade",
+    ]
     per_group_triggers = per_named_group_triggers + per_computed_group_triggers
 
     top_n_context = (
-        any(t in q_lower for t in ["principais", "top", "mais comuns", "mais frequentes", "mais realizados",
-                                    "maior", "maior valor", "maior custo", "maior número",
-                                    "maior volume", "maior quantidade", "maior taxa",
-                                    "menor", "menor custo", "menor valor",
-                                    "mais alto", "mais baixo", "primeiro", "líderes"])
+        any(
+            t in q_lower
+            for t in [
+                "principais",
+                "top",
+                "mais comuns",
+                "mais frequentes",
+                "mais realizados",
+                "maior",
+                "maior valor",
+                "maior custo",
+                "maior número",
+                "maior volume",
+                "maior quantidade",
+                "maior taxa",
+                "menor",
+                "menor custo",
+                "menor valor",
+                "mais alto",
+                "mais baixo",
+                "primeiro",
+                "líderes",
+            ]
+        )
         or bool(_re.search(r"\b\d+\s+principais\b", q_lower))
         or bool(_re.search(r"\btop[\s\-]?\d+\b", q_lower))
     )
@@ -248,10 +297,13 @@ def build_pregeneration_hints(selected_tables: list[str], user_query: str) -> st
             "Use SELECT \"IDADE\", ... GROUP BY \"IDADE\". Só crie CASE/faixa_etaria quando a pergunta disser 'faixa etária', 'faixa de idade' ou 'grupo etário'."
         )
 
-    if _re.search(r"\bqual\b.*n[ií]vel\s+de\s+instru[cç][aã]o.*(?:pacientes|internad|interna[cç][oõ]es)", q_lower):
+    if _re.search(
+        r"\bqual\b.*n[ií]vel\s+de\s+instru[cç][aã]o.*(?:pacientes|internad|interna[cç][oõ]es)",
+        q_lower,
+    ):
         hints.append(
             "📊 EDUCATION PROFILE ALERT: pergunta 'qual o nível de instrução dos pacientes/internados' pede distribuição por categoria, não um total escalar. "
-            "Use JOIN instrucao, SELECT instrucao.\"DESCRICAO\", COUNT(*), filtre i.\"INSTRU\" IS NOT NULL AND i.\"INSTRU\" != 0, GROUP BY descrição."
+            'Use JOIN instrucao, SELECT instrucao."DESCRICAO", COUNT(*), filtre i."INSTRU" IS NOT NULL AND i."INSTRU" != 0, GROUP BY descrição.'
         )
 
     has_respiratory_category = any(
@@ -263,8 +315,10 @@ def build_pregeneration_hints(selected_tables: list[str], user_query: str) -> st
             "doencas respiratorias",
         ]
     )
-    if has_respiratory_category and "trimestre" in q_lower and any(
-        t in q_lower for t in ["percentual", "porcentagem", "proporção", "proporcao"]
+    if (
+        has_respiratory_category
+        and "trimestre" in q_lower
+        and any(t in q_lower for t in ["percentual", "porcentagem", "proporção", "proporcao"])
     ):
         hints.append(
             "🫁 RESPIRATORY QUARTER PERCENTAGE ALERT: CID J% é filtro de escopo, não dimensão de saída. "
@@ -282,28 +336,33 @@ def build_pregeneration_hints(selected_tables: list[str], user_query: str) -> st
     if any(t in q_lower for t in ["contraceptivo", "contraceptivos"]):
         hints.append(
             "🧾 CONTRACEPTIVE METHOD ALERT: métodos contraceptivos são válidos no escopo obstétrico. "
-            "✅ Use WHERE i.\"ESPEC\" = 2. "
+            '✅ Use WHERE i."ESPEC" = 2. '
             "✅ Para distribuição incluindo sem informação, use LEFT JOIN contraceptivos c "
-            "ON i.\"CONTRACEP1\" = c.\"CONTRACEPTIVO\" e COALESCE(c.\"DESCRICAO\", 'SEM INFORMACAO'). "
+            'ON i."CONTRACEP1" = c."CONTRACEPTIVO" e COALESCE(c."DESCRICAO", \'SEM INFORMACAO\'). '
             "❌ Não adicione filtro de UTI por causa da palavra 'utilizados' e não use INNER JOIN quando "
             "a pergunta pede casos sem informação."
         )
 
-    if "sexo" in q_lower and any(t in q_lower for t in ["média", "media", "custo", "distribuição", "distribuicao"]):
+    if "sexo" in q_lower and any(
+        t in q_lower for t in ["média", "media", "custo", "distribuição", "distribuicao"]
+    ):
         hints.append(
             "⚥ SEX LABEL ALERT: quando agrupar por sexo, retorne labels legíveis. "
             "✅ Use CASE WHEN i.\"SEXO\" = 1 THEN 'Masculino' WHEN i.\"SEXO\" = 3 THEN 'Feminino' END "
             "ou JOIN sexo para descrição. "
-            "✅ Filtre i.\"SEXO\" IN (1, 3) quando a análise compara masculino/feminino. "
+            '✅ Filtre i."SEXO" IN (1, 3) quando a análise compara masculino/feminino. '
             "❌ Não exponha apenas os códigos numéricos 1/3 no resultado final."
         )
 
-    if any(t in q_lower for t in ["causa de morte", "causas de morte"]) and "diagnóstico principal" in q_lower:
+    if (
+        any(t in q_lower for t in ["causa de morte", "causas de morte"])
+        and "diagnóstico principal" in q_lower
+    ):
         hints.append(
-            "☠️ DEATH-CAUSE ANTI-JOIN ALERT: causa de morte usa i.\"CID_MORTE\" com i.\"MORTE\" = true; "
-            "diagnóstico principal usa i.\"DIAG_PRINC\". "
+            '☠️ DEATH-CAUSE ANTI-JOIN ALERT: causa de morte usa i."CID_MORTE" com i."MORTE" = true; '
+            'diagnóstico principal usa i."DIAG_PRINC". '
             "✅ Para 'aparece como causa de morte mas nunca como diagnóstico principal', use NOT EXISTS "
-            "correlacionando d.\"DIAG_PRINC\" = c.\"CID\". "
+            'correlacionando d."DIAG_PRINC" = c."CID". '
             "❌ Não use DIAG_PRINC como causa de morte e não trate a palavra 'principal' como ranking/top-1."
         )
 
@@ -343,27 +402,36 @@ def build_pregeneration_hints(selected_tables: list[str], user_query: str) -> st
             "❌ Não aplique NTILE diretamente nas linhas brutas de internações."
         )
 
-    socio_terms = ["idhm", "bolsa família", "bolsa familia", "mortalidade infantil"]
+    socio_terms = ["população", "populacao", "mortalidade infantil", "médicos", "medicos", "leitos"]
     if sum(1 for term in socio_terms if term in q_lower) >= 2:
         hints.append(
-            "🏛️ SOCIOECONOMIC MULTI-METRIC ALERT: socioeconomico é long-format "
-            "(codigo_6d, ano, metrica, valor). "
-            "✅ Para múltiplas métricas, use pivot condicional com CASE WHEN s.\"metrica\" = ... THEN s.\"valor\" END. "
-            "✅ Calcule médias estaduais em CTE separada e valores por município em outra CTE. "
-            "✅ Use JOIN municipios ON s.\"codigo_6d\" = mu.\"codigo_6d\" para filtrar estado e retornar nomes. "
-            "❌ Não agregue métricas diferentes juntas sem filtrar/pivotar metrica."
+            "🏛️ SOCIOECONOMIC MULTI-COLUMN ALERT: socioeconomico é wide-format "
+            "(CO_MUNICIPIO_6D, NU_ANO, QT_POPULACAO, VL_MORT_INFANTIL, QT_MEDICOS etc.). "
+            "✅ Para múltiplos indicadores, selecione/agregue cada coluna explicitamente. "
+            '✅ Use JOIN municipios ON s."CO_MUNICIPIO_6D" = mu."CO_MUNICIPIO_6D" para filtrar UF e retornar nomes. '
+            "❌ Não use metrica/valor; essas colunas não existem no schema atual."
         )
-    elif "idhm" in q_lower and "mortalidade hospitalar" in q_lower:
+    elif "mortalidade infantil" in q_lower and "mortalidade hospitalar" in q_lower:
         hints.append(
-            "🏛️ IDHM + HOSPITAL MORTALITY ALERT: taxa de mortalidade hospitalar vem de internacoes; "
-            "IDHM vem de socioeconomico com s.\"metrica\" = 'idhm'. "
+            "🏛️ INFANT + HOSPITAL MORTALITY ALERT: taxa de mortalidade hospitalar vem de internacoes; "
+            'mortalidade infantil vem de socioeconomico."VL_MORT_INFANTIL". '
             "✅ Primeiro calcule mortalidade por município e média estadual em internacoes. "
-            "✅ Depois junte socioeconomico por codigo_6d e agregue AVG(s.\"valor\") por grupo acima/abaixo da média. "
-            "❌ Não tente obter IDHM de internacoes e não use socioeconomico para calcular mortalidade hospitalar."
+            '✅ Depois junte socioeconomico por CO_MUNICIPIO_6D e agregue AVG(s."VL_MORT_INFANTIL") por grupo acima/abaixo da média. '
+            "❌ Não tente obter mortalidade infantil de internacoes e não use socioeconomico para calcular mortalidade hospitalar."
         )
 
-    antijoin_triggers = ["nunca", "nenhum", "nenhuma", "sem registro", "não aparecem", "não tiveram",
-                         "nunca tiveram", "que não", "ausentes", "jamais"]
+    antijoin_triggers = [
+        "nunca",
+        "nenhum",
+        "nenhuma",
+        "sem registro",
+        "não aparecem",
+        "não tiveram",
+        "nunca tiveram",
+        "que não",
+        "ausentes",
+        "jamais",
+    ]
     if any(t in q_lower for t in antijoin_triggers):
         hints.append(
             "🔗 ANTI-JOIN ALERT: a pergunta expressa AUSÊNCIA ('nunca', 'sem', 'não tiveram'). "
@@ -374,16 +442,25 @@ def build_pregeneration_hints(selected_tables: list[str], user_query: str) -> st
             "❌ EVITE NOT IN com subquery — falha silenciosamente quando a subquery retorna NULL."
         )
 
-    pivot_triggers = ["lado a lado", "comparando", "comparar", "versus", "vs.", " x ", "para cada estado",
-                      "comparação entre", "entre os estados", "nos estados"]
-    two_group_pattern = bool(_re.search(
-        r"\b(estado|estados?)\s+(?:do\s+)?(\w{2})\s+e\s+(?:do\s+)?(\w{2})\b",
-        q_lower
-    ))
+    pivot_triggers = [
+        "lado a lado",
+        "comparando",
+        "comparar",
+        "versus",
+        "vs.",
+        " x ",
+        "para cada estado",
+        "comparação entre",
+        "entre os estados",
+        "nos estados",
+    ]
+    two_group_pattern = bool(
+        _re.search(r"\b(estado|estados?)\s+(?:do\s+)?(\w{2})\s+e\s+(?:do\s+)?(\w{2})\b", q_lower)
+    )
     if two_group_pattern and any(t in q_lower for t in pivot_triggers + ["comparando", "lado"]):
         state_match = _re.search(
             r"\b(?:estado|estados?)?\s*(?:do\s+)?([A-Z]{2})\s+e\s+(?:do\s+)?([A-Z]{2})\b",
-            user_query
+            user_query,
         )
         g1, g2 = (state_match.group(1), state_match.group(2)) if state_match else ("A", "B")
         hints.append(
@@ -397,9 +474,17 @@ def build_pregeneration_hints(selected_tables: list[str], user_query: str) -> st
             "❌ NÃO retorne formato longo (linhas separadas por estado) — a pergunta pede formato LARGO."
         )
 
-    global_avg_triggers = ["acima da média", "abaixo da média", "média nacional", "média estadual",
-                           "acima da média nacional", "abaixo da média estadual", "duas vezes acima",
-                           "superior à média", "inferior à média"]
+    global_avg_triggers = [
+        "acima da média",
+        "abaixo da média",
+        "média nacional",
+        "média estadual",
+        "acima da média nacional",
+        "abaixo da média estadual",
+        "duas vezes acima",
+        "superior à média",
+        "inferior à média",
+    ]
     if any(t in q_lower for t in global_avg_triggers):
         hints.append(
             "📐 GLOBAL vs LOCAL AVERAGE ALERT: a pergunta compara com uma MÉDIA DE REFERÊNCIA. "
@@ -412,15 +497,22 @@ def build_pregeneration_hints(selected_tables: list[str], user_query: str) -> st
             "❌ NÃO compute AVG() sobre o conjunto já filtrado — isso dá média do subgrupo, não a referência global."
         )
 
-    agg_on_cnes_triggers = ["hospitais com mais de", "hospitais que nunca", "hospitais sem",
-                            "hospitais acima", "hospitais abaixo", "hospitais com maior", "hospitais com menor"]
+    agg_on_cnes_triggers = [
+        "hospitais com mais de",
+        "hospitais que nunca",
+        "hospitais sem",
+        "hospitais acima",
+        "hospitais abaixo",
+        "hospitais com maior",
+        "hospitais com menor",
+    ]
     if any(t in q_lower for t in agg_on_cnes_triggers):
         hints.append(
             "🏥 AGGREGATION-FIRST ALERT: para agregar internações por hospital, "
             "✅ agrupe DIRETAMENTE na tabela 'internacoes' por \"CNES\" (não faça JOIN na tabela hospital primeiro): "
-            "  SELECT \"CNES\", COUNT(*) AS total FROM internacoes GROUP BY \"CNES\" HAVING ... "
+            '  SELECT "CNES", COUNT(*) AS total FROM internacoes GROUP BY "CNES" HAVING ... '
             "Isso evita perder hospitais que existem em 'internacoes' mas não na tabela 'hospital'. "
-            "❌ Não: SELECT h.\"CNES\" FROM hospital h JOIN internacoes i ON ... GROUP BY h.\"CNES\" HAVING ..."
+            '❌ Não: SELECT h."CNES" FROM hospital h JOIN internacoes i ON ... GROUP BY h."CNES" HAVING ...'
         )
 
     has_multi_age = (
@@ -460,17 +552,17 @@ def build_pregeneration_hints(selected_tables: list[str], user_query: str) -> st
         named_dim = "group_col"
         named_dim_col = "group_key"
         if any(t in q_lower for t in ["por estado", "em cada estado", "de cada estado"]):
-            named_dim, named_dim_col = "estado", "mu.estado"
+            named_dim, named_dim_col = "estado", 'mu."SG_UF"'
         elif any(t in q_lower for t in ["por especialidade", "em cada especialidade"]):
-            named_dim, named_dim_col = "especialidade", "e.\"DESCRICAO\""
+            named_dim, named_dim_col = "especialidade", 'e."DESCRICAO"'
         elif any(t in q_lower for t in ["por hospital", "em cada hospital"]):
-            named_dim, named_dim_col = "hospital (CNES)", "i.\"CNES\""
+            named_dim, named_dim_col = "hospital (CNES)", 'i."CNES"'
         elif any(t in q_lower for t in ["por município", "em cada município"]):
-            named_dim, named_dim_col = "município", "mu.nome"
+            named_dim, named_dim_col = "município", 'mu."NO_MUNICIPIO"'
         elif any(t in q_lower for t in ["por ano", "em cada ano"]):
-            named_dim, named_dim_col = "ano", "EXTRACT(YEAR FROM i.\"DT_INTER\")"
+            named_dim, named_dim_col = "ano", 'EXTRACT(YEAR FROM i."DT_INTER")'
         elif any(t in q_lower for t in ["por mês", "em cada mês"]):
-            named_dim, named_dim_col = "mês", "EXTRACT(MONTH FROM i.\"DT_INTER\")"
+            named_dim, named_dim_col = "mês", 'EXTRACT(MONTH FROM i."DT_INTER")'
 
         hints.append(
             f"🚨 PER-{named_dim.upper()} TOP-N ALERT: pergunta pede top-N POR {named_dim.upper()} "
@@ -515,23 +607,26 @@ def build_pregeneration_hints(selected_tables: list[str], user_query: str) -> st
         )
         if two_state_match:
             g1, g2 = two_state_match.group(1), two_state_match.group(2)
-            limit_m = _re.search(r"\b(\d+)\s+(?:principais|diagnósticos|hospitais|procedimentos|municípios|cidades)", q_lower)
+            limit_m = _re.search(
+                r"\b(\d+)\s+(?:principais|diagnósticos|hospitais|procedimentos|municípios|cidades)",
+                q_lower,
+            )
             n_str = limit_m.group(1) if limit_m else "N"
             hints.append(
                 f"🚨 PER-ESTADO TOP-{n_str} (dois estados) ALERT: pergunta pede top-{n_str} "
                 f"SEPARADAMENTE para cada estado ({g1} e {g2}). "
-                "OBRIGATÓRIO: usar ROW_NUMBER() OVER (PARTITION BY mu.estado ORDER BY <métrica> DESC) AS rn, "
+                'OBRIGATÓRIO: usar ROW_NUMBER() OVER (PARTITION BY mu."SG_UF" ORDER BY <métrica> DESC) AS rn, '
                 "depois WHERE rn <= N. "
                 f"NUNCA usar WHERE estado IN ('{g1}', '{g2}') com LIMIT global — "
                 "isso retorna o ranking combinado, NÃO o top por estado. "
                 f"PADRÃO CORRETO:\n"
-                f"  SELECT mu.estado, <col>, <metrica> FROM (\n"
-                f"    SELECT mu.estado, <col>, <metrica>,\n"
-                f"           ROW_NUMBER() OVER (PARTITION BY mu.estado ORDER BY <metrica> DESC) AS rn\n"
-                f"    FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.codigo_6d\n"
-                f"    WHERE mu.estado IN ('{g1}', '{g2}') [AND outros filtros]\n"
-                f"    GROUP BY mu.estado, <col>\n"
-                f"  ) sub WHERE rn <= {n_str} ORDER BY mu.estado, rn;"
+                f'  SELECT mu."SG_UF" AS estado, <col>, <metrica> FROM (\n'
+                f'    SELECT mu."SG_UF" AS estado, <col>, <metrica>,\n'
+                f'           ROW_NUMBER() OVER (PARTITION BY mu."SG_UF" ORDER BY <metrica> DESC) AS rn\n'
+                f'    FROM internacoes i JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"\n'
+                f"    WHERE mu.\"SG_UF\" IN ('{g1}', '{g2}') [AND outros filtros]\n"
+                f'    GROUP BY mu."SG_UF", <col>\n'
+                f'  ) sub WHERE rn <= {n_str} ORDER BY mu."SG_UF", rn;'
             )
 
     if not hints:
@@ -573,11 +668,11 @@ _SQL_RULES_AO = """        ═════════════════�
 
         RULE E — CID COLUMN:
         • Include c."CID" ONLY WHEN: question explicitly says "com código" or "código CID".
-        • Default: SELECT only c."CD_DESCRICAO", GROUP BY c."CD_DESCRICAO".
-        ✅ "principais causas de morte" → SELECT c."CD_DESCRICAO", COUNT(*) GROUP BY c."CD_DESCRICAO"
-        ✅ "principais CIDs de entrada" → SELECT c."CD_DESCRICAO", COUNT(*) GROUP BY c."CD_DESCRICAO"
-        ✅ "com código" / "código CID" → SELECT c."CID", c."CD_DESCRICAO", COUNT(*) GROUP BY c."CID", c."CD_DESCRICAO"
-        ❌ "quais os CIDs de entrada" → SELECT c."CD_DESCRICAO" only (NOT c."CID" unless "com código" stated)
+        • Default: SELECT only c."DESCRICAO", GROUP BY c."DESCRICAO".
+        ✅ "principais causas de morte" → SELECT c."DESCRICAO", COUNT(*) GROUP BY c."DESCRICAO"
+        ✅ "principais CIDs de entrada" → SELECT c."DESCRICAO", COUNT(*) GROUP BY c."DESCRICAO"
+        ✅ "com código" / "código CID" → SELECT c."CID", c."DESCRICAO", COUNT(*) GROUP BY c."CID", c."DESCRICAO"
+        ❌ "quais os CIDs de entrada" → SELECT c."DESCRICAO" only (NOT c."CID" unless "com código" stated)
 
         RULE F — singular "qual o X mais Y" → LIMIT 1; plural "quais os N X mais Y" → LIMIT N.
 
@@ -662,10 +757,10 @@ _SQL_RULES_AO = """        ═════════════════�
         raça/cor description → JOIN raca_cor r ON i."RACA_COR" = r."RACA_COR" → SELECT r."DESCRICAO"
 
         DISEASE LOOKUP: table is "cid" (NOT "cid10"). NEVER hardcode CID codes (e.g. DIAG_PRINC = 'J18' is WRONG).
-        Displaying diagnosis name → ALWAYS JOIN cid c ON i."DIAG_PRINC"=c."CID" → SELECT c."CD_DESCRICAO"
-        ✅ "diagnóstico mais comum" → SELECT c."CD_DESCRICAO", COUNT(*) FROM internacoes i JOIN cid c ON i."DIAG_PRINC"=c."CID" GROUP BY c."CD_DESCRICAO" ORDER BY 2 DESC LIMIT 1
+        Displaying diagnosis name → ALWAYS JOIN cid c ON i."DIAG_PRINC"=c."CID" → SELECT c."DESCRICAO"
+        ✅ "diagnóstico mais comum" → SELECT c."DESCRICAO", COUNT(*) FROM internacoes i JOIN cid c ON i."DIAG_PRINC"=c."CID" GROUP BY c."DESCRICAO" ORDER BY 2 DESC LIMIT 1
         ❌ SELECT i."DIAG_PRINC", COUNT(*) → returns raw CID code, NOT description
-        Filtering by named disease → JOIN cid c ON i."DIAG_PRINC"=c."CID" WHERE c."CD_DESCRICAO" ILIKE '%X%'
+        Filtering by named disease → JOIN cid c ON i."DIAG_PRINC"=c."CID" WHERE c."DESCRICAO" ILIKE '%X%'
         Category (no specific name) → WHERE "DIAG_PRINC" LIKE 'J%' (J=Respiratory, I=Cardiovascular, C=Cancer, K=Digestive)
         For cause of death by disease → JOIN cid ON i."CID_MORTE"=c."CID" (see RULE B)
 
@@ -695,14 +790,19 @@ def build_sql_generation_messages(
     if pregeneration_hints:
         table_rules = pregeneration_hints + "\n" + table_rules
 
-    sql_prompt_template = ChatPromptTemplate.from_messages([
-        ("system", "You are a PostgreSQL expert assistant for Brazilian healthcare (SIH-RS) data analysis.\n\n"
-                   "{rules_section}\n\n"
-                   "        CORE: Use double quotes for all columns: \"COLUMN_NAME\". Return ONLY the SQL query.\n\n"
-                   "        DATABASE SCHEMA:\n        {schema_context}"),
-        ("system", "{table_specific_rules}"),
-        ("human", "USER QUERY: {user_query}\n\nGenerate the SQL query:"),
-    ])
+    sql_prompt_template = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                "You are a PostgreSQL expert assistant for Brazilian healthcare (SIH-RS) data analysis.\n\n"
+                "{rules_section}\n\n"
+                '        CORE: Use double quotes for all columns: "COLUMN_NAME". Return ONLY the SQL query.\n\n'
+                "        DATABASE SCHEMA:\n        {schema_context}",
+            ),
+            ("system", "{table_specific_rules}"),
+            ("human", "USER QUERY: {user_query}\n\nGenerate the SQL query:"),
+        ]
+    )
 
     formatted_messages = sql_prompt_template.format_messages(
         rules_section=rules_section,
@@ -712,6 +812,7 @@ def build_sql_generation_messages(
     )
 
     import re as _re_check
+
     if pregeneration_hints and (
         _re_check.search(r"TOP-[N\d]", pregeneration_hints) or "MULTI-AGE" in pregeneration_hints
     ):

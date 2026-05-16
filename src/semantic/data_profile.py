@@ -116,8 +116,8 @@ def default_profile_specs() -> list[ColumnProfileSpec]:
         ColumnProfileSpec(table="internacoes", column="RACA_COR", kind="categorical"),
         ColumnProfileSpec(table="internacoes", column="CNES", kind="identifier"),
         ColumnProfileSpec(table="internacoes", column="MUNIC_RES", kind="identifier"),
-        ColumnProfileSpec(table="atendimentos", column="PROC_REA", kind="identifier"),
-        ColumnProfileSpec(table="municipios", column="estado", kind="categorical"),
+        ColumnProfileSpec(table="internacao_procedimento", column="PROC_REA", kind="identifier"),
+        ColumnProfileSpec(table="municipios", column="SG_UF", kind="categorical"),
         ColumnProfileSpec(table="hospital", column="MUNIC_MOV", kind="identifier"),
     ]
 

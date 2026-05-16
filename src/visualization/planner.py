@@ -302,16 +302,16 @@ def _prepare_chart_data_for_spec(
     series: str | None,
 ) -> tuple[list[dict[str, Any]], list[ChartWarning]]:
     normalized_rows = [
-            {
-                **row,
-                x: normalize_chart_label(row.get(x)),
-                **(
-                    {series: normalize_chart_label(_format_domain_label(series, row.get(series)))}
-                    if series
-                    else {}
-                ),
-            }
-            for row in rows
+        {
+            **row,
+            x: normalize_chart_label(row.get(x)),
+            **(
+                {series: normalize_chart_label(_format_domain_label(series, row.get(series)))}
+                if series
+                else {}
+            ),
+        }
+        for row in rows
     ]
     warnings: list[ChartWarning] = []
     if chart_type in {"bar", "pie", "donut"} and _is_clinical_missing_sensitive_dimension(x):
@@ -350,7 +350,9 @@ def _limit_pie_categories(
     )
     kept = sorted_rows[: MAX_PIE_CATEGORIES - 1]
     other_value = sum(
-        row.get(y) for row in sorted_rows[MAX_PIE_CATEGORIES - 1:] if isinstance(row.get(y), (int, float))
+        row.get(y)
+        for row in sorted_rows[MAX_PIE_CATEGORIES - 1 :]
+        if isinstance(row.get(y), (int, float))
     )
     if other_value:
         kept.append({x: "Outros", y: other_value})
@@ -390,14 +392,7 @@ def _looks_temporal(column: str, values: list[Any]) -> bool:
 
 
 def _is_date_like(value: str) -> bool:
-    return bool(
-        len(value) >= 4
-        and (
-            value[:4].isdigit()
-            or "/" in value
-            or "-" in value
-        )
-    )
+    return bool(len(value) >= 4 and (value[:4].isdigit() or "/" in value or "-" in value))
 
 
 def _build_title(
@@ -435,8 +430,8 @@ def _drop_domain_code_numeric_columns(numeric_columns: list[str]) -> list[str]:
         "mes",
         "trimestre",
         "codigo",
-        "codigo_6d",
-        "codigo_ibge",
+        "co_municipio_6d",
+        "co_municipio_7d",
         "cnes",
     }
     return [
@@ -464,10 +459,7 @@ def _format_domain_label(dimension: str, value: Any) -> Any:
 
 def _is_clinical_missing_sensitive_dimension(dimension: str | None) -> bool:
     normalized = _normalize_label(dimension)
-    return any(
-        token in normalized
-        for token in ["causa", "diagnostico", "doenca", "cid", "motivo"]
-    )
+    return any(token in normalized for token in ["causa", "diagnostico", "doenca", "cid", "motivo"])
 
 
 def _is_unfilled_category(value: Any) -> bool:

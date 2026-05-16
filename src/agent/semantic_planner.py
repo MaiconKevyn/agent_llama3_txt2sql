@@ -51,6 +51,8 @@ def semantic_planner_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
     heuristic_plan_raw = state.get("semantic_plan")
     if not heuristic_plan_raw:
         return state
+    if state.get("needs_clarification"):
+        return update_phase(state, ExecutionPhase.REASONING, time.time() - start_time)
 
     try:
         heuristic_plan = SemanticPlan.model_validate(heuristic_plan_raw)

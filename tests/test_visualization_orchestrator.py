@@ -38,8 +38,8 @@ def test_attach_visualization_builds_chart_when_requested():
     result = {
         "success": True,
         "sql_query": (
-            'SELECT mu."nome" AS municipio, COUNT(*) AS total_internacoes '
-            'FROM internacoes i GROUP BY mu."nome"'
+            'SELECT mu."NO_MUNICIPIO" AS municipio, COUNT(*) AS total_internacoes '
+            'FROM internacoes i GROUP BY mu."NO_MUNICIPIO"'
         ),
         "results": [{"result": ("Porto Alegre", 10)}],
         "row_count": 1,
@@ -65,7 +65,7 @@ def test_attach_visualization_appends_unfilled_category_notice_to_response():
         "success": True,
         "response": "1. Nao preenchido: 488.330\n2. Insuf respirat aguda: 24.784",
         "sql_query": (
-            'SELECT c."CD_DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes '
+            'SELECT c."DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes '
             'FROM internacoes i JOIN cid c ON i."CID_MORTE" = c."CID" GROUP BY causa_morte'
         ),
         "results": [
@@ -97,9 +97,9 @@ def test_attach_visualization_preserves_coherent_response_when_adding_unfilled_n
         "success": True,
         "response": "1. Insuf respirat aguda: 24.784\n2. Septicemia NE: 17.904",
         "sql_query": (
-            'SELECT c."CD_DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes '
+            'SELECT c."DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes '
             'FROM internacoes i JOIN cid c ON i."CID_MORTE" = c."CID" '
-            'WHERE c."CD_DESCRICAO" <> \'Nao preenchido\' GROUP BY causa_morte'
+            'WHERE c."DESCRICAO" <> \'Nao preenchido\' GROUP BY causa_morte'
         ),
         "results": [
             {"result": ("Insuf respirat aguda", 24784)},

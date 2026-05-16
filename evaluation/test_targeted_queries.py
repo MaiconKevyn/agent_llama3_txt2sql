@@ -3,7 +3,7 @@
 Targeted test script for queries identified as likely failing due to:
   - UTI detection (VAL_UTI > 0 vs ESPEC BETWEEN 74 AND 83)
   - Death cause field (CID_MORTE vs DIAG_PRINC)
-  - socioeconomico table selection and metrica filter
+  - socioeconomico table selection and wide-format indicator columns
 """
 
 import sys
@@ -63,38 +63,38 @@ TARGET_QUERIES = [
     {
         "id": "GT014", "difficulty": "medium",
         "question": "Quantas internações por meningite ocasionaram em morte?",
-        "query": 'SELECT COUNT(*) FROM internacoes i JOIN cid c ON i."CID_MORTE" = c."CID" WHERE c."CD_DESCRICAO" ILIKE \'%meningite%\' AND i."MORTE" = true;',
+        "query": 'SELECT COUNT(*) FROM internacoes i JOIN cid c ON i."CID_MORTE" = c."CID" WHERE c."DESCRICAO" ILIKE \'%meningite%\' AND i."MORTE" = true;',
         "category": "CID_MORTE vs DIAG_PRINC",
     },
     {
         "id": "GT042", "difficulty": "medium",
         "question": "Quais são as três causas de morte mais frequentes entre mulheres?",
-        "query": 'SELECT c."CD_DESCRICAO", COUNT(*) AS total_mortes FROM internacoes i JOIN cid c ON i."CID_MORTE" = c."CID" WHERE i."SEXO" = 3 AND i."MORTE" = true AND i."CID_MORTE" IS NOT NULL GROUP BY c."CD_DESCRICAO" ORDER BY total_mortes DESC LIMIT 3;',
+        "query": 'SELECT c."DESCRICAO", COUNT(*) AS total_mortes FROM internacoes i JOIN cid c ON i."CID_MORTE" = c."CID" WHERE i."SEXO" = 3 AND i."MORTE" = true AND i."CID_MORTE" IS NOT NULL GROUP BY c."DESCRICAO" ORDER BY total_mortes DESC LIMIT 3;',
         "category": "CID_MORTE vs DIAG_PRINC",
     },
     {
         "id": "GT052", "difficulty": "hard",
         "question": "Quais são as 10 principais causas de morte (com descrição)?",
-        "query": 'SELECT c."CID", c."CD_DESCRICAO", COUNT(*) AS total_mortes FROM internacoes i JOIN cid c ON i."CID_MORTE" = c."CID" WHERE i."MORTE" = true GROUP BY c."CID", c."CD_DESCRICAO" ORDER BY total_mortes DESC LIMIT 10;',
+        "query": 'SELECT c."CID", c."DESCRICAO", COUNT(*) AS total_mortes FROM internacoes i JOIN cid c ON i."CID_MORTE" = c."CID" WHERE i."MORTE" = true GROUP BY c."CID", c."DESCRICAO" ORDER BY total_mortes DESC LIMIT 10;',
         "category": "CID_MORTE vs DIAG_PRINC",
     },
     # --- socioeconomico table ---
     {
         "id": "GT006", "difficulty": "easy",
         "question": "Quantos municípios têm dados socioeconômicos registrados?",
-        "query": "SELECT COUNT(DISTINCT codigo_6d) AS total_municipios FROM socioeconomico;",
+        "query": 'SELECT COUNT(DISTINCT "CO_MUNICIPIO_6D") AS total_municipios FROM socioeconomico;',
         "category": "socioeconomico",
     },
     {
         "id": "GT018", "difficulty": "medium",
         "question": "Qual município tem a maior população segundo dados do IBGE?",
-        "query": "SELECT mu.nome AS municipio_maior_populacao FROM socioeconomico s JOIN municipios mu ON s.codigo_6d = mu.codigo_6d WHERE s.metrica = 'populacao_total' ORDER BY s.valor DESC LIMIT 1;",
+        "query": 'SELECT mu."NO_MUNICIPIO" AS municipio_maior_populacao FROM socioeconomico s JOIN municipios mu ON s."CO_MUNICIPIO_6D" = mu."CO_MUNICIPIO_6D" WHERE s."QT_POPULACAO" IS NOT NULL ORDER BY s."QT_POPULACAO" DESC LIMIT 1;',
         "category": "socioeconomico",
     },
     {
         "id": "GT043", "difficulty": "medium",
         "question": "Qual a taxa de mortalidade infantil média no Brasil?",
-        "query": "SELECT AVG(valor) AS taxa_media_mortalidade_infantil FROM socioeconomico WHERE metrica = 'mortalidade_infantil_1ano';",
+        "query": 'SELECT AVG("VL_MORT_INFANTIL") AS taxa_media_mortalidade_infantil FROM socioeconomico WHERE "VL_MORT_INFANTIL" IS NOT NULL;',
         "category": "socioeconomico",
     },
 ]

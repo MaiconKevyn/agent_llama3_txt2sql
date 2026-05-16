@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import os
 import sys
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -29,76 +28,33 @@ from evaluation.table_selection.benchmark import (  # noqa: E402
     load_table_selection_gold,
     score_table_selection,
 )
-from src.agent.table_selection import (  # noqa: E402
-    DEFAULT_TABLE_DESCRIPTION_VARIANT,
-    DEFAULT_TABLE_SELECTION_PROMPT_VARIANT,
-    TABLE_SELECTION_MODE_EMBEDDING_ONLY,
-    TABLE_SELECTION_MODE_FULL_CASCADE,
-    TABLE_SELECTION_MODE_HEURISTIC_EMBEDDING_ONLY,
-    TABLE_SELECTION_MODE_HEURISTIC_ONLY,
-    TABLE_SELECTION_MODE_LLM_DISABLED_FALLBACK,
-    TABLE_SELECTION_MODE_LLM_ONLY,
-    select_tables_with_debug,
-)
+from src.agent.table_selection import select_tables_with_llamaindex  # noqa: E402
 from src.application.config.table_descriptions import TABLE_DESCRIPTIONS  # noqa: E402
-from src.application.prompts.table_selection.catalog import (  # noqa: E402
-    get_available_description_variants,
-    get_available_prompt_variants,
-)
 
-
+LLAMAINDEX_CONTEXT_MODE = "llamaindex_context"
 DEFAULT_MODES = [
-    TABLE_SELECTION_MODE_FULL_CASCADE,
-    TABLE_SELECTION_MODE_HEURISTIC_ONLY,
-    TABLE_SELECTION_MODE_EMBEDDING_ONLY,
-    TABLE_SELECTION_MODE_HEURISTIC_EMBEDDING_ONLY,
-    TABLE_SELECTION_MODE_LLM_ONLY,
-    TABLE_SELECTION_MODE_LLM_DISABLED_FALLBACK,
+    LLAMAINDEX_CONTEXT_MODE,
 ]
-LLM_MODES = {
-    TABLE_SELECTION_MODE_FULL_CASCADE,
-    TABLE_SELECTION_MODE_LLM_ONLY,
-}
-
-
-class SelectionLLMClient:
-    """Lightweight LLM wrapper used only for table-selection prompting."""
-
-    def __init__(self, model: str) -> None:
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise ValueError(
-                f"OPENAI_API_KEY environment variable not set after loading {ROOT / '.env'}"
-            )
-
-        from langchain_openai import ChatOpenAI
-
-        self._llm = ChatOpenAI(
-            model=model,
-            temperature=0.0,
-            max_retries=3,
-            timeout=60,
-            seed=42,
-            api_key=api_key,
-        )
-
-    def invoke_chat(self, messages: List[Any]) -> Any:
-        return self._llm.invoke(messages)
+_BLOCKED_RUNTIME_TABLE_PREFIXES = (
+    "stg_",
+    "source_",
+    "relationships_",
+    "not_null_",
+    "accepted_values_",
+    "dbt_",
+)
 
 
 @dataclass
 class VariantSpec:
     id: str
     mode: str
-    description_variant: str
-    prompt_variant: str
+    description_variant: str = "llamaindex"
+    prompt_variant: str = "llamaindex"
 
     @property
     def name(self) -> str:
-        suffix = ""
-        if self.mode in LLM_MODES:
-            suffix = f"::{self.description_variant}::{self.prompt_variant}"
-        return f"{self.mode}{suffix}"
+        return self.mode
 
 
 def _build_variants(
@@ -109,39 +65,36 @@ def _build_variants(
     variants: List[VariantSpec] = []
     counter = 0
     for mode in modes:
-        if mode in LLM_MODES:
-            for description_variant in description_variants:
-                for prompt_variant in prompt_variants:
-                    variants.append(
-                        VariantSpec(
-                            id=f"TS{counter:02d}",
-                            mode=mode,
-                            description_variant=description_variant,
-                            prompt_variant=prompt_variant,
-                        )
-                    )
-                    counter += 1
-        else:
-            variants.append(
-                VariantSpec(
-                    id=f"TS{counter:02d}",
-                    mode=mode,
-                    description_variant=DEFAULT_TABLE_DESCRIPTION_VARIANT,
-                    prompt_variant=DEFAULT_TABLE_SELECTION_PROMPT_VARIANT,
-                )
-            )
-            counter += 1
+        if mode != LLAMAINDEX_CONTEXT_MODE:
+            raise ValueError("Only llamaindex_context mode is supported")
+        variants.append(VariantSpec(id=f"TS{counter:02d}", mode=mode))
+        counter += 1
     return variants
 
 
 def _available_tables() -> List[str]:
+    metadata_path = ROOT / "docs" / "generated" / "table_metadata.csv"
+    if metadata_path.exists():
+        with open(metadata_path, newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            table_names = {
+                (row.get("table_name") or "").strip()
+                for row in reader
+                if (row.get("schema_name") or "").strip() in {"", "main"}
+                and (row.get("table_name") or "").strip()
+                and not (row.get("table_name") or "").strip().startswith(
+                    _BLOCKED_RUNTIME_TABLE_PREFIXES
+                )
+            }
+        if table_names:
+            return sorted(table_names)
+
     return sorted(TABLE_DESCRIPTIONS.keys())
 
 
 def _run_variant(
     spec: VariantSpec,
     dataset: List[Dict[str, Any]],
-    llm_client: SelectionLLMClient | None,
     available_tables: List[str],
     verbose: bool = True,
 ) -> List[Dict[str, Any]]:
@@ -150,14 +103,22 @@ def _run_variant(
         print(f"\n  ── {spec.id}: {spec.name} ──")
 
     for item in dataset:
-        debug = select_tables_with_debug(
+        validated_tables, raw_tables, retrieved = select_tables_with_llamaindex(
             user_query=item["question"],
             available_tables=available_tables,
-            llm_manager=llm_client,
-            mode=spec.mode,
-            description_variant=spec.description_variant,
-            prompt_variant=spec.prompt_variant,
         )
+        debug = {
+            "stage_used": retrieved.retrieval_mode,
+            "heuristic": {"selected_tables": [], "confidence": 0.0},
+            "embedding": {"selected_tables": [], "confidence": 0.0},
+            "llm": {
+                "parsed_tables": retrieved.selected_tables,
+                "raw_response": retrieved.schema_context,
+            },
+            "raw_selected_tables": raw_tables,
+            "validated_selected_tables": validated_tables,
+            "error": retrieved.error,
+        }
         raw_score = score_table_selection(
             selected_tables=debug["raw_selected_tables"],
             gold_core_tables=item["gold_core_tables"],
@@ -322,19 +283,6 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Dedicated table-selection benchmark")
     parser.add_argument("--gold", type=str, default=str(DEFAULT_GOLD_PATH))
     parser.add_argument("--modes", nargs="+", default=DEFAULT_MODES)
-    parser.add_argument(
-        "--description-variants",
-        nargs="+",
-        choices=get_available_description_variants(),
-        default=[DEFAULT_TABLE_DESCRIPTION_VARIANT],
-    )
-    parser.add_argument(
-        "--prompt-variants",
-        nargs="+",
-        choices=get_available_prompt_variants(),
-        default=[DEFAULT_TABLE_SELECTION_PROMPT_VARIANT],
-    )
-    parser.add_argument("--model", type=str, default="gpt-4o-mini")
     parser.add_argument("--max-queries", type=int, default=None)
     parser.add_argument("--output", type=str, default=None)
     parser.add_argument("--quiet", action="store_true")
@@ -354,21 +302,16 @@ def main() -> None:
     )
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    variants = _build_variants(args.modes, args.description_variants, args.prompt_variants)
-    llm_client: SelectionLLMClient | None = None
-    if any(spec.mode in LLM_MODES for spec in variants):
-        llm_client = SelectionLLMClient(args.model)
+    variants = _build_variants(args.modes, [], [])
 
     available_tables = _available_tables()
     summary_rows: List[Dict[str, Any]] = []
     detail_rows: List[Dict[str, Any]] = []
 
     for spec in variants:
-        variant_llm_client = llm_client if spec.mode in LLM_MODES else None
         rows = _run_variant(
             spec=spec,
             dataset=dataset,
-            llm_client=variant_llm_client,
             available_tables=available_tables,
             verbose=not args.quiet,
         )
