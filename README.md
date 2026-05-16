@@ -47,16 +47,21 @@ Supported interfaces:
 
 ## Architecture
 
-![DataVisSUS Text-to-SQL Agent Architecture](assets/animated/flow_v09_research_clean_github_dark.svg)
+![Animated LlamaIndex-grounded DataVisSUS Text-to-SQL agent flow](assets/animated/flow_v09_research_clean_github_dark.svg)
 
+The animated diagram above shows the current default runtime path. In the default
+`llamaindex_mode=context` mode, LlamaIndex is called during table selection to
+retrieve table candidates and prompt-ready schema context. Later graph nodes
+consume that selected table set and schema context.
 
 The architecture is composed of:
 
 - **Web frontend**: chat UI, optional SQL visibility, table rendering, and Apache ECharts rendering.
 - **Agent Backend**: FastAPI plus the production LangGraph orchestrator.
 - **LangGraph Orchestrator**: explicit state-machine workflow for routing, planning, SQL generation, validation, execution, repair, and response synthesis.
+- **LlamaIndex schema retrieval**: vector retrieval over generated schema/catalog documents to select runtime tables and provide prompt-ready schema context.
 - **Semantic Layer**: reusable domain catalog, data profile, metric rules, join paths, macros, and SQL contract checks.
-- **SQL tools and database runtime**: SQLDatabaseToolkit tools for schema, validation, and execution over the configured database.
+- **SQL tools and database runtime**: SQLDatabaseToolkit tools for table inventory, optional schema verification, validation, and execution over the configured database.
 - **Observability**: logs and optional MLflow tracking.
 
 ## Agent Workflow
@@ -71,11 +76,14 @@ The production graph is defined in [`src/agent/workflow.py`](src/agent/workflow.
 2. **Discover and Select Tables**
    - Implemented in [`src/agent/table_selection.py`](src/agent/table_selection.py).
    - Uses LlamaIndex schema retrieval by default (`llamaindex_mode=context`).
+   - This is the only direct LlamaIndex call in the default single-query path.
+   - Schema-error repair and multi-query subqueries may re-run table selection with a narrower prompt.
    - The old LangGraph heuristic/embedding/LLM table-selection cascade is no longer used by the runtime agent.
 
 3. **Schema Context**
    - Implemented in [`src/agent/schema_node.py`](src/agent/schema_node.py).
-   - Uses the LlamaIndex schema/domain context as the default prompt schema source.
+   - Uses the LlamaIndex schema/domain context produced by table selection as the default prompt schema source.
+   - Does not call LlamaIndex again in the default path; it only reads the context already stored in graph state.
    - `sql_db_schema` is now an optional live verification/debug path, enabled with `--verify-llamaindex-schema-with-db` or `VERIFY_LLAMAINDEX_SCHEMA_WITH_DB=true`.
 
 4. **Plan Gate and Semantic Plan**
@@ -86,6 +94,7 @@ The production graph is defined in [`src/agent/workflow.py`](src/agent/workflow.
 5. **SQL Reasoning and Generation**
    - [`src/agent/sql_generation.py`](src/agent/sql_generation.py) generates SQL using schema context, semantic plan guidance, chart plan guidance, and prompt rules.
    - SQL generation returns a Pydantic `SQLOutput` with `sql`, `reasoning`, and `confidence`.
+   - Optional `llamaindex_mode=sql_draft` can use LlamaIndex for an SQL draft before falling back to the current structured generator.
 
 6. **Validation**
    - [`src/agent/validation.py`](src/agent/validation.py) validates SQL using SQLDatabaseToolkit query checking plus semantic and contract validators.
@@ -135,10 +144,15 @@ Tools used in the pipeline:
 
 | Tool | Main Step | Purpose |
 |---|---|---|
-| `sql_db_list_tables` / enhanced list tool | Discover and select tables | Database table inventory with curated descriptions |
+| `sql_db_list_tables` / enhanced list tool | Discover tables | Database table inventory with curated descriptions; LlamaIndex performs semantic selection over this inventory |
 | `sql_db_schema` | Schema context | Optional live schema verification for LlamaIndex-selected tables |
 | `sql_db_query_checker` | Validate | LLM-assisted SQL query checking |
 | `sql_db_query` | Execute | Query execution against the configured database |
+
+LlamaIndex is not exposed as a SQLDatabaseToolkit tool. It is invoked by
+[`src/agent/table_selection.py`](src/agent/table_selection.py) through
+[`src/agent/llamaindex_context.py`](src/agent/llamaindex_context.py), using the
+generated schema catalog under [`src/application/schema/generated/`](src/application/schema/generated/).
 
 The tool setup is implemented in [`src/agent/llm_manager.py`](src/agent/llm_manager.py). Tool execution records are persisted in the graph state through `ToolCallResult`, making tool usage observable and evaluable.
 
@@ -220,6 +234,7 @@ Version constraints are defined in [`pyproject.toml`](pyproject.toml) and [`fron
 | Model provider | OpenAI | SDK `>=1.55.0` | LLM runtime |
 | Default model | `gpt-4o-mini` | Config default | SQL, semantic planning, response synthesis |
 | Orchestration | LangGraph | `>=1.1.10` | Explicit graph workflow |
+| Schema retrieval | LlamaIndex Core + OpenAI integrations | Core `>=0.12.0`; LLM/embeddings `>=0.3.0` | Schema-context retrieval and optional SQL draft |
 | LLM/tool framework | LangChain Core | `>=0.3.74` | Messages, tools, structured calls |
 | SQL tools | LangChain Community | `>=0.3.25` | SQLDatabaseToolkit |
 | OpenAI integration | LangChain OpenAI | `>=0.3.32` | Chat model and structured output |
@@ -247,8 +262,10 @@ txt2sql_refactor_openai_v2/
 │   │   ├── workflow.py              # LangGraph state graph
 │   │   ├── orchestrator.py          # Production orchestrator and session handling
 │   │   ├── classification.py        # Query routing
-│   │   ├── table_selection.py       # Table discovery and selection
-│   │   ├── schema_node.py           # Schema retrieval and enrichment
+│   │   ├── table_selection.py       # Runtime table selection via LlamaIndex retrieval
+│   │   ├── llamaindex_context.py    # Schema-document indexing and retrieval
+│   │   ├── llamaindex_sql_generator.py # Optional SQL-draft path
+│   │   ├── schema_node.py           # Schema context loading and optional DB verification
 │   │   ├── semantic_planner.py      # Structured semantic plan reconciliation
 │   │   ├── sql_generation.py        # Reasoning and structured SQL output
 │   │   ├── validation.py            # SQL and semantic validation
@@ -259,7 +276,8 @@ txt2sql_refactor_openai_v2/
 │   │   └── tools/                   # Custom LangChain tools
 │   ├── application/
 │   │   ├── config/                  # Runtime config and table metadata
-│   │   └── prompts/                 # Versioned prompt catalogs
+│   │   ├── prompts/                 # Versioned prompt catalogs
+│   │   └── schema/generated/        # Generated schema catalog consumed by LlamaIndex
 │   ├── interfaces/
 │   │   ├── api/main.py              # FastAPI app
 │   │   └── cli/agent.py             # CLI interface
@@ -274,7 +292,7 @@ txt2sql_refactor_openai_v2/
 │   ├── table_selection/             # Table-selection benchmark
 │   └── visualization/               # Chart evaluation artifacts
 ├── frontend/                        # Node/Express + vanilla JS web UI
-├── assets/animated/                 # README architecture diagrams
+├── assets/animated/                 # README animated architecture diagram variants
 ├── assets/screenshots/              # README UI examples
 ├── data/                            # SQLite checkpoint DB
 ├── logs/                            # Runtime logs
