@@ -64,7 +64,8 @@ TABLE_TEMPLATES = {
         CRITICAL JOIN RELATIONSHIPS:
         - → hospital: internacoes."CNES" = hospital."CNES"
         - → cid: internacoes."DIAG_PRINC" = cid."CID"  (diagnóstico principal)
-        - → cid: internacoes."CID_MORTE" = cid."CID"   (causa da morte — apenas quando MORTE=true)
+        - → cid: internacoes."DIAG_PRINC" = cid."CID" + i."MORTE" = true (causa/motivo de morte analítico)
+        - → cid: internacoes."CID_MORTE" = cid."CID"   (campo bruto/auditável; use só se o usuário pedir CID_MORTE)
         - → municipios (residência paciente): internacoes."MUNIC_RES" = municipios."CO_MUNICIPIO_6D"
         - → municipios (localização hospital): JOIN hospital h ON i."CNES" = h."CNES"
                                                JOIN municipios m ON h."MUNIC_MOV" = m."CO_MUNICIPIO_6D"
@@ -132,31 +133,31 @@ TABLE_TEMPLATES = {
         --- HARD EXAMPLES ---
 
         -- Q: "Quais doenças mais frequentemente causam óbito em internações hospitalares?"
-        -- RULE: (1) use CID_MORTE (not DIAG_PRINC); (2) include c."CID" ONLY when question says "com código";
+        -- RULE: (1) use DIAG_PRINC with MORTE=true; (2) include c."CID" ONLY when question says "com código";
         --       (3) GROUP BY c."DESCRICAO" by default; (4) always filter MORTE = true
         SELECT c."DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes
         FROM internacoes i
-        JOIN cid c ON i."CID_MORTE" = c."CID"
-        WHERE i."MORTE" = true AND i."CID_MORTE" IS NOT NULL
+        JOIN cid c ON i."DIAG_PRINC" = c."CID"
+        WHERE i."MORTE" = true AND i."DIAG_PRINC" IS NOT NULL
         GROUP BY c."DESCRICAO"
         ORDER BY total_mortes DESC
         LIMIT 10;
 
         -- Q: "Internações por [doença] que ocasionaram morte (óbito)?"
-        -- NOTE: doença + óbito → JOIN via CID_MORTE (não DIAG_PRINC!)
+        -- NOTE: doença + óbito → JOIN via DIAG_PRINC e filtro MORTE=true
         -- TWO filter strategies:
         --   (A) Search by disease NAME → ILIKE '%nome%' on c."DESCRICAO"
         --   (B) Search by CID chapter prefix → c."CID" LIKE 'X%'
         -- Example A: sepse (pesquisa por nome na descrição):
         SELECT COUNT(*) AS total_obitos_sepse
         FROM internacoes i
-        JOIN cid c ON i."CID_MORTE" = c."CID"
+        JOIN cid c ON i."DIAG_PRINC" = c."CID"
         WHERE c."DESCRICAO" ILIKE '%sepse%'  -- pesquisa por nome, NÃO por código!
           AND i."MORTE" = true;
         -- Example B: neoplasias (pesquisa por capítulo CID):
         SELECT COUNT(*) AS total_obitos_neoplasia
         FROM internacoes i
-        JOIN cid c ON i."CID_MORTE" = c."CID"
+        JOIN cid c ON i."DIAG_PRINC" = c."CID"
         WHERE c."CID" LIKE 'C%'  -- neoplasias malignas (capítulo C do CID-10)
           AND i."MORTE" = true;
 
@@ -426,7 +427,8 @@ TABLE_TEMPLATES = {
         JOIN PATTERNS WITH internacoes:
         - Primary diagnosis: JOIN cid c ON i."DIAG_PRINC" = c."CID"
         - Secondary diagnosis: JOIN cid c ON i."DIAG_SECUN" = c."CID"
-        - Death cause: JOIN cid c ON i."CID_MORTE" = c."CID"
+        - Analytical death cause: JOIN cid c ON i."DIAG_PRINC" = c."CID" WHERE i."MORTE" = true
+        - Raw CID_MORTE audit only: JOIN cid c ON i."CID_MORTE" = c."CID"
 
         EXACT QUERY EXAMPLES:
         -- Find specific code description
@@ -1183,7 +1185,8 @@ CRITICAL JOIN PATTERNS:
 - internacoes ↔ hospital: internacoes."CNES" = hospital."CNES"
 - internacoes ↔ cid (primary diag): internacoes."DIAG_PRINC" = cid."CID"
 - internacoes ↔ cid (secondary diag): internacoes."DIAG_SECUN" = cid."CID"
-- internacoes ↔ cid (death cause): internacoes."CID_MORTE" = cid."CID"
+- internacoes ↔ cid (analytical death cause): internacoes."DIAG_PRINC" = cid."CID" with internacoes."MORTE" = true
+- internacoes ↔ cid (raw CID_MORTE audit only): internacoes."CID_MORTE" = cid."CID"
 - internacoes ↔ internacao_procedimento: internacoes."N_AIH" = internacao_procedimento."N_AIH"
 - internacao_procedimento ↔ procedimentos: internacao_procedimento."PROC_REA" = procedimentos."PROC_REA"
 - internacoes ↔ municipios: internacoes."MUNIC_RES" = municipios."CO_MUNICIPIO_6D"

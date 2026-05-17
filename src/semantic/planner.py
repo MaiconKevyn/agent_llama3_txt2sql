@@ -207,6 +207,30 @@ def _has_dual_top_n_intersection_request(query_lower: str) -> bool:
     )
 
 
+def _has_death_cause_context(query_lower: str) -> bool:
+    return _contains_any(
+        query_lower,
+        [
+            "causa de morte",
+            "causas de morte",
+            "causa da morte",
+            "causas da morte",
+            "causa do óbito",
+            "causas do óbito",
+            "causa do obito",
+            "causas do obito",
+            "motivo de morte",
+            "motivos de morte",
+            "motivo da morte",
+            "motivos da morte",
+            "motivo do óbito",
+            "motivos do óbito",
+            "motivo do obito",
+            "motivos do obito",
+        ],
+    )
+
+
 def _extract_top_n(query_lower: str) -> int | None:
     number_words = {
         "um": 1,
@@ -248,8 +272,7 @@ def _extract_top_n(query_lower: str) -> int | None:
     if _is_scalar_extrema_query(query_lower):
         return None
     if re.search(
-        r"\bprincipal\s+causa\s+(?:de\s+morte|do\s+[óo]bito)\b",
-        query_lower,
+        r"\bprincipal\s+(?:causa|motivo)\s+(?:de|da|do)\s+(?:morte|[óo]bito)\b", query_lower
     ):
         return 1
     if re.search(r"\b(?:maior|menor|mais\s+comum|mais\s+frequente)\b", query_lower):
@@ -982,10 +1005,20 @@ def _infer_dimensions(query_lower: str) -> list[SemanticDimension]:
                 "cid",
                 "causa de morte",
                 "causas de morte",
+                "causa da morte",
+                "causas da morte",
                 "causa do óbito",
                 "causas do óbito",
                 "causa do obito",
                 "causas do obito",
+                "motivo de morte",
+                "motivos de morte",
+                "motivo da morte",
+                "motivos da morte",
+                "motivo do óbito",
+                "motivos do óbito",
+                "motivo do obito",
+                "motivos do obito",
                 "motivo de internação",
                 "motivo de internacao",
                 "motivos de internação",
@@ -1558,7 +1591,7 @@ def _infer_filters(query: str, query_lower: str) -> list[SemanticFilter]:
     if death_cause_term:
         filters.append(
             SemanticFilter(
-                field="cid_morte_descricao",
+                field="diagnostico_principal_descricao",
                 values=[death_cause_term],
                 operator="ILIKE",
             )
@@ -1880,6 +1913,12 @@ def build_semantic_plan(
             )
     if top_n_scope == "per_group":
         constraints.append("top_n_per_group_requires_window_partition")
+    if (
+        "diagnostico" in required_dimensions
+        and _has_death_cause_context(q)
+        and not _contains_any(q, ["cid_morte", "cid morte"])
+    ):
+        constraints.append("death_cause_requires_diag_princ_with_morte")
     if has_side_by_side_state:
         constraints.append("side_by_side_state_pivot_required")
     if has_rate:
@@ -1930,11 +1969,13 @@ def build_semantic_plan(
         has_absence
         and _contains_any(q, ["causa de morte", "causas de morte", "óbitos", "obitos"])
         and _contains_any(q, ["diagnóstico principal", "diagnostico principal"])
-        and _contains_any(q, ["cid", "código cid", "codigo cid"])
+        and _contains_any(q, ["cid_morte", "cid morte"])
     ):
         constraints.append("death_cause_cid_requires_cid_morte_antijoin")
-    if any(semantic_filter.field == "cid_morte_descricao" for semantic_filter in filters):
-        constraints.append("death_cause_description_requires_cid_morte")
+    if any(
+        semantic_filter.field == "diagnostico_principal_descricao" for semantic_filter in filters
+    ):
+        constraints.append("death_cause_description_requires_diag_princ_with_morte")
     period_filters = [
         semantic_filter
         for semantic_filter in filters

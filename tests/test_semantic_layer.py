@@ -262,7 +262,8 @@ def test_semantic_plan_detects_death_cause_cid_antijoin():
 
     assert "diagnostico" in plan.answer_shape.required_dimensions
     assert "absence_condition_requires_antijoin_or_aggregate_zero" in plan.constraints
-    assert "death_cause_cid_requires_cid_morte_antijoin" in plan.constraints
+    assert "death_cause_cid_requires_cid_morte_antijoin" not in plan.constraints
+    assert "death_cause_requires_diag_princ_with_morte" in plan.constraints
 
 
 def test_semantic_plan_detects_top_n_death_causes_as_ranked_groups():
@@ -287,7 +288,7 @@ def test_semantic_validator_accepts_top_n_death_causes_for_women():
     sql = """
         SELECT c."DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes
         FROM internacoes i
-        JOIN cid c ON i."CID_MORTE" = c."CID"
+        JOIN cid c ON i."DIAG_PRINC" = c."CID"
         WHERE i."MORTE" = true AND i."SEXO" = 3
         GROUP BY c."DESCRICAO"
         ORDER BY total_mortes DESC
@@ -308,11 +309,43 @@ def test_semantic_plan_treats_principal_death_cause_as_top_one_with_year_filter(
     assert plan.answer_shape.top_n == 1
     assert plan.answer_shape.top_n_scope == "global"
     assert plan.answer_shape.required_dimensions == ["diagnostico"]
+    assert "death_cause_requires_diag_princ_with_morte" in plan.constraints
+    assert any(filter_.field == "ano" and filter_.values == ["2021"] for filter_ in plan.filters)
+    assert any(filter_.field == "desfecho" for filter_ in plan.filters)
+
+
+def test_semantic_plan_treats_principal_death_reason_as_diag_princ_death_ranking():
+    plan = build_semantic_plan("qual foi o principal motivo de morte em 2021?")
+
+    assert plan.intent == "ranking"
+    assert plan.answer_shape.row_grain == "top_n_global"
+    assert plan.answer_shape.top_n == 1
+    assert plan.answer_shape.required_dimensions == ["diagnostico"]
+    assert "death_cause_requires_diag_princ_with_morte" in plan.constraints
     assert any(filter_.field == "ano" and filter_.values == ["2021"] for filter_ in plan.filters)
     assert any(filter_.field == "desfecho" for filter_ in plan.filters)
 
 
 def test_semantic_validator_accepts_principal_death_cause_sql_with_year_filter():
+    plan = build_semantic_plan("qual foi a principal causa de morte em 2021?")
+    sql = """
+        SELECT c."DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes
+        FROM internacoes i
+        JOIN cid c ON i."DIAG_PRINC" = c."CID"
+        WHERE i."MORTE" = true
+          AND EXTRACT(YEAR FROM i."DT_INTER") = 2021
+        GROUP BY c."DESCRICAO"
+        ORDER BY total_mortes DESC
+        LIMIT 1
+    """
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert valid is True
+    assert message is None
+
+
+def test_semantic_validator_rejects_cid_morte_for_principal_death_cause_ranking():
     plan = build_semantic_plan("qual foi a principal causa de morte em 2021?")
     sql = """
         SELECT c."DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes
@@ -327,15 +360,15 @@ def test_semantic_validator_accepts_principal_death_cause_sql_with_year_filter()
 
     valid, message = validate_sql_against_semantic_plan(plan, sql)
 
-    assert valid is True
-    assert message is None
+    assert valid is False
+    assert "DIAG_PRINC" in (message or "")
 
 
 def test_semantic_plan_does_not_treat_temporal_grouping_as_death_cause_description():
     plan = build_semantic_plan("Gere um grafico temporal com o numero de mortes por ano")
 
-    assert "death_cause_description_requires_cid_morte" not in plan.constraints
-    assert not any(filter_.field == "cid_morte_descricao" for filter_ in plan.filters)
+    assert "death_cause_description_requires_diag_princ_with_morte" not in plan.constraints
+    assert not any(filter_.field == "diagnostico_principal_descricao" for filter_ in plan.filters)
     assert any(
         filter_.field == "desfecho" and filter_.values == ["MORTE = true"]
         for filter_ in plan.filters
@@ -681,10 +714,10 @@ def test_semantic_validator_rejects_death_cause_antijoin_on_diag_princ_only():
     valid, message = validate_sql_against_semantic_plan(plan, sql)
 
     assert valid is False
-    assert "death filter" in (message or "") or "CID_MORTE" in (message or "")
+    assert "death filter" in (message or "") or "MORTE" in (message or "")
 
 
-def test_semantic_validator_accepts_death_cause_cid_antijoin():
+def test_semantic_validator_rejects_cid_morte_for_general_death_cause_antijoin():
     plan = build_semantic_plan(
         "Quais códigos CID aparecem como causa de morte em óbitos registrados mas nunca foram registrados como diagnóstico principal de internação?"
     )
@@ -704,8 +737,8 @@ def test_semantic_validator_accepts_death_cause_cid_antijoin():
 
     valid, message = validate_sql_against_semantic_plan(plan, sql)
 
-    assert valid is True
-    assert message is None
+    assert valid is False
+    assert "DIAG_PRINC" in (message or "")
 
 
 def test_semantic_validator_rejects_unbounded_death_cause_antijoin_list():
@@ -726,7 +759,7 @@ def test_semantic_validator_rejects_unbounded_death_cause_antijoin_list():
     valid, message = validate_sql_against_semantic_plan(plan, sql)
 
     assert valid is False
-    assert "support counts per CID" in (message or "")
+    assert "DIAG_PRINC" in (message or "")
 
 
 def test_semantic_validator_rejects_diagnosis_grouping_for_category_percentage():
@@ -2464,12 +2497,12 @@ def test_goalv2_validator_rejects_scalar_for_top_n_municipality():
 def test_goalv2_plan_uses_death_cause_description_for_disease_death_question():
     plan = build_semantic_plan("Quantas internações por meningite ocasionaram em morte?")
 
-    assert "death_cause_description_requires_cid_morte" in plan.constraints
-    assert any(filter_.field == "cid_morte_descricao" for filter_ in plan.filters)
+    assert "death_cause_description_requires_diag_princ_with_morte" in plan.constraints
+    assert any(filter_.field == "diagnostico_principal_descricao" for filter_ in plan.filters)
     assert any(filter_.field == "desfecho" for filter_ in plan.filters)
 
 
-def test_goalv2_validator_rejects_primary_diagnosis_for_death_cause_description():
+def test_goalv2_validator_accepts_primary_diagnosis_for_death_cause_description():
     plan = build_semantic_plan("Quantas internações por meningite ocasionaram em morte?")
     sql = """
         SELECT COUNT(*)
@@ -2481,8 +2514,8 @@ def test_goalv2_validator_rejects_primary_diagnosis_for_death_cause_description(
 
     passed, message = validate_sql_against_semantic_plan(plan, sql)
 
-    assert not passed
-    assert "CID_MORTE" in (message or "")
+    assert passed
+    assert message is None
 
 
 def test_goalv2_plan_treats_more_than_sixty_years_as_age_filter_not_support():

@@ -108,7 +108,7 @@ check("'quantos' + no outer COUNT → error mentioning COUNT", not passed5a and 
 
 # 5b: NOT IN → NOT EXISTS
 passed5b, msg5b = check_semantic_rules(
-    "Quais CIDs aparecem como causa de morte mas nunca como diagnóstico principal?",
+    "Quais códigos CID_MORTE aparecem em óbitos mas nunca como diagnóstico principal?",
     'SELECT "CID_MORTE" FROM internacoes WHERE "CID_MORTE" IS NOT NULL AND "CID_MORTE" NOT IN (SELECT "DIAG_PRINC" FROM internacoes)'
 )
 check("NOT IN subquery → validation recommends NOT EXISTS", not passed5b and "NOT EXISTS" in (msg5b or ""), True)

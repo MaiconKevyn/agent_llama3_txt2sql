@@ -161,12 +161,12 @@ def _build_death_cause_description_count_sql(
         if isinstance(semantic_plan, SemanticPlan)
         else SemanticPlan.model_validate(semantic_plan)
     )
-    if "death_cause_description_requires_cid_morte" not in plan.constraints:
+    if "death_cause_description_requires_diag_princ_with_morte" not in plan.constraints:
         return None
     terms = [
         str(value).strip()
         for semantic_filter in plan.filters
-        if semantic_filter.field == "cid_morte_descricao"
+        if semantic_filter.field == "diagnostico_principal_descricao"
         for value in semantic_filter.values
         if str(value).strip()
     ]
@@ -176,9 +176,60 @@ def _build_death_cause_description_count_sql(
     return (
         "SELECT COUNT(*) AS total_internacoes "
         "FROM internacoes i "
-        'JOIN cid c ON i."CID_MORTE" = c."CID" '
+        'JOIN cid c ON i."DIAG_PRINC" = c."CID" '
         'WHERE i."MORTE" = true '
         f"AND c.\"DESCRICAO\" ILIKE '%{term}%';"
+    )
+
+
+def _death_cause_time_conditions(plan: SemanticPlan, alias: str = "i") -> list[str]:
+    conditions: list[str] = []
+    for semantic_filter in plan.filters:
+        values = [str(value) for value in semantic_filter.values]
+        if semantic_filter.field == "ano" and values:
+            if len(values) == 1:
+                conditions.append(f'EXTRACT(YEAR FROM {alias}."DT_INTER") = {values[0]}')
+            else:
+                years = ", ".join(values)
+                conditions.append(f'EXTRACT(YEAR FROM {alias}."DT_INTER") IN ({years})')
+        elif semantic_filter.field == "ano_intervalo" and len(values) >= 2:
+            conditions.append(
+                f'EXTRACT(YEAR FROM {alias}."DT_INTER") BETWEEN {values[0]} AND {values[1]}'
+            )
+    return conditions
+
+
+def _build_death_cause_top_n_sql(
+    semantic_plan: SemanticPlan | dict | None,
+) -> str | None:
+    if not semantic_plan:
+        return None
+    plan = (
+        semantic_plan
+        if isinstance(semantic_plan, SemanticPlan)
+        else SemanticPlan.model_validate(semantic_plan)
+    )
+    if "death_cause_requires_diag_princ_with_morte" not in plan.constraints:
+        return None
+    if plan.answer_shape.top_n_scope != "global":
+        return None
+    top_n = plan.answer_shape.top_n
+    if top_n is None:
+        return None
+    where_conditions = [
+        'i."MORTE" = true',
+        'i."DIAG_PRINC" IS NOT NULL',
+        *_death_cause_time_conditions(plan),
+    ]
+    where_clause = " AND ".join(where_conditions)
+    return (
+        'SELECT c."DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes '
+        "FROM internacoes i "
+        'JOIN cid c ON i."DIAG_PRINC" = c."CID" '
+        f"WHERE {where_clause} "
+        'GROUP BY c."DESCRICAO" '
+        "ORDER BY total_mortes DESC "
+        f"LIMIT {top_n};"
     )
 
 
@@ -1692,6 +1743,7 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         ):
             deterministic_sql = (
                 _build_death_cause_description_count_sql(state.get("semantic_plan"))
+                or _build_death_cause_top_n_sql(state.get("semantic_plan"))
                 or _build_lookup_distribution_sql(state.get("semantic_plan"))
                 or _build_top_n_count_by_dimension_sql(state.get("semantic_plan"))
                 or _build_filtered_category_period_percentage_sql(state.get("semantic_plan"))

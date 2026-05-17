@@ -553,21 +553,38 @@ def _validate_additional_semantic_constraints(
                 "bounded with LIMIT for a reliable final answer."
             )
 
-    if "death_cause_description_requires_cid_morte" in plan.constraints:
-        if "cid_morte" not in text:
+    if "death_cause_description_requires_diag_princ_with_morte" in plan.constraints:
+        if "diag_princ" not in text:
             return False, (
                 "SEMANTIC PLAN ERROR: Disease death-cause questions must join/filter cid through "
-                "internacoes.CID_MORTE, not DIAG_PRINC."
+                "internacoes.DIAG_PRINC and restrict the cohort to registered deaths."
             )
         if not re.search(r"\bmorte\b\"?\s*=\s*true\b", text, re.I):
             return False, (
                 "SEMANTIC PLAN ERROR: Disease death-cause questions must filter registered deaths "
                 "with MORTE = true."
             )
-        if re.search(r"\bjoin\s+cid\b[\s\S]{0,160}\bdiag_princ\b", text, re.I):
+        if "cid_morte" in text:
             return False, (
-                "SEMANTIC PLAN ERROR: Disease death-cause questions should not join cid through "
-                "DIAG_PRINC when the wording asks what caused/occasioned death."
+                "SEMANTIC PLAN ERROR: Analytical death-cause questions must use DIAG_PRINC "
+                "with MORTE = true, not CID_MORTE."
+            )
+
+    if "death_cause_requires_diag_princ_with_morte" in plan.constraints:
+        if "diag_princ" not in text:
+            return False, (
+                "SEMANTIC PLAN ERROR: Analytical death-cause questions must use "
+                "internacoes.DIAG_PRINC as the diagnosis dimension."
+            )
+        if not re.search(r"\bmorte\b\"?\s*=\s*true\b", text, re.I):
+            return False, (
+                "SEMANTIC PLAN ERROR: Analytical death-cause questions must filter registered "
+                "deaths with MORTE = true."
+            )
+        if "cid_morte" in text:
+            return False, (
+                "SEMANTIC PLAN ERROR: Analytical death-cause rankings must use DIAG_PRINC "
+                "with MORTE = true, not CID_MORTE."
             )
 
     if "categorical_lookup_label_required" in plan.constraints:
@@ -1181,11 +1198,11 @@ def _validate_required_filters(
         elif field == "desfecho" and any("morte" in value for value in values):
             if not re.search(r"\bmorte\b", text, re.I):
                 return False, "SEMANTIC PLAN ERROR: SQL does not apply the requested death filter."
-        elif field == "cid_morte_descricao" and values:
-            if "cid_morte" not in text:
+        elif field == "diagnostico_principal_descricao" and values:
+            if "diag_princ" not in text:
                 return False, (
                     "SEMANTIC PLAN ERROR: SQL does not apply the requested death-cause description "
-                    "filter through CID_MORTE."
+                    "filter through DIAG_PRINC."
                 )
             if not any(value in text for value in values):
                 return False, (

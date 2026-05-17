@@ -300,8 +300,8 @@ internacoes:
         JOIN hospital h ON i."CNES" = h."CNES"
         JOIN municipios mu ON h."MUNIC_MOV" = mu."CO_MUNICIPIO_6D"
     ❌ NUNCA usar JOIN hospital para "municípios com mais internações" sem contexto hospitalar
-  "DIAG_PRINC" FK→cid."CID": diagnóstico principal de entrada
-  "CID_MORTE"  FK→cid."CID": causa da morte (somente quando MORTE=true)
+  "DIAG_PRINC" FK→cid."CID": diagnóstico principal. Para análises de causa/motivo de morte, use este campo com MORTE=true.
+  "CID_MORTE"  FK→cid."CID": campo bruto/auditável de óbito; não usar por padrão para causa/motivo de morte.
 
 socioeconomico (wide-format por município/ano):
   "QT_POPULACAO" população | "VL_PIB_PERCAPITA" PIB per capita
@@ -329,7 +329,7 @@ JOIN RULES:
   CRÍTICO: "procedimentos/internacao_procedimento NAS CIDADES de X" → MUNIC_MOV (hospital location)
   especialidade         → JOIN especialidade e ON i."ESPEC" = e."ESPEC" → SELECT e."DESCRICAO"
   diagnóstico           → JOIN cid c ON i."DIAG_PRINC" = c."CID" → SELECT c."DESCRICAO"
-  causa de morte        → JOIN cid c ON i."CID_MORTE" = c."CID" WHERE i."MORTE" = true
+  causa/motivo de morte → JOIN cid c ON i."DIAG_PRINC" = c."CID" WHERE i."MORTE" = true
 """
     return base_schema + sus_mappings
 

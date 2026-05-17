@@ -1,7 +1,7 @@
 TABLE_DESCRIPTIONS = {
     "internacoes": {
         "title": "Internações SIH-RD (TABELA PRINCIPAL)",
-        "description": "Tabela central do banco sihrd5. Cada registro corresponde a uma AIH (Autorização de Internação Hospitalar). Contém dados do hospital (CNES), datas, diagnósticos principal e secundário, indicadores de óbito (MORTE boolean + CID_MORTE), dados clínicos (ESPEC, IND_VDRL, GESTRISCO, INSC_PN), valores financeiros (VAL_SH, VAL_SP, VAL_UTI, VAL_TOT), dias de permanência (DIAS_PERM) e dados demográficos completos do paciente (SEXO, IDADE, RACA_COR, ETNIA, NACIONAL, INSTRU, VINCPREV, MUNIC_RES). Para listar procedimentos use JOIN com internacao_procedimento+procedimentos.",
+        "description": "Tabela central do banco sihrd5. Cada registro corresponde a uma AIH (Autorização de Internação Hospitalar). Contém dados do hospital (CNES), datas, diagnósticos principal e secundário, indicadores de óbito (MORTE boolean + CID_MORTE auditável), dados clínicos (ESPEC, IND_VDRL, GESTRISCO, INSC_PN), valores financeiros (VAL_SH, VAL_SP, VAL_UTI, VAL_TOT), dias de permanência (DIAS_PERM) e dados demográficos completos do paciente (SEXO, IDADE, RACA_COR, ETNIA, NACIONAL, INSTRU, VINCPREV, MUNIC_RES). Para causa/motivo de morte analítico use DIAG_PRINC com MORTE=true. Para listar procedimentos use JOIN com internacao_procedimento+procedimentos.",
         "purpose": "Análises de internações, mortalidade, diagnósticos, custos, permanência e perfil demográfico dos pacientes",
         "use_cases": [
             'Contar mortes: WHERE "MORTE" = true',
@@ -48,7 +48,7 @@ TABLE_DESCRIPTIONS = {
             '"MUNIC_RES"': "FK → municipios.CO_MUNICIPIO_6D (código 6 dígitos do município de residência)",
             '"DIAG_PRINC"': "FK → cid.CID (código CID-10 do diagnóstico principal)",
             '"DIAG_SECUN"': "FK → cid.CID (código CID-10 do diagnóstico secundário)",
-            '"CID_MORTE"': "Código CID-10 da causa da morte (preenchido quando MORTE = true)",
+            '"CID_MORTE"': "Código CID-10 bruto/auditável de óbito; não é o padrão para causa/motivo de morte analítico",
             '"CNES"': "FK → hospital.CNES",
             '"ESPEC"': "FK → especialidade.ESPEC (especialidade do leito)",
             '"RACA_COR"': "FK → raca_cor.RACA_COR for identified categories 1..5; internacoes may contain 99=Sem informação",
@@ -127,13 +127,13 @@ TABLE_DESCRIPTIONS = {
             "Para 'quantos códigos CID existem/cadastrados/disponíveis/distintos', conte cid.\"CID\" nesta tabela.",
             "Para 'CIDs registrados/observados/usados em internações', conte os códigos nas colunas de internacoes.",
             '"CID" é chave primária',
-            'JOINs: internacoes."DIAG_PRINC" = cid."CID" ou internacoes."DIAG_SECUN" = cid."CID" ou internacoes."CID_MORTE" = cid."CID"',
+            'JOINs: internacoes."DIAG_PRINC" = cid."CID" ou internacoes."DIAG_SECUN" = cid."CID"; causa/motivo de morte analítico usa DIAG_PRINC com MORTE=true',
             "Tabela anteriormente chamada cid10 — agora se chama cid",
         ],
         "relationships": [
             '← internacoes("DIAG_PRINC")',
             '← internacoes("DIAG_SECUN")',
-            '← internacoes("CID_MORTE")',
+            '← internacoes("CID_MORTE") bruto/auditável',
         ],
     },
     "municipios": {
@@ -452,7 +452,7 @@ COMPREHENSIVE DUCKDB TABLE RELATIONSHIPS (banco sihrd5):
 FLUXO PRINCIPAL DE DADOS:
 internacoes (tabela central, 18.5M registros)
 ├── hospital (via "CNES") — Estabelecimento de saúde
-├── cid (via "DIAG_PRINC", "DIAG_SECUN", "CID_MORTE") — Diagnósticos CID-10
+├── cid (via "DIAG_PRINC", "DIAG_SECUN"; causa/motivo de morte analítico = "DIAG_PRINC" + "MORTE"=true; "CID_MORTE" é auditável) — Diagnósticos CID-10
 ├── municipios (via "MUNIC_RES" = CO_MUNICIPIO_6D) — Município de residência
 ├── sexo (via "SEXO") — Lookup de sexo
 ├── raca_cor (via "RACA_COR") — Lookup de raça/cor

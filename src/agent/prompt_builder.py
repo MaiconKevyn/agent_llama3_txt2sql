@@ -354,16 +354,16 @@ def build_pregeneration_hints(selected_tables: list[str], user_query: str) -> st
             "❌ Não exponha apenas os códigos numéricos 1/3 no resultado final."
         )
 
-    if (
-        any(t in q_lower for t in ["causa de morte", "causas de morte"])
-        and "diagnóstico principal" in q_lower
+    if ("cid_morte" in q_lower or "cid morte" in q_lower) and (
+        "diagnóstico principal" in q_lower or "diagnostico principal" in q_lower
     ):
         hints.append(
-            '☠️ DEATH-CAUSE ANTI-JOIN ALERT: causa de morte usa i."CID_MORTE" com i."MORTE" = true; '
-            'diagnóstico principal usa i."DIAG_PRINC". '
-            "✅ Para 'aparece como causa de morte mas nunca como diagnóstico principal', use NOT EXISTS "
+            '☠️ CID_MORTE AUDIT ALERT: use i."CID_MORTE" only when the question explicitly names '
+            'the CID_MORTE field; analytical death-cause questions use i."DIAG_PRINC" with '
+            'i."MORTE" = true. '
+            "✅ For explicit CID_MORTE anti-join checks, use NOT EXISTS "
             'correlacionando d."DIAG_PRINC" = c."CID". '
-            "❌ Não use DIAG_PRINC como causa de morte e não trate a palavra 'principal' como ranking/top-1."
+            "❌ Do not default general death-cause wording to CID_MORTE."
         )
 
     period_ranges = _re.findall(
@@ -652,7 +652,8 @@ _SQL_RULES_AO = """        ═════════════════�
         ✅ WHERE "ESPEC" = 2 AND "VAL_UTI" > 0
 
         RULE B — DEATH CAUSE vs DIAGNOSIS:
-        "causa da morte"/"morreram de"/"óbitos por DOENÇA X" → JOIN cid ON i."CID_MORTE"=c."CID" WHERE i."MORTE"=true AND i."CID_MORTE" IS NOT NULL
+        "causa da morte"/"motivo de morte"/"morreram de"/"óbitos por DOENÇA X" → JOIN cid ON i."DIAG_PRINC"=c."CID" WHERE i."MORTE"=true
+        Use i."CID_MORTE" only when the user explicitly asks for the raw CID_MORTE field/audit.
         "diagnóstico principal"/"internado por DOENÇA X" → JOIN cid ON i."DIAG_PRINC"=c."CID"
         "resultaram em óbito" WITHOUT a specific disease → WHERE "MORTE"=true only (NO CID JOIN)
         ✅ "Quantas internações de UTI resultaram em óbito?" → WHERE "VAL_UTI" > 0 AND "MORTE" = true
@@ -762,7 +763,7 @@ _SQL_RULES_AO = """        ═════════════════�
         ❌ SELECT i."DIAG_PRINC", COUNT(*) → returns raw CID code, NOT description
         Filtering by named disease → JOIN cid c ON i."DIAG_PRINC"=c."CID" WHERE c."DESCRICAO" ILIKE '%X%'
         Category (no specific name) → WHERE "DIAG_PRINC" LIKE 'J%' (J=Respiratory, I=Cardiovascular, C=Cancer, K=Digestive)
-        For cause of death by disease → JOIN cid ON i."CID_MORTE"=c."CID" (see RULE B)
+        For analytical cause of death by disease → JOIN cid ON i."DIAG_PRINC"=c."CID" and WHERE i."MORTE"=true (see RULE B)
 
         ══════════════════════════════════════════════════════════"""
 

@@ -2,7 +2,7 @@
 """
 Targeted test script for queries identified as likely failing due to:
   - UTI detection (VAL_UTI > 0 vs ESPEC BETWEEN 74 AND 83)
-  - Death cause field (CID_MORTE vs DIAG_PRINC)
+  - Death cause policy (DIAG_PRINC + MORTE=true)
   - socioeconomico table selection and wide-format indicator columns
 """
 
@@ -59,24 +59,24 @@ TARGET_QUERIES = [
         "query": 'SELECT COUNT(DISTINCT "CNES") FROM internacoes WHERE "VAL_UTI" > 0 AND EXTRACT(YEAR FROM "DT_INTER") = 2020;',
         "category": "UTI detection",
     },
-    # --- CID_MORTE vs DIAG_PRINC ---
+    # --- Death cause policy: DIAG_PRINC + MORTE=true ---
     {
         "id": "GT014", "difficulty": "medium",
         "question": "Quantas internações por meningite ocasionaram em morte?",
-        "query": 'SELECT COUNT(*) FROM internacoes i JOIN cid c ON i."CID_MORTE" = c."CID" WHERE c."DESCRICAO" ILIKE \'%meningite%\' AND i."MORTE" = true;',
-        "category": "CID_MORTE vs DIAG_PRINC",
+        "query": 'SELECT COUNT(*) FROM internacoes i JOIN cid c ON i."DIAG_PRINC" = c."CID" WHERE c."DESCRICAO" ILIKE \'%meningite%\' AND i."MORTE" = true;',
+        "category": "Death cause policy",
     },
     {
         "id": "GT042", "difficulty": "medium",
         "question": "Quais são as três causas de morte mais frequentes entre mulheres?",
-        "query": 'SELECT c."DESCRICAO", COUNT(*) AS total_mortes FROM internacoes i JOIN cid c ON i."CID_MORTE" = c."CID" WHERE i."SEXO" = 3 AND i."MORTE" = true AND i."CID_MORTE" IS NOT NULL GROUP BY c."DESCRICAO" ORDER BY total_mortes DESC LIMIT 3;',
-        "category": "CID_MORTE vs DIAG_PRINC",
+        "query": 'SELECT c."DESCRICAO", COUNT(*) AS total_mortes FROM internacoes i JOIN cid c ON i."DIAG_PRINC" = c."CID" WHERE i."SEXO" = 3 AND i."MORTE" = true AND i."DIAG_PRINC" IS NOT NULL GROUP BY c."DESCRICAO" ORDER BY total_mortes DESC LIMIT 3;',
+        "category": "Death cause policy",
     },
     {
         "id": "GT052", "difficulty": "hard",
         "question": "Quais são as 10 principais causas de morte (com descrição)?",
-        "query": 'SELECT c."CID", c."DESCRICAO", COUNT(*) AS total_mortes FROM internacoes i JOIN cid c ON i."CID_MORTE" = c."CID" WHERE i."MORTE" = true GROUP BY c."CID", c."DESCRICAO" ORDER BY total_mortes DESC LIMIT 10;',
-        "category": "CID_MORTE vs DIAG_PRINC",
+        "query": 'SELECT c."DESCRICAO", COUNT(*) AS total_mortes FROM internacoes i JOIN cid c ON i."DIAG_PRINC" = c."CID" WHERE i."MORTE" = true GROUP BY c."DESCRICAO" ORDER BY total_mortes DESC LIMIT 10;',
+        "category": "Death cause policy",
     },
     # --- socioeconomico table ---
     {
