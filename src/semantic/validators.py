@@ -235,9 +235,15 @@ def validate_sql_against_semantic_plan(
     if not filter_passed:
         return False, filter_message
 
+    if "age_diagnosis_association_required" in plan.constraints:
+        passed, message = _validate_age_diagnosis_association_sql(plan, inspector)
+        if not passed:
+            return False, message
+
     if (
         answer_shape.row_grain == "single_scalar"
         and answer_shape.top_n_scope == "none"
+        and "analytic_response_required" not in plan.constraints
         and inspector.has_group_by()
     ):
         return False, (
@@ -312,6 +318,75 @@ def validate_sql_against_semantic_plan(
     return True, None
 
 
+def _validate_age_diagnosis_association_sql(
+    plan: SemanticPlan,
+    inspector: SQLInspector,
+) -> tuple[bool, str | None]:
+    text = inspector.text_lower
+    if "diag_princ" not in text:
+        return False, (
+            "SEMANTIC PLAN ERROR: analytic age-diagnosis association SQL must filter "
+            "the target condition through internacoes.DIAG_PRINC."
+        )
+    if "idade" not in text:
+        return False, (
+            "SEMANTIC PLAN ERROR: analytic age-diagnosis association SQL must use IDADE."
+        )
+    if not re.search(r"\bfaixa(?:_etaria)?\b|case\s+when[\s\S]{0,240}\bidade\b", text, re.I):
+        return False, (
+            "SEMANTIC PLAN ERROR: analytic age-diagnosis association SQL must summarize age "
+            "by bands, not only return one row per raw age."
+        )
+    if "denominador" not in text:
+        return False, (
+            "SEMANTIC PLAN ERROR: analytic age-diagnosis association SQL must compute a "
+            "denominator for each age band."
+        )
+    if not re.search(r"\brate_ratio|raz[aã]o|maior_igual_50|maior_igual_60\b", text, re.I):
+        return False, (
+            "SEMANTIC PLAN ERROR: analytic age-diagnosis association SQL must include simple "
+            "effect summaries such as rate ratios between age cohorts."
+        )
+    if not re.search(r"\bmedian\s*\(|quantile", text, re.I):
+        return False, (
+            "SEMANTIC PLAN ERROR: analytic age-diagnosis association SQL must include a "
+            "central tendency summary for age."
+        )
+
+    expected_codes = [
+        str(value).lower()
+        for semantic_filter in plan.filters
+        if semantic_filter.field == "diagnostico_principal_codigo"
+        for value in semantic_filter.values
+    ]
+    missing_codes = [code for code in expected_codes if code not in text]
+    if missing_codes:
+        return False, (
+            "SEMANTIC PLAN ERROR: analytic age-diagnosis association SQL is missing "
+            f"resolved CID code(s): {', '.join(missing_codes)}."
+        )
+    expected_prefixes = [
+        str(value).lower().replace("%", "")
+        for semantic_filter in plan.filters
+        if semantic_filter.field == "diagnostico_principal_prefix"
+        for value in semantic_filter.values
+    ]
+    missing_prefixes = [
+        prefix for prefix in expected_prefixes if f"like '{prefix}%" not in text
+    ]
+    if missing_prefixes:
+        return False, (
+            "SEMANTIC PLAN ERROR: analytic age-diagnosis association SQL is missing "
+            f"resolved CID prefix(es): {', '.join(missing_prefixes)}."
+        )
+    if "warnings" not in text or "idade_zero_inconsistente" not in text:
+        return False, (
+            "SEMANTIC PLAN ERROR: analytic age-diagnosis association SQL must expose "
+            "age-quality warnings when IDADE=0 conflicts with NASC/DT_INTER."
+        )
+    return True, None
+
+
 def _validate_additional_semantic_constraints(
     plan: SemanticPlan,
     inspector: SQLInspector,
@@ -359,6 +434,17 @@ def _validate_additional_semantic_constraints(
                 "SEMANTIC PLAN ERROR: The diagnosis/category mention is a filter, "
                 "not an output grouping dimension. Do not GROUP BY diagnosis/CID unless "
                 "the question asks for a diagnosis breakdown."
+            )
+
+    if "diagnosis_description_lookup_required" in plan.constraints:
+        if "diag_princ" not in text or "cid" not in text or "descricao" not in text:
+            return False, (
+                "SEMANTIC PLAN ERROR: Diagnosis description lookup must resolve disease terms "
+                "through cid.DESCRICAO and then filter internacoes.DIAG_PRINC by CID."
+            )
+        if "cid_morte" in text:
+            return False, (
+                "SEMANTIC PLAN ERROR: Diagnosis lookup questions must use DIAG_PRINC, not CID_MORTE."
             )
 
     metric_names = {metric.name for metric in plan.metrics}
@@ -1224,6 +1310,23 @@ def _validate_required_filters(
                 return False, (
                     "SEMANTIC PLAN ERROR: SQL does not apply the requested diagnosis prefix filter."
                 )
+        elif field == "diagnostico_principal_codigo" and values:
+            if "diag_princ" not in text:
+                return False, (
+                    "SEMANTIC PLAN ERROR: SQL does not apply the resolved diagnosis code "
+                    "through DIAG_PRINC."
+                )
+            missing_codes = [value for value in values if value not in text]
+            if missing_codes:
+                if "age_diagnosis_association_required" in plan.constraints:
+                    return False, (
+                        "SEMANTIC PLAN ERROR: analytic age-diagnosis association SQL is missing "
+                        f"resolved CID code(s): {', '.join(missing_codes)}."
+                    )
+                return False, (
+                    "SEMANTIC PLAN ERROR: SQL is missing resolved diagnosis code(s): "
+                    f"{', '.join(missing_codes)}."
+                )
         elif field == "diagnostico_principal_required":
             if not re.search(r"\bdiag_princ\b[\s\S]{0,80}\bis\s+not\s+null\b", text, re.I):
                 return False, "SEMANTIC PLAN ERROR: SQL does not require DIAG_PRINC IS NOT NULL."
@@ -1236,12 +1339,22 @@ def _validate_required_filters(
         elif field == "diagnostico_principal_descricao" and values:
             if "diag_princ" not in text:
                 return False, (
-                    "SEMANTIC PLAN ERROR: SQL does not apply the requested death-cause description "
+                    "SEMANTIC PLAN ERROR: SQL does not apply the requested diagnosis description "
                     "filter through DIAG_PRINC."
                 )
-            if not any(value in text for value in values):
+            normalized_values = [str(value).lower() for value in values if str(value).strip()]
+            missing_values = [value for value in normalized_values if value not in text]
+            if (
+                semantic_filter.operator.upper() == "ILIKE_ANY"
+                or "diagnosis_description_lookup_required" in plan.constraints
+            ) and missing_values:
                 return False, (
-                    "SEMANTIC PLAN ERROR: SQL does not apply the requested death-cause description term."
+                    "SEMANTIC PLAN ERROR: diagnosis description lookup is missing expanded "
+                    f"term(s): {', '.join(missing_values)}."
+                )
+            if not any(value in text for value in normalized_values):
+                return False, (
+                    "SEMANTIC PLAN ERROR: SQL does not apply the requested diagnosis description term."
                 )
         elif field == "instrucao_valid":
             if not re.search(r"\binstru\b[\s\S]{0,80}\bis\s+not\s+null\b", text, re.I):

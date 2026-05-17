@@ -1,5 +1,11 @@
 from src.semantic.plan_reconciler import reconcile_semantic_plans
-from src.semantic.plan_schema import AnswerShape, SemanticFilter, SemanticMetric, SemanticPlan
+from src.semantic.plan_schema import (
+    AnswerShape,
+    SemanticDimension,
+    SemanticFilter,
+    SemanticMetric,
+    SemanticPlan,
+)
 from src.semantic.planner import build_semantic_plan
 
 
@@ -137,3 +143,35 @@ def test_reconciler_deduplicates_dimension_synonyms():
     result = reconcile_semantic_plans(heuristic, llm)
 
     assert result.reconciled_plan.answer_shape.required_dimensions == ["estado", "ano"]
+
+
+def test_reconciler_ignores_table_names_as_output_dimensions():
+    heuristic = SemanticPlan(
+        intent="count",
+        base_grain="internacao",
+        dimensions=[SemanticDimension(name="diagnostico", source="cid.DESCRICAO")],
+        answer_shape=AnswerShape(
+            row_grain="one_row_per_group",
+            required_dimensions=["diagnostico"],
+            requires_group_by=True,
+        ),
+    )
+    llm = SemanticPlan(
+        intent="count",
+        base_grain="internacao",
+        dimensions=[
+            SemanticDimension(name="cid", source="cid"),
+            SemanticDimension(name="socioeconomico", source="socioeconomico"),
+            SemanticDimension(name="internacoes", source="internacoes"),
+        ],
+        answer_shape=AnswerShape(
+            row_grain="one_row_per_group",
+            required_dimensions=["cid", "socioeconomico", "internacoes"],
+            requires_group_by=True,
+        ),
+    )
+
+    result = reconcile_semantic_plans(heuristic, llm)
+
+    assert result.reconciled_plan.answer_shape.required_dimensions == ["diagnostico"]
+    assert [dimension.name for dimension in result.reconciled_plan.dimensions] == ["diagnostico"]

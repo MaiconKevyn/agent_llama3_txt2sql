@@ -14,6 +14,19 @@ from .state_models import ExecutionPhase, MessagesStateTXT2SQL, ToolCallResult
 logger = get_nodes_logger()
 
 
+def _is_deterministic_analytic_sql(sql: str | None) -> bool:
+    sql_lower = (sql or "").lower()
+    return "analysis_type" in sql_lower and any(
+        marker in sql_lower
+        for marker in [
+            "age_diagnosis_association",
+            "categorical_outcome_association",
+            "geographic_condition_rate",
+            "temporal_condition_trend",
+        ]
+    )
+
+
 def check_semantic_rules(user_query: str, generated_sql: str):
     """
     Run all semantic validation rules against a (user_query, generated_sql) pair.
@@ -271,7 +284,7 @@ def validate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         checker_msg = None
 
         # LLM-based checker
-        if checker_tool:
+        if checker_tool and not _is_deterministic_analytic_sql(generated_sql):
             try:
                 checker_result = checker_tool.invoke(generated_sql)
                 checker_msg = str(checker_result)

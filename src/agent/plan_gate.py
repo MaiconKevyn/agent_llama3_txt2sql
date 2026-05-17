@@ -3,6 +3,7 @@
 import re
 import time
 
+from ..semantic.analytic_templates import analytic_metadata_for_plan
 from ..semantic.planner import build_semantic_plan
 from ..semantic.profile_store import load_profile_store
 from ..utils.logging_config import get_nodes_logger
@@ -166,6 +167,7 @@ def plan_gate_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
     meta["semantic_plan"] = semantic_plan_dump
     meta["semantic_constraints"] = semantic_plan.constraints
     meta["semantic_null_policy"] = semantic_plan.null_policy
+    meta.update(analytic_metadata_for_plan(semantic_plan))
     unsupported_schema_metrics = [
         item.split(":", 1)[1]
         for item in semantic_plan.ambiguities

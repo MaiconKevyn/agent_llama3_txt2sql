@@ -1,0 +1,1496 @@
+{
+  "trace_schema_version": 2,
+  "status": "completed",
+  "run_id": "20260517_gt228_full",
+  "question_index": 202,
+  "total_questions": 228,
+  "question_fingerprint": "5b85bb9fd97f4f2b4619c42ca33291be3667c734e40e22a7253dd7fa81f4c890",
+  "trace_path": "/home/maiconkevyn/PycharmProjects/txt2sql_refactor_openai_v2/evaluation/results/dag_evaluation_20260517_gt228_full/queries/GT208/trace.json",
+  "written_at": "2026-05-17T13:51:40.246824",
+  "id": "GT208",
+  "difficulty": "hard",
+  "question_pt": "Quais diagnosticos apresentam maior diferenca de permanencia media entre criancas e adultos, considerando diagnosticos com pelo menos 1000 internacoes em cada grupo?",
+  "question_started_at": "2026-05-17T13:50:58.434598",
+  "question_completed_at": "2026-05-17T13:51:38.578236",
+  "ground_truth_sql": "WITH agg AS (SELECT c.\"DESCRICAO\" AS diagnostico, CASE WHEN i.\"IDADE\" < 18 THEN 'criancas' ELSE 'adultos' END AS grupo_idade, COUNT(*) AS total_internacoes, AVG(i.\"DIAS_PERM\") AS media_dias FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"IDADE\" IS NOT NULL AND i.\"DIAS_PERM\" IS NOT NULL GROUP BY c.\"DESCRICAO\", grupo_idade), piv AS (SELECT diagnostico, MAX(CASE WHEN grupo_idade = 'criancas' THEN total_internacoes END) AS n_criancas, MAX(CASE WHEN grupo_idade = 'adultos' THEN total_internacoes END) AS n_adultos, MAX(CASE WHEN grupo_idade = 'criancas' THEN media_dias END) AS media_criancas, MAX(CASE WHEN grupo_idade = 'adultos' THEN media_dias END) AS media_adultos FROM agg GROUP BY diagnostico) SELECT diagnostico, n_criancas, n_adultos, ROUND(media_criancas, 2) AS media_criancas, ROUND(media_adultos, 2) AS media_adultos, ROUND(ABS(media_adultos - media_criancas), 2) AS diferenca_absoluta FROM piv WHERE n_criancas >= 1000 AND n_adultos >= 1000 ORDER BY diferenca_absoluta DESC LIMIT 10;",
+  "generated_sql": "",
+  "agent_success": false,
+  "agent_error": null,
+  "agent_output": {
+    "success": false,
+    "sql_query": "SELECT diagnostico, media_dias_permanencia FROM ( SELECT c.\"DESCRICAO\" AS diagnostico, AVG(i.\"DIAS_PERM\") AS media_dias_permanencia, COUNT(*) AS total_internacoes, ROW_NUMBER() OVER (PARTITION BY CASE WHEN i.\"IDADE\" < 18 THEN 'Crianca' ELSE 'Adulto' END ORDER BY AVG(i.\"DIAS_PERM\") DESC) AS rn FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"DIAS_PERM\" IS NOT NULL GROUP BY c.\"DESCRICAO\", CASE WHEN i.\"IDADE\" < 18 THEN 'Crianca' ELSE 'Adulto' END ) sub WHERE rn = 1 AND total_internacoes >= 1000 ORDER BY diagnostico;",
+    "response": "Não foi possível processar sua consulta: (_duckdb.BinderException) Binder Error: WHERE clause cannot contain aggregates!\n\nLINE 1: ...taria ) sub WHERE total_internacoes >= 1000 AND rn = 1 AND COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >=...\n                                                                      ^\n[SQL: EXPLAIN SELECT diagnostico, media_dias_permanencia FROM ( SELECT c.\"DESCRICAO\" AS diagnostico, AVG(i.\"DIAS_PERM\") AS media_dias_permanencia, COUNT(*) AS total_internacoes, CASE WHEN i.\"IDADE\" < 18 THEN 'Crianca' ELSE 'Adulto' END AS faixa_etaria, ROW_NUMBER() OVER (PARTITION BY c.\"DESCRICAO\" ORDER BY AVG(i.\"DIAS_PERM\") DESC) AS rn FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"DIAS_PERM\" IS NOT NULL GROUP BY c.\"DESCRICAO\", faixa_etaria ) sub WHERE total_internacoes >= 1000 AND rn = 1 AND COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >= 1000 AND COUNT(CASE WHEN faixa_etaria = 'Adulto' THEN 1 END) >= 1000 ORDER BY diagnostico;]\n(Background on this error at: https://sqlalche.me/e/20/f405)",
+    "row_count": 0,
+    "results_preview": [],
+    "final_result_rows_preview": null,
+    "error": "(_duckdb.BinderException) Binder Error: WHERE clause cannot contain aggregates!\n\nLINE 1: ...taria ) sub WHERE total_internacoes >= 1000 AND rn = 1 AND COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >=...\n                                                                      ^\n[SQL: EXPLAIN SELECT diagnostico, media_dias_permanencia FROM ( SELECT c.\"DESCRICAO\" AS diagnostico, AVG(i.\"DIAS_PERM\") AS media_dias_permanencia, COUNT(*) AS total_internacoes, CASE WHEN i.\"IDADE\" < 18 THEN 'Crianca' ELSE 'Adulto' END AS faixa_etaria, ROW_NUMBER() OVER (PARTITION BY c.\"DESCRICAO\" ORDER BY AVG(i.\"DIAS_PERM\") DESC) AS rn FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"DIAS_PERM\" IS NOT NULL GROUP BY c.\"DESCRICAO\", faixa_etaria ) sub WHERE total_internacoes >= 1000 AND rn = 1 AND COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >= 1000 AND COUNT(CASE WHEN faixa_etaria = 'Adulto' THEN 1 END) >= 1000 ORDER BY diagnostico;]\n(Background on this error at: https://sqlalche.me/e/20/f405)",
+    "cost": {
+      "prompt_tokens": 21724,
+      "completion_tokens": 1804,
+      "total_tokens": 23528,
+      "total_cost_usd": 0.004341,
+      "successful_requests": 7
+    },
+    "chart": null
+  },
+  "evaluation_source": "sql_query",
+  "latency_seconds": 40.14362955093384,
+  "generated_sql_valid": false,
+  "generated_sql_validation_errors": [
+    "Agent failed before SQL execution"
+  ],
+  "generated_sql_validation_warnings": [],
+  "generated_execution_status": "skipped",
+  "ground_truth_execution_status": "passed",
+  "comparison_mode": "execution_accuracy",
+  "result_match": false,
+  "ex_score": 0.0,
+  "shape_match": false,
+  "projected_match": false,
+  "expected_columns": [
+    "diagnostico",
+    "n_criancas",
+    "n_adultos",
+    "media_criancas",
+    "media_adultos",
+    "diferenca_absoluta"
+  ],
+  "actual_columns": [],
+  "expected_preview_values": [
+    [
+      "Psicose nao-organica NE",
+      9720,
+      324926,
+      0.01,
+      0.0,
+      0.01
+    ],
+    [
+      "Leucemia NE",
+      5500,
+      13910,
+      0.01,
+      0.0,
+      0.01
+    ],
+    [
+      "Hipertensao secund NE",
+      3238,
+      154008,
+      0.01,
+      0.0,
+      0.01
+    ],
+    [
+      "Lupus eritematoso cutaneo subagudo",
+      1010,
+      5531,
+      0.0,
+      0.01,
+      0.01
+    ],
+    [
+      "Tuberc NE vias respir c/conf bacter histol",
+      1478,
+      24374,
+      0.01,
+      0.0,
+      0.01
+    ],
+    [
+      "S/mencao de compr do comport",
+      1262,
+      6338,
+      0.0,
+      0.01,
+      0.01
+    ],
+    [
+      "Doenc hepatica toxica c/colestase",
+      1139,
+      4764,
+      0.0,
+      0.01,
+      0.01
+    ],
+    [
+      "Frat mult de dedos",
+      4862,
+      33579,
+      0.01,
+      0.0,
+      0.01
+    ],
+    [
+      "Leishmaniose cutanea",
+      1651,
+      5872,
+      0.01,
+      0.01,
+      0.01
+    ],
+    [
+      "Estreitamento e atresia da vagina",
+      3217,
+      1629,
+      0.0,
+      0.0,
+      0.0
+    ]
+  ],
+  "actual_preview_values": [],
+  "expected_row_count": 10,
+  "actual_row_count": 0,
+  "expected_truncated": false,
+  "actual_truncated": false,
+  "ground_truth_execution_error": null,
+  "generated_execution_error": "Agent failed before SQL execution",
+  "ground_truth_execution_latency_seconds": 1.6683661937713623,
+  "generated_execution_latency_seconds": 0.0,
+  "error_category": "agent_failed",
+  "error_message": "Agent failed before SQL execution",
+  "metric_details": {
+    "reason": "Empty or missing SQL query",
+    "ground_truth_executed": false,
+    "predicted_executed": false
+  },
+  "comparison_details": {},
+  "multi_query": {
+    "is_multi_query": false,
+    "plan_type": "single_default",
+    "execution_mode": "single",
+    "multi_query_allowed": false,
+    "allowed_multi_plan_types": [
+      "bind_then_query",
+      "fanout_concat",
+      "verification_side_query"
+    ],
+    "query_plan": {
+      "strategy": "single",
+      "reasoning": "Sem padrão de multi-query seguro; usar SQL único.",
+      "plan_type": "single_default",
+      "merge_strategy": "none",
+      "output_nodes": [
+        "sq1"
+      ],
+      "required_constraints": [],
+      "expected_output_shape": {},
+      "verifier_checks": [],
+      "fallback_policy": {},
+      "sub_queries": [
+        {
+          "id": "sq1",
+          "description": "Quais diagnosticos apresentam maior diferenca de permanencia media entre criancas e adultos, considerando diagnosticos com pelo menos 1000 internacoes em cada grupo?",
+          "purpose": "final_output",
+          "output_role": "output",
+          "expected_result_kind": "rowset",
+          "expected_max_rows": null,
+          "required_constraints": [],
+          "selected_tables": [],
+          "bind_keys": [],
+          "sql": null,
+          "validated_sql": null,
+          "result_raw": null,
+          "parsed_rows": null,
+          "success": false,
+          "error": null,
+          "depends_on": [],
+          "repair_attempts": 0
+        }
+      ]
+    },
+    "sub_query_results": [],
+    "merged_rows": null,
+    "merged_rows_source": null,
+    "merge_strategy": "none",
+    "verifier_outcome": null,
+    "single_fallback_active": false,
+    "single_fallback_reason": null,
+    "final_sql_query": null,
+    "failure_taxonomy": [
+      "wrong_aggregation",
+      "top_n_scope"
+    ]
+  },
+  "tables_used": [
+    "cid",
+    "internacoes"
+  ],
+  "selected_tables": {
+    "llamaindex": [
+      "cid",
+      "internacoes"
+    ],
+    "raw": [
+      "cid",
+      "internacoes"
+    ],
+    "validated": [
+      "cid",
+      "internacoes"
+    ]
+  },
+  "table_selection": {
+    "mode": "llamaindex_context",
+    "llamaindex_enabled": true,
+    "llamaindex_mode": "context",
+    "llamaindex_confidence": 0.4919305105587639,
+    "llamaindex_error": ""
+  },
+  "semantic_plan": {
+    "intent": "ranking",
+    "base_grain": "internacao",
+    "metrics": [
+      {
+        "name": "media",
+        "expression_type": "avg",
+        "required_filters": []
+      },
+      {
+        "name": "total_internacoes",
+        "expression_type": "count",
+        "required_filters": []
+      }
+    ],
+    "dimensions": [
+      {
+        "name": "diagnostico",
+        "source": "cid.DESCRICAO",
+        "role": "group"
+      }
+    ],
+    "filters": [],
+    "answer_shape": {
+      "row_grain": "top_n_per_group",
+      "top_n": 1,
+      "top_n_scope": "per_group",
+      "required_dimensions": [
+        "diagnostico"
+      ],
+      "partition_dimensions": [],
+      "ranked_dimensions": [
+        "diagnostico"
+      ],
+      "requires_group_by": true,
+      "include_unknown_bucket": false,
+      "answer_kind": "top_n_per_group",
+      "expected_row_count": "one_per_group",
+      "output_dimensions": [
+        "diagnostico"
+      ],
+      "filter_dimensions": [],
+      "forbidden_output_dimensions": []
+    },
+    "constraints": [
+      "top_n_per_group_requires_window_partition",
+      "total_internacoes_adultos >= 1000",
+      "total_internacoes_criancas >= 1000"
+    ],
+    "null_policy": [],
+    "ambiguities": []
+  },
+  "semantic_planner": {
+    "mode": "llm_reconciled",
+    "confidence": 0.9,
+    "reasoning": "O plano busca classificar os diagnósticos com base na média de permanência entre crianças e adultos, garantindo que apenas diagnósticos com pelo menos 1000 internações em cada grupo sejam considerados. As métricas incluem a média de permanência e contagens de internações para cada grupo. A dimensão 'diagnostico' é utilizada para agrupar os resultados, e a filtragem é feita com base no grupo etário. O uso de top_n_per_group permite identificar o diagnóstico com a maior diferença de permanência média entre os grupos.",
+    "conflicts": [
+      "unknown_metric_ignored: total_internacoes_adultos",
+      "unknown_metric_ignored: total_internacoes_criancas",
+      "metric_mismatch: heuristic=['media']; llm=['media', 'total_internacoes', 'total_internacoes_adultos', 'total_internacoes_criancas']"
+    ],
+    "accepted_llm_fields": [
+      "metrics"
+    ],
+    "rejected_llm_fields": []
+  },
+  "semantic_validation": {
+    "passed": false,
+    "constraints": [
+      "top_n_per_group_requires_window_partition",
+      "total_internacoes_adultos >= 1000",
+      "total_internacoes_criancas >= 1000"
+    ],
+    "null_policy": [],
+    "message": "SEMANTIC PLAN ERROR: The plan requires top-N per group, but SQL does not use ROW_NUMBER()/RANK() OVER (...). Use a window function partitioned by the group dimension."
+  },
+  "chart_plan": {
+    "requested": false,
+    "chart_type": "auto",
+    "metric": null,
+    "metric_expression": null,
+    "x_dimension": null,
+    "series_dimension": null,
+    "y_column": null,
+    "grain": "unknown",
+    "expected_result_shape": "unknown",
+    "filters": [],
+    "time_window": {
+      "type": "none",
+      "n": null,
+      "start_year": null,
+      "end_year": null,
+      "date_column": "DT_INTER"
+    },
+    "required_columns": [],
+    "sql_shape_guidance": "",
+    "reason": "visualization not requested"
+  },
+  "chart_plan_validation": {
+    "passed": true,
+    "message": null,
+    "chart_plan": {
+      "requested": false,
+      "chart_type": "auto",
+      "metric": null,
+      "metric_expression": null,
+      "x_dimension": null,
+      "series_dimension": null,
+      "y_column": null,
+      "grain": "unknown",
+      "expected_result_shape": "unknown",
+      "filters": [],
+      "time_window": {
+        "type": "none",
+        "n": null,
+        "start_year": null,
+        "end_year": null,
+        "date_column": "DT_INTER"
+      },
+      "required_columns": [],
+      "sql_shape_guidance": "",
+      "reason": "visualization not requested"
+    }
+  },
+  "workflow_metrics": {
+    "overall_success": false,
+    "completion_rate": 0.6428571428571429,
+    "phases_completed": 9,
+    "total_phases": 14,
+    "tool_success_rate": 1.0,
+    "total_tools_used": 4,
+    "retry_count": 3,
+    "error_count": 3,
+    "execution_time": 40.03723669052124
+  },
+  "latency_by_component": {
+    "query_classification": 0.0021791458129882812,
+    "table_discovery": 2.320357322692871,
+    "schema_analysis": 0.0009789466857910156,
+    "reasoning": 7.748412609100342,
+    "sql_generation": 7.621186017990112,
+    "sql_validation": 4.645920753479004,
+    "sql_execution": 1.7938365936279297,
+    "sql_repair": 4.72835373878479,
+    "completed": 5.125999450683594e-05
+  },
+  "tool_calls": [
+    {
+      "name": "sql_db_list_tables",
+      "success": true,
+      "execution_time": 2.3202552795410156
+    },
+    {
+      "name": "sql_db_query_checker",
+      "success": true,
+      "execution_time": 2.8420162200927734
+    },
+    {
+      "name": "sql_db_query_checker",
+      "success": true,
+      "execution_time": 5.041525602340698
+    },
+    {
+      "name": "sql_db_query_checker",
+      "success": true,
+      "execution_time": 4.645872592926025
+    }
+  ],
+  "phases_completed": [
+    "initialization",
+    "query_classification",
+    "table_discovery",
+    "schema_analysis",
+    "reasoning",
+    "sql_generation",
+    "sql_validation",
+    "sql_execution",
+    "sql_repair"
+  ],
+  "agent_metadata": {
+    "langgraph_v3": true,
+    "messages_state": true,
+    "query_route": "database",
+    "classification": {
+      "route": "database",
+      "confidence": 0.9,
+      "requires_tools": true
+    },
+    "workflow_metrics": {
+      "overall_success": false,
+      "completion_rate": 0.6428571428571429,
+      "phases_completed": 9,
+      "total_phases": 14,
+      "tool_success_rate": 1.0,
+      "total_tools_used": 4,
+      "retry_count": 3,
+      "error_count": 3,
+      "execution_time": 40.03723669052124
+    },
+    "phases_completed": [
+      "initialization",
+      "query_classification",
+      "table_discovery",
+      "schema_analysis",
+      "reasoning",
+      "sql_generation",
+      "sql_validation",
+      "sql_execution",
+      "sql_repair"
+    ],
+    "current_phase": "completed",
+    "tool_calls": [
+      {
+        "name": "sql_db_list_tables",
+        "success": true,
+        "execution_time": 2.3202552795410156
+      },
+      {
+        "name": "sql_db_query_checker",
+        "success": true,
+        "execution_time": 2.8420162200927734
+      },
+      {
+        "name": "sql_db_query_checker",
+        "success": true,
+        "execution_time": 5.041525602340698
+      },
+      {
+        "name": "sql_db_query_checker",
+        "success": true,
+        "execution_time": 4.645872592926025
+      }
+    ],
+    "message_count": 30,
+    "retry_count": 3,
+    "error_count": 3,
+    "tables_used": [
+      "cid",
+      "internacoes"
+    ],
+    "schema_context_length": 12667,
+    "latency_by_component": {
+      "query_classification": 0.0021791458129882812,
+      "table_discovery": 2.320357322692871,
+      "schema_analysis": 0.0009789466857910156,
+      "reasoning": 7.748412609100342,
+      "sql_generation": 7.621186017990112,
+      "sql_validation": 4.645920753479004,
+      "sql_execution": 1.7938365936279297,
+      "sql_repair": 4.72835373878479,
+      "completed": 5.125999450683594e-05
+    },
+    "multi_query": {
+      "is_multi_query": false,
+      "plan_type": "single_default",
+      "execution_mode": "single",
+      "multi_query_allowed": false,
+      "allowed_multi_plan_types": [
+        "bind_then_query",
+        "fanout_concat",
+        "verification_side_query"
+      ],
+      "query_plan": {
+        "strategy": "single",
+        "reasoning": "Sem padrão de multi-query seguro; usar SQL único.",
+        "plan_type": "single_default",
+        "merge_strategy": "none",
+        "output_nodes": [
+          "sq1"
+        ],
+        "required_constraints": [],
+        "expected_output_shape": {},
+        "verifier_checks": [],
+        "fallback_policy": {},
+        "sub_queries": [
+          {
+            "id": "sq1",
+            "description": "Quais diagnosticos apresentam maior diferenca de permanencia media entre criancas e adultos, considerando diagnosticos com pelo menos 1000 internacoes em cada grupo?",
+            "purpose": "final_output",
+            "output_role": "output",
+            "expected_result_kind": "rowset",
+            "expected_max_rows": null,
+            "required_constraints": [],
+            "selected_tables": [],
+            "bind_keys": [],
+            "sql": null,
+            "validated_sql": null,
+            "result_raw": null,
+            "parsed_rows": null,
+            "success": false,
+            "error": null,
+            "depends_on": [],
+            "repair_attempts": 0
+          }
+        ]
+      },
+      "sub_query_results": [],
+      "merged_rows": null,
+      "merged_rows_source": null,
+      "merge_strategy": "none",
+      "verifier_outcome": null,
+      "single_fallback_active": false,
+      "single_fallback_reason": null,
+      "final_sql_query": null,
+      "failure_taxonomy": [
+        "wrong_aggregation",
+        "top_n_scope"
+      ]
+    },
+    "semantic_plan": {
+      "intent": "ranking",
+      "base_grain": "internacao",
+      "metrics": [
+        {
+          "name": "media",
+          "expression_type": "avg",
+          "required_filters": []
+        },
+        {
+          "name": "total_internacoes",
+          "expression_type": "count",
+          "required_filters": []
+        }
+      ],
+      "dimensions": [
+        {
+          "name": "diagnostico",
+          "source": "cid.DESCRICAO",
+          "role": "group"
+        }
+      ],
+      "filters": [],
+      "answer_shape": {
+        "row_grain": "top_n_per_group",
+        "top_n": 1,
+        "top_n_scope": "per_group",
+        "required_dimensions": [
+          "diagnostico"
+        ],
+        "partition_dimensions": [],
+        "ranked_dimensions": [
+          "diagnostico"
+        ],
+        "requires_group_by": true,
+        "include_unknown_bucket": false,
+        "answer_kind": "top_n_per_group",
+        "expected_row_count": "one_per_group",
+        "output_dimensions": [
+          "diagnostico"
+        ],
+        "filter_dimensions": [],
+        "forbidden_output_dimensions": []
+      },
+      "constraints": [
+        "top_n_per_group_requires_window_partition",
+        "total_internacoes_adultos >= 1000",
+        "total_internacoes_criancas >= 1000"
+      ],
+      "null_policy": [],
+      "ambiguities": []
+    },
+    "visualization_intent": {
+      "requested": false,
+      "source": "none",
+      "uses_last_result": false,
+      "chart_hint": "auto",
+      "reason": ""
+    },
+    "chart_plan": {
+      "requested": false,
+      "chart_type": "auto",
+      "metric": null,
+      "metric_expression": null,
+      "x_dimension": null,
+      "series_dimension": null,
+      "y_column": null,
+      "grain": "unknown",
+      "expected_result_shape": "unknown",
+      "filters": [],
+      "time_window": {
+        "type": "none",
+        "n": null,
+        "start_year": null,
+        "end_year": null,
+        "date_column": "DT_INTER"
+      },
+      "required_columns": [],
+      "sql_shape_guidance": "",
+      "reason": "visualization not requested"
+    },
+    "chart_spec": null,
+    "llamaindex_enabled": true,
+    "llamaindex_mode": "context",
+    "llamaindex_retrieval_mode": "llamaindex_schema",
+    "llamaindex_selected_tables": [
+      "cid",
+      "internacoes"
+    ],
+    "llamaindex_confidence": 0.4919305105587639,
+    "llamaindex_error": "",
+    "raw_selected_tables": [
+      "cid",
+      "internacoes"
+    ],
+    "validated_selected_tables": [
+      "cid",
+      "internacoes"
+    ],
+    "table_selection_mode": "llamaindex_context",
+    "schema_context_source": "llamaindex",
+    "schema_context_verified_with_db": false,
+    "schema_context_tables": [
+      "cid",
+      "internacoes"
+    ],
+    "semantic_constraints": [
+      "top_n_per_group_requires_window_partition",
+      "total_internacoes_adultos >= 1000",
+      "total_internacoes_criancas >= 1000"
+    ],
+    "semantic_null_policy": [],
+    "semantic_planner": {
+      "mode": "llm_reconciled",
+      "confidence": 0.9,
+      "reasoning": "O plano busca classificar os diagnósticos com base na média de permanência entre crianças e adultos, garantindo que apenas diagnósticos com pelo menos 1000 internações em cada grupo sejam considerados. As métricas incluem a média de permanência e contagens de internações para cada grupo. A dimensão 'diagnostico' é utilizada para agrupar os resultados, e a filtragem é feita com base no grupo etário. O uso de top_n_per_group permite identificar o diagnóstico com a maior diferença de permanência média entre os grupos.",
+      "conflicts": [
+        "unknown_metric_ignored: total_internacoes_adultos",
+        "unknown_metric_ignored: total_internacoes_criancas",
+        "metric_mismatch: heuristic=['media']; llm=['media', 'total_internacoes', 'total_internacoes_adultos', 'total_internacoes_criancas']"
+      ],
+      "accepted_llm_fields": [
+        "metrics"
+      ],
+      "rejected_llm_fields": []
+    },
+    "sql_generation_confidence": 0.9,
+    "sql_generation_reasoning": "The query calculates the average length of stay for each diagnosis, partitioned by age groups (children and adults). It uses ROW_NUMBER() to rank the diagnoses based on their average length of stay, ensuring that only those with at least 1000 hospitalizations in each group are considered.",
+    "sql_generation_source": "current_structured_output",
+    "chart_plan_validation": {
+      "passed": true,
+      "message": null,
+      "chart_plan": {
+        "requested": false,
+        "chart_type": "auto",
+        "metric": null,
+        "metric_expression": null,
+        "x_dimension": null,
+        "series_dimension": null,
+        "y_column": null,
+        "grain": "unknown",
+        "expected_result_shape": "unknown",
+        "filters": [],
+        "time_window": {
+          "type": "none",
+          "n": null,
+          "start_year": null,
+          "end_year": null,
+          "date_column": "DT_INTER"
+        },
+        "required_columns": [],
+        "sql_shape_guidance": "",
+        "reason": "visualization not requested"
+      }
+    },
+    "semantic_validation": {
+      "passed": false,
+      "constraints": [
+        "top_n_per_group_requires_window_partition",
+        "total_internacoes_adultos >= 1000",
+        "total_internacoes_criancas >= 1000"
+      ],
+      "null_policy": [],
+      "message": "SEMANTIC PLAN ERROR: The plan requires top-N per group, but SQL does not use ROW_NUMBER()/RANK() OVER (...). Use a window function partitioned by the group dimension."
+    },
+    "post_execution_contract_error": "POST EXECUTION CONTRACT ERROR: grouped query returned no rows, so it did not materialize the requested output dimensions.",
+    "repair_attempts": [
+      {
+        "previous_sql": "SELECT diagnostico, media_dias_permanencia FROM ( SELECT c.\"DESCRICAO\" AS diagnostico, AVG(i.\"DIAS_PERM\") AS media_dias_permanencia, COUNT(*) AS total_internacoes, ROW_NUMBER() OVER (PARTITION BY CASE WHEN i.\"IDADE\" < 18 THEN 'Crianca' ELSE 'Adulto' END ORDER BY AVG(i.\"DIAS_PERM\") DESC) AS rn FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"DIAS_PERM\" IS NOT NULL GROUP BY c.\"DESCRICAO\", CASE WHEN i.\"IDADE\" < 18 THEN 'Crianca' ELSE 'Adulto' END ) sub WHERE rn = 1 AND total_internacoes >= 1000 ORDER BY diagnostico;",
+        "error_message": "POST EXECUTION CONTRACT ERROR: grouped query returned no rows, so it did not materialize the requested output dimensions.",
+        "semantic_category": "unknown",
+        "semantic_guidance": "Erro semantico desconhecido",
+        "violated_contract": {},
+        "repair_strategy": "llm_guided",
+        "timestamp": "2026-05-17T13:51:24.079217",
+        "post_repair_validation": {
+          "passed": false,
+          "message": "SEMANTIC PLAN ERROR: The plan requires top-N per group, but SQL does not use ROW_NUMBER()/RANK() OVER (...). Use a window function partitioned by the group dimension.",
+          "category": "top_n_scope"
+        }
+      },
+      {
+        "previous_sql": "SELECT diagnostico, media_dias_permanencia FROM ( SELECT c.\"DESCRICAO\" AS diagnostico, AVG(i.\"DIAS_PERM\") AS media_dias_permanencia, COUNT(*) AS total_internacoes, CASE WHEN i.\"IDADE\" < 18 THEN 'Crianca' ELSE 'Adulto' END AS faixa_etaria FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"DIAS_PERM\" IS NOT NULL GROUP BY c.\"DESCRICAO\", faixa_etaria ) sub WHERE total_internacoes >= 1000 GROUP BY diagnostico, media_dias_permanencia HAVING COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >= 1000 AND COUNT(CASE WHEN faixa_etaria = 'Adulto' THEN 1 END) >= 1000 ORDER BY diagnostico;",
+        "error_message": "SEMANTIC PLAN ERROR: The plan requires top-N per group, but SQL does not use ROW_NUMBER()/RANK() OVER (...). Use a window function partitioned by the group dimension.",
+        "semantic_category": "top_n_scope",
+        "semantic_guidance": "Top-N por grupo",
+        "violated_contract": {
+          "answer_shape.top_n": 1,
+          "answer_shape.top_n_scope": "per_group",
+          "answer_shape.required_dimensions": [
+            "diagnostico"
+          ],
+          "answer_shape.partition_dimensions": [],
+          "answer_shape.ranked_dimensions": [
+            "diagnostico"
+          ]
+        },
+        "repair_strategy": "llm_guided",
+        "timestamp": "2026-05-17T13:51:33.851050",
+        "post_repair_validation": {
+          "passed": false,
+          "message": "(_duckdb.BinderException) Binder Error: WHERE clause cannot contain aggregates!\n\nLINE 1: ...taria ) sub WHERE total_internacoes >= 1000 AND rn = 1 AND COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >=...\n                                                                      ^\n[SQL: EXPLAIN SELECT diagnostico, media_dias_permanencia FROM ( SELECT c.\"DESCRICAO\" AS diagnostico, AVG(i.\"DIAS_PERM\") AS media_dias_permanencia, COUNT(*) AS total_internacoes, CASE WHEN i.\"IDADE\" < 18 THEN 'Crianca' ELSE 'Adulto' END AS faixa_etaria, ROW_NUMBER() OVER (PARTITION BY c.\"DESCRICAO\" ORDER BY AVG(i.\"DIAS_PERM\") DESC) AS rn FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"DIAS_PERM\" IS NOT NULL GROUP BY c.\"DESCRICAO\", faixa_etaria ) sub WHERE total_internacoes >= 1000 AND rn = 1 AND COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >= 1000 AND COUNT(CASE WHEN faixa_etaria = 'Adulto' THEN 1 END) >= 1000 ORDER BY diagnostico;]\n(Background on this error at: https://sqlalche.me/e/20/f405)",
+          "category": "top_n_scope"
+        }
+      }
+    ],
+    "semantic_repair": {
+      "original_category": "top_n_scope",
+      "original_message": "SEMANTIC PLAN ERROR: The plan requires top-N per group, but SQL does not use ROW_NUMBER()/RANK() OVER (...). Use a window function partitioned by the group dimension.",
+      "guidance_title": "Top-N por grupo",
+      "strategy": "llm_guided",
+      "post_repair_category": "top_n_scope",
+      "post_repair_message": "(_duckdb.BinderException) Binder Error: WHERE clause cannot contain aggregates!\n\nLINE 1: ...taria ) sub WHERE total_internacoes >= 1000 AND rn = 1 AND COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >=...\n                                                                      ^\n[SQL: EXPLAIN SELECT diagnostico, media_dias_permanencia FROM ( SELECT c.\"DESCRICAO\" AS diagnostico, AVG(i.\"DIAS_PERM\") AS media_dias_permanencia, COUNT(*) AS total_internacoes, CASE WHEN i.\"IDADE\" < 18 THEN 'Crianca' ELSE 'Adulto' END AS faixa_etaria, ROW_NUMBER() OVER (PARTITION BY c.\"DESCRICAO\" ORDER BY AVG(i.\"DIAS_PERM\") DESC) AS rn FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"DIAS_PERM\" IS NOT NULL GROUP BY c.\"DESCRICAO\", faixa_etaria ) sub WHERE total_internacoes >= 1000 AND rn = 1 AND COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >= 1000 AND COUNT(CASE WHEN faixa_etaria = 'Adulto' THEN 1 END) >= 1000 ORDER BY diagnostico;]\n(Background on this error at: https://sqlalche.me/e/20/f405)",
+      "validation_passed_after_repair": false
+    },
+    "semantic_error": {
+      "category": "top_n_scope",
+      "severity": "error",
+      "message": "(_duckdb.BinderException) Binder Error: WHERE clause cannot contain aggregates!\n\nLINE 1: ...taria ) sub WHERE total_internacoes >= 1000 AND rn = 1 AND COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >=...\n                                                                      ^\n[SQL: EXPLAIN SELECT diagnostico, media_dias_permanencia FROM ( SELECT c.\"DESCRICAO\" AS diagnostico, AVG(i.\"DIAS_PERM\") AS media_dias_permanencia, COUNT(*) AS total_internacoes, CASE WHEN i.\"IDADE\" < 18 THEN 'Crianca' ELSE 'Adulto' END AS faixa_etaria, ROW_NUMBER() OVER (PARTITION BY c.\"DESCRICAO\" ORDER BY AVG(i.\"DIAS_PERM\") DESC) AS rn FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"DIAS_PERM\" IS NOT NULL GROUP BY c.\"DESCRICAO\", faixa_etaria ) sub WHERE total_internacoes >= 1000 AND rn = 1 AND COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >= 1000 AND COUNT(CASE WHEN faixa_etaria = 'Adulto' THEN 1 END) >= 1000 ORDER BY diagnostico;]\n(Background on this error at: https://sqlalche.me/e/20/f405)"
+    },
+    "orchestrator_v3": true,
+    "current_model": {
+      "provider": "openai",
+      "model_name": "gpt-4o-mini",
+      "temperature": 0.0
+    },
+    "environment": "production",
+    "session_id": "session_58434",
+    "query_number": 1,
+    "orchestrator_execution_time": 40.113961696624756
+  },
+  "steps": [
+    {
+      "name": "evaluation_input",
+      "status": "passed",
+      "details": {
+        "question_id": "GT208",
+        "difficulty": "hard",
+        "question_pt": "Quais diagnosticos apresentam maior diferenca de permanencia media entre criancas e adultos, considerando diagnosticos com pelo menos 1000 internacoes em cada grupo?",
+        "ground_truth_sql": "WITH agg AS (SELECT c.\"DESCRICAO\" AS diagnostico, CASE WHEN i.\"IDADE\" < 18 THEN 'criancas' ELSE 'adultos' END AS grupo_idade, COUNT(*) AS total_internacoes, AVG(i.\"DIAS_PERM\") AS media_dias FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"IDADE\" IS NOT NULL AND i.\"DIAS_PERM\" IS NOT NULL GROUP BY c.\"DESCRICAO\", grupo_idade), piv AS (SELECT diagnostico, MAX(CASE WHEN grupo_idade = 'criancas' THEN total_internacoes END) AS n_criancas, MAX(CASE WHEN grupo_idade = 'adultos' THEN total_internacoes END) AS n_adultos, MAX(CASE WHEN grupo_idade = 'criancas' THEN media_dias END) AS media_criancas, MAX(CASE WHEN grupo_idade = 'adultos' THEN media_dias END) AS media_adultos FROM agg GROUP BY diagnostico) SELECT diagnostico, n_criancas, n_adultos, ROUND(media_criancas, 2) AS media_criancas, ROUND(media_adultos, 2) AS media_adultos, ROUND(ABS(media_adultos - media_criancas), 2) AS diferenca_absoluta FROM piv WHERE n_criancas >= 1000 AND n_adultos >= 1000 ORDER BY diferenca_absoluta DESC LIMIT 10;"
+      }
+    },
+    {
+      "name": "agent.process_query",
+      "status": "failed",
+      "latency_seconds": 40.14362955093384,
+      "input": {
+        "question": "Quais diagnosticos apresentam maior diferenca de permanencia media entre criancas e adultos, considerando diagnosticos com pelo menos 1000 internacoes em cada grupo?"
+      },
+      "output": {
+        "success": false,
+        "sql_query": "SELECT diagnostico, media_dias_permanencia FROM ( SELECT c.\"DESCRICAO\" AS diagnostico, AVG(i.\"DIAS_PERM\") AS media_dias_permanencia, COUNT(*) AS total_internacoes, ROW_NUMBER() OVER (PARTITION BY CASE WHEN i.\"IDADE\" < 18 THEN 'Crianca' ELSE 'Adulto' END ORDER BY AVG(i.\"DIAS_PERM\") DESC) AS rn FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"DIAS_PERM\" IS NOT NULL GROUP BY c.\"DESCRICAO\", CASE WHEN i.\"IDADE\" < 18 THEN 'Crianca' ELSE 'Adulto' END ) sub WHERE rn = 1 AND total_internacoes >= 1000 ORDER BY diagnostico;",
+        "response": "Não foi possível processar sua consulta: (_duckdb.BinderException) Binder Error: WHERE clause cannot contain aggregates!\n\nLINE 1: ...taria ) sub WHERE total_internacoes >= 1000 AND rn = 1 AND COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >=...\n                                                                      ^\n[SQL: EXPLAIN SELECT diagnostico, media_dias_permanencia FROM ( SELECT c.\"DESCRICAO\" AS diagnostico, AVG(i.\"DIAS_PERM\") AS media_dias_permanencia, COUNT(*) AS total_internacoes, CASE WHEN i.\"IDADE\" < 18 THEN 'Crianca' ELSE 'Adulto' END AS faixa_etaria, ROW_NUMBER() OVER (PARTITION BY c.\"DESCRICAO\" ORDER BY AVG(i.\"DIAS_PERM\") DESC) AS rn FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"DIAS_PERM\" IS NOT NULL GROUP BY c.\"DESCRICAO\", faixa_etaria ) sub WHERE total_internacoes >= 1000 AND rn = 1 AND COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >= 1000 AND COUNT(CASE WHEN faixa_etaria = 'Adulto' THEN 1 END) >= 1000 ORDER BY diagnostico;]\n(Background on this error at: https://sqlalche.me/e/20/f405)",
+        "row_count": 0,
+        "results_preview": [],
+        "final_result_rows_preview": null,
+        "error": "(_duckdb.BinderException) Binder Error: WHERE clause cannot contain aggregates!\n\nLINE 1: ...taria ) sub WHERE total_internacoes >= 1000 AND rn = 1 AND COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >=...\n                                                                      ^\n[SQL: EXPLAIN SELECT diagnostico, media_dias_permanencia FROM ( SELECT c.\"DESCRICAO\" AS diagnostico, AVG(i.\"DIAS_PERM\") AS media_dias_permanencia, COUNT(*) AS total_internacoes, CASE WHEN i.\"IDADE\" < 18 THEN 'Crianca' ELSE 'Adulto' END AS faixa_etaria, ROW_NUMBER() OVER (PARTITION BY c.\"DESCRICAO\" ORDER BY AVG(i.\"DIAS_PERM\") DESC) AS rn FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"DIAS_PERM\" IS NOT NULL GROUP BY c.\"DESCRICAO\", faixa_etaria ) sub WHERE total_internacoes >= 1000 AND rn = 1 AND COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >= 1000 AND COUNT(CASE WHEN faixa_etaria = 'Adulto' THEN 1 END) >= 1000 ORDER BY diagnostico;]\n(Background on this error at: https://sqlalche.me/e/20/f405)",
+        "cost": {
+          "prompt_tokens": 21724,
+          "completion_tokens": 1804,
+          "total_tokens": 23528,
+          "total_cost_usd": 0.004341,
+          "successful_requests": 7
+        },
+        "chart": null
+      },
+      "error": null
+    },
+    {
+      "name": "workflow.initialization",
+      "status": "passed",
+      "latency_seconds": null,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.query_classification",
+      "status": "passed",
+      "latency_seconds": 0.0021791458129882812,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.table_discovery",
+      "status": "passed",
+      "latency_seconds": 2.320357322692871,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.schema_analysis",
+      "status": "passed",
+      "latency_seconds": 0.0009789466857910156,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.reasoning",
+      "status": "passed",
+      "latency_seconds": 7.748412609100342,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "media",
+              "expression_type": "avg",
+              "required_filters": []
+            },
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "diagnostico",
+              "source": "cid.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [],
+          "answer_shape": {
+            "row_grain": "top_n_per_group",
+            "top_n": 1,
+            "top_n_scope": "per_group",
+            "required_dimensions": [
+              "diagnostico"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [
+              "diagnostico"
+            ],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_per_group",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "diagnostico"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "top_n_per_group_requires_window_partition",
+            "total_internacoes_adultos >= 1000",
+            "total_internacoes_criancas >= 1000"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.sql_generation",
+      "status": "passed",
+      "latency_seconds": 7.621186017990112,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.sql_validation",
+      "status": "passed",
+      "latency_seconds": 4.645920753479004,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": {
+          "passed": false,
+          "constraints": [
+            "top_n_per_group_requires_window_partition",
+            "total_internacoes_adultos >= 1000",
+            "total_internacoes_criancas >= 1000"
+          ],
+          "null_policy": [],
+          "message": "SEMANTIC PLAN ERROR: The plan requires top-N per group, but SQL does not use ROW_NUMBER()/RANK() OVER (...). Use a window function partitioned by the group dimension."
+        }
+      }
+    },
+    {
+      "name": "workflow.sql_execution",
+      "status": "passed",
+      "latency_seconds": 1.7938365936279297,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.sql_repair",
+      "status": "passed",
+      "latency_seconds": 4.72835373878479,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "tool.sql_db_list_tables",
+      "status": "passed",
+      "latency_seconds": 2.3202552795410156,
+      "details": {
+        "name": "sql_db_list_tables",
+        "success": true,
+        "execution_time": 2.3202552795410156
+      }
+    },
+    {
+      "name": "tool.sql_db_query_checker",
+      "status": "passed",
+      "latency_seconds": 2.8420162200927734,
+      "details": {
+        "name": "sql_db_query_checker",
+        "success": true,
+        "execution_time": 2.8420162200927734
+      }
+    },
+    {
+      "name": "tool.sql_db_query_checker",
+      "status": "passed",
+      "latency_seconds": 5.041525602340698,
+      "details": {
+        "name": "sql_db_query_checker",
+        "success": true,
+        "execution_time": 5.041525602340698
+      }
+    },
+    {
+      "name": "tool.sql_db_query_checker",
+      "status": "passed",
+      "latency_seconds": 4.645872592926025,
+      "details": {
+        "name": "sql_db_query_checker",
+        "success": true,
+        "execution_time": 4.645872592926025
+      }
+    },
+    {
+      "name": "metric.Execution Accuracy (EX)",
+      "status": "failed",
+      "score": 0.0,
+      "error": null,
+      "details": {
+        "reason": "Empty or missing SQL query",
+        "ground_truth_executed": false,
+        "predicted_executed": false
+      }
+    },
+    {
+      "name": "final_result",
+      "status": "failed",
+      "details": {
+        "generated_sql": "",
+        "generated_execution_status": "skipped",
+        "ground_truth_execution_status": "passed",
+        "result_match": false,
+        "ex_score": 0.0
+      }
+    }
+  ],
+  "detailed_result": {
+    "question_id": "GT208",
+    "difficulty": "hard",
+    "question": "Quais diagnosticos apresentam maior diferenca de permanencia media entre criancas e adultos, considerando diagnosticos com pelo menos 1000 internacoes em cada grupo?",
+    "ground_truth_sql": "WITH agg AS (SELECT c.\"DESCRICAO\" AS diagnostico, CASE WHEN i.\"IDADE\" < 18 THEN 'criancas' ELSE 'adultos' END AS grupo_idade, COUNT(*) AS total_internacoes, AVG(i.\"DIAS_PERM\") AS media_dias FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"IDADE\" IS NOT NULL AND i.\"DIAS_PERM\" IS NOT NULL GROUP BY c.\"DESCRICAO\", grupo_idade), piv AS (SELECT diagnostico, MAX(CASE WHEN grupo_idade = 'criancas' THEN total_internacoes END) AS n_criancas, MAX(CASE WHEN grupo_idade = 'adultos' THEN total_internacoes END) AS n_adultos, MAX(CASE WHEN grupo_idade = 'criancas' THEN media_dias END) AS media_criancas, MAX(CASE WHEN grupo_idade = 'adultos' THEN media_dias END) AS media_adultos FROM agg GROUP BY diagnostico) SELECT diagnostico, n_criancas, n_adultos, ROUND(media_criancas, 2) AS media_criancas, ROUND(media_adultos, 2) AS media_adultos, ROUND(ABS(media_adultos - media_criancas), 2) AS diferenca_absoluta FROM piv WHERE n_criancas >= 1000 AND n_adultos >= 1000 ORDER BY diferenca_absoluta DESC LIMIT 10;",
+    "predicted_sql": "",
+    "agent_success": false,
+    "agent_execution_time": 40.14362955093384,
+    "question_started_at": "2026-05-17T13:50:58.434598",
+    "question_completed_at": "2026-05-17T13:51:38.578236",
+    "evaluation_source": "sql_query",
+    "stored_rows": null,
+    "agent_output": {
+      "success": false,
+      "sql_query": "SELECT diagnostico, media_dias_permanencia FROM ( SELECT c.\"DESCRICAO\" AS diagnostico, AVG(i.\"DIAS_PERM\") AS media_dias_permanencia, COUNT(*) AS total_internacoes, ROW_NUMBER() OVER (PARTITION BY CASE WHEN i.\"IDADE\" < 18 THEN 'Crianca' ELSE 'Adulto' END ORDER BY AVG(i.\"DIAS_PERM\") DESC) AS rn FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"DIAS_PERM\" IS NOT NULL GROUP BY c.\"DESCRICAO\", CASE WHEN i.\"IDADE\" < 18 THEN 'Crianca' ELSE 'Adulto' END ) sub WHERE rn = 1 AND total_internacoes >= 1000 ORDER BY diagnostico;",
+      "response": "Não foi possível processar sua consulta: (_duckdb.BinderException) Binder Error: WHERE clause cannot contain aggregates!\n\nLINE 1: ...taria ) sub WHERE total_internacoes >= 1000 AND rn = 1 AND COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >=...\n                                                                      ^\n[SQL: EXPLAIN SELECT diagnostico, media_dias_permanencia FROM ( SELECT c.\"DESCRICAO\" AS diagnostico, AVG(i.\"DIAS_PERM\") AS media_dias_permanencia, COUNT(*) AS total_internacoes, CASE WHEN i.\"IDADE\" < 18 THEN 'Crianca' ELSE 'Adulto' END AS faixa_etaria, ROW_NUMBER() OVER (PARTITION BY c.\"DESCRICAO\" ORDER BY AVG(i.\"DIAS_PERM\") DESC) AS rn FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"DIAS_PERM\" IS NOT NULL GROUP BY c.\"DESCRICAO\", faixa_etaria ) sub WHERE total_internacoes >= 1000 AND rn = 1 AND COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >= 1000 AND COUNT(CASE WHEN faixa_etaria = 'Adulto' THEN 1 END) >= 1000 ORDER BY diagnostico;]\n(Background on this error at: https://sqlalche.me/e/20/f405)",
+      "row_count": 0,
+      "results_preview": [],
+      "final_result_rows_preview": null,
+      "error": "(_duckdb.BinderException) Binder Error: WHERE clause cannot contain aggregates!\n\nLINE 1: ...taria ) sub WHERE total_internacoes >= 1000 AND rn = 1 AND COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >=...\n                                                                      ^\n[SQL: EXPLAIN SELECT diagnostico, media_dias_permanencia FROM ( SELECT c.\"DESCRICAO\" AS diagnostico, AVG(i.\"DIAS_PERM\") AS media_dias_permanencia, COUNT(*) AS total_internacoes, CASE WHEN i.\"IDADE\" < 18 THEN 'Crianca' ELSE 'Adulto' END AS faixa_etaria, ROW_NUMBER() OVER (PARTITION BY c.\"DESCRICAO\" ORDER BY AVG(i.\"DIAS_PERM\") DESC) AS rn FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"DIAS_PERM\" IS NOT NULL GROUP BY c.\"DESCRICAO\", faixa_etaria ) sub WHERE total_internacoes >= 1000 AND rn = 1 AND COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >= 1000 AND COUNT(CASE WHEN faixa_etaria = 'Adulto' THEN 1 END) >= 1000 ORDER BY diagnostico;]\n(Background on this error at: https://sqlalche.me/e/20/f405)",
+      "cost": {
+        "prompt_tokens": 21724,
+        "completion_tokens": 1804,
+        "total_tokens": 23528,
+        "total_cost_usd": 0.004341,
+        "successful_requests": 7
+      },
+      "chart": null
+    },
+    "agent_metadata": {
+      "langgraph_v3": true,
+      "messages_state": true,
+      "query_route": "database",
+      "classification": {
+        "route": "database",
+        "confidence": 0.9,
+        "requires_tools": true
+      },
+      "workflow_metrics": {
+        "overall_success": false,
+        "completion_rate": 0.6428571428571429,
+        "phases_completed": 9,
+        "total_phases": 14,
+        "tool_success_rate": 1.0,
+        "total_tools_used": 4,
+        "retry_count": 3,
+        "error_count": 3,
+        "execution_time": 40.03723669052124
+      },
+      "phases_completed": [
+        "initialization",
+        "query_classification",
+        "table_discovery",
+        "schema_analysis",
+        "reasoning",
+        "sql_generation",
+        "sql_validation",
+        "sql_execution",
+        "sql_repair"
+      ],
+      "current_phase": "completed",
+      "tool_calls": [
+        {
+          "name": "sql_db_list_tables",
+          "success": true,
+          "execution_time": 2.3202552795410156
+        },
+        {
+          "name": "sql_db_query_checker",
+          "success": true,
+          "execution_time": 2.8420162200927734
+        },
+        {
+          "name": "sql_db_query_checker",
+          "success": true,
+          "execution_time": 5.041525602340698
+        },
+        {
+          "name": "sql_db_query_checker",
+          "success": true,
+          "execution_time": 4.645872592926025
+        }
+      ],
+      "message_count": 30,
+      "retry_count": 3,
+      "error_count": 3,
+      "tables_used": [
+        "cid",
+        "internacoes"
+      ],
+      "schema_context_length": 12667,
+      "latency_by_component": {
+        "query_classification": 0.0021791458129882812,
+        "table_discovery": 2.320357322692871,
+        "schema_analysis": 0.0009789466857910156,
+        "reasoning": 7.748412609100342,
+        "sql_generation": 7.621186017990112,
+        "sql_validation": 4.645920753479004,
+        "sql_execution": 1.7938365936279297,
+        "sql_repair": 4.72835373878479,
+        "completed": 5.125999450683594e-05
+      },
+      "multi_query": {
+        "is_multi_query": false,
+        "plan_type": "single_default",
+        "execution_mode": "single",
+        "multi_query_allowed": false,
+        "allowed_multi_plan_types": [
+          "bind_then_query",
+          "fanout_concat",
+          "verification_side_query"
+        ],
+        "query_plan": {
+          "strategy": "single",
+          "reasoning": "Sem padrão de multi-query seguro; usar SQL único.",
+          "plan_type": "single_default",
+          "merge_strategy": "none",
+          "output_nodes": [
+            "sq1"
+          ],
+          "required_constraints": [],
+          "expected_output_shape": {},
+          "verifier_checks": [],
+          "fallback_policy": {},
+          "sub_queries": [
+            {
+              "id": "sq1",
+              "description": "Quais diagnosticos apresentam maior diferenca de permanencia media entre criancas e adultos, considerando diagnosticos com pelo menos 1000 internacoes em cada grupo?",
+              "purpose": "final_output",
+              "output_role": "output",
+              "expected_result_kind": "rowset",
+              "expected_max_rows": null,
+              "required_constraints": [],
+              "selected_tables": [],
+              "bind_keys": [],
+              "sql": null,
+              "validated_sql": null,
+              "result_raw": null,
+              "parsed_rows": null,
+              "success": false,
+              "error": null,
+              "depends_on": [],
+              "repair_attempts": 0
+            }
+          ]
+        },
+        "sub_query_results": [],
+        "merged_rows": null,
+        "merged_rows_source": null,
+        "merge_strategy": "none",
+        "verifier_outcome": null,
+        "single_fallback_active": false,
+        "single_fallback_reason": null,
+        "final_sql_query": null,
+        "failure_taxonomy": [
+          "wrong_aggregation",
+          "top_n_scope"
+        ]
+      },
+      "semantic_plan": {
+        "intent": "ranking",
+        "base_grain": "internacao",
+        "metrics": [
+          {
+            "name": "media",
+            "expression_type": "avg",
+            "required_filters": []
+          },
+          {
+            "name": "total_internacoes",
+            "expression_type": "count",
+            "required_filters": []
+          }
+        ],
+        "dimensions": [
+          {
+            "name": "diagnostico",
+            "source": "cid.DESCRICAO",
+            "role": "group"
+          }
+        ],
+        "filters": [],
+        "answer_shape": {
+          "row_grain": "top_n_per_group",
+          "top_n": 1,
+          "top_n_scope": "per_group",
+          "required_dimensions": [
+            "diagnostico"
+          ],
+          "partition_dimensions": [],
+          "ranked_dimensions": [
+            "diagnostico"
+          ],
+          "requires_group_by": true,
+          "include_unknown_bucket": false,
+          "answer_kind": "top_n_per_group",
+          "expected_row_count": "one_per_group",
+          "output_dimensions": [
+            "diagnostico"
+          ],
+          "filter_dimensions": [],
+          "forbidden_output_dimensions": []
+        },
+        "constraints": [
+          "top_n_per_group_requires_window_partition",
+          "total_internacoes_adultos >= 1000",
+          "total_internacoes_criancas >= 1000"
+        ],
+        "null_policy": [],
+        "ambiguities": []
+      },
+      "visualization_intent": {
+        "requested": false,
+        "source": "none",
+        "uses_last_result": false,
+        "chart_hint": "auto",
+        "reason": ""
+      },
+      "chart_plan": {
+        "requested": false,
+        "chart_type": "auto",
+        "metric": null,
+        "metric_expression": null,
+        "x_dimension": null,
+        "series_dimension": null,
+        "y_column": null,
+        "grain": "unknown",
+        "expected_result_shape": "unknown",
+        "filters": [],
+        "time_window": {
+          "type": "none",
+          "n": null,
+          "start_year": null,
+          "end_year": null,
+          "date_column": "DT_INTER"
+        },
+        "required_columns": [],
+        "sql_shape_guidance": "",
+        "reason": "visualization not requested"
+      },
+      "chart_spec": null,
+      "llamaindex_enabled": true,
+      "llamaindex_mode": "context",
+      "llamaindex_retrieval_mode": "llamaindex_schema",
+      "llamaindex_selected_tables": [
+        "cid",
+        "internacoes"
+      ],
+      "llamaindex_confidence": 0.4919305105587639,
+      "llamaindex_error": "",
+      "raw_selected_tables": [
+        "cid",
+        "internacoes"
+      ],
+      "validated_selected_tables": [
+        "cid",
+        "internacoes"
+      ],
+      "table_selection_mode": "llamaindex_context",
+      "schema_context_source": "llamaindex",
+      "schema_context_verified_with_db": false,
+      "schema_context_tables": [
+        "cid",
+        "internacoes"
+      ],
+      "semantic_constraints": [
+        "top_n_per_group_requires_window_partition",
+        "total_internacoes_adultos >= 1000",
+        "total_internacoes_criancas >= 1000"
+      ],
+      "semantic_null_policy": [],
+      "semantic_planner": {
+        "mode": "llm_reconciled",
+        "confidence": 0.9,
+        "reasoning": "O plano busca classificar os diagnósticos com base na média de permanência entre crianças e adultos, garantindo que apenas diagnósticos com pelo menos 1000 internações em cada grupo sejam considerados. As métricas incluem a média de permanência e contagens de internações para cada grupo. A dimensão 'diagnostico' é utilizada para agrupar os resultados, e a filtragem é feita com base no grupo etário. O uso de top_n_per_group permite identificar o diagnóstico com a maior diferença de permanência média entre os grupos.",
+        "conflicts": [
+          "unknown_metric_ignored: total_internacoes_adultos",
+          "unknown_metric_ignored: total_internacoes_criancas",
+          "metric_mismatch: heuristic=['media']; llm=['media', 'total_internacoes', 'total_internacoes_adultos', 'total_internacoes_criancas']"
+        ],
+        "accepted_llm_fields": [
+          "metrics"
+        ],
+        "rejected_llm_fields": []
+      },
+      "sql_generation_confidence": 0.9,
+      "sql_generation_reasoning": "The query calculates the average length of stay for each diagnosis, partitioned by age groups (children and adults). It uses ROW_NUMBER() to rank the diagnoses based on their average length of stay, ensuring that only those with at least 1000 hospitalizations in each group are considered.",
+      "sql_generation_source": "current_structured_output",
+      "chart_plan_validation": {
+        "passed": true,
+        "message": null,
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        }
+      },
+      "semantic_validation": {
+        "passed": false,
+        "constraints": [
+          "top_n_per_group_requires_window_partition",
+          "total_internacoes_adultos >= 1000",
+          "total_internacoes_criancas >= 1000"
+        ],
+        "null_policy": [],
+        "message": "SEMANTIC PLAN ERROR: The plan requires top-N per group, but SQL does not use ROW_NUMBER()/RANK() OVER (...). Use a window function partitioned by the group dimension."
+      },
+      "post_execution_contract_error": "POST EXECUTION CONTRACT ERROR: grouped query returned no rows, so it did not materialize the requested output dimensions.",
+      "repair_attempts": [
+        {
+          "previous_sql": "SELECT diagnostico, media_dias_permanencia FROM ( SELECT c.\"DESCRICAO\" AS diagnostico, AVG(i.\"DIAS_PERM\") AS media_dias_permanencia, COUNT(*) AS total_internacoes, ROW_NUMBER() OVER (PARTITION BY CASE WHEN i.\"IDADE\" < 18 THEN 'Crianca' ELSE 'Adulto' END ORDER BY AVG(i.\"DIAS_PERM\") DESC) AS rn FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"DIAS_PERM\" IS NOT NULL GROUP BY c.\"DESCRICAO\", CASE WHEN i.\"IDADE\" < 18 THEN 'Crianca' ELSE 'Adulto' END ) sub WHERE rn = 1 AND total_internacoes >= 1000 ORDER BY diagnostico;",
+          "error_message": "POST EXECUTION CONTRACT ERROR: grouped query returned no rows, so it did not materialize the requested output dimensions.",
+          "semantic_category": "unknown",
+          "semantic_guidance": "Erro semantico desconhecido",
+          "violated_contract": {},
+          "repair_strategy": "llm_guided",
+          "timestamp": "2026-05-17T13:51:24.079217",
+          "post_repair_validation": {
+            "passed": false,
+            "message": "SEMANTIC PLAN ERROR: The plan requires top-N per group, but SQL does not use ROW_NUMBER()/RANK() OVER (...). Use a window function partitioned by the group dimension.",
+            "category": "top_n_scope"
+          }
+        },
+        {
+          "previous_sql": "SELECT diagnostico, media_dias_permanencia FROM ( SELECT c.\"DESCRICAO\" AS diagnostico, AVG(i.\"DIAS_PERM\") AS media_dias_permanencia, COUNT(*) AS total_internacoes, CASE WHEN i.\"IDADE\" < 18 THEN 'Crianca' ELSE 'Adulto' END AS faixa_etaria FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"DIAS_PERM\" IS NOT NULL GROUP BY c.\"DESCRICAO\", faixa_etaria ) sub WHERE total_internacoes >= 1000 GROUP BY diagnostico, media_dias_permanencia HAVING COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >= 1000 AND COUNT(CASE WHEN faixa_etaria = 'Adulto' THEN 1 END) >= 1000 ORDER BY diagnostico;",
+          "error_message": "SEMANTIC PLAN ERROR: The plan requires top-N per group, but SQL does not use ROW_NUMBER()/RANK() OVER (...). Use a window function partitioned by the group dimension.",
+          "semantic_category": "top_n_scope",
+          "semantic_guidance": "Top-N por grupo",
+          "violated_contract": {
+            "answer_shape.top_n": 1,
+            "answer_shape.top_n_scope": "per_group",
+            "answer_shape.required_dimensions": [
+              "diagnostico"
+            ],
+            "answer_shape.partition_dimensions": [],
+            "answer_shape.ranked_dimensions": [
+              "diagnostico"
+            ]
+          },
+          "repair_strategy": "llm_guided",
+          "timestamp": "2026-05-17T13:51:33.851050",
+          "post_repair_validation": {
+            "passed": false,
+            "message": "(_duckdb.BinderException) Binder Error: WHERE clause cannot contain aggregates!\n\nLINE 1: ...taria ) sub WHERE total_internacoes >= 1000 AND rn = 1 AND COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >=...\n                                                                      ^\n[SQL: EXPLAIN SELECT diagnostico, media_dias_permanencia FROM ( SELECT c.\"DESCRICAO\" AS diagnostico, AVG(i.\"DIAS_PERM\") AS media_dias_permanencia, COUNT(*) AS total_internacoes, CASE WHEN i.\"IDADE\" < 18 THEN 'Crianca' ELSE 'Adulto' END AS faixa_etaria, ROW_NUMBER() OVER (PARTITION BY c.\"DESCRICAO\" ORDER BY AVG(i.\"DIAS_PERM\") DESC) AS rn FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"DIAS_PERM\" IS NOT NULL GROUP BY c.\"DESCRICAO\", faixa_etaria ) sub WHERE total_internacoes >= 1000 AND rn = 1 AND COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >= 1000 AND COUNT(CASE WHEN faixa_etaria = 'Adulto' THEN 1 END) >= 1000 ORDER BY diagnostico;]\n(Background on this error at: https://sqlalche.me/e/20/f405)",
+            "category": "top_n_scope"
+          }
+        }
+      ],
+      "semantic_repair": {
+        "original_category": "top_n_scope",
+        "original_message": "SEMANTIC PLAN ERROR: The plan requires top-N per group, but SQL does not use ROW_NUMBER()/RANK() OVER (...). Use a window function partitioned by the group dimension.",
+        "guidance_title": "Top-N por grupo",
+        "strategy": "llm_guided",
+        "post_repair_category": "top_n_scope",
+        "post_repair_message": "(_duckdb.BinderException) Binder Error: WHERE clause cannot contain aggregates!\n\nLINE 1: ...taria ) sub WHERE total_internacoes >= 1000 AND rn = 1 AND COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >=...\n                                                                      ^\n[SQL: EXPLAIN SELECT diagnostico, media_dias_permanencia FROM ( SELECT c.\"DESCRICAO\" AS diagnostico, AVG(i.\"DIAS_PERM\") AS media_dias_permanencia, COUNT(*) AS total_internacoes, CASE WHEN i.\"IDADE\" < 18 THEN 'Crianca' ELSE 'Adulto' END AS faixa_etaria, ROW_NUMBER() OVER (PARTITION BY c.\"DESCRICAO\" ORDER BY AVG(i.\"DIAS_PERM\") DESC) AS rn FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"DIAS_PERM\" IS NOT NULL GROUP BY c.\"DESCRICAO\", faixa_etaria ) sub WHERE total_internacoes >= 1000 AND rn = 1 AND COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >= 1000 AND COUNT(CASE WHEN faixa_etaria = 'Adulto' THEN 1 END) >= 1000 ORDER BY diagnostico;]\n(Background on this error at: https://sqlalche.me/e/20/f405)",
+        "validation_passed_after_repair": false
+      },
+      "semantic_error": {
+        "category": "top_n_scope",
+        "severity": "error",
+        "message": "(_duckdb.BinderException) Binder Error: WHERE clause cannot contain aggregates!\n\nLINE 1: ...taria ) sub WHERE total_internacoes >= 1000 AND rn = 1 AND COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >=...\n                                                                      ^\n[SQL: EXPLAIN SELECT diagnostico, media_dias_permanencia FROM ( SELECT c.\"DESCRICAO\" AS diagnostico, AVG(i.\"DIAS_PERM\") AS media_dias_permanencia, COUNT(*) AS total_internacoes, CASE WHEN i.\"IDADE\" < 18 THEN 'Crianca' ELSE 'Adulto' END AS faixa_etaria, ROW_NUMBER() OVER (PARTITION BY c.\"DESCRICAO\" ORDER BY AVG(i.\"DIAS_PERM\") DESC) AS rn FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"DIAS_PERM\" IS NOT NULL GROUP BY c.\"DESCRICAO\", faixa_etaria ) sub WHERE total_internacoes >= 1000 AND rn = 1 AND COUNT(CASE WHEN faixa_etaria = 'Crianca' THEN 1 END) >= 1000 AND COUNT(CASE WHEN faixa_etaria = 'Adulto' THEN 1 END) >= 1000 ORDER BY diagnostico;]\n(Background on this error at: https://sqlalche.me/e/20/f405)"
+      },
+      "orchestrator_v3": true,
+      "current_model": {
+        "provider": "openai",
+        "model_name": "gpt-4o-mini",
+        "temperature": 0.0
+      },
+      "environment": "production",
+      "session_id": "session_58434",
+      "query_number": 1,
+      "orchestrator_execution_time": 40.113961696624756
+    },
+    "multi_query": {
+      "is_multi_query": false,
+      "plan_type": "single_default",
+      "execution_mode": "single",
+      "multi_query_allowed": false,
+      "allowed_multi_plan_types": [
+        "bind_then_query",
+        "fanout_concat",
+        "verification_side_query"
+      ],
+      "query_plan": {
+        "strategy": "single",
+        "reasoning": "Sem padrão de multi-query seguro; usar SQL único.",
+        "plan_type": "single_default",
+        "merge_strategy": "none",
+        "output_nodes": [
+          "sq1"
+        ],
+        "required_constraints": [],
+        "expected_output_shape": {},
+        "verifier_checks": [],
+        "fallback_policy": {},
+        "sub_queries": [
+          {
+            "id": "sq1",
+            "description": "Quais diagnosticos apresentam maior diferenca de permanencia media entre criancas e adultos, considerando diagnosticos com pelo menos 1000 internacoes em cada grupo?",
+            "purpose": "final_output",
+            "output_role": "output",
+            "expected_result_kind": "rowset",
+            "expected_max_rows": null,
+            "required_constraints": [],
+            "selected_tables": [],
+            "bind_keys": [],
+            "sql": null,
+            "validated_sql": null,
+            "result_raw": null,
+            "parsed_rows": null,
+            "success": false,
+            "error": null,
+            "depends_on": [],
+            "repair_attempts": 0
+          }
+        ]
+      },
+      "sub_query_results": [],
+      "merged_rows": null,
+      "merged_rows_source": null,
+      "merge_strategy": "none",
+      "verifier_outcome": null,
+      "single_fallback_active": false,
+      "single_fallback_reason": null,
+      "final_sql_query": null,
+      "failure_taxonomy": [
+        "wrong_aggregation",
+        "top_n_scope"
+      ]
+    },
+    "agent_error": null,
+    "metrics": {
+      "Execution Accuracy (EX)": {
+        "score": 0.0,
+        "is_correct": false,
+        "error": null,
+        "details": {
+          "reason": "Empty or missing SQL query",
+          "ground_truth_executed": false,
+          "predicted_executed": false
+        }
+      }
+    },
+    "run_id": "20260517_gt228_full",
+    "question_index": 202,
+    "total_questions": 228,
+    "question_fingerprint": "5b85bb9fd97f4f2b4619c42ca33291be3667c734e40e22a7253dd7fa81f4c890",
+    "trace_path": "/home/maiconkevyn/PycharmProjects/txt2sql_refactor_openai_v2/evaluation/results/dag_evaluation_20260517_gt228_full/queries/GT208/trace.json"
+  }
+}

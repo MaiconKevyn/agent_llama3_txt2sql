@@ -11,6 +11,7 @@ from ..semantic.plan_schema import SemanticPlan
 from ..semantic.sql_inspector import SQLInspector
 from ..utils.logging_config import get_nodes_logger
 from ..utils.sql_safety import is_select_only
+from .analytic_sql import build_analytic_sql_package as _build_analytic_sql_package
 from .llm_manager import get_llm_manager
 from .schema_node import _refresh_schema_context, _should_refresh_schema
 from .schema_utils import _check_columns_against_schema
@@ -151,6 +152,110 @@ def _build_filtered_category_period_percentage_sql(
     )
 
 
+def _sql_literal(value: str) -> str:
+    return str(value).strip().replace("'", "''")
+
+
+def _sql_description_filter(alias: str, terms: list[str]) -> str:
+    clauses = [
+        f'{alias}."DESCRICAO" ILIKE \'%{_sql_literal(term)}%\''
+        for term in terms
+        if str(term).strip()
+    ]
+    return "(" + " OR ".join(clauses) + ")" if clauses else ""
+
+
+def _description_terms_from_plan(plan: SemanticPlan) -> list[str]:
+    terms: list[str] = []
+    seen: set[str] = set()
+    for semantic_filter in plan.filters:
+        if semantic_filter.field != "diagnostico_principal_descricao":
+            continue
+        for value in semantic_filter.values:
+            term = str(value).strip()
+            if term and term not in seen:
+                seen.add(term)
+                terms.append(term)
+    return terms
+
+
+def _diagnosis_code_filters_from_plan(plan: SemanticPlan) -> list[str]:
+    codes: list[str] = []
+    seen: set[str] = set()
+    for semantic_filter in plan.filters:
+        if semantic_filter.field != "diagnostico_principal_codigo":
+            continue
+        for value in semantic_filter.values:
+            code = str(value).strip().upper()
+            if code and code not in seen:
+                seen.add(code)
+                codes.append(code)
+    return codes
+
+
+def _diagnosis_prefix_filters_from_plan(plan: SemanticPlan) -> list[str]:
+    prefixes: list[str] = []
+    seen: set[str] = set()
+    for semantic_filter in plan.filters:
+        if semantic_filter.field != "diagnostico_principal_prefix":
+            continue
+        for value in semantic_filter.values:
+            prefix = str(value).strip().upper()
+            if prefix and prefix not in seen:
+                seen.add(prefix)
+                prefixes.append(prefix)
+    return prefixes
+
+
+def _build_diagnosis_description_lookup_sql(
+    semantic_plan: SemanticPlan | dict | None,
+) -> str | None:
+    if not semantic_plan:
+        return None
+    plan = (
+        semantic_plan
+        if isinstance(semantic_plan, SemanticPlan)
+        else SemanticPlan.model_validate(semantic_plan)
+    )
+    codes = _diagnosis_code_filters_from_plan(plan)
+    prefixes = _diagnosis_prefix_filters_from_plan(plan)
+    if (
+        "diagnosis_description_lookup_required" not in plan.constraints
+        and not codes
+        and not prefixes
+    ):
+        return None
+    terms = _description_terms_from_plan(plan)
+    description_filter = _sql_description_filter("c", terms)
+    code_filter = ""
+    if codes:
+        code_values = ", ".join(f"'{_sql_literal(code)}'" for code in codes)
+        code_filter = f'c."CID" IN ({code_values})'
+    prefix_filter = ""
+    if prefixes:
+        prefix_filter = " OR ".join(
+            f'c."CID" LIKE \'{_sql_literal(prefix)}\'' for prefix in prefixes
+        )
+    target_filters = [item for item in [code_filter, prefix_filter, description_filter] if item]
+    if not target_filters:
+        return None
+    year_filter = _year_where_clause(plan, "i")
+    return (
+        "WITH diagnosticos_alvo AS ("
+        ' SELECT c."CID", c."DESCRICAO"'
+        " FROM cid c"
+        f" WHERE {' OR '.join(target_filters)}"
+        ") "
+        "SELECT COUNT(*) AS total_cids_encontrados,"
+        " (SELECT COUNT(*) FROM internacoes i"
+        ' WHERE i."DIAG_PRINC" IN (SELECT "CID" FROM diagnosticos_alvo)'
+        f"{year_filter}) AS total_internacoes,"
+        " STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\")"
+        " AS diagnosticos_encontrados"
+        " FROM diagnosticos_alvo;"
+    )
+
+
 def _build_death_cause_description_count_sql(
     semantic_plan: SemanticPlan | dict | None,
 ) -> str | None:
@@ -163,22 +268,16 @@ def _build_death_cause_description_count_sql(
     )
     if "death_cause_description_requires_diag_princ_with_morte" not in plan.constraints:
         return None
-    terms = [
-        str(value).strip()
-        for semantic_filter in plan.filters
-        if semantic_filter.field == "diagnostico_principal_descricao"
-        for value in semantic_filter.values
-        if str(value).strip()
-    ]
-    if not terms:
+    terms = _description_terms_from_plan(plan)
+    description_filter = _sql_description_filter("c", terms)
+    if not description_filter:
         return None
-    term = terms[0].replace("'", "''")
     return (
         "SELECT COUNT(*) AS total_internacoes "
         "FROM internacoes i "
         'JOIN cid c ON i."DIAG_PRINC" = c."CID" '
         'WHERE i."MORTE" = true '
-        f"AND c.\"DESCRICAO\" ILIKE '%{term}%';"
+        f"AND {description_filter};"
     )
 
 
@@ -1915,6 +2014,13 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
 
         if semantic_repair_enabled and (
             "disease death-cause" in error_message.lower()
+            or "analytic age-diagnosis" in error_message.lower()
+            or "diagnosis description lookup" in error_message.lower()
+            or "missing expanded term" in error_message.lower()
+            or (
+                "unsupported comparison" in error_message.lower()
+                and "any/all" in error_message.lower()
+            )
             or "cid_morte" in error_message.lower()
             or "race/color distributions" in error_message.lower()
             or "raca_cor lookup" in error_message.lower()
@@ -1948,8 +2054,17 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             or "cannot compare values of type date and type bigint" in error_message.lower()
             or "max(extract(year" in error_message.lower()
         ):
+            analytic_templates_enabled = bool(
+                ablation_flags.get("enable_analytic_response_templates", True)
+            )
             deterministic_sql = (
-                _build_death_cause_description_count_sql(state.get("semantic_plan"))
+                (
+                    _build_analytic_sql_package(state.get("semantic_plan"))
+                    if analytic_templates_enabled
+                    else None
+                )
+                or _build_diagnosis_description_lookup_sql(state.get("semantic_plan"))
+                or _build_death_cause_description_count_sql(state.get("semantic_plan"))
                 or _build_death_cause_top_n_sql(state.get("semantic_plan"))
                 or _build_lookup_distribution_sql(state.get("semantic_plan"))
                 or _build_top_n_count_by_dimension_sql(state.get("semantic_plan"))

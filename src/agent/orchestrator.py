@@ -69,6 +69,9 @@ def _orchestrator_config_from_env() -> OrchestratorConfig:
         enable_llamaindex_context=_env_bool("ENABLE_LLAMAINDEX_CONTEXT")
         or mode in {"context", "sql_draft", "hybrid"},
         enable_llamaindex_sql_draft=_env_bool("ENABLE_LLAMAINDEX_SQL_DRAFT") or mode == "sql_draft",
+        enable_analytic_response_templates=_env_bool(
+            "ENABLE_ANALYTIC_RESPONSE_TEMPLATES", True
+        ),
         llamaindex_mode=mode,
         llamaindex_top_k_tables=_env_int("LLAMAINDEX_TOP_K_TABLES", 6),
         llamaindex_index_dir=os.getenv("LLAMAINDEX_INDEX_DIR", ".llamaindex_schema"),

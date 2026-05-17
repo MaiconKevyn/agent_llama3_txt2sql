@@ -7,6 +7,7 @@ import time
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
+from ..semantic.analytic_templates import analytic_metadata_for_plan
 from ..semantic.catalog import render_catalog_context_for_plan
 from ..semantic.plan_reconciler import reconcile_semantic_plans
 from ..semantic.plan_schema import SemanticPlan
@@ -88,6 +89,7 @@ def semantic_planner_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         meta["semantic_plan"] = state["semantic_plan"]
         meta["semantic_constraints"] = reconciliation.reconciled_plan.constraints
         meta["semantic_null_policy"] = reconciliation.reconciled_plan.null_policy
+        meta.update(analytic_metadata_for_plan(reconciliation.reconciled_plan))
         state["response_metadata"] = meta
         state = add_ai_message(
             state,

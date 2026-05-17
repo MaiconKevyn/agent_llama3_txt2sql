@@ -13,6 +13,7 @@ Intent = Literal[
     "rate",
     "trend",
     "comparison",
+    "association",
     "lookup",
     "unknown",
 ]

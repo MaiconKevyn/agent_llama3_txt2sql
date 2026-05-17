@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 
+from .concept_resolver import find_clinical_concepts
 from .plan_schema import (
     AnswerShape,
     SemanticDimension,
@@ -113,6 +114,34 @@ _UNSUPPORTED_SCHEMA_METRIC_PATTERNS = {
     ],
     "reinternacao": ["reinternação", "reinternacao", "readmissão", "readmissao"],
 }
+
+_DIAGNOSIS_DESCRIPTION_SYNONYMS = {
+    "covid": ["covid", "coronavirus"],
+    "covid 19": ["covid", "coronavirus"],
+    "covid-19": ["covid", "coronavirus"],
+    "coronavírus": ["coronavirus"],
+    "coronavirus": ["coronavirus"],
+    "sars cov 2": ["covid", "coronavirus"],
+    "sars-cov-2": ["covid", "coronavirus"],
+}
+
+_CLINICAL_CONDITION_STOP = (
+    r"(?=\s+(?:e|por|segundo|conforme)\s+"
+    r"(?:ra[cç]a(?:/cor)?|ra[cç]as|raca(?:/cor)?|racas|cor|cores|sexo|idade|"
+    r"faixa|grupo|instru[cç][aã]o|escolaridade|estado|uf|munic[ií]pio|ano|m[eê]s|"
+    r"trimestre)\b"
+    r"|\s+vari(?:a|am|ou|aram)\s+(?:por|com|conforme)\b"
+    r"|\s+(?:em|no|na|nos|nas)\s+(?:19|20)\d{2}\b"
+    r"|\s+(?:no|na|nos|nas)\s+(?:estado|munic[ií]pio|uf)\b"
+    r"|\s+(?:foi|foram|registrad[ao]s?)\b"
+    r"|\?|$)"
+)
+
+_ASSOCIATION_FACTOR_PATTERN = (
+    r"(?:idade|idades|faixa\s+et[aá]ria|grupo\s+et[aá]rio|sexo|"
+    r"ra[cç]a(?:/cor)?|raca(?:/cor)?|cor|cores|instru[cç][aã]o|"
+    r"escolaridade)"
+)
 
 
 def _is_scalar_age_extrema_query(query_lower: str) -> bool:
@@ -265,6 +294,39 @@ def _has_death_cause_context(query_lower: str) -> bool:
             "motivo do obito",
             "motivos do obito",
         ],
+    )
+
+
+def _has_association_intent(query_lower: str) -> bool:
+    return bool(
+        re.search(
+            r"\b(?:rela[cç][aã]o|associa[cç][aã]o|associad[ao]s?|correla[cç][aã]o|diferen[cç]a)\b",
+            query_lower,
+            re.I,
+        )
+        or _contains_any(
+            query_lower,
+            [
+                "varia com",
+                "varia conforme",
+                "aumenta com",
+                "aumenta conforme",
+                "diminui com",
+                "diminui conforme",
+                "influencia de",
+                "influência de",
+                "impacto de",
+                "varia por",
+                "variam por",
+            ],
+        )
+    )
+
+
+def _has_age_factor(query_lower: str) -> bool:
+    return _contains_any(
+        query_lower,
+        ["idade", "idades", "faixa etária", "faixa etaria", "grupo etário", "grupo etario"],
     )
 
 
@@ -431,21 +493,120 @@ def _extract_age_filters(query_lower: str) -> list[SemanticFilter]:
 def _extract_death_cause_description_term(query_lower: str) -> str | None:
     patterns = [
         r"\binterna[cç][oõ]es\s+por\s+(.+?)\s+ocasionaram\s+em\s+morte\b",
-        r"\b(?:mortes|óbitos|obitos)\s+por\s+(.+?)(?:\?|$)",
-        r"\bcaus(?:a|as)\s+de\s+morte\s+por\s+(.+?)(?:\?|$)",
+        rf"\b(?:morte|mortes|mortalidade|[óo]bitos?|obitos?|letalidade)\s+(?:por|de|da|do)\s+(.+?){_CLINICAL_CONDITION_STOP}",
+        rf"\bcaus(?:a|as)\s+de\s+morte\s+por\s+(.+?){_CLINICAL_CONDITION_STOP}",
     ]
     for pattern in patterns:
-        match = re.search(pattern, query_lower)
+        match = re.search(pattern, query_lower, re.I)
         if not match:
             continue
         term = re.sub(
-            r"\b(?:registradas?|ocasionadas?|em|internacoes|internações)\b", " ", match.group(1)
+            r"\b(?:registradas?|ocasionadas?|em|internacoes|internações|vari(?:a|am|ou|aram))\b",
+            " ",
+            match.group(1),
         )
         term = re.sub(r"[^\wÀ-ÿ -]", " ", term)
         term = re.sub(r"\s+", " ", term).strip()
         if term and not _is_grouping_or_temporal_term(term):
             return term
     return None
+
+
+def _clean_diagnosis_description_term(raw_term: str) -> str:
+    term = raw_term.lower()
+    term = re.sub(
+        r"\b(?:registrad[ao]s?|observad[ao]s?|diagnosticad[ao]s?|pacientes|casos)\b",
+        " ",
+        term,
+    )
+    term = re.sub(r"[^\wÀ-ÿ -]", " ", term)
+    term = re.sub(r"\s+", " ", term).strip(" -")
+    return term
+
+
+def _has_known_diagnosis_synonym(term: str) -> bool:
+    return any(
+        re.search(rf"(?<!\w){re.escape(alias)}(?!\w)", term, re.I)
+        for alias in _DIAGNOSIS_DESCRIPTION_SYNONYMS
+    )
+
+
+def _looks_like_non_diagnosis_description_term(term: str) -> bool:
+    if re.search(r"\b\d+\s*(?:anos?|mil|%)\b", term, re.I):
+        return True
+    return _contains_any(
+        term,
+        [
+            "habitantes",
+            "quartil",
+            "quartis",
+            "volume",
+            "percentual",
+            "taxa",
+            "cada trimestre",
+            "cid j",
+            "doença respiratória",
+            "doenca respiratoria",
+            "doenças respiratórias",
+            "doencas respiratorias",
+        ],
+    )
+
+
+def _expand_diagnosis_description_terms(term: str) -> list[str]:
+    cleaned = _clean_diagnosis_description_term(term)
+    if not cleaned or _is_grouping_or_temporal_term(cleaned):
+        return []
+    has_known_synonym = _has_known_diagnosis_synonym(cleaned)
+    if not has_known_synonym and _looks_like_non_diagnosis_description_term(cleaned):
+        return []
+
+    values: list[str] = []
+    for alias, replacements in _DIAGNOSIS_DESCRIPTION_SYNONYMS.items():
+        if re.search(rf"(?<!\w){re.escape(alias)}(?!\w)", cleaned, re.I):
+            values.extend(replacements)
+    if not values:
+        values.append(cleaned)
+
+    result: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        normalized = _clean_diagnosis_description_term(value)
+        if normalized and normalized not in seen:
+            seen.add(normalized)
+            result.append(normalized)
+    return result
+
+
+def _extract_diagnosis_description_terms(query_lower: str) -> list[str]:
+    scope_stop = (
+        r"(?=\s+(?:em|no|na|nos|nas)\s+(?:19|20)\d{2}\b"
+        r"|\s+(?:no|na|nos|nas)\s+(?:estado|munic[ií]pio|uf)\b"
+        r"|\s+por\s+(?:ano|estado|munic[ií]pio|sexo|idade|ra[cç]a)\b"
+        r"|\s+e\s+(?:sexo|idade|ra[cç]a|raca|cor|cores|instru[cç][aã]o|escolaridade)\b"
+        r"|\s+vari(?:a|am|ou|aram)\s+(?:por|com|conforme)\b"
+        r"|\s+(?:foi|foram|registrad[ao]s?)\b"
+        r"|\?|$)"
+    )
+    patterns = [
+        rf"\bdiagn[oó]stic\w*\s+(?:de|da|do|por|para)\s+(.+?){scope_stop}",
+        rf"\bdiagnosticad[oa]s?\s+(?:com|por)\s+(.+?){scope_stop}",
+        rf"\binterna[cç][oõ]es\s+por\s+(.+?){scope_stop}",
+        rf"\bcasos\s+de\s+(.+?){scope_stop}",
+        rf"\bpacientes\s+com\s+(.+?){scope_stop}",
+        rf"\b(?:rela[cç][aã]o|associa[cç][aã]o|correla[cç][aã]o)\s+entre\s+"
+        rf"{_ASSOCIATION_FACTOR_PATTERN}\s+e\s+(.+?){scope_stop}",
+        rf"\b(?:rela[cç][aã]o|associa[cç][aã]o|correla[cç][aã]o)\s+entre\s+"
+        rf"(.+?)\s+e\s+{_ASSOCIATION_FACTOR_PATTERN}\b",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, query_lower, re.I)
+        if not match:
+            continue
+        terms = _expand_diagnosis_description_terms(match.group(1))
+        if terms:
+            return terms
+    return []
 
 
 def _is_grouping_or_temporal_term(term: str) -> bool:
@@ -479,9 +640,30 @@ def _is_grouping_or_temporal_term(term: str) -> bool:
         "sexo",
         "genero",
         "gênero",
+        "homem",
+        "homens",
+        "mulher",
+        "mulheres",
+        "masculino",
+        "feminino",
         "idade",
         "faixa etaria",
         "faixa etária",
+        "grupo etario",
+        "grupo etário",
+        "nivel de instrucao",
+        "nível de instrução",
+        "grau de instrucao",
+        "grau de instrução",
+        "instrucao",
+        "instrução",
+        "escolaridade",
+        "raca",
+        "raça",
+        "raca cor",
+        "raça cor",
+        "cor",
+        "cores",
         "hospital",
         "hospitais",
         "especialidade",
@@ -492,6 +674,10 @@ def _is_grouping_or_temporal_term(term: str) -> bool:
         "capítulos cid",
         "procedimento",
         "procedimentos",
+        "quartil",
+        "quartis",
+        "volume",
+        "volumes",
         "regiao",
         "região",
         "regioes",
@@ -962,6 +1148,12 @@ def _diagnosis_mention_is_filter_context(query_lower: str) -> bool:
             "número de",
             "numero de",
             "quantidade de",
+            "tem diagnóstico",
+            "tem diagnostico",
+            "existe diagnóstico",
+            "existe diagnostico",
+            "há diagnóstico",
+            "ha diagnostico",
         ],
     )
     has_category = _contains_any(
@@ -985,7 +1177,8 @@ def _diagnosis_mention_is_filter_context(query_lower: str) -> bool:
             "quais diagnosticos",
         ],
     )
-    return asks_scalar_count and has_category and not asks_breakdown
+    has_named_diagnosis_filter = bool(_extract_diagnosis_description_terms(query_lower))
+    return ((asks_scalar_count and has_category) or has_named_diagnosis_filter) and not asks_breakdown
 
 
 def _has_attribute_profile_intent(query_lower: str, dimensions: list[SemanticDimension]) -> bool:
@@ -1124,7 +1317,7 @@ def _infer_dimensions(query_lower: str) -> list[SemanticDimension]:
                 "feminino",
             ],
         ),
-        ("raca_cor", "internacoes.RACA_COR", ["raça", "raca", "cor"]),
+        ("raca_cor", "internacoes.RACA_COR", ["raça", "raças", "raca", "racas", "cor", "cores"]),
         (
             "instrucao",
             "instrucao.DESCRICAO",
@@ -1537,6 +1730,7 @@ def _infer_metrics(query_lower: str) -> list[SemanticMetric]:
         metric.expression_type in {"sum", "avg", "min", "max", "rate", "delta", "value", "ratio"}
         for metric in metrics
     )
+    has_named_diagnosis_lookup = bool(_extract_diagnosis_description_terms(query_lower))
     if (
         not catalog_metric
         and not has_socioeconomico_metric
@@ -1548,8 +1742,20 @@ def _infer_metrics(query_lower: str) -> list[SemanticMetric]:
             )
             or any(
                 token in query_lower
-                for token in ["pacientes", "internacoes", "internaçoes", "internações"]
+                for token in [
+                    "pacientes",
+                    "internacoes",
+                    "internaçoes",
+                    "internações",
+                    "tem diagnóstico",
+                    "tem diagnostico",
+                    "existe diagnóstico",
+                    "existe diagnostico",
+                    "há diagnóstico",
+                    "ha diagnostico",
+                ]
             )
+            or has_named_diagnosis_lookup
         )
     ):
         metrics.append(SemanticMetric(name="total", expression_type="count"))
@@ -1706,13 +1912,24 @@ def _infer_filters(query: str, query_lower: str) -> list[SemanticFilter]:
     filters.extend(_extract_age_filters(query_lower))
     death_cause_term = _extract_death_cause_description_term(query_lower)
     if death_cause_term:
+        death_cause_terms = _expand_diagnosis_description_terms(death_cause_term)
         filters.append(
             SemanticFilter(
                 field="diagnostico_principal_descricao",
-                values=[death_cause_term],
-                operator="ILIKE",
+                values=death_cause_terms or [death_cause_term],
+                operator="ILIKE_ANY" if len(death_cause_terms) > 1 else "ILIKE",
             )
         )
+    else:
+        diagnosis_terms = _extract_diagnosis_description_terms(query_lower)
+        if diagnosis_terms:
+            filters.append(
+                SemanticFilter(
+                    field="diagnostico_principal_descricao",
+                    values=diagnosis_terms,
+                    operator="ILIKE_ANY" if len(diagnosis_terms) > 1 else "ILIKE",
+                )
+            )
     asks_rate = any(
         token in query_lower for token in ["taxa", "percentual", "proporção", "proporcao"]
     )
@@ -1725,6 +1942,62 @@ def _infer_filters(query: str, query_lower: str) -> list[SemanticFilter]:
         )
 
     return filters
+
+
+def _apply_resolved_clinical_concept_filters(
+    filters: list[SemanticFilter],
+    concept,
+    *,
+    force: bool = False,
+) -> list[SemanticFilter]:
+    if concept is None:
+        return filters
+
+    has_description_filter = any(
+        filter_.field == "diagnostico_principal_descricao" for filter_ in filters
+    )
+    has_resolved_filter = any(
+        filter_.field in {"diagnostico_principal_codigo", "diagnostico_principal_prefix"}
+        for filter_ in filters
+    )
+    if not force and not has_description_filter and not has_resolved_filter:
+        return filters
+
+    updated = [
+        filter_
+        for filter_ in filters
+        if filter_.field != "diagnostico_principal_descricao"
+    ]
+    if not any(filter_.field == "diagnostico_principal_codigo" for filter_ in updated):
+        if concept.resolved_codes:
+            updated.append(
+                SemanticFilter(
+                    field="diagnostico_principal_codigo",
+                    values=concept.resolved_codes,
+                    operator="IN" if len(concept.resolved_codes) > 1 else "=",
+                )
+            )
+    if not any(filter_.field == "diagnostico_principal_prefix" for filter_ in updated):
+        if concept.resolved_prefixes:
+            updated.append(
+                SemanticFilter(
+                    field="diagnostico_principal_prefix",
+                    values=concept.resolved_prefixes,
+                    operator="LIKE"
+                    if len(concept.resolved_prefixes) == 1
+                    else "LIKE_ANY",
+                )
+            )
+    if not any(filter_.field == "diagnostico_conceito_label" for filter_ in updated):
+        if concept.labels:
+            updated.append(
+                SemanticFilter(
+                    field="diagnostico_conceito_label",
+                    values=concept.labels,
+                    operator="metadata",
+                )
+            )
+    return updated
 
 
 def build_semantic_plan(
@@ -1741,6 +2014,45 @@ def build_semantic_plan(
     raw_dimensions = _infer_dimensions(q)
     metrics = _infer_metrics(q)
     filters = _infer_filters(query, q)
+    resolved_clinical_concepts = find_clinical_concepts(q)
+    association_concept = resolved_clinical_concepts[0] if resolved_clinical_concepts else None
+    has_clinical_condition_filter = any(
+        semantic_filter.field
+        in {
+            "diagnostico_principal_codigo",
+            "diagnostico_principal_prefix",
+            "diagnostico_principal_descricao",
+        }
+        for semantic_filter in filters
+    )
+    has_age_diagnosis_association = bool(
+        _has_association_intent(q)
+        and _has_age_factor(q)
+        and (association_concept or has_clinical_condition_filter)
+    )
+    has_clinical_concept_association = bool(
+        association_concept and _has_association_intent(q)
+    )
+    filters = _apply_resolved_clinical_concept_filters(
+        filters,
+        association_concept,
+        force=has_clinical_concept_association,
+    )
+    if has_age_diagnosis_association and association_concept:
+        for field, value in association_concept.default_denominator_filters.items():
+            if not any(filter_.field == field for filter_ in filters):
+                filters.append(SemanticFilter(field=field, values=[value], operator="="))
+        metrics = [
+            SemanticMetric(name="total_internacoes", expression_type="count"),
+            SemanticMetric(
+                name="taxa_por_denominador",
+                expression_type="rate",
+                denominator_scope="same_scope_without_target_diagnosis",
+            ),
+            SemanticMetric(name="razao_taxas", expression_type="ratio"),
+            SemanticMetric(name="idade_media", expression_type="avg"),
+            SemanticMetric(name="idade_mediana", expression_type="value"),
+        ]
     metric_names = {metric.name for metric in metrics}
     catalog_cardinality_metrics = {
         "cid_catalog_count",
@@ -1835,6 +2147,30 @@ def build_semantic_plan(
         and _contains_any(q, ["acima da média", "acima da media"])
         and _contains_any(q, ["abaixo da média", "abaixo da media"])
     )
+    has_categorical_outcome_association = bool(
+        _has_association_intent(q)
+        and _contains_any(
+            q,
+            ["mortalidade", "morte", "mortes", "óbito", "obito", "óbitos", "obitos"],
+        )
+        and any(dim.name in {"sexo", "raca_cor", "instrucao"} for dim in raw_dimensions)
+    )
+    if has_categorical_outcome_association:
+        metrics = [
+            SemanticMetric(name="total_internacoes", expression_type="count"),
+            SemanticMetric(
+                name="total_mortes",
+                expression_type="count",
+                numerator_condition="MORTE = true",
+            ),
+            SemanticMetric(
+                name="taxa_mortalidade",
+                expression_type="rate",
+                numerator_condition="MORTE = true",
+                denominator_scope="all_rows_matching_non_outcome_filters_per_category",
+            ),
+        ]
+        metric_names = {metric.name for metric in metrics}
     has_rate = any(metric.expression_type == "rate" for metric in metrics)
     has_delta = any(metric.expression_type == "delta" for metric in metrics)
     has_side_by_side_state = _has_side_by_side_state_comparison(q)
@@ -1885,6 +2221,13 @@ def build_semantic_plan(
         dim.name in {"estado", "estado_hospital"} for dim in dimensions
     ):
         dimensions.append(SemanticDimension(name="estado", source="municipios.SG_UF", role="group"))
+
+    if has_age_diagnosis_association:
+        dimensions = []
+    elif has_categorical_outcome_association:
+        dimensions = [
+            dim for dim in raw_dimensions if dim.name in {"sexo", "raca_cor", "instrucao"}
+        ]
 
     dimensions = [
         dim
@@ -1937,7 +2280,9 @@ def build_semantic_plan(
         else ("global" if top_n else "none")
     )
 
-    if has_temporal_trend or has_delta or has_moving_average:
+    if has_age_diagnosis_association or has_categorical_outcome_association:
+        intent = "association"
+    elif has_temporal_trend or has_delta or has_moving_average:
         intent = "trend"
     elif top_n:
         intent = "ranking"
@@ -2005,6 +2350,33 @@ def build_semantic_plan(
         else []
     )
 
+    if has_age_diagnosis_association:
+        constraints.extend(
+            [
+                "analytic_response_required",
+                "diagnosis_concept_resolution_required",
+                "age_diagnosis_association_required",
+                "analytic_response_requires_denominator",
+                "analytic_response_requires_group_distribution",
+                "analytic_response_requires_effect_summary",
+            ]
+        )
+    if has_categorical_outcome_association:
+        constraints.extend(
+            [
+                "analytic_response_required",
+                "categorical_outcome_association_required",
+                "analytic_response_requires_denominator",
+                "analytic_response_requires_group_distribution",
+                "analytic_response_requires_effect_summary",
+            ]
+        )
+        if any(
+            semantic_filter.field
+            in {"diagnostico_principal_codigo", "diagnostico_principal_prefix"}
+            for semantic_filter in filters
+        ):
+            constraints.append("diagnosis_concept_resolution_required")
     if is_catalog_cardinality:
         constraints.append("catalog_cardinality_must_use_reference_table")
     if has_moving_average:
@@ -2104,8 +2476,17 @@ def build_semantic_plan(
         and _contains_any(q, ["cid_morte", "cid morte"])
     ):
         constraints.append("death_cause_cid_requires_cid_morte_antijoin")
-    if any(
+    has_diagnosis_description_filter = any(
         semantic_filter.field == "diagnostico_principal_descricao" for semantic_filter in filters
+    )
+    if has_diagnosis_description_filter:
+        constraints.append("diagnosis_description_lookup_required")
+    if has_diagnosis_description_filter and (
+        _has_death_cause_context(q)
+        or has_categorical_outcome_association
+        or any(
+            semantic_filter.field == "desfecho" for semantic_filter in filters
+        )
     ):
         constraints.append("death_cause_description_requires_diag_princ_with_morte")
     period_filters = [
@@ -2173,7 +2554,9 @@ def build_semantic_plan(
     elif high_cardinality_average_rank:
         filters.append(SemanticFilter(field="minimum_group_count", values=["100"], operator=">"))
 
-    if intent == "count" and not required_dimensions and not top_n:
+    if has_age_diagnosis_association:
+        row_grain = "single_scalar"
+    elif intent == "count" and not required_dimensions and not top_n:
         row_grain = "single_scalar"
     elif (
         not required_dimensions
@@ -2231,7 +2614,9 @@ def build_semantic_plan(
         ranked_dimensions=ranked_dimensions,
         requires_group_by=requires_group_by,
         include_unknown_bucket=has_unknown_bucket,
-        answer_kind=_answer_kind_for_row_grain(row_grain),
+        answer_kind="single_row"
+        if has_age_diagnosis_association
+        else _answer_kind_for_row_grain(row_grain),
         expected_row_count=_expected_row_count_for_row_grain(row_grain),
         output_dimensions=output_dimensions,
         filter_dimensions=sorted(set(filter_dimensions)),

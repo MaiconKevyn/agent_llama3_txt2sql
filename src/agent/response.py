@@ -102,6 +102,10 @@ def _generate_formatted_response(
 
         results_text = ""
         normalized_rows, _columns = normalize_result_rows(results, sql_query)
+        analytic_response = _format_analytic_response_if_available(user_query, normalized_rows)
+        if analytic_response:
+            return analytic_response
+
         if row_count == 1 and len(results) == 1:
             result_value = normalized_rows[0] if normalized_rows else results[0].get("result", "")
             result_str = str(result_value)
@@ -231,6 +235,474 @@ def _generate_fallback_response(user_query: str, results_text: str, row_count: i
         return f"Resultado: {results_text}"
     else:
         return f"Encontrados {row_count} resultados:\n{results_text}"
+
+
+def _format_analytic_response_if_available(
+    user_query: str,
+    rows: list[dict[str, Any]],
+) -> str | None:
+    if not rows:
+        return None
+    first_row = _analytic_package_from_row(rows[0])
+    if first_row and first_row.get("analysis_type") in {
+        "age_diagnosis_association",
+        "categorical_outcome_association",
+        "geographic_condition_rate",
+        "temporal_condition_trend",
+    }:
+        return _format_analytic_response_from_package(user_query, first_row)
+    return None
+
+
+_ANALYTIC_PACKAGE_COLUMNS = {
+    "age_diagnosis_association": [
+        "analysis_type",
+        "resolved_concept",
+        "total_internacoes",
+        "total_mortes",
+        "idade_media",
+        "idade_mediana",
+        "denominador",
+        "faixas_etarias",
+        "top_idades",
+        "rate_ratio_maior_igual_50_vs_menor_50",
+        "rate_ratio_maior_igual_60_vs_menor_60",
+        "idade_zero_total",
+        "idade_zero_inconsistente_nasc",
+        "idade_zero_compativel_menor_1_ano",
+        "warnings",
+    ],
+    "categorical_outcome_association": [
+        "analysis_type",
+        "factor_name",
+        "outcome",
+        "total_internacoes",
+        "total_mortes",
+        "denominador",
+        "group_distribution",
+        "highest_group",
+        "highest_rate",
+        "lowest_group",
+        "lowest_rate",
+        "rate_ratio_highest_vs_lowest",
+        "warnings",
+    ],
+    "geographic_condition_rate": [
+        "analysis_type",
+        "resolved_concept",
+        "factor_name",
+        "total_internacoes",
+        "denominador",
+        "group_distribution",
+        "highest_group",
+        "highest_rate",
+        "lowest_group",
+        "lowest_rate",
+        "rate_ratio_highest_vs_lowest",
+        "warnings",
+    ],
+    "temporal_condition_trend": [
+        "analysis_type",
+        "resolved_concept",
+        "factor_name",
+        "total_internacoes",
+        "denominador",
+        "time_series",
+        "first_period",
+        "first_total",
+        "last_period",
+        "last_total",
+        "delta_absolute",
+        "delta_percent",
+        "peak_period",
+        "peak_total",
+        "warnings",
+    ],
+}
+
+
+def _analytic_package_from_row(row: dict[str, Any]) -> dict[str, Any] | None:
+    analysis_type = row.get("analysis_type")
+    if analysis_type:
+        return row
+
+    first_value = row.get("col_1")
+    if first_value not in _ANALYTIC_PACKAGE_COLUMNS:
+        return None
+    columns = _ANALYTIC_PACKAGE_COLUMNS[str(first_value)]
+    values = [row.get(f"col_{index}") for index in range(1, len(columns) + 1)]
+    return dict(zip(columns, values, strict=False))
+
+
+def _format_analytic_response_from_package(user_query: str, package: dict[str, Any]) -> str:
+    analysis_type = package.get("analysis_type")
+    if analysis_type == "age_diagnosis_association":
+        return _format_age_diagnosis_response_from_package(user_query, package)
+    if analysis_type == "categorical_outcome_association":
+        return _format_categorical_outcome_response_from_package(package)
+    if analysis_type == "geographic_condition_rate":
+        return _format_geographic_condition_response_from_package(package)
+    if analysis_type == "temporal_condition_trend":
+        return _format_temporal_condition_response_from_package(package)
+    return ""
+
+
+def _format_age_diagnosis_response_from_package(
+    user_query: str, package: dict[str, Any]
+) -> str:
+    """Format a deterministic analytic package without asking the LLM to infer calculations."""
+    concept = _humanize_clinical_label(str(package.get("resolved_concept") or "diagnostico informado"))
+    total = _format_int(package.get("total_internacoes"))
+    deaths = _format_int(package.get("total_mortes"))
+    avg_age = _format_number(package.get("idade_media"))
+    median_age = _format_number(package.get("idade_mediana"), decimals=0)
+    denominator = _humanize_denominator(
+        str(package.get("denominador") or "internacoes no mesmo escopo")
+    )
+    ratio_50 = _format_number(package.get("rate_ratio_maior_igual_50_vs_menor_50"))
+    ratio_60 = _format_number(package.get("rate_ratio_maior_igual_60_vs_menor_60"))
+    bands = _parse_age_band_distribution(str(package.get("faixas_etarias") or ""))
+    top_ages = _parse_top_ages(str(package.get("top_idades") or ""))
+    warnings = _humanize_warning(str(package.get("warnings") or ""))
+
+    lines = [
+        "Sim. Há uma associação observada entre idade e o diagnóstico resolvido nos dados.",
+        "",
+        f"Escopo usado: {concept}; denominador: {denominator}.",
+        f"Resumo: {total} internações, {deaths} mortes nessas internações, idade média {avg_age} e mediana {median_age}.",
+    ]
+
+    if bands:
+        lines.extend(
+            [
+                "",
+                "| Faixa etária | Internações | Taxa por 100 mil denominador | % dos casos |",
+                "|---|---:|---:|---:|",
+            ]
+        )
+        for band in bands:
+            lines.append(
+                f"| {band['faixa']} | {band['total']} | {band['taxa']} | {band['percentual']} |"
+            )
+
+    objective_lines = []
+    if ratio_50 != "-":
+        objective_lines.append(f"a taxa em >=50 anos foi {ratio_50}x a taxa em <50 anos")
+    if ratio_60 != "-":
+        objective_lines.append(f"a taxa em >=60 anos foi {ratio_60}x a taxa em <60 anos")
+    if top_ages:
+        objective_lines.append("as idades com maior volume foram " + ", ".join(top_ages))
+
+    if objective_lines:
+        lines.extend(["", "Leitura objetiva: " + "; ".join(objective_lines) + "."])
+
+    if warnings:
+        lines.extend(["", f"Atenção sobre qualidade dos dados: {warnings}."])
+
+    lines.append(
+        "Limite: isto descreve associação observada nas internações, não causalidade individual."
+    )
+    return "\n".join(lines)
+
+
+def _format_categorical_outcome_response_from_package(package: dict[str, Any]) -> str:
+    factor = _humanize_factor(str(package.get("factor_name") or "categoria"))
+    outcome = str(package.get("outcome") or "desfecho observado")
+    total = _format_int(package.get("total_internacoes"))
+    deaths = _format_int(package.get("total_mortes"))
+    denominator = _humanize_denominator(str(package.get("denominador") or "internacoes"))
+    groups = _parse_categorical_distribution(str(package.get("group_distribution") or ""))
+    highest_group = str(package.get("highest_group") or "-")
+    highest_rate = _format_number(package.get("highest_rate"))
+    lowest_group = str(package.get("lowest_group") or "-")
+    lowest_rate = _format_number(package.get("lowest_rate"))
+    ratio = _format_number(package.get("rate_ratio_highest_vs_lowest"))
+    warnings = _humanize_warning(str(package.get("warnings") or ""))
+
+    lines = [
+        f"Sim. Há diferença observada em {outcome} quando as internações são agrupadas por {factor}.",
+        "",
+        f"Escopo usado: {denominator}; denominador por grupo: internações do próprio grupo.",
+        f"Resumo: {total} internações no denominador analisado e {deaths} mortes hospitalares.",
+    ]
+    if groups:
+        lines.extend(
+            [
+                "",
+                "| Grupo | Internações | Mortes | Taxa de mortalidade |",
+                "|---|---:|---:|---:|",
+            ]
+        )
+        for group in groups:
+            lines.append(
+                f"| {group['grupo']} | {group['total']} | {group['mortes']} | {group['taxa']}% |"
+            )
+    lines.extend(
+        [
+            "",
+            (
+                f"Leitura objetiva: maior taxa em {highest_group} ({highest_rate}%) e menor "
+                f"em {lowest_group} ({lowest_rate}%); razão entre maior e menor taxa: {ratio}x."
+            ),
+        ]
+    )
+    if warnings:
+        lines.extend(["", f"Atenção sobre escopo dos dados: {warnings}."])
+    lines.append(
+        "Limite: isto descreve associação observada nas internações, não causalidade individual."
+    )
+    return "\n".join(lines)
+
+
+def _format_geographic_condition_response_from_package(package: dict[str, Any]) -> str:
+    concept = _humanize_clinical_label(str(package.get("resolved_concept") or "diagnóstico informado"))
+    total = _format_int(package.get("total_internacoes"))
+    denominator = _humanize_denominator(str(package.get("denominador") or "internacoes"))
+    groups = _parse_rate_distribution(str(package.get("group_distribution") or ""))
+    highest_group = str(package.get("highest_group") or "-")
+    highest_rate = _format_number(package.get("highest_rate"))
+    lowest_group = str(package.get("lowest_group") or "-")
+    lowest_rate = _format_number(package.get("lowest_rate"))
+    ratio = _format_number(package.get("rate_ratio_highest_vs_lowest"))
+    warnings = _humanize_warning(str(package.get("warnings") or ""))
+
+    lines = [
+        "Há variação observada entre UFs no recorte solicitado.",
+        "",
+        f"Escopo usado: {concept}; denominador: {denominator}.",
+        f"Resumo: {total} internações no diagnóstico resolvido.",
+    ]
+    if groups:
+        lines.extend(
+            [
+                "",
+                "| UF | Internações | Denominador | Taxa por 100 mil | % dos casos |",
+                "|---|---:|---:|---:|---:|",
+            ]
+        )
+        for group in groups[:10]:
+            lines.append(
+                f"| {group['grupo']} | {group['total']} | {group['denominador']} | "
+                f"{group['taxa']} | {group['percentual']}% |"
+            )
+    lines.extend(
+        [
+            "",
+            (
+                f"Leitura objetiva: maior taxa em {highest_group} ({highest_rate} por 100 mil) "
+                f"e menor taxa não zero em {lowest_group} ({lowest_rate} por 100 mil); razão: {ratio}x."
+            ),
+        ]
+    )
+    if warnings:
+        lines.extend(["", f"Atenção sobre escopo dos dados: {warnings}."])
+    lines.append(
+        "Limite: isto descreve distribuição observada nos registros, não risco populacional individual."
+    )
+    return "\n".join(lines)
+
+
+def _format_temporal_condition_response_from_package(package: dict[str, Any]) -> str:
+    concept = _humanize_clinical_label(str(package.get("resolved_concept") or "diagnóstico informado"))
+    total = _format_int(package.get("total_internacoes"))
+    denominator = _humanize_denominator(str(package.get("denominador") or "internacoes"))
+    series = _parse_time_series(str(package.get("time_series") or ""))
+    first_period = _format_period(package.get("first_period"))
+    first_total = _format_int(package.get("first_total"))
+    last_period = _format_period(package.get("last_period"))
+    last_total = _format_int(package.get("last_total"))
+    delta_absolute = _format_int(package.get("delta_absolute"))
+    delta_percent = _format_number(package.get("delta_percent"))
+    peak_period = _format_period(package.get("peak_period"))
+    peak_total = _format_int(package.get("peak_total"))
+    warnings = _humanize_warning(str(package.get("warnings") or ""))
+
+    lines = [
+        "Há uma tendência temporal observada no recorte solicitado.",
+        "",
+        f"Escopo usado: {concept}; denominador: {denominator}.",
+        f"Resumo: {total} internações no diagnóstico resolvido ao longo da série.",
+    ]
+    if series:
+        lines.extend(
+            [
+                "",
+                "| Ano | Internações | Denominador | Taxa por 100 mil |",
+                "|---|---:|---:|---:|",
+            ]
+        )
+        for item in series:
+            lines.append(
+                f"| {item['periodo']} | {item['total']} | {item['denominador']} | {item['taxa']} |"
+            )
+    lines.extend(
+        [
+            "",
+            (
+                f"Leitura objetiva: de {first_period} ({first_total}) a {last_period} "
+                f"({last_total}), a variação absoluta foi {delta_absolute} internações "
+                f"({delta_percent}%). O pico foi em {peak_period}, com {peak_total} internações."
+            ),
+        ]
+    )
+    if warnings:
+        lines.extend(["", f"Atenção sobre escopo dos dados: {warnings}."])
+    lines.append(
+        "Limite: isto descreve evolução observada nos registros, não causalidade."
+    )
+    return "\n".join(lines)
+
+
+def _parse_age_band_distribution(value: str) -> list[dict[str, str]]:
+    bands: list[dict[str, str]] = []
+    for item in value.split(" | "):
+        parts = item.split(":")
+        if len(parts) != 5:
+            continue
+        faixa, total, _denominator, rate, pct = parts
+        bands.append(
+            {
+                "faixa": faixa,
+                "total": _format_int(total),
+                "taxa": _format_number(rate),
+                "percentual": f"{_format_number(pct)}%",
+            }
+        )
+    return bands
+
+
+def _parse_categorical_distribution(value: str) -> list[dict[str, str]]:
+    groups: list[dict[str, str]] = []
+    for item in value.split(" | "):
+        parts = item.split(":")
+        if len(parts) != 4:
+            continue
+        group, total, deaths, rate = parts
+        groups.append(
+            {
+                "grupo": group,
+                "total": _format_int(total),
+                "mortes": _format_int(deaths),
+                "taxa": _format_number(rate),
+            }
+        )
+    return groups
+
+
+def _parse_rate_distribution(value: str) -> list[dict[str, str]]:
+    groups: list[dict[str, str]] = []
+    for item in value.split(" | "):
+        parts = item.split(":")
+        if len(parts) != 5:
+            continue
+        group, total, denominator, rate, pct = parts
+        groups.append(
+            {
+                "grupo": group,
+                "total": _format_int(total),
+                "denominador": _format_int(denominator),
+                "taxa": _format_number(rate),
+                "percentual": _format_number(pct),
+            }
+        )
+    return groups
+
+
+def _parse_time_series(value: str) -> list[dict[str, str]]:
+    series: list[dict[str, str]] = []
+    for item in value.split(" | "):
+        parts = item.split(":")
+        if len(parts) != 4:
+            continue
+        period, total, denominator, rate = parts
+        series.append(
+            {
+                "periodo": _format_period(period),
+                "total": _format_int(total),
+                "denominador": _format_int(denominator),
+                "taxa": _format_number(rate),
+            }
+        )
+    return series
+
+
+def _parse_top_ages(value: str) -> list[str]:
+    ages: list[str] = []
+    for item in value.split(" | "):
+        parts = item.split(":")
+        if len(parts) != 2:
+            continue
+        age, total = parts
+        ages.append(f"{age} anos ({_format_int(total)})")
+    return ages
+
+
+def _humanize_denominator(value: str) -> str:
+    return value.replace("internacoes", "internações").replace("raca", "raça")
+
+
+def _humanize_factor(value: str) -> str:
+    return (
+        value.replace("raca_cor", "raça/cor")
+        .replace("instrucao", "instrução")
+        .replace("sexo", "sexo")
+    )
+
+
+def _humanize_warning(value: str) -> str:
+    if not value or value == "None":
+        return ""
+    warning = (
+        value.replace("data_quality: ", "")
+        .replace("contem", "contém")
+        .replace("registros", "registros")
+    )
+    return _format_integer_tokens(warning)
+
+
+def _humanize_clinical_label(value: str) -> str:
+    return (
+        value.replace("diagnostico", "diagnóstico")
+        .replace("Doencas", "Doenças")
+        .replace("doencas", "doenças")
+        .replace("respiratorio", "respiratório")
+        .replace("respiratorias", "respiratórias")
+    )
+
+
+def _format_integer_tokens(value: str) -> str:
+    import re
+
+    return re.sub(
+        r"\b\d{4,}\b",
+        lambda match: _format_int(match.group(0)),
+        value,
+    )
+
+
+def _format_int(value: Any) -> str:
+    try:
+        return f"{int(float(value)):,}".replace(",", ".")
+    except (TypeError, ValueError):
+        return "-"
+
+
+def _format_period(value: Any) -> str:
+    try:
+        return str(int(float(value)))
+    except (TypeError, ValueError):
+        return "-"
+
+
+def _format_number(value: Any, *, decimals: int = 2) -> str:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return "-"
+    formatted = f"{number:,.{decimals}f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    if decimals > 0:
+        formatted = formatted.rstrip("0").rstrip(",")
+    return formatted
 
 
 def clarification_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:

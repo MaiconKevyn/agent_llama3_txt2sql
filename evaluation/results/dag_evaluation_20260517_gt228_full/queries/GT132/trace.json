@@ -1,0 +1,1696 @@
+{
+  "trace_schema_version": 2,
+  "status": "completed",
+  "run_id": "20260517_gt228_full",
+  "question_index": 126,
+  "total_questions": 228,
+  "question_fingerprint": "e1dc4a176fd78d817eaf16bba5c9b0f5406aa94f682fb8ccff45df8faa484fd4",
+  "trace_path": "/home/maiconkevyn/PycharmProjects/txt2sql_refactor_openai_v2/evaluation/results/dag_evaluation_20260517_gt228_full/queries/GT132/trace.json",
+  "written_at": "2026-05-17T06:42:38.323795",
+  "id": "GT132",
+  "difficulty": "hard",
+  "question_pt": "Quais os 3 hospitais com maior valor médio de serviço hospitalar (VAL_SH) por estado (MA e RS), considerando hospitais com mais de 500 internações?",
+  "question_started_at": "2026-05-17T06:42:14.425462",
+  "question_completed_at": "2026-05-17T06:42:37.294122",
+  "ground_truth_sql": "SELECT estado, \"CNES\", avg_val_sh\nFROM (\n    SELECT mu.\"SG_UF\" AS estado,\n           i.\"CNES\",\n           ROUND(AVG(i.\"VAL_SH\"), 2) AS avg_val_sh,\n           ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY AVG(i.\"VAL_SH\") DESC) AS rn\n    FROM internacoes i\n    JOIN hospital h ON i.\"CNES\" = h.\"CNES\"\n    JOIN municipios mu ON h.\"MUNIC_MOV\" = mu.\"CO_MUNICIPIO_6D\"\n    WHERE mu.\"SG_UF\" IN ('MA', 'RS') AND i.\"VAL_SH\" IS NOT NULL\n    GROUP BY mu.\"SG_UF\", i.\"CNES\"\n    HAVING COUNT(*) > 500\n) sub\nWHERE rn <= 3\nORDER BY estado, avg_val_sh DESC;",
+  "generated_sql": "SELECT estado, hospital, media_val_sh FROM ( SELECT mu.\"SG_UF\" AS estado, i.\"CNES\" AS hospital, ROUND(AVG(i.\"VAL_SH\"), 2) AS media_val_sh, ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY AVG(i.\"VAL_SH\") DESC) AS rn FROM internacoes i JOIN hospital h ON i.\"CNES\" = h.\"CNES\" JOIN municipios mu ON h.\"MUNIC_MOV\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"VAL_SH\" IS NOT NULL AND mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\", i.\"CNES\" HAVING COUNT(*) > 500) ranked WHERE rn <= 3 ORDER BY estado, media_val_sh DESC;",
+  "agent_success": true,
+  "agent_error": null,
+  "agent_output": {
+    "success": true,
+    "sql_query": "SELECT estado, hospital, media_val_sh FROM ( SELECT mu.\"SG_UF\" AS estado, i.\"CNES\" AS hospital, ROUND(AVG(i.\"VAL_SH\"), 2) AS media_val_sh, ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY AVG(i.\"VAL_SH\") DESC) AS rn FROM internacoes i JOIN hospital h ON i.\"CNES\" = h.\"CNES\" JOIN municipios mu ON h.\"MUNIC_MOV\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"VAL_SH\" IS NOT NULL AND mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\", i.\"CNES\" HAVING COUNT(*) > 500) ranked WHERE rn <= 3 ORDER BY estado, media_val_sh DESC;",
+    "response": "Os três hospitais com maior valor médio de serviço hospitalar (VAL_SH) por estado são:\n\n**Maranhão (MA):**\n1. Hospital 145602: R$ 5.129,23\n2. Hospital 2455781: R$ 3.695,73\n3. Hospital 2698056: R$ 3.221,00\n\n**Rio Grande do Sul (RS):**\n1. Hospital 2237849: R$ 5.038,56\n2. Hospital 2237121: R$ 4.175,01\n3. Hospital 9575936: R$ 3.958,28",
+    "row_count": 6,
+    "results_preview": [
+      {
+        "result": [
+          "MA",
+          145602,
+          5129.23
+        ]
+      },
+      {
+        "result": [
+          "MA",
+          2455781,
+          3695.73
+        ]
+      },
+      {
+        "result": [
+          "MA",
+          2698056,
+          3221.0
+        ]
+      },
+      {
+        "result": [
+          "RS",
+          2237849,
+          5038.56
+        ]
+      },
+      {
+        "result": [
+          "RS",
+          2237121,
+          4175.01
+        ]
+      },
+      {
+        "result": [
+          "RS",
+          9575936,
+          3958.28
+        ]
+      }
+    ],
+    "final_result_rows_preview": null,
+    "error": null,
+    "cost": {
+      "prompt_tokens": 19843,
+      "completion_tokens": 1218,
+      "total_tokens": 21061,
+      "total_cost_usd": 0.003467,
+      "successful_requests": 6
+    },
+    "chart": null
+  },
+  "evaluation_source": "sql_query",
+  "latency_seconds": 22.86864972114563,
+  "generated_sql_valid": true,
+  "generated_sql_validation_errors": [],
+  "generated_sql_validation_warnings": [],
+  "generated_execution_status": "passed",
+  "ground_truth_execution_status": "passed",
+  "comparison_mode": "execution_accuracy",
+  "result_match": true,
+  "ex_score": 1.0,
+  "shape_match": true,
+  "projected_match": false,
+  "expected_columns": [
+    "estado",
+    "CNES",
+    "avg_val_sh"
+  ],
+  "actual_columns": [
+    "estado",
+    "hospital",
+    "media_val_sh"
+  ],
+  "expected_preview_values": [
+    [
+      "MA",
+      145602,
+      5129.23
+    ],
+    [
+      "MA",
+      2455781,
+      3695.73
+    ],
+    [
+      "MA",
+      2698056,
+      3221.0
+    ],
+    [
+      "RS",
+      2237849,
+      5038.56
+    ],
+    [
+      "RS",
+      2237121,
+      4175.01
+    ],
+    [
+      "RS",
+      9575936,
+      3958.28
+    ]
+  ],
+  "actual_preview_values": [
+    [
+      "MA",
+      145602,
+      5129.23
+    ],
+    [
+      "MA",
+      2455781,
+      3695.73
+    ],
+    [
+      "MA",
+      2698056,
+      3221.0
+    ],
+    [
+      "RS",
+      2237849,
+      5038.56
+    ],
+    [
+      "RS",
+      2237121,
+      4175.01
+    ],
+    [
+      "RS",
+      9575936,
+      3958.28
+    ]
+  ],
+  "expected_row_count": 6,
+  "actual_row_count": 6,
+  "expected_truncated": false,
+  "actual_truncated": false,
+  "ground_truth_execution_error": null,
+  "generated_execution_error": null,
+  "ground_truth_execution_latency_seconds": 0.30800676345825195,
+  "generated_execution_latency_seconds": 0.2415778636932373,
+  "error_category": null,
+  "error_message": null,
+  "metric_details": {
+    "ground_truth_executed": true,
+    "predicted_executed": true,
+    "ground_truth_rows": 6,
+    "predicted_rows": 6,
+    "results_match": true,
+    "comparison_details": {
+      "gt_size": 6,
+      "pred_size": 6,
+      "normalized_match": true
+    }
+  },
+  "comparison_details": {
+    "gt_size": 6,
+    "pred_size": 6,
+    "normalized_match": true
+  },
+  "multi_query": {
+    "is_multi_query": false,
+    "plan_type": "single_window",
+    "execution_mode": "single",
+    "multi_query_allowed": false,
+    "allowed_multi_plan_types": [
+      "bind_then_query",
+      "fanout_concat",
+      "verification_side_query"
+    ],
+    "query_plan": {
+      "strategy": "single",
+      "reasoning": "Ranking por grupo com partição deve permanecer em uma única SQL.",
+      "plan_type": "single_window",
+      "merge_strategy": "none",
+      "output_nodes": [
+        "sq1"
+      ],
+      "required_constraints": [],
+      "expected_output_shape": {},
+      "verifier_checks": [],
+      "fallback_policy": {},
+      "sub_queries": [
+        {
+          "id": "sq1",
+          "description": "Quais os 3 hospitais com maior valor médio de serviço hospitalar (VAL_SH) por estado (MA e RS), considerando hospitais com mais de 500 internações?",
+          "purpose": "final_output",
+          "output_role": "output",
+          "expected_result_kind": "rowset",
+          "expected_max_rows": null,
+          "required_constraints": [],
+          "selected_tables": [],
+          "bind_keys": [],
+          "sql": null,
+          "validated_sql": null,
+          "result_raw": null,
+          "parsed_rows": null,
+          "success": false,
+          "error": null,
+          "depends_on": [],
+          "repair_attempts": 0
+        }
+      ]
+    },
+    "sub_query_results": [],
+    "merged_rows": null,
+    "merged_rows_source": null,
+    "merge_strategy": "none",
+    "verifier_outcome": null,
+    "single_fallback_active": false,
+    "single_fallback_reason": null,
+    "final_sql_query": null,
+    "failure_taxonomy": [
+      "top_n_scope"
+    ]
+  },
+  "tables_used": [
+    "internacoes",
+    "municipios",
+    "hospital"
+  ],
+  "selected_tables": {
+    "llamaindex": [
+      "internacoes",
+      "municipios",
+      "hospital",
+      "socioeconomico"
+    ],
+    "raw": [
+      "internacoes",
+      "municipios",
+      "hospital",
+      "socioeconomico"
+    ],
+    "validated": [
+      "internacoes",
+      "municipios",
+      "hospital"
+    ]
+  },
+  "table_selection": {
+    "mode": "llamaindex_context",
+    "llamaindex_enabled": true,
+    "llamaindex_mode": "context",
+    "llamaindex_confidence": 0.45710030321848705,
+    "llamaindex_error": ""
+  },
+  "semantic_plan": {
+    "intent": "ranking",
+    "base_grain": "internacao",
+    "metrics": [
+      {
+        "name": "media_val_sh",
+        "expression_type": "avg",
+        "required_filters": [
+          "AVG(VAL_SH)"
+        ]
+      }
+    ],
+    "dimensions": [
+      {
+        "name": "estado_hospital",
+        "source": "municipios.SG_UF",
+        "role": "group"
+      },
+      {
+        "name": "hospital",
+        "source": "internacoes.CNES",
+        "role": "group"
+      }
+    ],
+    "filters": [
+      {
+        "field": "estado",
+        "values": [
+          "MA",
+          "RS"
+        ],
+        "operator": "IN"
+      },
+      {
+        "field": "minimum_group_count",
+        "values": [
+          "500"
+        ],
+        "operator": ">"
+      }
+    ],
+    "answer_shape": {
+      "row_grain": "top_n_per_group",
+      "top_n": 3,
+      "top_n_scope": "per_group",
+      "required_dimensions": [
+        "estado_hospital",
+        "hospital"
+      ],
+      "partition_dimensions": [
+        "estado_hospital"
+      ],
+      "ranked_dimensions": [
+        "hospital"
+      ],
+      "requires_group_by": true,
+      "include_unknown_bucket": false,
+      "answer_kind": "top_n_per_group",
+      "expected_row_count": "one_per_group",
+      "output_dimensions": [
+        "estado_hospital",
+        "hospital"
+      ],
+      "filter_dimensions": [],
+      "forbidden_output_dimensions": []
+    },
+    "constraints": [
+      "top_n_per_group_requires_window_partition",
+      "join_path_hospital_location_required",
+      "top_n_average_high_cardinality_requires_minimum_group_size"
+    ],
+    "null_policy": [],
+    "ambiguities": []
+  },
+  "semantic_planner": {
+    "mode": "llm_reconciled",
+    "confidence": 0.95,
+    "reasoning": "A intenção é classificar os hospitais com base no valor médio do serviço hospitalar, filtrando por estados específicos e considerando apenas hospitais com um número mínimo de internações. As métricas e dimensões foram escolhidas para refletir essa necessidade de ranking por estado e hospital, enquanto as restrições garantem a integridade dos dados e a validade do ranking.",
+    "conflicts": [],
+    "accepted_llm_fields": [
+      "metrics"
+    ],
+    "rejected_llm_fields": []
+  },
+  "semantic_validation": {
+    "passed": true,
+    "constraints": [
+      "top_n_per_group_requires_window_partition",
+      "join_path_hospital_location_required",
+      "top_n_average_high_cardinality_requires_minimum_group_size"
+    ],
+    "null_policy": [],
+    "message": null
+  },
+  "chart_plan": {
+    "requested": false,
+    "chart_type": "auto",
+    "metric": null,
+    "metric_expression": null,
+    "x_dimension": null,
+    "series_dimension": null,
+    "y_column": null,
+    "grain": "unknown",
+    "expected_result_shape": "unknown",
+    "filters": [],
+    "time_window": {
+      "type": "none",
+      "n": null,
+      "start_year": null,
+      "end_year": null,
+      "date_column": "DT_INTER"
+    },
+    "required_columns": [],
+    "sql_shape_guidance": "",
+    "reason": "visualization not requested"
+  },
+  "chart_plan_validation": {
+    "passed": true,
+    "message": null,
+    "chart_plan": {
+      "requested": false,
+      "chart_type": "auto",
+      "metric": null,
+      "metric_expression": null,
+      "x_dimension": null,
+      "series_dimension": null,
+      "y_column": null,
+      "grain": "unknown",
+      "expected_result_shape": "unknown",
+      "filters": [],
+      "time_window": {
+        "type": "none",
+        "n": null,
+        "start_year": null,
+        "end_year": null,
+        "date_column": "DT_INTER"
+      },
+      "required_columns": [],
+      "sql_shape_guidance": "",
+      "reason": "visualization not requested"
+    }
+  },
+  "workflow_metrics": {
+    "overall_success": true,
+    "completion_rate": 0.6428571428571429,
+    "phases_completed": 9,
+    "total_phases": 14,
+    "tool_success_rate": 1.0,
+    "total_tools_used": 4,
+    "retry_count": 0,
+    "error_count": 1,
+    "execution_time": 22.79123830795288
+  },
+  "latency_by_component": {
+    "query_classification": 0.0006225109100341797,
+    "table_discovery": 0.7442302703857422,
+    "schema_analysis": 0.004192829132080078,
+    "reasoning": 4.2098002433776855,
+    "sql_generation": 7.0982513427734375,
+    "sql_validation": 3.1149704456329346,
+    "sql_repair": 0.0005884170532226562,
+    "sql_execution": 0.2157576084136963,
+    "completed": 1.630446434020996
+  },
+  "tool_calls": [
+    {
+      "name": "sql_db_list_tables",
+      "success": true,
+      "execution_time": 0.7441186904907227
+    },
+    {
+      "name": "sql_db_query_checker",
+      "success": true,
+      "execution_time": 2.5810136795043945
+    },
+    {
+      "name": "sql_db_query_checker",
+      "success": true,
+      "execution_time": 3.1149356365203857
+    },
+    {
+      "name": "sql_db_query",
+      "success": true,
+      "execution_time": 0.21564292907714844
+    }
+  ],
+  "phases_completed": [
+    "initialization",
+    "query_classification",
+    "table_discovery",
+    "schema_analysis",
+    "reasoning",
+    "sql_generation",
+    "sql_validation",
+    "sql_repair",
+    "sql_execution"
+  ],
+  "agent_metadata": {
+    "langgraph_v3": true,
+    "messages_state": true,
+    "query_route": "database",
+    "classification": {
+      "route": "database",
+      "confidence": 0.9,
+      "requires_tools": true
+    },
+    "workflow_metrics": {
+      "overall_success": true,
+      "completion_rate": 0.6428571428571429,
+      "phases_completed": 9,
+      "total_phases": 14,
+      "tool_success_rate": 1.0,
+      "total_tools_used": 4,
+      "retry_count": 0,
+      "error_count": 1,
+      "execution_time": 22.79123830795288
+    },
+    "phases_completed": [
+      "initialization",
+      "query_classification",
+      "table_discovery",
+      "schema_analysis",
+      "reasoning",
+      "sql_generation",
+      "sql_validation",
+      "sql_repair",
+      "sql_execution"
+    ],
+    "current_phase": "completed",
+    "tool_calls": [
+      {
+        "name": "sql_db_list_tables",
+        "success": true,
+        "execution_time": 0.7441186904907227
+      },
+      {
+        "name": "sql_db_query_checker",
+        "success": true,
+        "execution_time": 2.5810136795043945
+      },
+      {
+        "name": "sql_db_query_checker",
+        "success": true,
+        "execution_time": 3.1149356365203857
+      },
+      {
+        "name": "sql_db_query",
+        "success": true,
+        "execution_time": 0.21564292907714844
+      }
+    ],
+    "message_count": 16,
+    "retry_count": 0,
+    "error_count": 1,
+    "tables_used": [
+      "internacoes",
+      "municipios",
+      "hospital"
+    ],
+    "schema_context_length": 11788,
+    "latency_by_component": {
+      "query_classification": 0.0006225109100341797,
+      "table_discovery": 0.7442302703857422,
+      "schema_analysis": 0.004192829132080078,
+      "reasoning": 4.2098002433776855,
+      "sql_generation": 7.0982513427734375,
+      "sql_validation": 3.1149704456329346,
+      "sql_repair": 0.0005884170532226562,
+      "sql_execution": 0.2157576084136963,
+      "completed": 1.630446434020996
+    },
+    "multi_query": {
+      "is_multi_query": false,
+      "plan_type": "single_window",
+      "execution_mode": "single",
+      "multi_query_allowed": false,
+      "allowed_multi_plan_types": [
+        "bind_then_query",
+        "fanout_concat",
+        "verification_side_query"
+      ],
+      "query_plan": {
+        "strategy": "single",
+        "reasoning": "Ranking por grupo com partição deve permanecer em uma única SQL.",
+        "plan_type": "single_window",
+        "merge_strategy": "none",
+        "output_nodes": [
+          "sq1"
+        ],
+        "required_constraints": [],
+        "expected_output_shape": {},
+        "verifier_checks": [],
+        "fallback_policy": {},
+        "sub_queries": [
+          {
+            "id": "sq1",
+            "description": "Quais os 3 hospitais com maior valor médio de serviço hospitalar (VAL_SH) por estado (MA e RS), considerando hospitais com mais de 500 internações?",
+            "purpose": "final_output",
+            "output_role": "output",
+            "expected_result_kind": "rowset",
+            "expected_max_rows": null,
+            "required_constraints": [],
+            "selected_tables": [],
+            "bind_keys": [],
+            "sql": null,
+            "validated_sql": null,
+            "result_raw": null,
+            "parsed_rows": null,
+            "success": false,
+            "error": null,
+            "depends_on": [],
+            "repair_attempts": 0
+          }
+        ]
+      },
+      "sub_query_results": [],
+      "merged_rows": null,
+      "merged_rows_source": null,
+      "merge_strategy": "none",
+      "verifier_outcome": null,
+      "single_fallback_active": false,
+      "single_fallback_reason": null,
+      "final_sql_query": null,
+      "failure_taxonomy": [
+        "top_n_scope"
+      ]
+    },
+    "semantic_plan": {
+      "intent": "ranking",
+      "base_grain": "internacao",
+      "metrics": [
+        {
+          "name": "media_val_sh",
+          "expression_type": "avg",
+          "required_filters": [
+            "AVG(VAL_SH)"
+          ]
+        }
+      ],
+      "dimensions": [
+        {
+          "name": "estado_hospital",
+          "source": "municipios.SG_UF",
+          "role": "group"
+        },
+        {
+          "name": "hospital",
+          "source": "internacoes.CNES",
+          "role": "group"
+        }
+      ],
+      "filters": [
+        {
+          "field": "estado",
+          "values": [
+            "MA",
+            "RS"
+          ],
+          "operator": "IN"
+        },
+        {
+          "field": "minimum_group_count",
+          "values": [
+            "500"
+          ],
+          "operator": ">"
+        }
+      ],
+      "answer_shape": {
+        "row_grain": "top_n_per_group",
+        "top_n": 3,
+        "top_n_scope": "per_group",
+        "required_dimensions": [
+          "estado_hospital",
+          "hospital"
+        ],
+        "partition_dimensions": [
+          "estado_hospital"
+        ],
+        "ranked_dimensions": [
+          "hospital"
+        ],
+        "requires_group_by": true,
+        "include_unknown_bucket": false,
+        "answer_kind": "top_n_per_group",
+        "expected_row_count": "one_per_group",
+        "output_dimensions": [
+          "estado_hospital",
+          "hospital"
+        ],
+        "filter_dimensions": [],
+        "forbidden_output_dimensions": []
+      },
+      "constraints": [
+        "top_n_per_group_requires_window_partition",
+        "join_path_hospital_location_required",
+        "top_n_average_high_cardinality_requires_minimum_group_size"
+      ],
+      "null_policy": [],
+      "ambiguities": []
+    },
+    "visualization_intent": {
+      "requested": false,
+      "source": "none",
+      "uses_last_result": false,
+      "chart_hint": "auto",
+      "reason": ""
+    },
+    "chart_plan": {
+      "requested": false,
+      "chart_type": "auto",
+      "metric": null,
+      "metric_expression": null,
+      "x_dimension": null,
+      "series_dimension": null,
+      "y_column": null,
+      "grain": "unknown",
+      "expected_result_shape": "unknown",
+      "filters": [],
+      "time_window": {
+        "type": "none",
+        "n": null,
+        "start_year": null,
+        "end_year": null,
+        "date_column": "DT_INTER"
+      },
+      "required_columns": [],
+      "sql_shape_guidance": "",
+      "reason": "visualization not requested"
+    },
+    "chart_spec": null,
+    "llamaindex_enabled": true,
+    "llamaindex_mode": "context",
+    "llamaindex_retrieval_mode": "llamaindex_schema",
+    "llamaindex_selected_tables": [
+      "internacoes",
+      "municipios",
+      "hospital",
+      "socioeconomico"
+    ],
+    "llamaindex_confidence": 0.45710030321848705,
+    "llamaindex_error": "",
+    "raw_selected_tables": [
+      "internacoes",
+      "municipios",
+      "hospital",
+      "socioeconomico"
+    ],
+    "validated_selected_tables": [
+      "internacoes",
+      "municipios",
+      "hospital"
+    ],
+    "table_selection_mode": "llamaindex_context",
+    "schema_context_source": "llamaindex",
+    "schema_context_verified_with_db": false,
+    "schema_context_tables": [
+      "internacoes",
+      "municipios",
+      "hospital"
+    ],
+    "semantic_constraints": [
+      "top_n_per_group_requires_window_partition",
+      "join_path_hospital_location_required",
+      "top_n_average_high_cardinality_requires_minimum_group_size"
+    ],
+    "semantic_null_policy": [],
+    "semantic_planner": {
+      "mode": "llm_reconciled",
+      "confidence": 0.95,
+      "reasoning": "A intenção é classificar os hospitais com base no valor médio do serviço hospitalar, filtrando por estados específicos e considerando apenas hospitais com um número mínimo de internações. As métricas e dimensões foram escolhidas para refletir essa necessidade de ranking por estado e hospital, enquanto as restrições garantem a integridade dos dados e a validade do ranking.",
+      "conflicts": [],
+      "accepted_llm_fields": [
+        "metrics"
+      ],
+      "rejected_llm_fields": []
+    },
+    "sql_generation_confidence": 1.0,
+    "sql_generation_reasoning": "The query calculates the average service cost (VAL_SH) for hospitals in the states of MA and RS, filtering for hospitals with more than 500 admissions. It groups by state and hospital, ensuring that only relevant hospitals are included in the average calculation.",
+    "sql_generation_source": "current_structured_output",
+    "chart_plan_validation": {
+      "passed": true,
+      "message": null,
+      "chart_plan": {
+        "requested": false,
+        "chart_type": "auto",
+        "metric": null,
+        "metric_expression": null,
+        "x_dimension": null,
+        "series_dimension": null,
+        "y_column": null,
+        "grain": "unknown",
+        "expected_result_shape": "unknown",
+        "filters": [],
+        "time_window": {
+          "type": "none",
+          "n": null,
+          "start_year": null,
+          "end_year": null,
+          "date_column": "DT_INTER"
+        },
+        "required_columns": [],
+        "sql_shape_guidance": "",
+        "reason": "visualization not requested"
+      }
+    },
+    "semantic_validation": {
+      "passed": true,
+      "constraints": [
+        "top_n_per_group_requires_window_partition",
+        "join_path_hospital_location_required",
+        "top_n_average_high_cardinality_requires_minimum_group_size"
+      ],
+      "null_policy": [],
+      "message": null
+    },
+    "semantic_error": {
+      "category": "top_n_scope",
+      "severity": "error",
+      "message": "SEMANTIC PLAN ERROR: The plan requires top-N per group, but SQL does not use ROW_NUMBER()/RANK() OVER (...). Use a window function partitioned by the group dimension."
+    },
+    "repair_attempts": [
+      {
+        "previous_sql": "SELECT mu.\"SG_UF\" AS estado_hospital, h.\"CNES\" AS hospital, ROUND(AVG(i.\"VAL_SH\"), 2) AS media_val_sh FROM internacoes i JOIN hospital h ON i.\"CNES\" = h.\"CNES\" JOIN municipios mu ON h.\"MUNIC_MOV\" = mu.\"CO_MUNICIPIO_6D\" WHERE mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\", h.\"CNES\" HAVING COUNT(i.\"N_AIH\") > 500 ORDER BY estado_hospital, media_val_sh DESC;",
+        "error_message": "SEMANTIC PLAN ERROR: The plan requires top-N per group, but SQL does not use ROW_NUMBER()/RANK() OVER (...). Use a window function partitioned by the group dimension.",
+        "semantic_category": "top_n_scope",
+        "semantic_guidance": "Top-N por grupo",
+        "violated_contract": {
+          "answer_shape.top_n": 3,
+          "answer_shape.top_n_scope": "per_group",
+          "answer_shape.required_dimensions": [
+            "estado_hospital",
+            "hospital"
+          ],
+          "answer_shape.partition_dimensions": [
+            "estado_hospital"
+          ],
+          "answer_shape.ranked_dimensions": [
+            "hospital"
+          ]
+        },
+        "repair_strategy": "top_n_per_group_macro",
+        "timestamp": "2026-05-17T06:42:32.274256",
+        "post_repair_validation": {
+          "passed": true,
+          "message": null
+        }
+      }
+    ],
+    "semantic_repair": {
+      "original_category": "top_n_scope",
+      "original_message": "SEMANTIC PLAN ERROR: The plan requires top-N per group, but SQL does not use ROW_NUMBER()/RANK() OVER (...). Use a window function partitioned by the group dimension.",
+      "guidance_title": "Top-N por grupo",
+      "strategy": "deterministic",
+      "post_repair_category": null,
+      "post_repair_message": null,
+      "validation_passed_after_repair": true
+    },
+    "orchestrator_v3": true,
+    "current_model": {
+      "provider": "openai",
+      "model_name": "gpt-4o-mini",
+      "temperature": 0.0
+    },
+    "environment": "production",
+    "session_id": "session_34425",
+    "query_number": 126,
+    "orchestrator_execution_time": 22.81910490989685
+  },
+  "steps": [
+    {
+      "name": "evaluation_input",
+      "status": "passed",
+      "details": {
+        "question_id": "GT132",
+        "difficulty": "hard",
+        "question_pt": "Quais os 3 hospitais com maior valor médio de serviço hospitalar (VAL_SH) por estado (MA e RS), considerando hospitais com mais de 500 internações?",
+        "ground_truth_sql": "SELECT estado, \"CNES\", avg_val_sh\nFROM (\n    SELECT mu.\"SG_UF\" AS estado,\n           i.\"CNES\",\n           ROUND(AVG(i.\"VAL_SH\"), 2) AS avg_val_sh,\n           ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY AVG(i.\"VAL_SH\") DESC) AS rn\n    FROM internacoes i\n    JOIN hospital h ON i.\"CNES\" = h.\"CNES\"\n    JOIN municipios mu ON h.\"MUNIC_MOV\" = mu.\"CO_MUNICIPIO_6D\"\n    WHERE mu.\"SG_UF\" IN ('MA', 'RS') AND i.\"VAL_SH\" IS NOT NULL\n    GROUP BY mu.\"SG_UF\", i.\"CNES\"\n    HAVING COUNT(*) > 500\n) sub\nWHERE rn <= 3\nORDER BY estado, avg_val_sh DESC;"
+      }
+    },
+    {
+      "name": "agent.process_query",
+      "status": "passed",
+      "latency_seconds": 22.86864972114563,
+      "input": {
+        "question": "Quais os 3 hospitais com maior valor médio de serviço hospitalar (VAL_SH) por estado (MA e RS), considerando hospitais com mais de 500 internações?"
+      },
+      "output": {
+        "success": true,
+        "sql_query": "SELECT estado, hospital, media_val_sh FROM ( SELECT mu.\"SG_UF\" AS estado, i.\"CNES\" AS hospital, ROUND(AVG(i.\"VAL_SH\"), 2) AS media_val_sh, ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY AVG(i.\"VAL_SH\") DESC) AS rn FROM internacoes i JOIN hospital h ON i.\"CNES\" = h.\"CNES\" JOIN municipios mu ON h.\"MUNIC_MOV\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"VAL_SH\" IS NOT NULL AND mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\", i.\"CNES\" HAVING COUNT(*) > 500) ranked WHERE rn <= 3 ORDER BY estado, media_val_sh DESC;",
+        "response": "Os três hospitais com maior valor médio de serviço hospitalar (VAL_SH) por estado são:\n\n**Maranhão (MA):**\n1. Hospital 145602: R$ 5.129,23\n2. Hospital 2455781: R$ 3.695,73\n3. Hospital 2698056: R$ 3.221,00\n\n**Rio Grande do Sul (RS):**\n1. Hospital 2237849: R$ 5.038,56\n2. Hospital 2237121: R$ 4.175,01\n3. Hospital 9575936: R$ 3.958,28",
+        "row_count": 6,
+        "results_preview": [
+          {
+            "result": [
+              "MA",
+              145602,
+              5129.23
+            ]
+          },
+          {
+            "result": [
+              "MA",
+              2455781,
+              3695.73
+            ]
+          },
+          {
+            "result": [
+              "MA",
+              2698056,
+              3221.0
+            ]
+          },
+          {
+            "result": [
+              "RS",
+              2237849,
+              5038.56
+            ]
+          },
+          {
+            "result": [
+              "RS",
+              2237121,
+              4175.01
+            ]
+          },
+          {
+            "result": [
+              "RS",
+              9575936,
+              3958.28
+            ]
+          }
+        ],
+        "final_result_rows_preview": null,
+        "error": null,
+        "cost": {
+          "prompt_tokens": 19843,
+          "completion_tokens": 1218,
+          "total_tokens": 21061,
+          "total_cost_usd": 0.003467,
+          "successful_requests": 6
+        },
+        "chart": null
+      },
+      "error": null
+    },
+    {
+      "name": "workflow.initialization",
+      "status": "passed",
+      "latency_seconds": null,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.query_classification",
+      "status": "passed",
+      "latency_seconds": 0.0006225109100341797,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.table_discovery",
+      "status": "passed",
+      "latency_seconds": 0.7442302703857422,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.schema_analysis",
+      "status": "passed",
+      "latency_seconds": 0.004192829132080078,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.reasoning",
+      "status": "passed",
+      "latency_seconds": 4.2098002433776855,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "media_val_sh",
+              "expression_type": "avg",
+              "required_filters": [
+                "AVG(VAL_SH)"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado_hospital",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            },
+            {
+              "name": "hospital",
+              "source": "internacoes.CNES",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "estado",
+              "values": [
+                "MA",
+                "RS"
+              ],
+              "operator": "IN"
+            },
+            {
+              "field": "minimum_group_count",
+              "values": [
+                "500"
+              ],
+              "operator": ">"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_per_group",
+            "top_n": 3,
+            "top_n_scope": "per_group",
+            "required_dimensions": [
+              "estado_hospital",
+              "hospital"
+            ],
+            "partition_dimensions": [
+              "estado_hospital"
+            ],
+            "ranked_dimensions": [
+              "hospital"
+            ],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_per_group",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado_hospital",
+              "hospital"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "top_n_per_group_requires_window_partition",
+            "join_path_hospital_location_required",
+            "top_n_average_high_cardinality_requires_minimum_group_size"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.sql_generation",
+      "status": "passed",
+      "latency_seconds": 7.0982513427734375,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.sql_validation",
+      "status": "passed",
+      "latency_seconds": 3.1149704456329346,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "top_n_per_group_requires_window_partition",
+            "join_path_hospital_location_required",
+            "top_n_average_high_cardinality_requires_minimum_group_size"
+          ],
+          "null_policy": [],
+          "message": null
+        }
+      }
+    },
+    {
+      "name": "workflow.sql_repair",
+      "status": "passed",
+      "latency_seconds": 0.0005884170532226562,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.sql_execution",
+      "status": "passed",
+      "latency_seconds": 0.2157576084136963,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "tool.sql_db_list_tables",
+      "status": "passed",
+      "latency_seconds": 0.7441186904907227,
+      "details": {
+        "name": "sql_db_list_tables",
+        "success": true,
+        "execution_time": 0.7441186904907227
+      }
+    },
+    {
+      "name": "tool.sql_db_query_checker",
+      "status": "passed",
+      "latency_seconds": 2.5810136795043945,
+      "details": {
+        "name": "sql_db_query_checker",
+        "success": true,
+        "execution_time": 2.5810136795043945
+      }
+    },
+    {
+      "name": "tool.sql_db_query_checker",
+      "status": "passed",
+      "latency_seconds": 3.1149356365203857,
+      "details": {
+        "name": "sql_db_query_checker",
+        "success": true,
+        "execution_time": 3.1149356365203857
+      }
+    },
+    {
+      "name": "tool.sql_db_query",
+      "status": "passed",
+      "latency_seconds": 0.21564292907714844,
+      "details": {
+        "name": "sql_db_query",
+        "success": true,
+        "execution_time": 0.21564292907714844
+      }
+    },
+    {
+      "name": "metric.Execution Accuracy (EX)",
+      "status": "passed",
+      "score": 1.0,
+      "error": null,
+      "details": {
+        "ground_truth_executed": true,
+        "predicted_executed": true,
+        "ground_truth_rows": 6,
+        "predicted_rows": 6,
+        "results_match": true,
+        "comparison_details": {
+          "gt_size": 6,
+          "pred_size": 6,
+          "normalized_match": true
+        }
+      }
+    },
+    {
+      "name": "final_result",
+      "status": "passed",
+      "details": {
+        "generated_sql": "SELECT estado, hospital, media_val_sh FROM ( SELECT mu.\"SG_UF\" AS estado, i.\"CNES\" AS hospital, ROUND(AVG(i.\"VAL_SH\"), 2) AS media_val_sh, ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY AVG(i.\"VAL_SH\") DESC) AS rn FROM internacoes i JOIN hospital h ON i.\"CNES\" = h.\"CNES\" JOIN municipios mu ON h.\"MUNIC_MOV\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"VAL_SH\" IS NOT NULL AND mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\", i.\"CNES\" HAVING COUNT(*) > 500) ranked WHERE rn <= 3 ORDER BY estado, media_val_sh DESC;",
+        "generated_execution_status": "passed",
+        "ground_truth_execution_status": "passed",
+        "result_match": true,
+        "ex_score": 1.0
+      }
+    }
+  ],
+  "detailed_result": {
+    "question_id": "GT132",
+    "difficulty": "hard",
+    "question": "Quais os 3 hospitais com maior valor médio de serviço hospitalar (VAL_SH) por estado (MA e RS), considerando hospitais com mais de 500 internações?",
+    "ground_truth_sql": "SELECT estado, \"CNES\", avg_val_sh\nFROM (\n    SELECT mu.\"SG_UF\" AS estado,\n           i.\"CNES\",\n           ROUND(AVG(i.\"VAL_SH\"), 2) AS avg_val_sh,\n           ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY AVG(i.\"VAL_SH\") DESC) AS rn\n    FROM internacoes i\n    JOIN hospital h ON i.\"CNES\" = h.\"CNES\"\n    JOIN municipios mu ON h.\"MUNIC_MOV\" = mu.\"CO_MUNICIPIO_6D\"\n    WHERE mu.\"SG_UF\" IN ('MA', 'RS') AND i.\"VAL_SH\" IS NOT NULL\n    GROUP BY mu.\"SG_UF\", i.\"CNES\"\n    HAVING COUNT(*) > 500\n) sub\nWHERE rn <= 3\nORDER BY estado, avg_val_sh DESC;",
+    "predicted_sql": "SELECT estado, hospital, media_val_sh FROM ( SELECT mu.\"SG_UF\" AS estado, i.\"CNES\" AS hospital, ROUND(AVG(i.\"VAL_SH\"), 2) AS media_val_sh, ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY AVG(i.\"VAL_SH\") DESC) AS rn FROM internacoes i JOIN hospital h ON i.\"CNES\" = h.\"CNES\" JOIN municipios mu ON h.\"MUNIC_MOV\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"VAL_SH\" IS NOT NULL AND mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\", i.\"CNES\" HAVING COUNT(*) > 500) ranked WHERE rn <= 3 ORDER BY estado, media_val_sh DESC;",
+    "agent_success": true,
+    "agent_execution_time": 22.86864972114563,
+    "question_started_at": "2026-05-17T06:42:14.425462",
+    "question_completed_at": "2026-05-17T06:42:37.294122",
+    "evaluation_source": "sql_query",
+    "stored_rows": null,
+    "agent_output": {
+      "success": true,
+      "sql_query": "SELECT estado, hospital, media_val_sh FROM ( SELECT mu.\"SG_UF\" AS estado, i.\"CNES\" AS hospital, ROUND(AVG(i.\"VAL_SH\"), 2) AS media_val_sh, ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY AVG(i.\"VAL_SH\") DESC) AS rn FROM internacoes i JOIN hospital h ON i.\"CNES\" = h.\"CNES\" JOIN municipios mu ON h.\"MUNIC_MOV\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"VAL_SH\" IS NOT NULL AND mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\", i.\"CNES\" HAVING COUNT(*) > 500) ranked WHERE rn <= 3 ORDER BY estado, media_val_sh DESC;",
+      "response": "Os três hospitais com maior valor médio de serviço hospitalar (VAL_SH) por estado são:\n\n**Maranhão (MA):**\n1. Hospital 145602: R$ 5.129,23\n2. Hospital 2455781: R$ 3.695,73\n3. Hospital 2698056: R$ 3.221,00\n\n**Rio Grande do Sul (RS):**\n1. Hospital 2237849: R$ 5.038,56\n2. Hospital 2237121: R$ 4.175,01\n3. Hospital 9575936: R$ 3.958,28",
+      "row_count": 6,
+      "results_preview": [
+        {
+          "result": [
+            "MA",
+            145602,
+            5129.23
+          ]
+        },
+        {
+          "result": [
+            "MA",
+            2455781,
+            3695.73
+          ]
+        },
+        {
+          "result": [
+            "MA",
+            2698056,
+            3221.0
+          ]
+        },
+        {
+          "result": [
+            "RS",
+            2237849,
+            5038.56
+          ]
+        },
+        {
+          "result": [
+            "RS",
+            2237121,
+            4175.01
+          ]
+        },
+        {
+          "result": [
+            "RS",
+            9575936,
+            3958.28
+          ]
+        }
+      ],
+      "final_result_rows_preview": null,
+      "error": null,
+      "cost": {
+        "prompt_tokens": 19843,
+        "completion_tokens": 1218,
+        "total_tokens": 21061,
+        "total_cost_usd": 0.003467,
+        "successful_requests": 6
+      },
+      "chart": null
+    },
+    "agent_metadata": {
+      "langgraph_v3": true,
+      "messages_state": true,
+      "query_route": "database",
+      "classification": {
+        "route": "database",
+        "confidence": 0.9,
+        "requires_tools": true
+      },
+      "workflow_metrics": {
+        "overall_success": true,
+        "completion_rate": 0.6428571428571429,
+        "phases_completed": 9,
+        "total_phases": 14,
+        "tool_success_rate": 1.0,
+        "total_tools_used": 4,
+        "retry_count": 0,
+        "error_count": 1,
+        "execution_time": 22.79123830795288
+      },
+      "phases_completed": [
+        "initialization",
+        "query_classification",
+        "table_discovery",
+        "schema_analysis",
+        "reasoning",
+        "sql_generation",
+        "sql_validation",
+        "sql_repair",
+        "sql_execution"
+      ],
+      "current_phase": "completed",
+      "tool_calls": [
+        {
+          "name": "sql_db_list_tables",
+          "success": true,
+          "execution_time": 0.7441186904907227
+        },
+        {
+          "name": "sql_db_query_checker",
+          "success": true,
+          "execution_time": 2.5810136795043945
+        },
+        {
+          "name": "sql_db_query_checker",
+          "success": true,
+          "execution_time": 3.1149356365203857
+        },
+        {
+          "name": "sql_db_query",
+          "success": true,
+          "execution_time": 0.21564292907714844
+        }
+      ],
+      "message_count": 16,
+      "retry_count": 0,
+      "error_count": 1,
+      "tables_used": [
+        "internacoes",
+        "municipios",
+        "hospital"
+      ],
+      "schema_context_length": 11788,
+      "latency_by_component": {
+        "query_classification": 0.0006225109100341797,
+        "table_discovery": 0.7442302703857422,
+        "schema_analysis": 0.004192829132080078,
+        "reasoning": 4.2098002433776855,
+        "sql_generation": 7.0982513427734375,
+        "sql_validation": 3.1149704456329346,
+        "sql_repair": 0.0005884170532226562,
+        "sql_execution": 0.2157576084136963,
+        "completed": 1.630446434020996
+      },
+      "multi_query": {
+        "is_multi_query": false,
+        "plan_type": "single_window",
+        "execution_mode": "single",
+        "multi_query_allowed": false,
+        "allowed_multi_plan_types": [
+          "bind_then_query",
+          "fanout_concat",
+          "verification_side_query"
+        ],
+        "query_plan": {
+          "strategy": "single",
+          "reasoning": "Ranking por grupo com partição deve permanecer em uma única SQL.",
+          "plan_type": "single_window",
+          "merge_strategy": "none",
+          "output_nodes": [
+            "sq1"
+          ],
+          "required_constraints": [],
+          "expected_output_shape": {},
+          "verifier_checks": [],
+          "fallback_policy": {},
+          "sub_queries": [
+            {
+              "id": "sq1",
+              "description": "Quais os 3 hospitais com maior valor médio de serviço hospitalar (VAL_SH) por estado (MA e RS), considerando hospitais com mais de 500 internações?",
+              "purpose": "final_output",
+              "output_role": "output",
+              "expected_result_kind": "rowset",
+              "expected_max_rows": null,
+              "required_constraints": [],
+              "selected_tables": [],
+              "bind_keys": [],
+              "sql": null,
+              "validated_sql": null,
+              "result_raw": null,
+              "parsed_rows": null,
+              "success": false,
+              "error": null,
+              "depends_on": [],
+              "repair_attempts": 0
+            }
+          ]
+        },
+        "sub_query_results": [],
+        "merged_rows": null,
+        "merged_rows_source": null,
+        "merge_strategy": "none",
+        "verifier_outcome": null,
+        "single_fallback_active": false,
+        "single_fallback_reason": null,
+        "final_sql_query": null,
+        "failure_taxonomy": [
+          "top_n_scope"
+        ]
+      },
+      "semantic_plan": {
+        "intent": "ranking",
+        "base_grain": "internacao",
+        "metrics": [
+          {
+            "name": "media_val_sh",
+            "expression_type": "avg",
+            "required_filters": [
+              "AVG(VAL_SH)"
+            ]
+          }
+        ],
+        "dimensions": [
+          {
+            "name": "estado_hospital",
+            "source": "municipios.SG_UF",
+            "role": "group"
+          },
+          {
+            "name": "hospital",
+            "source": "internacoes.CNES",
+            "role": "group"
+          }
+        ],
+        "filters": [
+          {
+            "field": "estado",
+            "values": [
+              "MA",
+              "RS"
+            ],
+            "operator": "IN"
+          },
+          {
+            "field": "minimum_group_count",
+            "values": [
+              "500"
+            ],
+            "operator": ">"
+          }
+        ],
+        "answer_shape": {
+          "row_grain": "top_n_per_group",
+          "top_n": 3,
+          "top_n_scope": "per_group",
+          "required_dimensions": [
+            "estado_hospital",
+            "hospital"
+          ],
+          "partition_dimensions": [
+            "estado_hospital"
+          ],
+          "ranked_dimensions": [
+            "hospital"
+          ],
+          "requires_group_by": true,
+          "include_unknown_bucket": false,
+          "answer_kind": "top_n_per_group",
+          "expected_row_count": "one_per_group",
+          "output_dimensions": [
+            "estado_hospital",
+            "hospital"
+          ],
+          "filter_dimensions": [],
+          "forbidden_output_dimensions": []
+        },
+        "constraints": [
+          "top_n_per_group_requires_window_partition",
+          "join_path_hospital_location_required",
+          "top_n_average_high_cardinality_requires_minimum_group_size"
+        ],
+        "null_policy": [],
+        "ambiguities": []
+      },
+      "visualization_intent": {
+        "requested": false,
+        "source": "none",
+        "uses_last_result": false,
+        "chart_hint": "auto",
+        "reason": ""
+      },
+      "chart_plan": {
+        "requested": false,
+        "chart_type": "auto",
+        "metric": null,
+        "metric_expression": null,
+        "x_dimension": null,
+        "series_dimension": null,
+        "y_column": null,
+        "grain": "unknown",
+        "expected_result_shape": "unknown",
+        "filters": [],
+        "time_window": {
+          "type": "none",
+          "n": null,
+          "start_year": null,
+          "end_year": null,
+          "date_column": "DT_INTER"
+        },
+        "required_columns": [],
+        "sql_shape_guidance": "",
+        "reason": "visualization not requested"
+      },
+      "chart_spec": null,
+      "llamaindex_enabled": true,
+      "llamaindex_mode": "context",
+      "llamaindex_retrieval_mode": "llamaindex_schema",
+      "llamaindex_selected_tables": [
+        "internacoes",
+        "municipios",
+        "hospital",
+        "socioeconomico"
+      ],
+      "llamaindex_confidence": 0.45710030321848705,
+      "llamaindex_error": "",
+      "raw_selected_tables": [
+        "internacoes",
+        "municipios",
+        "hospital",
+        "socioeconomico"
+      ],
+      "validated_selected_tables": [
+        "internacoes",
+        "municipios",
+        "hospital"
+      ],
+      "table_selection_mode": "llamaindex_context",
+      "schema_context_source": "llamaindex",
+      "schema_context_verified_with_db": false,
+      "schema_context_tables": [
+        "internacoes",
+        "municipios",
+        "hospital"
+      ],
+      "semantic_constraints": [
+        "top_n_per_group_requires_window_partition",
+        "join_path_hospital_location_required",
+        "top_n_average_high_cardinality_requires_minimum_group_size"
+      ],
+      "semantic_null_policy": [],
+      "semantic_planner": {
+        "mode": "llm_reconciled",
+        "confidence": 0.95,
+        "reasoning": "A intenção é classificar os hospitais com base no valor médio do serviço hospitalar, filtrando por estados específicos e considerando apenas hospitais com um número mínimo de internações. As métricas e dimensões foram escolhidas para refletir essa necessidade de ranking por estado e hospital, enquanto as restrições garantem a integridade dos dados e a validade do ranking.",
+        "conflicts": [],
+        "accepted_llm_fields": [
+          "metrics"
+        ],
+        "rejected_llm_fields": []
+      },
+      "sql_generation_confidence": 1.0,
+      "sql_generation_reasoning": "The query calculates the average service cost (VAL_SH) for hospitals in the states of MA and RS, filtering for hospitals with more than 500 admissions. It groups by state and hospital, ensuring that only relevant hospitals are included in the average calculation.",
+      "sql_generation_source": "current_structured_output",
+      "chart_plan_validation": {
+        "passed": true,
+        "message": null,
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        }
+      },
+      "semantic_validation": {
+        "passed": true,
+        "constraints": [
+          "top_n_per_group_requires_window_partition",
+          "join_path_hospital_location_required",
+          "top_n_average_high_cardinality_requires_minimum_group_size"
+        ],
+        "null_policy": [],
+        "message": null
+      },
+      "semantic_error": {
+        "category": "top_n_scope",
+        "severity": "error",
+        "message": "SEMANTIC PLAN ERROR: The plan requires top-N per group, but SQL does not use ROW_NUMBER()/RANK() OVER (...). Use a window function partitioned by the group dimension."
+      },
+      "repair_attempts": [
+        {
+          "previous_sql": "SELECT mu.\"SG_UF\" AS estado_hospital, h.\"CNES\" AS hospital, ROUND(AVG(i.\"VAL_SH\"), 2) AS media_val_sh FROM internacoes i JOIN hospital h ON i.\"CNES\" = h.\"CNES\" JOIN municipios mu ON h.\"MUNIC_MOV\" = mu.\"CO_MUNICIPIO_6D\" WHERE mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\", h.\"CNES\" HAVING COUNT(i.\"N_AIH\") > 500 ORDER BY estado_hospital, media_val_sh DESC;",
+          "error_message": "SEMANTIC PLAN ERROR: The plan requires top-N per group, but SQL does not use ROW_NUMBER()/RANK() OVER (...). Use a window function partitioned by the group dimension.",
+          "semantic_category": "top_n_scope",
+          "semantic_guidance": "Top-N por grupo",
+          "violated_contract": {
+            "answer_shape.top_n": 3,
+            "answer_shape.top_n_scope": "per_group",
+            "answer_shape.required_dimensions": [
+              "estado_hospital",
+              "hospital"
+            ],
+            "answer_shape.partition_dimensions": [
+              "estado_hospital"
+            ],
+            "answer_shape.ranked_dimensions": [
+              "hospital"
+            ]
+          },
+          "repair_strategy": "top_n_per_group_macro",
+          "timestamp": "2026-05-17T06:42:32.274256",
+          "post_repair_validation": {
+            "passed": true,
+            "message": null
+          }
+        }
+      ],
+      "semantic_repair": {
+        "original_category": "top_n_scope",
+        "original_message": "SEMANTIC PLAN ERROR: The plan requires top-N per group, but SQL does not use ROW_NUMBER()/RANK() OVER (...). Use a window function partitioned by the group dimension.",
+        "guidance_title": "Top-N por grupo",
+        "strategy": "deterministic",
+        "post_repair_category": null,
+        "post_repair_message": null,
+        "validation_passed_after_repair": true
+      },
+      "orchestrator_v3": true,
+      "current_model": {
+        "provider": "openai",
+        "model_name": "gpt-4o-mini",
+        "temperature": 0.0
+      },
+      "environment": "production",
+      "session_id": "session_34425",
+      "query_number": 126,
+      "orchestrator_execution_time": 22.81910490989685
+    },
+    "multi_query": {
+      "is_multi_query": false,
+      "plan_type": "single_window",
+      "execution_mode": "single",
+      "multi_query_allowed": false,
+      "allowed_multi_plan_types": [
+        "bind_then_query",
+        "fanout_concat",
+        "verification_side_query"
+      ],
+      "query_plan": {
+        "strategy": "single",
+        "reasoning": "Ranking por grupo com partição deve permanecer em uma única SQL.",
+        "plan_type": "single_window",
+        "merge_strategy": "none",
+        "output_nodes": [
+          "sq1"
+        ],
+        "required_constraints": [],
+        "expected_output_shape": {},
+        "verifier_checks": [],
+        "fallback_policy": {},
+        "sub_queries": [
+          {
+            "id": "sq1",
+            "description": "Quais os 3 hospitais com maior valor médio de serviço hospitalar (VAL_SH) por estado (MA e RS), considerando hospitais com mais de 500 internações?",
+            "purpose": "final_output",
+            "output_role": "output",
+            "expected_result_kind": "rowset",
+            "expected_max_rows": null,
+            "required_constraints": [],
+            "selected_tables": [],
+            "bind_keys": [],
+            "sql": null,
+            "validated_sql": null,
+            "result_raw": null,
+            "parsed_rows": null,
+            "success": false,
+            "error": null,
+            "depends_on": [],
+            "repair_attempts": 0
+          }
+        ]
+      },
+      "sub_query_results": [],
+      "merged_rows": null,
+      "merged_rows_source": null,
+      "merge_strategy": "none",
+      "verifier_outcome": null,
+      "single_fallback_active": false,
+      "single_fallback_reason": null,
+      "final_sql_query": null,
+      "failure_taxonomy": [
+        "top_n_scope"
+      ]
+    },
+    "agent_error": null,
+    "metrics": {
+      "Execution Accuracy (EX)": {
+        "score": 1.0,
+        "is_correct": true,
+        "error": null,
+        "details": {
+          "ground_truth_executed": true,
+          "predicted_executed": true,
+          "ground_truth_rows": 6,
+          "predicted_rows": 6,
+          "results_match": true,
+          "comparison_details": {
+            "gt_size": 6,
+            "pred_size": 6,
+            "normalized_match": true
+          }
+        }
+      }
+    },
+    "run_id": "20260517_gt228_full",
+    "question_index": 126,
+    "total_questions": 228,
+    "question_fingerprint": "e1dc4a176fd78d817eaf16bba5c9b0f5406aa94f682fb8ccff45df8faa484fd4",
+    "trace_path": "/home/maiconkevyn/PycharmProjects/txt2sql_refactor_openai_v2/evaluation/results/dag_evaluation_20260517_gt228_full/queries/GT132/trace.json"
+  }
+}
