@@ -247,6 +247,11 @@ def _extract_top_n(query_lower: str) -> int | None:
             return number_words[match.group(1)]
     if _is_scalar_extrema_query(query_lower):
         return None
+    if re.search(
+        r"\bprincipal\s+causa\s+(?:de\s+morte|do\s+[óo]bito)\b",
+        query_lower,
+    ):
+        return 1
     if re.search(r"\b(?:maior|menor|mais\s+comum|mais\s+frequente)\b", query_lower):
         return 1
     return None

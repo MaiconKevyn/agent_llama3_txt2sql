@@ -300,6 +300,37 @@ def test_semantic_validator_accepts_top_n_death_causes_for_women():
     assert message is None
 
 
+def test_semantic_plan_treats_principal_death_cause_as_top_one_with_year_filter():
+    plan = build_semantic_plan("qual foi a principal causa de morte em 2021?")
+
+    assert plan.intent == "ranking"
+    assert plan.answer_shape.row_grain == "top_n_global"
+    assert plan.answer_shape.top_n == 1
+    assert plan.answer_shape.top_n_scope == "global"
+    assert plan.answer_shape.required_dimensions == ["diagnostico"]
+    assert any(filter_.field == "ano" and filter_.values == ["2021"] for filter_ in plan.filters)
+    assert any(filter_.field == "desfecho" for filter_ in plan.filters)
+
+
+def test_semantic_validator_accepts_principal_death_cause_sql_with_year_filter():
+    plan = build_semantic_plan("qual foi a principal causa de morte em 2021?")
+    sql = """
+        SELECT c."DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes
+        FROM internacoes i
+        JOIN cid c ON i."CID_MORTE" = c."CID"
+        WHERE i."MORTE" = true
+          AND EXTRACT(YEAR FROM i."DT_INTER") = 2021
+        GROUP BY c."DESCRICAO"
+        ORDER BY total_mortes DESC
+        LIMIT 1
+    """
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert valid is True
+    assert message is None
+
+
 def test_semantic_plan_does_not_treat_temporal_grouping_as_death_cause_description():
     plan = build_semantic_plan("Gere um grafico temporal com o numero de mortes por ano")
 
@@ -2638,8 +2669,7 @@ def test_goalv2_plan_filters_identified_race_color_counts():
         for filter_ in plan.filters
     )
     assert _build_deterministic_scalar_sql(plan) == (
-        'SELECT COUNT(*) AS total_internacoes FROM internacoes '
-        'WHERE "RACA_COR" IN (1, 2, 3, 4, 5);'
+        'SELECT COUNT(*) AS total_internacoes FROM internacoes WHERE "RACA_COR" IN (1, 2, 3, 4, 5);'
     )
 
 
@@ -2724,7 +2754,9 @@ def test_goalv2_plan_treats_states_as_filter_for_combined_municipality_intersect
     assert plan.answer_shape.top_n_scope == "global"
     assert plan.answer_shape.required_dimensions == ["municipio"]
     assert plan.answer_shape.partition_dimensions == []
-    assert any(filter_.field == "estado" and filter_.values == ["MA", "RS"] for filter_ in plan.filters)
+    assert any(
+        filter_.field == "estado" and filter_.values == ["MA", "RS"] for filter_ in plan.filters
+    )
 
 
 def test_goalv2_validator_rejects_grouping_by_sg_uf_when_state_is_only_filter():
