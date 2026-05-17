@@ -10,12 +10,20 @@ class InterfaceType(Enum):
     CLI_INTERACTIVE = "cli_interactive"
 
 
+def infer_database_type(database_path: str | None) -> str:
+    """Infer the database backend from a SQLAlchemy URL-like value."""
+    value = (database_path or "").lower()
+    if value.startswith("postgresql"):
+        return "postgresql"
+    return "duckdb"
+
+
 @dataclass
 class ApplicationConfig:
     """Simple configuration for the application"""
 
     # Database configuration (loaded from environment when available)
-    database_type: str = "postgresql"
+    database_type: str = "duckdb"
     database_path: str | None = field(
         default_factory=lambda: os.getenv("DATABASE_URL") or os.getenv("DATABASE_PATH") or None
     )

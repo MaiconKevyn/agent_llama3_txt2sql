@@ -66,7 +66,7 @@ def test_attach_visualization_appends_unfilled_category_notice_to_response():
         "response": "1. Nao preenchido: 488.330\n2. Insuf respirat aguda: 24.784",
         "sql_query": (
             'SELECT c."DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes '
-            'FROM internacoes i JOIN cid c ON i."CID_MORTE" = c."CID" GROUP BY causa_morte'
+            'FROM internacoes i JOIN cid c ON i."DIAG_PRINC" = c."CID" GROUP BY causa_morte'
         ),
         "results": [
             {"result": ("Nao preenchido", 488330)},
@@ -98,8 +98,8 @@ def test_attach_visualization_preserves_coherent_response_when_adding_unfilled_n
         "response": "1. Insuf respirat aguda: 24.784\n2. Septicemia NE: 17.904",
         "sql_query": (
             'SELECT c."DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes '
-            'FROM internacoes i JOIN cid c ON i."CID_MORTE" = c."CID" '
-            'WHERE c."DESCRICAO" <> \'Nao preenchido\' GROUP BY causa_morte'
+            'FROM internacoes i JOIN cid c ON i."DIAG_PRINC" = c."CID" '
+            "WHERE c.\"DESCRICAO\" <> 'Nao preenchido' GROUP BY causa_morte"
         ),
         "results": [
             {"result": ("Insuf respirat aguda", 24784)},

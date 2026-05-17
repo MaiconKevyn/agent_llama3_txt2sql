@@ -156,12 +156,12 @@ def test_chart_plan_validation_rejects_interval_from_numeric_year():
 def test_chart_plan_validation_rejects_pie_sex_without_labels():
     query = "gere um grafico de pizza mostrando as mortes entre homens em mulheres"
     plan = build_chart_plan(query, detect_visualization_intent(query))
-    sql = '''
+    sql = """
         SELECT "SEXO", COUNT(*) AS total_mortes
         FROM internacoes
         WHERE "MORTE" = true AND "SEXO" IN (1, 3)
         GROUP BY "SEXO";
-    '''
+    """
 
     passed, message = validate_sql_against_chart_plan(plan, sql)
 
@@ -172,13 +172,13 @@ def test_chart_plan_validation_rejects_pie_sex_without_labels():
 def test_chart_plan_validation_accepts_pie_sex_with_masculino_feminino_labels():
     query = "gere um grafico de pizza mostrando as mortes entre homens em mulheres"
     plan = build_chart_plan(query, detect_visualization_intent(query))
-    sql = '''
+    sql = """
         SELECT CASE WHEN "SEXO"=1 THEN 'Masculino' WHEN "SEXO"=3 THEN 'Feminino' END AS "SEXO",
                COUNT(*) AS total_mortes
         FROM internacoes
         WHERE "MORTE" = true AND "SEXO" IN (1, 3)
         GROUP BY "SEXO";
-    '''
+    """
 
     passed, message = validate_sql_against_chart_plan(plan, sql)
 
@@ -189,13 +189,13 @@ def test_chart_plan_validation_accepts_pie_sex_with_masculino_feminino_labels():
 def test_chart_plan_validation_accepts_pie_sex_with_homens_mulheres_labels():
     query = "gere um grafico de pizza mostrando as mortes entre homens em mulheres"
     plan = build_chart_plan(query, detect_visualization_intent(query))
-    sql = '''
+    sql = """
         SELECT CASE WHEN "SEXO"=1 THEN 'homens' WHEN "SEXO"=3 THEN 'mulheres' END AS "SEXO",
                COUNT(*) AS total_mortes
         FROM internacoes
         WHERE "MORTE" = true AND "SEXO" IN (1, 3)
         GROUP BY "SEXO";
-    '''
+    """
 
     passed, message = validate_sql_against_chart_plan(plan, sql)
 
@@ -270,7 +270,7 @@ def test_chart_plan_validation_rejects_clinical_categories_without_unfilled_excl
     plan = build_chart_plan(query, detect_visualization_intent(query))
     sql = (
         'SELECT c."DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes '
-        'FROM internacoes i JOIN cid c ON i."CID_MORTE" = c."CID" '
+        'FROM internacoes i JOIN cid c ON i."DIAG_PRINC" = c."CID" '
         'WHERE i."MORTE" = true '
         'GROUP BY c."DESCRICAO" ORDER BY total_mortes DESC LIMIT 6'
     )
@@ -286,9 +286,9 @@ def test_chart_plan_validation_accepts_clinical_categories_with_unfilled_exclusi
     plan = build_chart_plan(query, detect_visualization_intent(query))
     sql = (
         'SELECT c."DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes '
-        'FROM internacoes i JOIN cid c ON i."CID_MORTE" = c."CID" '
+        'FROM internacoes i JOIN cid c ON i."DIAG_PRINC" = c."CID" '
         'WHERE i."MORTE" = true '
-        'AND c."DESCRICAO" <> \'Nao preenchido\' '
+        "AND c.\"DESCRICAO\" <> 'Nao preenchido' "
         'AND c."DESCRICAO" IS NOT NULL '
         'GROUP BY c."DESCRICAO" ORDER BY total_mortes DESC LIMIT 6'
     )

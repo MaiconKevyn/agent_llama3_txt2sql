@@ -46,12 +46,12 @@
     "id": "GT014",
     "difficulty": "medium",
     "question": "Quantas internações por meningite ocasionaram em morte?",
-    "query": "SELECT COUNT(*) FROM internacoes i JOIN cid c ON i.\"CID_MORTE\" = c.\"CID\" WHERE c.\"DESCRICAO\" ILIKE '%meningite%' AND i.\"MORTE\" = true;",
+    "query": "SELECT COUNT(*) FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE c.\"DESCRICAO\" ILIKE '%meningite%' AND i.\"MORTE\" = true;",
     "tables": [
       "internacoes",
       "cid"
     ],
-    "notes": "CRITICAL: mortes table absorbed into internacoes (MORTE boolean + CID_MORTE). cid10 renamed to cid. JOIN internacoes.CID_MORTE → cid.CID. Result: 228",
+    "notes": "Policy update: analytical death-cause questions use internacoes.DIAG_PRINC joined to cid with MORTE = true; CID_MORTE is audit-only and is not the default death-cause dimension.",
     "critical_rule": "RULE_B"
   },
   {
@@ -153,12 +153,12 @@
     "id": "GT039",
     "difficulty": "medium",
     "question": "Quais são as três causas de morte mais frequentes entre mulheres?",
-    "query": "SELECT c.\"DESCRICAO\", COUNT(*) AS total_mortes FROM internacoes i JOIN cid c ON i.\"CID_MORTE\" = c.\"CID\" WHERE i.\"SEXO\" = 3 AND i.\"MORTE\" = true AND i.\"CID_MORTE\" IS NOT NULL GROUP BY c.\"DESCRICAO\" ORDER BY total_mortes DESC LIMIT 3;",
+    "query": "SELECT c.\"DESCRICAO\", COUNT(*) AS total_mortes FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"SEXO\" = 3 AND i.\"MORTE\" = true AND i.\"DIAG_PRINC\" IS NOT NULL GROUP BY c.\"DESCRICAO\" ORDER BY total_mortes DESC LIMIT 3;",
     "tables": [
       "internacoes",
       "cid"
     ],
-    "notes": "CRITICAL: mortes table absorbed, cid10 renamed to cid. Use internacoes.CID_MORTE for death cause. JOIN cid for descriptions. Result: 'Nao preenchido', 'Insuf respirat aguda', 'Septicemia NE'",
+    "notes": "Policy update: analytical death-cause questions use internacoes.DIAG_PRINC joined to cid with MORTE = true; CID_MORTE is audit-only and is not the default death-cause dimension.",
     "critical_rule": "RULE_B"
   },
   {
@@ -187,12 +187,12 @@
     "id": "GT048",
     "difficulty": "medium",
     "question": "Quais são as 10 principais causas de morte (com descrição)?",
-    "query": "SELECT c.\"DESCRICAO\", COUNT(*) AS total_mortes FROM internacoes i JOIN cid c ON i.\"CID_MORTE\" = c.\"CID\" WHERE i.\"MORTE\" = true GROUP BY c.\"DESCRICAO\" ORDER BY total_mortes DESC LIMIT 10;",
+    "query": "SELECT c.\"DESCRICAO\", COUNT(*) AS total_mortes FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"MORTE\" = true GROUP BY c.\"DESCRICAO\" ORDER BY total_mortes DESC LIMIT 10;",
     "tables": [
       "internacoes",
       "cid"
     ],
-    "notes": "CRITICAL: mortes table absorbed, cid10 renamed to cid. JOIN internacoes.CID_MORTE → cid.CID. Filter MORTE = true. Question says 'com descrição' not 'com código' → only DESCRICAO in SELECT. Top result: 'Nao preenchido' ~488,332",
+    "notes": "Policy update: analytical death-cause questions use internacoes.DIAG_PRINC joined to cid with MORTE = true; CID_MORTE is audit-only and is not the default death-cause dimension.",
     "critical_rule": "RULE_E"
   },
   {

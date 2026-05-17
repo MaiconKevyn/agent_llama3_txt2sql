@@ -1,17 +1,16 @@
 import os
-from typing import List, Dict, Any, Optional
+from typing import Any
 
+from langchain_community.agent_toolkits import SQLDatabaseToolkit
+from langchain_community.utilities import SQLDatabase
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_core.tools import BaseTool
-from langchain_community.utilities import SQLDatabase
-from langchain_community.agent_toolkits import SQLDatabaseToolkit
 from langchain_openai import ChatOpenAI
 
 from ..application.config.simple_config import ApplicationConfig
-from ..utils.sql_safety import is_select_only, sanitize_sql_for_execution
 from ..utils.logging_config import get_llm_manager_logger
-
+from ..utils.sql_safety import is_select_only, sanitize_sql_for_execution
 
 logger = get_llm_manager_logger()
 
@@ -26,10 +25,10 @@ class OpenAILLMManager:
 
     def __init__(self, config: ApplicationConfig):
         self.config = config
-        self._llm: Optional[BaseChatModel] = None
+        self._llm: BaseChatModel | None = None
         self._bound_llm = None
-        self._sql_database: Optional[SQLDatabase] = None
-        self._sql_toolkit: Optional[SQLDatabaseToolkit] = None
+        self._sql_database: SQLDatabase | None = None
+        self._sql_toolkit: SQLDatabaseToolkit | None = None
 
         self._initialize_database()
         self._initialize_llm()
@@ -42,7 +41,7 @@ class OpenAILLMManager:
     def _initialize_database(self):
         db_path = self.config.database_path or ""
         if not (db_path.startswith("postgresql") or db_path.startswith("duckdb")):
-            raise ValueError("Defina DATABASE_URL (postgresql:// ou duckdb:///)")
+            raise ValueError("Defina DATABASE_PATH ou DATABASE_URL com uma URL DuckDB válida")
 
         # Normalize psycopg2 style
         if db_path.startswith("postgresql+psycopg2://"):
@@ -86,9 +85,11 @@ class OpenAILLMManager:
 
         self._sql_toolkit = SQLDatabaseToolkit(db=self._sql_database, llm=self._llm)
         self._enhanced_tools = self._create_enhanced_tools(self._sql_toolkit.get_tools())
-        logger.info("SQLDatabaseToolkit initialized", extra={"tool_count": len(self._enhanced_tools)})
+        logger.info(
+            "SQLDatabaseToolkit initialized", extra={"tool_count": len(self._enhanced_tools)}
+        )
 
-    def _create_enhanced_tools(self, standard_tools: List[BaseTool]) -> List[BaseTool]:
+    def _create_enhanced_tools(self, standard_tools: list[BaseTool]) -> list[BaseTool]:
         try:
             from .tools.enhanced_list_tables_tool import EnhancedListTablesTool
 
@@ -108,8 +109,10 @@ class OpenAILLMManager:
     # ------------------------------------------------------------------
     # Accessors
     # ------------------------------------------------------------------
-    def get_sql_tools(self) -> List[BaseTool]:
-        return getattr(self, "_enhanced_tools", []) or (self._sql_toolkit.get_tools() if self._sql_toolkit else [])
+    def get_sql_tools(self) -> list[BaseTool]:
+        return getattr(self, "_enhanced_tools", []) or (
+            self._sql_toolkit.get_tools() if self._sql_toolkit else []
+        )
 
     def get_bound_llm(self) -> BaseChatModel:
         return self._bound_llm or self._llm
@@ -120,8 +123,13 @@ class OpenAILLMManager:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-    def create_messages(self, user_query: str, system_prompt: Optional[str] = None, conversation_history: Optional[List[BaseMessage]] = None) -> List[BaseMessage]:
-        messages: List[BaseMessage] = []
+    def create_messages(
+        self,
+        user_query: str,
+        system_prompt: str | None = None,
+        conversation_history: list[BaseMessage] | None = None,
+    ) -> list[BaseMessage]:
+        messages: list[BaseMessage] = []
         if system_prompt:
             messages.append(SystemMessage(content=system_prompt))
         if conversation_history:
@@ -129,7 +137,9 @@ class OpenAILLMManager:
         messages.append(HumanMessage(content=user_query))
         return messages
 
-    def invoke_with_tools(self, messages: List[BaseMessage], max_iterations: int = 5) -> Dict[str, Any]:
+    def invoke_with_tools(
+        self, messages: list[BaseMessage], max_iterations: int = 5
+    ) -> dict[str, Any]:
         llm = self.get_bound_llm()
         response = llm.invoke(messages)
         tool_calls = getattr(response, "tool_calls", []) or []
@@ -137,17 +147,22 @@ class OpenAILLMManager:
             "response": response,
             "messages": messages + [response],
             "tool_calls": tool_calls,
-            "has_tool_calls": len(tool_calls) > 0
+            "has_tool_calls": len(tool_calls) > 0,
         }
 
-    def generate_sql_query(self, user_query: str, schema_context: str, conversation_history: Optional[List[BaseMessage]] = None) -> Dict[str, Any]:
+    def generate_sql_query(
+        self,
+        user_query: str,
+        schema_context: str,
+        conversation_history: list[BaseMessage] | None = None,
+    ) -> dict[str, Any]:
         system_prompt = f"""You are a SQL expert assistant for Brazilian healthcare (SUS) data.
 
 Database Schema:
 {schema_context}
 
 Rules:
-1. Generate syntactically correct PostgreSQL.
+1. Generate syntactically correct DuckDB SQL.
 2. Use table/column names exactly.
 3. Answer in SQL only.
 4. Default LIMIT 100 when missing.
@@ -160,25 +175,47 @@ Rules:
             for call in result["tool_calls"]:
                 if call.get("name") in {"sql_db_query", "sql_db_query_checker"}:
                     sql_query = call.get("args", {}).get("query", "")
-                    return {"success": True, "sql_query": self._clean_sql_query(sql_query), "messages": result["messages"], "tool_calls": result["tool_calls"], "error": None}
+                    return {
+                        "success": True,
+                        "sql_query": self._clean_sql_query(sql_query),
+                        "messages": result["messages"],
+                        "tool_calls": result["tool_calls"],
+                        "error": None,
+                    }
 
         content = getattr(result["response"], "content", "") or ""
-        return {"success": True, "sql_query": self._clean_sql_query(content), "messages": result["messages"], "tool_calls": result["tool_calls"], "error": None}
+        return {
+            "success": True,
+            "sql_query": self._clean_sql_query(content),
+            "messages": result["messages"],
+            "tool_calls": result["tool_calls"],
+            "error": None,
+        }
 
-    def generate_conversational_response(self, user_query: str, context: Optional[str] = None, conversation_history: Optional[List[BaseMessage]] = None) -> Dict[str, Any]:
+    def generate_conversational_response(
+        self,
+        user_query: str,
+        context: str | None = None,
+        conversation_history: list[BaseMessage] | None = None,
+    ) -> dict[str, Any]:
         system_prompt = f"""You are a helpful assistant for Brazilian healthcare (SUS) data analysis.
 Answer in Portuguese, be concise.
-{f'Contexto: {context}' if context else ''}
+{f"Contexto: {context}" if context else ""}
 """
         messages = self.create_messages(user_query, system_prompt, conversation_history)
         response = self.get_bound_llm().invoke(messages)
-        return {"success": True, "response": getattr(response, "content", str(response)), "messages": messages + [response], "error": None}
+        return {
+            "success": True,
+            "response": getattr(response, "content", str(response)),
+            "messages": messages + [response],
+            "error": None,
+        }
 
-    def invoke_chat(self, messages: List[BaseMessage]):
+    def invoke_chat(self, messages: list[BaseMessage]):
         """Simple chat invocation without provider branching (OpenAI only)."""
         return self._llm.invoke(messages)
 
-    def invoke_chat_structured(self, messages: List[BaseMessage], output_schema):
+    def invoke_chat_structured(self, messages: list[BaseMessage], output_schema):
         """Invoke LLM with structured output schema (Pydantic model).
 
         Returns an instance of output_schema populated by the LLM, or raises
@@ -187,11 +224,12 @@ Answer in Portuguese, be concise.
         structured_llm = self._llm.with_structured_output(output_schema)
         return structured_llm.invoke(messages)
 
-    def validate_sql_query(self, sql_query: str) -> Dict[str, Any]:
+    def validate_sql_query(self, sql_query: str) -> dict[str, Any]:
         if not self._sql_database or not hasattr(self._sql_database, "_engine"):
             return {"is_valid": False, "error": "Database not initialized", "suggestions": []}
 
         from sqlalchemy import text
+
         engine = self._sql_database._engine
         cleaned_sql = sanitize_sql_for_execution(sql_query)
         try:
@@ -202,13 +240,23 @@ Answer in Portuguese, be concise.
             suggestions = ["Verifique nomes de tabelas/colunas", "Revise a sintaxe SQL"]
             return {"is_valid": False, "error": str(e), "suggestions": suggestions}
 
-    def execute_sql_query(self, sql_query: str) -> Dict[str, Any]:
+    def execute_sql_query(self, sql_query: str) -> dict[str, Any]:
         if not self._sql_database:
-            return {"success": False, "results": [], "error": "Database not initialized", "row_count": 0}
+            return {
+                "success": False,
+                "results": [],
+                "error": "Database not initialized",
+                "row_count": 0,
+            }
 
         ok, reason = is_select_only(sql_query)
         if not ok:
-            return {"success": False, "results": [], "error": f"SQL execution blocked: {reason}", "row_count": 0}
+            return {
+                "success": False,
+                "results": [],
+                "error": f"SQL execution blocked: {reason}",
+                "row_count": 0,
+            }
 
         cleaned_sql = sanitize_sql_for_execution(sql_query)
         try:
@@ -219,7 +267,12 @@ Answer in Portuguese, be concise.
                     if line.strip():
                         rows.append({"result": line.strip()})
                 return {"success": True, "results": rows, "error": None, "row_count": len(rows)}
-            return {"success": True, "results": result if isinstance(result, list) else [result], "error": None, "row_count": len(result) if isinstance(result, list) else 1}
+            return {
+                "success": True,
+                "results": result if isinstance(result, list) else [result],
+                "error": None,
+                "row_count": len(result) if isinstance(result, list) else 1,
+            }
         except Exception as e:
             return {"success": False, "results": [], "error": str(e), "row_count": 0}
 
@@ -237,7 +290,7 @@ Answer in Portuguese, be concise.
     # ------------------------------------------------------------------
     # Health
     # ------------------------------------------------------------------
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         return {
             "provider": "openai",
             "model_name": self.config.llm_model,
@@ -248,7 +301,7 @@ Answer in Portuguese, be concise.
             "database_connected": self._sql_database is not None,
         }
 
-    def health_check(self) -> Dict[str, Any]:
+    def health_check(self) -> dict[str, Any]:
         return {
             "status": "healthy" if self._llm and self._sql_database else "degraded",
             "components": {
@@ -268,17 +321,20 @@ def create_openai_llm_manager(config: ApplicationConfig) -> OpenAILLMManager:
 # ---------------------------------------------------------------------------
 # Global singleton — set by orchestrator, used by all nodes
 # ---------------------------------------------------------------------------
-_llm_manager: Optional[OpenAILLMManager] = None
+_llm_manager: OpenAILLMManager | None = None
 
 
 def set_global_llm_manager(manager: "OpenAILLMManager") -> None:
     """Set the global LLM manager instance (called by orchestrator)."""
     global _llm_manager
     _llm_manager = manager
-    logger.info("Global LLM manager updated", extra={
-        "provider": manager.config.llm_provider,
-        "model": manager.config.llm_model,
-    })
+    logger.info(
+        "Global LLM manager updated",
+        extra={
+            "provider": manager.config.llm_provider,
+            "model": manager.config.llm_model,
+        },
+    )
 
 
 def get_llm_manager() -> "OpenAILLMManager":

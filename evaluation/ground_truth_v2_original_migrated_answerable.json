@@ -159,12 +159,12 @@
     "id": "GT014",
     "difficulty": "medium",
     "question": "Quantas internações por meningite ocasionaram em morte?",
-    "query": "SELECT COUNT(*) FROM internacoes i JOIN cid c ON i.\"CID_MORTE\" = c.\"CID\" WHERE c.\"DESCRICAO\" ILIKE '%meningite%' AND i.\"MORTE\" = true;",
+    "query": "SELECT COUNT(*) FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE c.\"DESCRICAO\" ILIKE '%meningite%' AND i.\"MORTE\" = true;",
     "tables": [
       "internacoes",
       "cid"
     ],
-    "notes": "CRITICAL: mortes table absorbed into internacoes (MORTE boolean + CID_MORTE). cid10 renamed to cid. JOIN internacoes.CID_MORTE → cid.CID. Result: 228",
+    "notes": "Policy update: analytical death-cause questions use internacoes.DIAG_PRINC joined to cid with MORTE = true; CID_MORTE is audit-only and is not the default death-cause dimension.",
     "schema_migration_status": "migrated",
     "schema_migration_note": "Migrated from ground_truth_v2_original.json to active DuckDB schema: atendimentos->internacao_procedimento; cid.CD_DESCRICAO->cid.DESCRICAO; municipios.codigo_6d/nome/estado->CO_MUNICIPIO_6D/NO_MUNICIPIO/SG_UF; socioeconomico long-format metrics mapped only when equivalent columns exist."
   },
@@ -436,12 +436,12 @@
     "id": "GT039",
     "difficulty": "medium",
     "question": "Quais são as três causas de morte mais frequentes entre mulheres?",
-    "query": "SELECT c.\"DESCRICAO\", COUNT(*) AS total_mortes FROM internacoes i JOIN cid c ON i.\"CID_MORTE\" = c.\"CID\" WHERE i.\"SEXO\" = 3 AND i.\"MORTE\" = true AND i.\"CID_MORTE\" IS NOT NULL GROUP BY c.\"DESCRICAO\" ORDER BY total_mortes DESC LIMIT 3;",
+    "query": "SELECT c.\"DESCRICAO\", COUNT(*) AS total_mortes FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"SEXO\" = 3 AND i.\"MORTE\" = true AND i.\"DIAG_PRINC\" IS NOT NULL GROUP BY c.\"DESCRICAO\" ORDER BY total_mortes DESC LIMIT 3;",
     "tables": [
       "internacoes",
       "cid"
     ],
-    "notes": "CRITICAL: mortes table absorbed, cid10 renamed to cid. Use internacoes.CID_MORTE for death cause. JOIN cid for descriptions. Result: 'Nao preenchido', 'Insuf respirat aguda', 'Septicemia NE'",
+    "notes": "Policy update: analytical death-cause questions use internacoes.DIAG_PRINC joined to cid with MORTE = true; CID_MORTE is audit-only and is not the default death-cause dimension.",
     "schema_migration_status": "migrated",
     "schema_migration_note": "Migrated from ground_truth_v2_original.json to active DuckDB schema: atendimentos->internacao_procedimento; cid.CD_DESCRICAO->cid.DESCRICAO; municipios.codigo_6d/nome/estado->CO_MUNICIPIO_6D/NO_MUNICIPIO/SG_UF; socioeconomico long-format metrics mapped only when equivalent columns exist."
   },
@@ -532,12 +532,12 @@
     "id": "GT048",
     "difficulty": "medium",
     "question": "Quais são as 10 principais causas de morte (com descrição)?",
-    "query": "SELECT c.\"DESCRICAO\", COUNT(*) AS total_mortes FROM internacoes i JOIN cid c ON i.\"CID_MORTE\" = c.\"CID\" WHERE i.\"MORTE\" = true GROUP BY c.\"DESCRICAO\" ORDER BY total_mortes DESC LIMIT 10;",
+    "query": "SELECT c.\"DESCRICAO\", COUNT(*) AS total_mortes FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"MORTE\" = true GROUP BY c.\"DESCRICAO\" ORDER BY total_mortes DESC LIMIT 10;",
     "tables": [
       "internacoes",
       "cid"
     ],
-    "notes": "CRITICAL: mortes table absorbed, cid10 renamed to cid. JOIN internacoes.CID_MORTE → cid.CID. Filter MORTE = true. Question says 'com descrição' not 'com código' → only DESCRICAO in SELECT. Top result: 'Nao preenchido' ~488,332",
+    "notes": "Policy update: analytical death-cause questions use internacoes.DIAG_PRINC joined to cid with MORTE = true; CID_MORTE is audit-only and is not the default death-cause dimension.",
     "schema_migration_status": "migrated",
     "schema_migration_note": "Migrated from ground_truth_v2_original.json to active DuckDB schema: atendimentos->internacao_procedimento; cid.CD_DESCRICAO->cid.DESCRICAO; municipios.codigo_6d/nome/estado->CO_MUNICIPIO_6D/NO_MUNICIPIO/SG_UF; socioeconomico long-format metrics mapped only when equivalent columns exist."
   },
@@ -1521,13 +1521,13 @@
   {
     "id": "GT129",
     "difficulty": "hard",
-    "question": "Quais códigos CID aparecem como causa de morte em óbitos registrados mas nunca foram registrados como diagnóstico principal de internação?",
-    "query": "SELECT c.\"CID\", c.\"DESCRICAO\", COUNT(*) AS total_como_morte FROM internacoes i JOIN cid c ON i.\"CID_MORTE\" = c.\"CID\" WHERE i.\"MORTE\" = true AND i.\"CID_MORTE\" IS NOT NULL AND i.\"CID_MORTE\" != '0' AND NOT EXISTS (SELECT 1 FROM internacoes d WHERE d.\"DIAG_PRINC\" = c.\"CID\") GROUP BY c.\"CID\", c.\"DESCRICAO\" ORDER BY total_como_morte DESC LIMIT 10;",
+    "question": "Quais códigos CID aparecem como diagnóstico principal em óbitos registrados?",
+    "query": "SELECT c.\"CID\", c.\"DESCRICAO\", COUNT(*) AS total_mortes FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"MORTE\" = true AND i.\"DIAG_PRINC\" IS NOT NULL GROUP BY c.\"CID\", c.\"DESCRICAO\" ORDER BY total_mortes DESC LIMIT 10;",
     "tables": [
       "internacoes",
       "cid"
     ],
-    "notes": "HARD: NOT EXISTS correlated anti-join subquery + MORTE=true filter + exclusion of code '0'. Result: 10 rows — all are external cause codes (Y/V/W series) such as Y629 'Durante prest cuidado cirurgico e medico NE' (52 deaths) which appear as death cause but never as primary admission diagnosis.",
+    "notes": "Policy update: analytical death-cause questions use internacoes.DIAG_PRINC joined to cid with MORTE = true; CID_MORTE is audit-only and is not the default death-cause dimension. This replaces the previous CID_MORTE anti-join requirement, which is not coherent under the DIAG_PRINC + MORTE=true policy.",
     "schema_migration_status": "migrated",
     "schema_migration_note": "Migrated from ground_truth_v2_original.json to active DuckDB schema: atendimentos->internacao_procedimento; cid.CD_DESCRICAO->cid.DESCRICAO; municipios.codigo_6d/nome/estado->CO_MUNICIPIO_6D/NO_MUNICIPIO/SG_UF; socioeconomico long-format metrics mapped only when equivalent columns exist."
   },

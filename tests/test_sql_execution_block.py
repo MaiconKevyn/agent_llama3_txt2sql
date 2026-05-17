@@ -148,7 +148,7 @@ def test_build_temporal_period_comparison_sql_from_semantic_plan():
     assert "LIMIT 10" in sql
 
 
-def test_build_death_cause_cid_antijoin_sql_from_semantic_plan():
+def test_build_death_cause_cid_antijoin_sql_not_used_for_general_death_cause_plan():
     from src.agent.execution import _build_death_cause_cid_antijoin_sql
     from src.semantic.planner import build_semantic_plan
 
@@ -158,13 +158,7 @@ def test_build_death_cause_cid_antijoin_sql_from_semantic_plan():
 
     sql = _build_death_cause_cid_antijoin_sql(plan)
 
-    assert sql is not None
-    assert 'i."CID_MORTE" = c."CID"' in sql
-    assert 'i."MORTE" = true' in sql
-    assert 'd."DIAG_PRINC" = c."CID"' in sql
-    assert "COUNT(*) AS total_como_morte" in sql
-    assert "ORDER BY total_como_morte DESC" in sql
-    assert "LIMIT 10" in sql
+    assert sql is None
 
 
 def test_build_moving_average_sql_from_semantic_plan():
@@ -276,10 +270,46 @@ def test_build_goalv2_death_cause_description_count_sql():
     sql = _build_death_cause_description_count_sql(plan)
 
     assert sql is not None
-    assert 'i."CID_MORTE" = c."CID"' in sql
+    assert 'i."DIAG_PRINC" = c."CID"' in sql
     assert 'i."MORTE" = true' in sql
     assert "c.\"DESCRICAO\" ILIKE '%meningite%'" in sql
-    assert 'i."DIAG_PRINC"' not in sql
+    assert 'i."CID_MORTE"' not in sql
+
+
+def test_build_death_cause_top_n_sql_uses_diag_princ_with_death_filter():
+    from src.agent.execution import _build_death_cause_top_n_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan("qual foi o principal motivo de morte em 2021?")
+
+    sql = _build_death_cause_top_n_sql(plan)
+
+    assert sql is not None
+    assert 'JOIN cid c ON i."DIAG_PRINC" = c."CID"' in sql
+    assert 'i."MORTE" = true' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert 'i."DIAG_PRINC" IS NOT NULL' in sql
+    assert 'i."CID_MORTE"' not in sql
+    assert "ORDER BY total_mortes DESC" in sql
+    assert "LIMIT 1" in sql
+
+
+def test_death_cause_top_n_sql_has_no_fallback_observation_column():
+    from src.agent.execution import _build_death_cause_top_n_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan("qual foi a principal causa de morte em 2021?")
+
+    sql = _build_death_cause_top_n_sql(plan)
+
+    assert sql is not None
+    assert 'JOIN cid c ON i."DIAG_PRINC" = c."CID"' in sql
+    assert 'i."MORTE" = true' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert "fallback_observacao" not in sql
+    assert "CID_MORTE" not in sql
+    assert "ORDER BY total_mortes DESC" in sql
+    assert "LIMIT 1" in sql
 
 
 def test_build_goalv2_top_n_obstetric_municipality_sql():
@@ -381,7 +411,7 @@ def test_build_goalv2_annual_growth_rate_sql_preserves_filters():
     sql = _build_annual_growth_rate_sql(plan)
 
     assert sql is not None
-    assert 'mu."SG_UF" = \'RS\'' in sql
+    assert "mu.\"SG_UF\" = 'RS'" in sql
     assert 'EXTRACT(YEAR FROM i."DT_INTER") BETWEEN 2008 AND 2023' in sql
     assert "LAG(total_internacoes) OVER (ORDER BY ano)" in sql
     assert "WHERE total_anterior IS NOT NULL" in sql
@@ -402,6 +432,75 @@ def test_build_goalv2_cost_per_day_hospital_sql():
     assert 'SUM(i."VAL_TOT") / NULLIF(SUM(i."DIAS_PERM"), 0)' in sql
     assert "HAVING COUNT(*) > 1000" in sql
     assert "LIMIT 5" in sql
+
+
+def test_build_goalv2_highest_cost_per_day_hospital_sql_orders_desc_and_excludes_zero_days():
+    from src.agent.execution import _build_cost_per_day_by_hospital_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan("Quais são os 5 hospitais com maior custo por dia de internação?")
+
+    sql = _build_cost_per_day_by_hospital_sql(plan)
+
+    assert sql is not None
+    assert 'SUM(i."VAL_TOT") / NULLIF(SUM(i."DIAS_PERM"), 0)' in sql
+    assert 'SUM(i."DIAS_PERM") > 0' in sql
+    assert "ORDER BY custo_por_dia DESC" in sql
+
+
+def test_build_goalv2_population_rate_by_state_sql_preaggregates_denominator():
+    from src.agent.execution import _build_population_rate_by_state_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan("Qual foi a taxa de internações por 100 mil habitantes por estado em 2021?")
+
+    sql = _build_population_rate_by_state_sql(plan)
+
+    assert sql is not None
+    assert "internacoes_por_estado AS" in sql
+    assert "populacao_por_estado AS" in sql
+    assert 'SUM(s."QT_POPULACAO") AS populacao' in sql
+    assert 's."NU_ANO" = 2021' in sql
+    assert "ipe.total_internacoes * 100000.0 / NULLIF(ppe.populacao, 0)" in sql
+    assert "JOIN populacao_por_estado" in sql
+
+
+def test_build_goalv2_time_to_death_sql_uses_duckdb_date_diff():
+    from src.agent.execution import _build_time_to_death_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan("Qual foi o tempo médio entre internação e óbito em 2021?")
+
+    sql = _build_time_to_death_sql(plan)
+
+    assert sql is not None
+    assert "date_diff('day'," in sql
+    assert 'i."MORTE" = true' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert "DATE_PART" not in sql
+
+
+def test_post_execution_contract_rejects_successful_sql_missing_requested_dimension():
+    from src.agent.execution import _validate_post_execution_contract
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan("Qual foi a principal causa de morte por capítulos CID em 2021?")
+    sql = """
+        SELECT COUNT(*) AS total_mortes
+        FROM internacoes i
+        WHERE i."MORTE" = true
+          AND EXTRACT(YEAR FROM i."DT_INTER") = 2021
+    """
+
+    passed, message = _validate_post_execution_contract(
+        plan,
+        sql,
+        results=[{"result": (100,)}],
+        row_count=1,
+    )
+
+    assert passed is False
+    assert "requested output dimension" in (message or "").lower()
 
 
 def test_build_goalv2_reference_uti_rate_sql():

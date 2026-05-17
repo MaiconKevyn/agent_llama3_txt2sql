@@ -770,7 +770,7 @@ def create_orchestrator(
         provider: LLM provider (only "openai")
         model_name: Model name
         environment: Environment mode
-        database_url: PostgreSQL connection URL
+        database_url: DuckDB SQLAlchemy URL
 
     Returns:
         Configured LangGraphOrchestrator instance

@@ -1,4 +1,4 @@
-# PostgreSQL-specific templates for all sihrd5 tables
+# DuckDB-specific templates for all sihrd5 tables
 TABLE_TEMPLATES = {
     "internacoes": """
          INTERNACOES TABLE RULES - MAIN HOSPITALIZATION DATA (sihrd5):
@@ -64,7 +64,8 @@ TABLE_TEMPLATES = {
         CRITICAL JOIN RELATIONSHIPS:
         - → hospital: internacoes."CNES" = hospital."CNES"
         - → cid: internacoes."DIAG_PRINC" = cid."CID"  (diagnóstico principal)
-        - → cid: internacoes."CID_MORTE" = cid."CID"   (causa da morte — apenas quando MORTE=true)
+        - → cid: internacoes."DIAG_PRINC" = cid."CID" + i."MORTE" = true (causa/motivo de morte analítico)
+        - → cid: internacoes."CID_MORTE" = cid."CID"   (campo bruto/auditável; use só se o usuário pedir CID_MORTE)
         - → municipios (residência paciente): internacoes."MUNIC_RES" = municipios."CO_MUNICIPIO_6D"
         - → municipios (localização hospital): JOIN hospital h ON i."CNES" = h."CNES"
                                                JOIN municipios m ON h."MUNIC_MOV" = m."CO_MUNICIPIO_6D"
@@ -132,31 +133,31 @@ TABLE_TEMPLATES = {
         --- HARD EXAMPLES ---
 
         -- Q: "Quais doenças mais frequentemente causam óbito em internações hospitalares?"
-        -- RULE: (1) use CID_MORTE (not DIAG_PRINC); (2) include c."CID" ONLY when question says "com código";
+        -- RULE: (1) use DIAG_PRINC with MORTE=true; (2) include c."CID" ONLY when question says "com código";
         --       (3) GROUP BY c."DESCRICAO" by default; (4) always filter MORTE = true
         SELECT c."DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes
         FROM internacoes i
-        JOIN cid c ON i."CID_MORTE" = c."CID"
-        WHERE i."MORTE" = true AND i."CID_MORTE" IS NOT NULL
+        JOIN cid c ON i."DIAG_PRINC" = c."CID"
+        WHERE i."MORTE" = true AND i."DIAG_PRINC" IS NOT NULL
         GROUP BY c."DESCRICAO"
         ORDER BY total_mortes DESC
         LIMIT 10;
 
         -- Q: "Internações por [doença] que ocasionaram morte (óbito)?"
-        -- NOTE: doença + óbito → JOIN via CID_MORTE (não DIAG_PRINC!)
+        -- NOTE: doença + óbito → JOIN via DIAG_PRINC e filtro MORTE=true
         -- TWO filter strategies:
         --   (A) Search by disease NAME → ILIKE '%nome%' on c."DESCRICAO"
         --   (B) Search by CID chapter prefix → c."CID" LIKE 'X%'
         -- Example A: sepse (pesquisa por nome na descrição):
         SELECT COUNT(*) AS total_obitos_sepse
         FROM internacoes i
-        JOIN cid c ON i."CID_MORTE" = c."CID"
+        JOIN cid c ON i."DIAG_PRINC" = c."CID"
         WHERE c."DESCRICAO" ILIKE '%sepse%'  -- pesquisa por nome, NÃO por código!
           AND i."MORTE" = true;
         -- Example B: neoplasias (pesquisa por capítulo CID):
         SELECT COUNT(*) AS total_obitos_neoplasia
         FROM internacoes i
-        JOIN cid c ON i."CID_MORTE" = c."CID"
+        JOIN cid c ON i."DIAG_PRINC" = c."CID"
         WHERE c."CID" LIKE 'C%'  -- neoplasias malignas (capítulo C do CID-10)
           AND i."MORTE" = true;
 
@@ -426,7 +427,8 @@ TABLE_TEMPLATES = {
         JOIN PATTERNS WITH internacoes:
         - Primary diagnosis: JOIN cid c ON i."DIAG_PRINC" = c."CID"
         - Secondary diagnosis: JOIN cid c ON i."DIAG_SECUN" = c."CID"
-        - Death cause: JOIN cid c ON i."CID_MORTE" = c."CID"
+        - Analytical death cause: JOIN cid c ON i."DIAG_PRINC" = c."CID" WHERE i."MORTE" = true
+        - Raw CID_MORTE audit only: JOIN cid c ON i."CID_MORTE" = c."CID"
 
         EXACT QUERY EXAMPLES:
         -- Find specific code description
@@ -1082,18 +1084,18 @@ TABLE_TEMPLATES = {
 }
 
 
-# Base PostgreSQL template for SQL generation
-BASE_SQL_TEMPLATE = """You are a PostgreSQL expert assistant for Brazilian healthcare (SIH-RD) data analysis.
+# Base DuckDB template for SQL generation
+BASE_SQL_TEMPLATE = """You are a DuckDB SQL expert assistant for Brazilian healthcare (SIH-RD) data analysis.
 
-CORE POSTGRESQL INSTRUCTIONS:
-1. Generate syntactically correct PostgreSQL queries
+CORE DUCKDB INSTRUCTIONS:
+1. Generate syntactically correct DuckDB queries
 2. Use proper table and column names with double quotes
 3. Handle Portuguese language questions appropriately
 4. Return only the SQL query, no explanation
 5. Use appropriate WHERE clauses for filtering
 6. Include LIMIT clauses when appropriate (default LIMIT 100)
 7. Use proper JOINs when querying multiple tables
-8. Use PostgreSQL-specific functions when needed (EXTRACT, ILIKE, etc.)
+8. Use DuckDB-compatible functions when needed (EXTRACT, ILIKE, etc.)
 
 DATABASE SCHEMA CONTEXT:
 {schema_context}
@@ -1102,12 +1104,12 @@ DATABASE SCHEMA CONTEXT:
 
 USER QUERY: {user_query}
 
-Generate the PostgreSQL query:"""
+Generate the DuckDB query:"""
 
 
 def build_table_specific_prompt(selected_tables: list[str]) -> str:
     """
-    Builds dynamic prompt based on selected tables for PostgreSQL sihrd5 database
+    Builds dynamic prompt based on selected tables for DuckDB sihrd5 database
 
     Args:
         selected_tables: List of selected table names
@@ -1119,7 +1121,7 @@ def build_table_specific_prompt(selected_tables: list[str]) -> str:
         return "No specific table rules available."
 
     rules = []
-    rules.append(" POSTGRESQL TABLE-SPECIFIC RULES AND EXAMPLES:")
+    rules.append(" DUCKDB TABLE-SPECIFIC RULES AND EXAMPLES:")
     rules.append("=" * 60)
 
     for table in selected_tables:
@@ -1128,12 +1130,12 @@ def build_table_specific_prompt(selected_tables: list[str]) -> str:
         else:
             # Generic template for unmapped tables
             rules.append(f"""
-        {table.upper()} - GENERAL POSTGRESQL RULES:
+        {table.upper()} - GENERAL DUCKDB RULES:
         - Use proper column names with double quotes: "COLUMN_NAME"
         - Apply appropriate WHERE conditions for filtering
         - Use LIMIT for large result sets to improve performance
         - Consider NULL values in WHERE clauses
-        - Use PostgreSQL-specific functions when appropriate
+        - Use DuckDB-compatible functions when appropriate
         """)
 
     return "\n".join(rules)
@@ -1175,15 +1177,16 @@ def validate_template_coverage(tables: list[str]) -> dict[str, bool]:
     return {table: table in TABLE_TEMPLATES for table in tables}
 
 
-# Multi-table JOIN rules for PostgreSQL — sihrd5
+# Multi-table JOIN rules for DuckDB — sihrd5
 MULTI_TABLE_RULES = """
-MULTI-TABLE POSTGRESQL JOIN RULES (sihrd5):
+MULTI-TABLE DUCKDB JOIN RULES (sihrd5):
 
 CRITICAL JOIN PATTERNS:
 - internacoes ↔ hospital: internacoes."CNES" = hospital."CNES"
 - internacoes ↔ cid (primary diag): internacoes."DIAG_PRINC" = cid."CID"
 - internacoes ↔ cid (secondary diag): internacoes."DIAG_SECUN" = cid."CID"
-- internacoes ↔ cid (death cause): internacoes."CID_MORTE" = cid."CID"
+- internacoes ↔ cid (analytical death cause): internacoes."DIAG_PRINC" = cid."CID" with internacoes."MORTE" = true
+- internacoes ↔ cid (raw CID_MORTE audit only): internacoes."CID_MORTE" = cid."CID"
 - internacoes ↔ internacao_procedimento: internacoes."N_AIH" = internacao_procedimento."N_AIH"
 - internacao_procedimento ↔ procedimentos: internacao_procedimento."PROC_REA" = procedimentos."PROC_REA"
 - internacoes ↔ municipios: internacoes."MUNIC_RES" = municipios."CO_MUNICIPIO_6D"
@@ -1209,7 +1212,7 @@ JOIN BEST PRACTICES:
 - Always use table aliases for clarity (e.g., i."SEXO", h."NATUREZA")
 - Use INNER JOIN for exact matches, LEFT JOIN to include null records
 - Filter before joining when possible for better performance
-- Always quote column names with double quotes in PostgreSQL
+- Always quote column names with double quotes
 - When counting hospitals: COUNT(DISTINCT h."CNES")
 
 """
@@ -1244,7 +1247,7 @@ TEMPLATE_CONFIG = {
     "include_mappings": True,
     "max_examples_per_table": 5,
     "enable_multi_table_rules": True,
-    "postgresql_mode": True,
+    "duckdb_mode": True,
     "quote_columns": True,
     "include_performance_hints": True,
 }

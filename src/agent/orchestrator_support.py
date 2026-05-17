@@ -1,10 +1,9 @@
 import os
 import sqlite3
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
-from ..application.config.simple_config import ApplicationConfig
-
+from ..application.config.simple_config import ApplicationConfig, infer_database_type
 
 AVAILABLE_OPENAI_MODELS = [
     "gpt-4o-mini",
@@ -17,8 +16,8 @@ def build_application_config(
     base_config: ApplicationConfig,
     *,
     model_name: str,
-    temperature: Optional[float] = None,
-    timeout: Optional[int] = None,
+    temperature: float | None = None,
+    timeout: int | None = None,
 ) -> ApplicationConfig:
     """Create a new application config for model switching."""
     return ApplicationConfig(
@@ -44,7 +43,7 @@ def initialize_orchestrator_runtime(
     logger,
     model_config_factory,
     orchestrator_config=None,
-) -> Tuple[Any, Any, sqlite3.Connection, Any, Any]:
+) -> tuple[Any, Any, sqlite3.Connection, Any, Any]:
     """Initialize workflow runtime components used by the orchestrator."""
     from langgraph.checkpoint.sqlite import SqliteSaver
 
@@ -89,7 +88,7 @@ def initialize_orchestrator_runtime(
 
 def build_workflow_config(
     *,
-    config: Optional[dict],
+    config: dict | None,
     session_id: str,
 ) -> dict:
     """Build the LangGraph workflow config.
@@ -109,9 +108,9 @@ def build_orchestrator_error_result(
     user_query: str,
     execution_time: float,
     error: Exception,
-    current_model_metadata: Dict[str, Any],
+    current_model_metadata: dict[str, Any],
     environment: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build the standardized orchestrator-level error payload."""
     return {
         "success": False,
@@ -139,11 +138,11 @@ def build_orchestrator_error_result(
 def build_health_report(
     *,
     environment: str,
-    current_model_metadata: Dict[str, Any],
+    current_model_metadata: dict[str, Any],
     workflow_available: bool,
-    llm_health: Dict[str, Any],
+    llm_health: dict[str, Any],
     metrics,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build the health payload returned by the orchestrator."""
     workflow_status = "healthy" if workflow_available else "failed"
     overall_status = (
@@ -153,9 +152,7 @@ def build_health_report(
     )
 
     success_rate = (
-        metrics.successful_queries / metrics.total_queries
-        if metrics.total_queries > 0
-        else 0
+        metrics.successful_queries / metrics.total_queries if metrics.total_queries > 0 else 0
     )
 
     return {
@@ -177,12 +174,12 @@ def build_health_report(
     }
 
 
-def resolve_database_url(database_url: Optional[str]) -> str:
+def resolve_database_url(database_url: str | None) -> str:
     """Resolve the configured database URL or raise a clear error."""
     resolved_db_url = database_url or os.getenv("DATABASE_URL") or os.getenv("DATABASE_PATH")
     if not resolved_db_url:
         raise ValueError(
-            "DATABASE_URL não definido. Defina no .env ou informe via --db-url."
+            "DATABASE_PATH ou DATABASE_URL não definido. Defina no .env ou informe via --db-url."
         )
     return resolved_db_url
 
@@ -190,7 +187,7 @@ def resolve_database_url(database_url: Optional[str]) -> str:
 def build_factory_app_config(*, database_url: str, model_name: str) -> ApplicationConfig:
     """Build the application config used by orchestrator factory functions."""
     return ApplicationConfig(
-        database_type="postgresql",
+        database_type=infer_database_type(database_url),
         database_path=database_url,
         llm_provider="openai",
         llm_model=model_name,
