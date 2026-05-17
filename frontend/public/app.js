@@ -265,6 +265,10 @@ function createMessageElement(messageData) {
     const contentWrap = document.createElement('div');
     contentWrap.className = 'message-content';
 
+    if (type === 'assistant' && containsMarkdownTable(content)) {
+        message.classList.add('message-has-table');
+    }
+
     const text = document.createElement('div');
     text.className = 'message-text';
     text.innerHTML = type === 'error'
@@ -731,13 +735,156 @@ async function copyMessage(content, button) {
 }
 
 function formatMessageContent(content) {
-    let formatted = escapeHtml(content);
-    formatted = formatted.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
-    formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
-    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    formatted = formatted.replace(/\n/g, '<br>');
-    return formatted;
+    const escaped = escapeHtml(content);
+    const segments = splitFencedCodeBlocks(escaped);
+
+    return segments.map((segment) => {
+        if (segment.type === 'code') {
+            return `<pre><code>${segment.content}</code></pre>`;
+        }
+
+        let formatted = renderMarkdownTables(segment.content);
+        formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
+        formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        formatted = formatted.replace(/\n/g, '<br>');
+        return formatted;
+    }).join('');
+}
+
+function splitFencedCodeBlocks(content) {
+    const segments = [];
+    const fencePattern = /```([\s\S]*?)```/g;
+    let lastIndex = 0;
+    let match;
+
+    while ((match = fencePattern.exec(content)) !== null) {
+        if (match.index > lastIndex) {
+            segments.push({ type: 'text', content: content.slice(lastIndex, match.index) });
+        }
+        segments.push({ type: 'code', content: match[1] });
+        lastIndex = fencePattern.lastIndex;
+    }
+
+    if (lastIndex < content.length) {
+        segments.push({ type: 'text', content: content.slice(lastIndex) });
+    }
+
+    return segments;
+}
+
+function renderMarkdownTables(content) {
+    const lines = content.split('\n');
+    const rendered = [];
+    let index = 0;
+
+    while (index < lines.length) {
+        if (isMarkdownTableStart(lines, index)) {
+            const table = readMarkdownTable(lines, index);
+            rendered.push(buildMarkdownTableHtml(table.headers, table.alignments, table.rows));
+            index = table.nextIndex;
+            continue;
+        }
+
+        rendered.push(lines[index]);
+        index += 1;
+    }
+
+    return rendered.join('\n');
+}
+
+function isMarkdownTableStart(lines, index) {
+    if (index + 1 >= lines.length) return false;
+
+    const headers = splitMarkdownTableRow(lines[index]);
+    const separators = splitMarkdownTableRow(lines[index + 1]);
+
+    return headers.length >= 2
+        && separators.length === headers.length
+        && separators.every(isMarkdownTableSeparatorCell);
+}
+
+function readMarkdownTable(lines, startIndex) {
+    const headers = splitMarkdownTableRow(lines[startIndex]);
+    const alignments = splitMarkdownTableRow(lines[startIndex + 1]).map(getMarkdownTableAlignment);
+    const rows = [];
+    let index = startIndex + 2;
+
+    while (index < lines.length) {
+        const row = splitMarkdownTableRow(lines[index]);
+        if (row.length !== headers.length) break;
+        rows.push(row);
+        index += 1;
+    }
+
+    return {
+        headers,
+        alignments,
+        rows,
+        nextIndex: index
+    };
+}
+
+function splitMarkdownTableRow(line) {
+    if (typeof line !== 'string' || !line.includes('|')) return [];
+
+    let trimmed = line.trim();
+    if (!trimmed.includes('|')) return [];
+    if (trimmed.startsWith('|')) trimmed = trimmed.slice(1);
+    if (trimmed.endsWith('|')) trimmed = trimmed.slice(0, -1);
+
+    return trimmed.split('|').map(cell => cell.trim());
+}
+
+function isMarkdownTableSeparatorCell(cell) {
+    return /^:?-{3,}:?$/.test(cell.trim());
+}
+
+function getMarkdownTableAlignment(separator) {
+    const trimmed = separator.trim();
+    if (trimmed.startsWith(':') && trimmed.endsWith(':')) return 'center';
+    if (trimmed.endsWith(':')) return 'right';
+    return 'left';
+}
+
+function buildMarkdownTableHtml(headers, alignments, rows) {
+    const headerHtml = headers
+        .map((header, index) => `<th${getTableCellAttributes(header, alignments[index], true)}>${header}</th>`)
+        .join('');
+
+    const bodyHtml = rows
+        .map(row => `<tr>${row
+            .map((cell, index) => `<td${getTableCellAttributes(cell, alignments[index], false)}>${cell}</td>`)
+            .join('')}</tr>`)
+        .join('');
+
+    return `<div class="markdown-table-wrapper"><table class="markdown-table"><thead><tr>${headerHtml}</tr></thead><tbody>${bodyHtml}</tbody></table></div>`;
+}
+
+function getTableCellAttributes(value, alignment, isHeader) {
+    const classes = [];
+    if (alignment === 'center') classes.push('align-center');
+    if (alignment === 'right') classes.push('align-right');
+    if (!isHeader && (alignment === 'right' || isNumericTableCell(value))) {
+        classes.push('is-numeric');
+    }
+
+    return classes.length ? ` class="${classes.join(' ')}"` : '';
+}
+
+function isNumericTableCell(value) {
+    const text = String(value)
+        .replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .trim();
+
+    return /^[-+]?(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?%?$/.test(text)
+        || /^[-+]?\d+(?:\.\d+)?%?$/.test(text);
+}
+
+function containsMarkdownTable(content) {
+    const lines = String(content == null ? '' : content).split('\n');
+    return lines.some((_, index) => isMarkdownTableStart(lines, index));
 }
 
 function escapeHtml(text) {
