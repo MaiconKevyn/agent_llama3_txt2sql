@@ -505,6 +505,7 @@ def _build_cost_per_day_by_hospital_sql(
 
     top_n = plan.answer_shape.top_n or 5
     min_count = _minimum_group_count(plan, 1000)
+    order_direction = "ASC" if "cost_per_day_lowest_requested" in plan.constraints else "DESC"
     return (
         'SELECT h."CNES",'
         ' ROUND(SUM(i."VAL_TOT") / NULLIF(SUM(i."DIAS_PERM"), 0), 2) AS custo_por_dia'
@@ -512,9 +513,111 @@ def _build_cost_per_day_by_hospital_sql(
         ' JOIN hospital h ON i."CNES" = h."CNES"'
         ' WHERE i."VAL_TOT" IS NOT NULL'
         ' GROUP BY h."CNES"'
-        f" HAVING COUNT(*) > {min_count}"
-        " ORDER BY custo_por_dia ASC"
+        f' HAVING COUNT(*) > {min_count} AND SUM(i."DIAS_PERM") > 0'
+        f" ORDER BY custo_por_dia {order_direction}"
         f" LIMIT {top_n};"
+    )
+
+
+def _year_where_clause(plan: SemanticPlan, alias: str = "i") -> str:
+    years = _plan_filter_values(plan, {"ano", "ano_internacao"})
+    if len(years) == 1 and years[0].isdigit():
+        return f' AND EXTRACT(YEAR FROM {alias}."DT_INTER") = {years[0]}'
+    if len(years) > 1 and all(year.isdigit() for year in years):
+        quoted_years = ", ".join(years)
+        return f' AND EXTRACT(YEAR FROM {alias}."DT_INTER") IN ({quoted_years})'
+    ranges = [
+        semantic_filter.values
+        for semantic_filter in plan.filters
+        if semantic_filter.field == "ano_intervalo" and len(semantic_filter.values) >= 2
+    ]
+    if ranges:
+        start_year, end_year = str(ranges[0][0]), str(ranges[0][1])
+        return f' AND EXTRACT(YEAR FROM {alias}."DT_INTER") BETWEEN {start_year} AND {end_year}'
+    return ""
+
+
+def _socioeconomic_year_where_clause(plan: SemanticPlan, alias: str = "s") -> str:
+    years = _plan_filter_values(plan, {"ano", "ano_internacao"})
+    if len(years) == 1 and years[0].isdigit():
+        return f' AND {alias}."NU_ANO" = {years[0]}'
+    if len(years) > 1 and all(year.isdigit() for year in years):
+        quoted_years = ", ".join(years)
+        return f' AND {alias}."NU_ANO" IN ({quoted_years})'
+    ranges = [
+        semantic_filter.values
+        for semantic_filter in plan.filters
+        if semantic_filter.field == "ano_intervalo" and len(semantic_filter.values) >= 2
+    ]
+    if ranges:
+        start_year, end_year = str(ranges[0][0]), str(ranges[0][1])
+        return f' AND {alias}."NU_ANO" BETWEEN {start_year} AND {end_year}'
+    return ""
+
+
+def _build_population_rate_by_state_sql(
+    semantic_plan: SemanticPlan | dict | None,
+) -> str | None:
+    if not semantic_plan:
+        return None
+    plan = (
+        semantic_plan
+        if isinstance(semantic_plan, SemanticPlan)
+        else SemanticPlan.model_validate(semantic_plan)
+    )
+    if not any(metric.name == "taxa_internacoes_populacao" for metric in plan.metrics):
+        return None
+    if "estado" not in plan.answer_shape.required_dimensions:
+        return None
+
+    state_filter = _state_where_clause(plan, "mu")
+    year_filter = _year_where_clause(plan, "i")
+    socioeconomic_year_filter = _socioeconomic_year_where_clause(plan, "s")
+    return (
+        "WITH internacoes_por_estado AS ("
+        ' SELECT mu."SG_UF" AS estado, COUNT(*) AS total_internacoes'
+        " FROM internacoes i"
+        ' JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"'
+        f' WHERE i."DT_INTER" IS NOT NULL{state_filter}{year_filter}'
+        ' GROUP BY mu."SG_UF"'
+        "), populacao_por_estado AS ("
+        ' SELECT mu."SG_UF" AS estado, SUM(s."QT_POPULACAO") AS populacao'
+        " FROM socioeconomico s"
+        ' JOIN municipios mu ON s."CO_MUNICIPIO_6D" = mu."CO_MUNICIPIO_6D"'
+        f" WHERE s.\"QT_POPULACAO\" IS NOT NULL{socioeconomic_year_filter}{state_filter}"
+        ' GROUP BY mu."SG_UF"'
+        ") "
+        "SELECT ipe.estado, ipe.total_internacoes, ppe.populacao,"
+        " ROUND(ipe.total_internacoes * 100000.0 / NULLIF(ppe.populacao, 0), 2)"
+        " AS taxa_internacoes_por_100_mil"
+        " FROM internacoes_por_estado ipe"
+        " JOIN populacao_por_estado ppe ON ipe.estado = ppe.estado"
+        " ORDER BY ipe.estado;"
+    )
+
+
+def _build_time_to_death_sql(
+    semantic_plan: SemanticPlan | dict | None,
+) -> str | None:
+    if not semantic_plan:
+        return None
+    plan = (
+        semantic_plan
+        if isinstance(semantic_plan, SemanticPlan)
+        else SemanticPlan.model_validate(semantic_plan)
+    )
+    if not any(metric.name == "tempo_ate_obito" for metric in plan.metrics):
+        return None
+
+    year_filter = _year_where_clause(plan, "i")
+    return (
+        "SELECT ROUND(AVG(date_diff('day', i.\"DT_INTER\", i.\"DT_SAIDA\")), 2)"
+        " AS tempo_medio_dias_ate_obito"
+        " FROM internacoes i"
+        ' WHERE i."MORTE" = true'
+        ' AND i."DT_INTER" IS NOT NULL'
+        ' AND i."DT_SAIDA" IS NOT NULL'
+        f"{year_filter};"
     )
 
 
@@ -1154,12 +1257,14 @@ def _dimension_select_indexes(select_items: list[str], dimensions: list[str]) ->
 def _select_item_matches_dimension(select_item: str, dimension: str) -> bool:
     item = select_item.lower()
     dimension_patterns = {
+        "estado": [r"\bsg_uf\b", r"\bestado\b"],
         "SG_UF": [r"\bestado\b"],
         "estado_hospital": [r"\bestado\b"],
         "municipio": [r"\bnome\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
         "municipio_hospital": [r"\bnome\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
         "hospital": [r"\bcnes\b"],
         "especialidade": [r"\bespecialidade\b", r"\bdescri[cç][aã]o\b", r"\bespec\b"],
+        "cid_capitulo": [r"\bcap[ií]tulo\b", r"\bcapitulo_cid\b", r"\bcid_capitulo\b", r"\bsubstr\s*\("],
         "diagnostico": [r"\bdescricao\b", r"\bdiag_princ\b", r"\bcid\b"],
         "procedimento": [r"\bnome_proc\b", r"\bproc_rea\b", r"\bprocedimento\b"],
         "sexo": [r"\bsexo\b"],
@@ -1190,6 +1295,76 @@ def _parse_tool_result_rows(tool_result_str: str) -> list[dict]:
         return [{"result": parsed}]
 
     return [{"result": line.strip()} for line in text.split("\n") if line.strip()]
+
+
+def _sql_mentions_output_dimension(sql: str, dimension: str) -> bool:
+    text = sql.lower()
+    patterns = {
+        "estado": [r"\bsg_uf\b", r"\bestado\b"],
+        "estado_hospital": [r"\bsg_uf\b", r"\bestado\b"],
+        "municipio": [r"\bno_municipio\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
+        "municipio_hospital": [r"\bno_municipio\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
+        "hospital": [r"\bcnes\b", r"\bhospital\b"],
+        "especialidade": [r"\bespecialidade\b", r"\bespec\b", r"\bdescri[cç][aã]o\b"],
+        "cid_capitulo": [r"\bcap[ií]tulo\b", r"\bcapitulo_cid\b", r"\bcid_capitulo\b", r"\bsubstr\s*\("],
+        "diagnostico": [r"\bdiag_princ\b", r"\bcid\b", r"\bdescri[cç][aã]o\b"],
+        "procedimento": [r"\bproc_rea\b", r"\bnome_proc\b", r"\bprocedimento\b"],
+        "sexo": [r"\bsexo\b"],
+        "raca_cor": [r"\braca_cor\b", r"\bra[cç]a\b", r"\bcor\b"],
+        "instrucao": [r"\binstru\b", r"\binstrucao\b", r"\binstru[cç][aã]o\b"],
+        "idade": [r"\bidade\b"],
+        "faixa_etaria": [r"\bfaixa\b", r"\bidade\b"],
+        "ano": [r"\bano\b", r"\bextract\s*\(\s*year\b"],
+        "mes": [r"\bmes\b", r"\bextract\s*\(\s*month\b"],
+        "trimestre": [r"\btrimestre\b", r"\bextract\s*\(\s*quarter\b"],
+        "dia_semana": [r"\bdia_semana\b", r"\bdayofweek\b", r"\bisodow\b"],
+    }
+    return any(re.search(pattern, text, re.I) for pattern in patterns.get(dimension, []))
+
+
+def _validate_post_execution_contract(
+    semantic_plan: SemanticPlan | dict | None,
+    sql: str,
+    *,
+    results: list[dict],
+    row_count: int,
+) -> tuple[bool, str | None]:
+    if not semantic_plan or not sql:
+        return True, None
+    plan = (
+        semantic_plan
+        if isinstance(semantic_plan, SemanticPlan)
+        else SemanticPlan.model_validate(semantic_plan)
+    )
+    unsupported = [
+        ambiguity.removeprefix("unsupported_metric:")
+        for ambiguity in plan.ambiguities
+        if ambiguity.startswith("unsupported_metric:")
+    ]
+    if unsupported:
+        return False, (
+            "POST EXECUTION CONTRACT ERROR: query used unavailable schema metric(s): "
+            + ", ".join(sorted(unsupported))
+        )
+
+    required_dimensions = plan.answer_shape.required_dimensions
+    if required_dimensions and plan.answer_shape.row_grain != "single_scalar":
+        missing_dimensions = [
+            dimension
+            for dimension in required_dimensions
+            if not _sql_mentions_output_dimension(sql, dimension)
+        ]
+        if missing_dimensions:
+            return False, (
+                "POST EXECUTION CONTRACT ERROR: successful SQL is missing requested output "
+                f"dimension(s): {', '.join(missing_dimensions)}."
+            )
+        if row_count <= 1 and not results and plan.answer_shape.expected_row_count == "one_per_group":
+            return False, (
+                "POST EXECUTION CONTRACT ERROR: grouped query returned no rows, so it did not "
+                "materialize the requested output dimensions."
+            )
+    return True, None
 
 
 def execute_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
@@ -1359,6 +1534,34 @@ def execute_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 },
             )
 
+            execution_time = time.time() - start_time
+            state = update_phase(state, ExecutionPhase.SQL_EXECUTION, execution_time)
+            return state
+
+        post_execution_passed, post_execution_message = _validate_post_execution_contract(
+            state.get("semantic_plan"),
+            validated_sql,
+            results=results,
+            row_count=row_count,
+        )
+        if not post_execution_passed:
+            sql_execution_result.success = False
+            sql_execution_result.validation_passed = False
+            sql_execution_result.error_message = post_execution_message
+            state["sql_execution_result"] = sql_execution_result
+            state = add_error(
+                state,
+                post_execution_message or "Post-execution semantic contract failed",
+                "sql_execution_error",
+                ExecutionPhase.SQL_EXECUTION,
+                taxonomy=TX.WRONG_AGGREGATION,
+            )
+            state["retry_count"] = state.get("retry_count", 0) + 1
+            state["execution_retry_count"] = state.get("execution_retry_count", 0) + 1
+            metadata = state.get("response_metadata", {}) or {}
+            metadata["post_execution_contract_error"] = post_execution_message
+            state["response_metadata"] = metadata
+            state = add_ai_message(state, post_execution_message or "Post-execution contract failed")
             execution_time = time.time() - start_time
             state = update_phase(state, ExecutionPhase.SQL_EXECUTION, execution_time)
             return state
@@ -1737,6 +1940,10 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             or "last_n_available_years charts" in error_message.lower()
             or "requested year filter" in error_message.lower()
             or "requested estado filter" in error_message.lower()
+            or "population-rate" in error_message.lower()
+            or "preaggregate population" in error_message.lower()
+            or "date_diff" in error_message.lower()
+            or "requested output dimension" in error_message.lower()
             or "chart plan" in error_message.lower()
             or "cannot compare values of type date and type bigint" in error_message.lower()
             or "max(extract(year" in error_message.lower()
@@ -1748,6 +1955,8 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 or _build_top_n_count_by_dimension_sql(state.get("semantic_plan"))
                 or _build_filtered_category_period_percentage_sql(state.get("semantic_plan"))
                 or _build_cost_per_day_by_hospital_sql(state.get("semantic_plan"))
+                or _build_population_rate_by_state_sql(state.get("semantic_plan"))
+                or _build_time_to_death_sql(state.get("semantic_plan"))
                 or _build_absent_uti_hospital_sql(state.get("semantic_plan"))
                 or _build_cumulative_coverage_sql(state.get("semantic_plan"))
                 or _build_reference_uti_rate_sql(state.get("semantic_plan"))

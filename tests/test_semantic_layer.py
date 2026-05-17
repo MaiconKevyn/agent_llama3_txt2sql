@@ -1699,6 +1699,143 @@ def test_semantic_plan_treats_gender_in_scalar_average_as_filter():
     assert any(filter_.field == "sexo" and filter_.values == ["1"] for filter_ in plan.filters)
 
 
+def test_semantic_plan_extracts_inclusive_age_lower_bound():
+    plan = build_semantic_plan(
+        "Qual foi a taxa de mortalidade hospitalar em pacientes com 65 anos ou mais em 2021?"
+    )
+
+    assert any(
+        filter_.field == "idade" and filter_.operator == ">=" and filter_.values == ["65"]
+        for filter_ in plan.filters
+    )
+
+
+def test_semantic_plan_extracts_generic_age_above_lower_bound():
+    plan = build_semantic_plan("Qual foi o custo médio das internações de homens acima de 60 anos?")
+
+    assert any(
+        filter_.field == "idade" and filter_.operator == ">" and filter_.values == ["60"]
+        for filter_ in plan.filters
+    )
+
+
+def test_semantic_validator_accepts_equivalent_numeric_age_filter():
+    plan = build_semantic_plan(
+        "Qual foi a taxa de mortalidade hospitalar em pacientes com 65 anos ou mais em 2021?"
+    )
+    sql = """
+        SELECT SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*)
+        FROM internacoes i
+        WHERE i."IDADE" >= 65
+          AND EXTRACT(YEAR FROM i."DT_INTER") = 2021
+    """
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert valid is True, message
+
+
+def test_semantic_plan_treats_multi_state_compare_between_as_grouped_output():
+    plan = build_semantic_plan(
+        "Compare a taxa de mortalidade hospitalar entre Maranhão e Rio Grande do Sul em 2021."
+    )
+
+    assert plan.answer_shape.row_grain == "one_row_per_group"
+    assert "estado" in plan.answer_shape.required_dimensions
+    assert plan.answer_shape.requires_group_by is True
+
+
+def test_semantic_validator_accepts_grouped_state_sql_for_compare_between_states():
+    plan = build_semantic_plan(
+        "Compare a taxa de mortalidade hospitalar entre Maranhão e Rio Grande do Sul em 2021."
+    )
+    sql = """
+        SELECT mu."SG_UF" AS estado,
+               SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa
+        FROM internacoes i
+        JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+        WHERE mu."SG_UF" IN ('MA', 'RS')
+          AND EXTRACT(YEAR FROM i."DT_INTER") = 2021
+        GROUP BY mu."SG_UF"
+        ORDER BY estado
+    """
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert valid is True, message
+
+
+def test_semantic_plan_flags_schema_unavailable_metrics():
+    cases = [
+        ("Qual foi a cobertura vacinal dos internados?", "vacina"),
+        ("Qual antibiótico foi usado em pneumonia?", "medicacao"),
+        ("Qual o resultado dos exames laboratoriais?", "exames_laboratoriais"),
+        ("Compare internações em área rural e urbana em 2021.", "area_rural_urbana"),
+        ("Qual a sobrevida após alta?", "sobrevida_pos_alta"),
+        ("Qual a reinternação em 30 dias?", "reinternacao"),
+    ]
+
+    for question, metric_name in cases:
+        plan = build_semantic_plan(question)
+
+        assert f"unsupported_metric:{metric_name}" in plan.ambiguities
+
+
+def test_semantic_plan_marks_population_rate_per_capita_denominator_contract():
+    plan = build_semantic_plan("Qual foi a taxa de internações por 100 mil habitantes por estado em 2021?")
+
+    assert any(metric.name == "taxa_internacoes_populacao" for metric in plan.metrics)
+    assert "population_rate_requires_preaggregated_denominator" in plan.constraints
+
+
+def test_semantic_validator_rejects_population_rate_denominator_multiplied_by_fact_join():
+    plan = build_semantic_plan("Qual foi a taxa de internações por 100 mil habitantes por estado em 2021?")
+    sql = """
+        SELECT mu."SG_UF" AS estado,
+               COUNT(*) * 100000.0 / SUM(s."QT_POPULACAO") AS taxa
+        FROM internacoes i
+        JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+        JOIN socioeconomico s ON mu."CO_MUNICIPIO_6D" = s."CO_MUNICIPIO_6D"
+        WHERE EXTRACT(YEAR FROM i."DT_INTER") = 2021
+        GROUP BY mu."SG_UF"
+    """
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert valid is False
+    assert "preaggregate population" in (message or "").lower()
+
+
+def test_semantic_plan_marks_time_to_death_duckdb_date_diff_contract():
+    plan = build_semantic_plan("Qual foi o tempo médio entre internação e óbito em 2021?")
+
+    assert any(metric.name == "tempo_ate_obito" for metric in plan.metrics)
+    assert "duckdb_date_diff_required_for_date_interval" in plan.constraints
+
+
+def test_semantic_plan_treats_cid_chapter_list_as_grouped_output():
+    plan = build_semantic_plan("Quais capítulos CID concentraram mais internações em 2021?")
+
+    assert plan.answer_shape.row_grain == "one_row_per_group"
+    assert "cid_capitulo" in plan.answer_shape.required_dimensions
+    assert plan.answer_shape.requires_group_by is True
+
+
+def test_semantic_validator_rejects_epoch_date_part_interval_for_duckdb():
+    plan = build_semantic_plan("Qual foi o tempo médio entre internação e óbito em 2021?")
+    sql = """
+        SELECT AVG(DATE_PART('epoch', i."DT_SAIDA" - i."DT_INTER") / 86400) AS tempo_medio
+        FROM internacoes i
+        WHERE i."MORTE" = true
+          AND EXTRACT(YEAR FROM i."DT_INTER") = 2021
+    """
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert valid is False
+    assert "date_diff" in (message or "").lower()
+
+
 def test_plan_gate_persists_semantic_telemetry_metadata():
     state = create_initial_messages_state(
         user_query="Quais são os 3 hospitais com maior custo médio de UTI por estado?",

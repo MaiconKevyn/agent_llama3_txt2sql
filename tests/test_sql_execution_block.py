@@ -434,6 +434,75 @@ def test_build_goalv2_cost_per_day_hospital_sql():
     assert "LIMIT 5" in sql
 
 
+def test_build_goalv2_highest_cost_per_day_hospital_sql_orders_desc_and_excludes_zero_days():
+    from src.agent.execution import _build_cost_per_day_by_hospital_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan("Quais são os 5 hospitais com maior custo por dia de internação?")
+
+    sql = _build_cost_per_day_by_hospital_sql(plan)
+
+    assert sql is not None
+    assert 'SUM(i."VAL_TOT") / NULLIF(SUM(i."DIAS_PERM"), 0)' in sql
+    assert 'SUM(i."DIAS_PERM") > 0' in sql
+    assert "ORDER BY custo_por_dia DESC" in sql
+
+
+def test_build_goalv2_population_rate_by_state_sql_preaggregates_denominator():
+    from src.agent.execution import _build_population_rate_by_state_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan("Qual foi a taxa de internações por 100 mil habitantes por estado em 2021?")
+
+    sql = _build_population_rate_by_state_sql(plan)
+
+    assert sql is not None
+    assert "internacoes_por_estado AS" in sql
+    assert "populacao_por_estado AS" in sql
+    assert 'SUM(s."QT_POPULACAO") AS populacao' in sql
+    assert 's."NU_ANO" = 2021' in sql
+    assert "ipe.total_internacoes * 100000.0 / NULLIF(ppe.populacao, 0)" in sql
+    assert "JOIN populacao_por_estado" in sql
+
+
+def test_build_goalv2_time_to_death_sql_uses_duckdb_date_diff():
+    from src.agent.execution import _build_time_to_death_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan("Qual foi o tempo médio entre internação e óbito em 2021?")
+
+    sql = _build_time_to_death_sql(plan)
+
+    assert sql is not None
+    assert "date_diff('day'," in sql
+    assert 'i."MORTE" = true' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert "DATE_PART" not in sql
+
+
+def test_post_execution_contract_rejects_successful_sql_missing_requested_dimension():
+    from src.agent.execution import _validate_post_execution_contract
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan("Qual foi a principal causa de morte por capítulos CID em 2021?")
+    sql = """
+        SELECT COUNT(*) AS total_mortes
+        FROM internacoes i
+        WHERE i."MORTE" = true
+          AND EXTRACT(YEAR FROM i."DT_INTER") = 2021
+    """
+
+    passed, message = _validate_post_execution_contract(
+        plan,
+        sql,
+        results=[{"result": (100,)}],
+        row_count=1,
+    )
+
+    assert passed is False
+    assert "requested output dimension" in (message or "").lower()
+
+
 def test_build_goalv2_reference_uti_rate_sql():
     from src.agent.execution import _build_reference_uti_rate_sql
     from src.semantic.planner import build_semantic_plan

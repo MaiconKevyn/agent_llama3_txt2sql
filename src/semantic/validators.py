@@ -63,6 +63,7 @@ def _has_group_by_dimension(inspector: SQLInspector, dimension: str) -> bool:
         "municipio_hospital": [r"\b(?:no_municipio|nome|municipio|município)\b"],
         "hospital": [r"\b(?:cnes|\"cnes\")\b"],
         "especialidade": [r"\bespecialidade\b", r"\bdescri[cç][aã]o\b", r"\bespec\b"],
+        "cid_capitulo": [r"\bcap[ií]tulo\b", r"\bcapitulo_cid\b", r"\bcid_capitulo\b", r"\bsubstr\s*\("],
         "diagnostico": [r"\b(?:descricao|\"descricao\"|diag_princ|cid)\b"],
         "procedimento": [r"\b(?:nome_proc|\"nome_proc\"|proc_rea)\b"],
         "contraceptivo": [r"\b(?:contraceptivo|contracep1|descricao|descri[cç][aã]o)\b"],
@@ -208,6 +209,7 @@ def validate_sql_against_semantic_plan(
                     "municipio_hospital",
                     "hospital",
                     "especialidade",
+                    "cid_capitulo",
                     "diagnostico",
                     "procedimento",
                     "contraceptivo",
@@ -373,6 +375,43 @@ def _validate_additional_semantic_constraints(
             return False, (
                 "SEMANTIC PLAN ERROR: Cost-per-day efficiency must divide by "
                 "NULLIF(SUM(DIAS_PERM), 0) to avoid dropping support rows or dividing by zero."
+            )
+
+    if "population_rate_requires_preaggregated_denominator" in plan.constraints:
+        if "socioeconomico" not in text or "qt_populacao" not in text:
+            return False, (
+                "SEMANTIC PLAN ERROR: Population-rate SQL must use socioeconomico.QT_POPULACAO "
+                "as the denominator."
+            )
+        if re.search(r"\bsum\s*\(\s*(?:s\.)?\"?qt_populacao\"?\s*\)", text, re.I):
+            has_population_cte = re.search(
+                r"\bpopulacao[\w_]*\s+as\s*\([\s\S]{0,360}\bsum\s*\(\s*(?:s\.)?\"?qt_populacao\"?",
+                text,
+                re.I,
+            )
+            if not has_population_cte:
+                return False, (
+                    "SEMANTIC PLAN ERROR: Population-rate SQL must preaggregate population "
+                    "before joining to admission counts; do not SUM(QT_POPULACAO) across fact rows."
+                )
+        if not re.search(r"\b100000(?:\.0+)?\b", text, re.I):
+            return False, (
+                "SEMANTIC PLAN ERROR: Population-rate SQL must apply the requested per-100,000 scale."
+            )
+
+    if "duckdb_date_diff_required_for_date_interval" in plan.constraints:
+        if re.search(r"\bdate_part\s*\(\s*['\"]epoch['\"]", text, re.I):
+            return False, (
+                "SEMANTIC PLAN ERROR: DuckDB date interval calculations should use date_diff, "
+                "not DATE_PART('epoch', date subtraction)."
+            )
+        if not re.search(r"\bdate_diff\s*\(\s*['\"]day['\"]", text, re.I):
+            return False, (
+                "SEMANTIC PLAN ERROR: Date interval questions must use DuckDB date_diff('day', start, end)."
+            )
+        if not re.search(r"\bmorte\b\"?\s*=\s*true\b", text, re.I):
+            return False, (
+                "SEMANTIC PLAN ERROR: Time-to-death questions must filter registered deaths with MORTE = true."
             )
 
     if metric_names & {"proporcao", "taxa_uti"}:
@@ -1055,6 +1094,7 @@ def _first_dimension_select_position(select_items: list[str], dimension: str) ->
         "municipio_hospital": [r"\bnome\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
         "hospital": [r"\bcnes\b"],
         "especialidade": [r"\bespecialidade\b", r"\bdescri[cç][aã]o\b", r"\bespec\b"],
+        "cid_capitulo": [r"\bcap[ií]tulo\b", r"\bcapitulo_cid\b", r"\bcid_capitulo\b", r"\bsubstr\s*\("],
         "diagnostico": [r"\bdescricao\b", r"\bdiag_princ\b", r"\bcid\b"],
         "procedimento": [r"\bnome_proc\b", r"\bproc_rea\b", r"\bprocedimento\b"],
         "contraceptivo": [r"\bcontraceptivo\b", r"\bcontracep1\b", r"\bdescri[cç][aã]o\b"],
@@ -1152,12 +1192,7 @@ def _validate_required_filters(
                     "excluding SEM INFORMACAO codes, not only checking RACA_COR IS NOT NULL."
                 )
         elif field == "idade" and values:
-            expected = values[0]
-            if not re.search(
-                rf"\bidade\b\"?\s*{re.escape(semantic_filter.operator)}\s*{re.escape(expected)}\b",
-                text,
-                re.I,
-            ):
+            if not _sql_satisfies_age_filter(text, semantic_filter.operator, values[0]):
                 return False, "SEMANTIC PLAN ERROR: SQL does not apply the requested age filter."
         elif field == "uti":
             if "val_uti" not in text:
@@ -1214,6 +1249,45 @@ def _validate_required_filters(
             if not re.search(r"\binstru\b\"?\s*(?:!=|<>)\s*0\b", text, re.I):
                 return False, "SEMANTIC PLAN ERROR: SQL does not exclude INSTRU=0."
     return True, None
+
+
+def _sql_satisfies_age_filter(sql_lower: str, operator: str, expected_value: str) -> bool:
+    match = re.search(r"\d+", str(expected_value))
+    if not match:
+        return False
+    expected = int(match.group(0))
+    comparisons = re.finditer(
+        r"\bidade\b\"?\s*(>=|<=|=|>|<)\s*(\d+)\b",
+        sql_lower,
+        re.I,
+    )
+    for comparison in comparisons:
+        sql_operator, sql_value_text = comparison.group(1), comparison.group(2)
+        sql_value = int(sql_value_text)
+        if operator == "=":
+            if sql_operator == "=" and sql_value == expected:
+                return True
+        elif operator == ">=":
+            if (sql_operator == ">=" and sql_value <= expected) or (
+                sql_operator == ">" and sql_value < expected
+            ):
+                return True
+        elif operator == ">":
+            if (sql_operator == ">" and sql_value <= expected) or (
+                sql_operator == ">=" and sql_value <= expected + 1
+            ):
+                return True
+        elif operator == "<":
+            if (sql_operator == "<" and sql_value >= expected) or (
+                sql_operator == "<=" and sql_value >= expected - 1
+            ):
+                return True
+        elif operator == "<=":
+            if (sql_operator == "<=" and sql_value >= expected) or (
+                sql_operator == "<" and sql_value > expected
+            ):
+                return True
+    return False
 
 
 def _has_unrequested_nonzero_metric_filter(inspector: SQLInspector) -> bool:

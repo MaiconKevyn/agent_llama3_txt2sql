@@ -111,6 +111,33 @@ def test_plan_gate_routes_unsupported_schema_metric_to_clarification():
     )
 
 
+@pytest.mark.parametrize(
+    ("question", "metric_name"),
+    [
+        ("Qual foi a cobertura vacinal dos internados?", "vacina"),
+        ("Qual antibiótico foi usado em pneumonia?", "medicacao"),
+        ("Qual o resultado dos exames laboratoriais?", "exames_laboratoriais"),
+        ("Compare internações em área rural e urbana em 2021.", "area_rural_urbana"),
+        ("Qual a sobrevida após alta?", "sobrevida_pos_alta"),
+        ("Qual a reinternação em 30 dias?", "reinternacao"),
+    ],
+)
+def test_plan_gate_routes_new_unavailable_schema_metrics_to_clarification(
+    question, metric_name
+):
+    state = create_initial_messages_state(
+        question,
+        session_id=f"test-unsupported-{metric_name}",
+    )
+
+    new_state = plan_gate_node(state)
+
+    assert new_state["needs_clarification"] is True
+    assert "schema atual" in (new_state["clarification_question"] or "")
+    assert new_state["generated_sql"] is None
+    assert metric_name in new_state["response_metadata"]["unsupported_schema_metric"]
+
+
 def test_route_after_multi_verifier_and_repair():
     assert route_after_multi_verifier({"single_fallback_active": True}) == "generate_sql"
     assert route_after_multi_verifier({"single_fallback_active": False}) == "result_synthesizer"
