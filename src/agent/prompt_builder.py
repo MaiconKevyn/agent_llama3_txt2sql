@@ -794,7 +794,7 @@ def build_sql_generation_messages(
         [
             (
                 "system",
-                "You are a PostgreSQL expert assistant for Brazilian healthcare (SIH-RS) data analysis.\n\n"
+                "You are a DuckDB SQL expert assistant for Brazilian healthcare (SIH-RS) data analysis.\n\n"
                 "{rules_section}\n\n"
                 '        CORE: Use double quotes for all columns: "COLUMN_NAME". Return ONLY the SQL query.\n\n'
                 "        DATABASE SCHEMA:\n        {schema_context}",

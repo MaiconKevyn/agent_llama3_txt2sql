@@ -39,7 +39,7 @@ WORKFLOW_STRUCTURE_TEXT = """
     END
 
      Features:
-    • PostgreSQL with 15 specialized tables
+    • DuckDB with specialized sihrd5 tables
     • LlamaIndex schema-based table selection
     • OpenAI tool calling (gpt-4o / gpt-4o-mini)
     • Retry mechanisms with error recovery

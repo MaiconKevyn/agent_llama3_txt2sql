@@ -15,7 +15,7 @@ class DummyMetrics:
 
 def test_build_application_config_preserves_base_settings():
     base = ApplicationConfig(
-        database_type="postgresql",
+        database_type="duckdb",
         database_path="db-url",
         llm_model="gpt-4o-mini",
         llm_temperature=0.0,

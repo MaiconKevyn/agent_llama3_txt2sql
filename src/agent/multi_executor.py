@@ -151,7 +151,7 @@ def _repair_subquery_sql(
     llm_manager,
 ) -> str | None:
     system_prompt = (
-        "Você é um especialista em PostgreSQL responsável por corrigir uma subconsulta SQL do banco SUS. "
+        "Você é um especialista em DuckDB SQL responsável por corrigir uma subconsulta SQL do banco SUS. "
         "Preserve as constraints da subconsulta, use apenas SELECT e responda somente com a SQL corrigida."
     )
     human_prompt = (

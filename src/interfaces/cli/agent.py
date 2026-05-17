@@ -52,15 +52,19 @@ def _print_llm_configuration(orchestrator: LangGraphOrchestrator):
 
 def create_app_config(args) -> ApplicationConfig:
     """Create application configuration from command line arguments"""
-    from src.application.config.simple_config import ApplicationConfig, InterfaceType
+    from src.application.config.simple_config import (
+        ApplicationConfig,
+        InterfaceType,
+        infer_database_type,
+    )
 
     # Use defaults from ApplicationConfig and override with command line args when explicitly provided
     config = ApplicationConfig()
 
     # Override with command line arguments if they differ from defaults
-    # Database URL (PostgreSQL)
+    # Database URL/path override
     if hasattr(args, "db_url") and args.db_url:
-        config.database_type = "postgresql"
+        config.database_type = infer_database_type(args.db_url)
         config.database_path = args.db_url
 
     # LLM model
@@ -509,7 +513,7 @@ def main():
     logger = get_cli_logger()
     """Main entry point with clean architecture"""
     parser = argparse.ArgumentParser(
-        description="TXT2SQL - LangGraph V3 (PostgreSQL)",
+        description="TXT2SQL - LangGraph V3 (DuckDB)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
         Exemplos de uso:
@@ -519,26 +523,26 @@ def main():
           python src/interfaces/cli/agent.py --query "Quantas mortes em Porto Alegre?"   # Query única
           python src/interfaces/cli/agent.py --query "Quantas mortes?" --debug-steps     # Query c/ debug
           python src/interfaces/cli/agent.py --debug-steps                # Modo interativo com debug
-          python src/interfaces/cli/agent.py --db-url postgresql+psycopg2://user:pass@localhost:5432/sihrd5  # DB via CLI
+          python src/interfaces/cli/agent.py --db-url duckdb:////absolute/path/to/sihrd5.duckdb?access_mode=read_only  # DB via CLI
         
         Arquitetura (LangGraph V3):
           • LangGraphOrchestrator: Orquestração principal
           • Nodes: Classification, Table Discovery, Schema, SQL Gen, Validation, Execution, Response
           • LLM Manager + SQLDatabaseToolkit (LangChain)
-          • DatabaseConnectionService (PostgreSQL)
+          • SQLDatabaseToolkit + DuckDB/SQLAlchemy
           • Logging centralizado (logs/*)
           • Interfaces: CLI e API FastAPI
         """,
     )
 
-    # Database options (PostgreSQL)
+    # Database options (DuckDB)
     parser.add_argument(
         "--db-url",
         default=None,
         help=(
-            "URL de conexão PostgreSQL (SQLAlchemy), por ex.: "
-            "postgresql+psycopg2://usuario:senha@localhost:5432/sihrd5. "
-            "Se omitido, usa ApplicationConfig ou a variável de ambiente DATABASE_URL."
+            "URL DuckDB/SQLAlchemy, por ex.: "
+            "duckdb:////absolute/path/to/sihrd5.duckdb?access_mode=read_only. "
+            "Se omitido, usa ApplicationConfig, DATABASE_URL ou DATABASE_PATH."
         ),
     )
 
@@ -642,7 +646,7 @@ TXT2SQL Claude - LangGraph V3
 ====================================
 
 Versão: 3.0.0
-Arquitetura: LangGraph SQL Agent com PostgreSQL
+Arquitetura: LangGraph SQL Agent com DuckDB
 Última atualização: Agosto 2025
 
 Componentes LangGraph V3:
@@ -652,19 +656,19 @@ Componentes LangGraph V3:
 • Schema Introspection Node: Análise de schema
 • SQL Generation Node: Geração de SQL
 • SQL Validation Node: Validação de SQL
-• SQL Execution Node: Execução no PostgreSQL
+• SQL Execution Node: Execução no DuckDB
 • Response Generation Node: Formatação de resposta
 
 Melhorias da V3:
  Migração completa para LangGraph
- PostgreSQL com 16 tabelas especializadas (sihrd5)
+ DuckDB com 16 tabelas especializadas (sihrd5)
  Seleção inteligente de tabelas (75%+ precisão)
  Suporte a healthcare brasileiro (SUS)
  Visualização de workflow (--visualize-workflow)
      Debug interativo com retry mechanisms
      OpenAI tool calling (gpt-4o / gpt-4o-mini)
 
-Database: PostgreSQL sihrd5 (18M+ internacoes, 37M+ internacao_procedimento)
+Database: DuckDB sihrd5 (18M+ internacoes, 37M+ internacao_procedimento)
 Domínio: Healthcare brasileiro (internações, procedimentos, diagnósticos)
 """)
         return
@@ -838,7 +842,7 @@ Domínio: Healthcare brasileiro (internações, procedimentos, diagnósticos)
         print("\n Dicas para resolução:")
         print("• Verifique se OPENAI_API_KEY está definido")
         print("• Confirme o modelo configurado (ex.: gpt-4o-mini) e limites de uso da conta")
-        print("• Verifique se o banco PostgreSQL está acessível (DATABASE_URL no .env)")
+        print("• Verifique se o arquivo DuckDB está acessível (DATABASE_PATH no .env)")
         print("• Execute health check: python src/interfaces/cli/agent.py --health-check")
         sys.exit(1)
 

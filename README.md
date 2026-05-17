@@ -243,8 +243,7 @@ Version constraints are defined in [`pyproject.toml`](pyproject.toml) and [`fron
 | Data contracts | Pydantic | `>=2.11.7` | API models, semantic plans, chart specs |
 | Experiment tracking | MLflow | `>=2.15.0` | Optional run and ablation tracking |
 | Database access | SQLAlchemy | `2.0.41` | DB engine abstraction |
-| PostgreSQL driver | psycopg2-binary | `>=2.9.10` | PostgreSQL execution |
-| Local analytical DB | DuckDB | `1.4.4` | Local/analytical database runtime |
+| Primary analytical DB | DuckDB | `1.4.4` | Main local database runtime |
 | DuckDB SQLAlchemy | duckdb-engine | `0.17.0` | DuckDB URL support |
 | Embeddings | sentence-transformers | `>=2.6.1` | Local memory/vector-store support |
 | Frontend runtime | Node.js | `>=16` | Web interface server |
@@ -309,7 +308,7 @@ txt2sql_refactor_openai_v2/
 - Python 3.11 or higher.
 - Node.js 16 or higher for the web UI.
 - OpenAI API key.
-- PostgreSQL or DuckDB-compatible database URL.
+- DuckDB database file available through a DuckDB SQLAlchemy URL.
 
 ### 1. Clone the Repository
 
@@ -345,18 +344,18 @@ Create the environment file:
 cp .env.example .env
 ```
 
-Edit `.env` and set at least `OPENAI_API_KEY` plus one database setting.
+Edit `.env` and set at least `OPENAI_API_KEY` plus `DATABASE_PATH`.
 
 Typical variables:
 
 ```env
 OPENAI_API_KEY=sk-your_openai_key_here
 
-# Preferred
-DATABASE_URL=postgresql+psycopg2://postgres:your_password@localhost:5432/sihrd5
+# Main database: local DuckDB file
+DATABASE_PATH=duckdb:////absolute/path/to/sihrd5.duckdb?access_mode=read_only
 
-# Optional fallback if DATABASE_URL is not set
-DATABASE_PATH=duckdb:///path/to/local.duckdb
+# Optional alias if you prefer a SQLAlchemy URL variable
+# DATABASE_URL=duckdb:////absolute/path/to/sihrd5.duckdb?access_mode=read_only
 
 # Optional observability
 MLFLOW_TRACKING_URI=sqlite:///mlflow.db
@@ -367,6 +366,9 @@ The app resolves the database in this order:
 
 1. `DATABASE_URL`
 2. `DATABASE_PATH`
+
+For the standard local setup, keep `DATABASE_URL` unset and use `DATABASE_PATH`
+pointing to the DuckDB file.
 
 ### 4. Start API and Frontend
 

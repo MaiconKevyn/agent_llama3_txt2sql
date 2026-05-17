@@ -25,7 +25,7 @@ logger = get_nodes_logger()
 class SQLOutput(BaseModel):
     """Structured output for SQL generation."""
 
-    sql: str = Field(description="Valid PostgreSQL SELECT query answering the user question")
+    sql: str = Field(description="Valid DuckDB SELECT query answering the user question")
     reasoning: str = Field(description="Brief explanation of table/filter choices (1-2 sentences)")
     confidence: float = Field(
         ge=0.0,
@@ -39,7 +39,7 @@ class SQLOutput(BaseModel):
 # ---------------------------------------------------------------------------
 
 _COT_SYSTEM_PROMPT = """\
-Você é um especialista em SQL PostgreSQL para dados de saúde pública do DATASUS (SIH-RS).
+Você é um especialista em SQL DuckDB para dados de saúde pública do DATASUS (SIH-RS).
 
 Analise a pergunta do usuário e produza um PLANO SQL ESTRUTURADO em até 8 linhas para guiar a geração.
 Indique:
@@ -402,7 +402,7 @@ def generate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 simplified_messages = [
                     SystemMessage(
                         content=(
-                            "You are a PostgreSQL expert. Generate ONLY a valid SQL SELECT query "
+                            "You are a DuckDB SQL expert. Generate ONLY a valid SQL SELECT query "
                             "for the Brazilian healthcare database sihrd5. "
                             "Return ONLY the SQL, no explanation.\n\n"
                             f"DATABASE SCHEMA:\n{schema_context}"

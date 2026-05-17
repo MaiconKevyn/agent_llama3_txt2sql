@@ -419,7 +419,7 @@ TABLE_DESCRIPTIONS = {
     },
 }
 
-# Configuração para PostgreSQL
+# Configuração para DuckDB
 TOOL_CONFIGURATION = {
     "include_samples": True,
     "include_mappings": True,
@@ -428,13 +428,13 @@ TOOL_CONFIGURATION = {
     "max_sample_queries_shown": 0,
     "max_sample_length": 0,
     "concise_mode": False,
-    "postgresql_mode": True,
+    "duckdb_mode": True,
 }
 
-# Guias de seleção para PostgreSQL — banco sihrd5
+# Guias de seleção para DuckDB — banco sihrd5
 SELECTION_GUIDES = {
     "concise_guide": """
-POSTGRESQL TABLE SELECTION GUIDE (banco sihrd5):
+DUCKDB TABLE SELECTION GUIDE (banco sihrd5):
 • internacoes = Tabela principal (pacientes, internações, óbitos, VDRL, obstétrico, custos)
 • internacao_procedimento = Junction table internacoes ↔ procedimentos (N:M)
 • cid = Códigos CID-10 e descrições (anteriormente chamada cid10)
@@ -444,10 +444,10 @@ POSTGRESQL TABLE SELECTION GUIDE (banco sihrd5):
 • socioeconomico = Indicadores socioeconômicos por município/ano (formato largo)
 • tempo = Dimensão de datas
 • Lookups: sexo, raca_cor, etnia, especialidade, instrucao, vincprev, contraceptivos, nacionalidade
-• Always use "COLUMN_NAME" (double quotes) for PostgreSQL columns
+• Always use "COLUMN_NAME" (double quotes) for columns
 """,
     "full_guide": """
-COMPREHENSIVE POSTGRESQL TABLE RELATIONSHIPS (banco sihrd5):
+COMPREHENSIVE DUCKDB TABLE RELATIONSHIPS (banco sihrd5):
 
 FLUXO PRINCIPAL DE DADOS:
 internacoes (tabela central, 18.5M registros)

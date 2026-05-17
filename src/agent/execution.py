@@ -2074,10 +2074,10 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         )
 
         system_prompt = (
-            "Você é um especialista em PostgreSQL responsável por corrigir consultas SQL para o banco SUS. "
+            "Você é um especialista em DuckDB SQL responsável por corrigir consultas SQL para o banco SUS. "
             "Restrições obrigatórias: USE APENAS colunas da lista branca por alias/tabela; se uma coluna não existir, substitua por uma das sugeridas; "
             "corrija os JOINs usando chaves que existam em ambas as tabelas. "
-            "CRÍTICO — ASPAS DUPLAS: em PostgreSQL TODOS os nomes de colunas DEVEM usar aspas duplas. "
+            "CRÍTICO — ASPAS DUPLAS: no schema atual TODOS os nomes de colunas DEVEM usar aspas duplas. "
             "Se o erro mencionar 'coluna X não existe', quase sempre é falta de aspas duplas — adicione-as: "
             'c.descricao → c."DESCRICAO"; c.cid → c."CID"; alias.coluna → alias."COLUNA". '
             "Responda apenas com a SQL válida, sem comentários, markdown ou texto adicional."
