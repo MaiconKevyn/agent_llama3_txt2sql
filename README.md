@@ -311,21 +311,23 @@ txt2sql_refactor_openai_v2/
 - OpenAI API key.
 - PostgreSQL or DuckDB-compatible database URL.
 
-### Installation
-
-Clone the repository:
+### 1. Clone the Repository
 
 ```bash
 git clone <repository-url>
 cd txt2sql_refactor_openai_v2
 ```
 
-Install Python dependencies:
+### 2. Install Python Requirements
+
+Recommended path with `uv`:
 
 ```bash
+python -m pip install uv
 uv sync --extra dev
-source .venv/bin/activate
 ```
+
+You do not need to activate the virtual environment when using `uv run`.
 
 Fallback without `uv`:
 
@@ -335,21 +337,15 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Install frontend dependencies:
-
-```bash
-cd frontend
-npm install
-cd ..
-```
-
-### Configuration
+### 3. Configure Environment
 
 Create the environment file:
 
 ```bash
 cp .env.example .env
 ```
+
+Edit `.env` and set at least `OPENAI_API_KEY` plus one database setting.
 
 Typical variables:
 
@@ -372,24 +368,58 @@ The app resolves the database in this order:
 1. `DATABASE_URL`
 2. `DATABASE_PATH`
 
-### Run the CLI
+### 4. Start API and Frontend
+
+Start both services from the repository root with one command:
+
+```bash
+uv run python scripts/dev.py
+```
+
+The first run installs frontend dependencies if `frontend/node_modules` is
+missing. The launcher also wires the web UI to the API with
+`API_BASE_URL=http://localhost:8000/api/v1`.
+
+Open:
+
+- API: `http://localhost:8000`
+- Swagger docs: `http://localhost:8000/docs`
+- Frontend: `http://localhost:3000`
+
+Useful options:
+
+```bash
+uv run python scripts/dev.py --reload-api
+uv run python scripts/dev.py --api-port 8001 --frontend-port 3001
+uv run python scripts/dev.py --skip-npm-install
+```
+
+Stop both services with `Ctrl+C`.
+
+If you installed dependencies without `uv`, activate the virtual environment and run:
+
+```bash
+python scripts/dev.py
+```
+
+### 5. Run the CLI
 
 Interactive mode:
 
 ```bash
-python src/interfaces/cli/agent.py
+uv run python src/interfaces/cli/agent.py
 ```
 
 Single query:
 
 ```bash
-python src/interfaces/cli/agent.py --query "Quantas mortes ocorreram em 2022?"
+uv run python src/interfaces/cli/agent.py --query "Quantas mortes ocorreram em 2022?"
 ```
 
 Debug mode:
 
 ```bash
-python src/interfaces/cli/agent.py \
+uv run python src/interfaces/cli/agent.py \
   --query "Quais foram os 5 municípios com mais mortes?" \
   --debug-steps
 ```
@@ -397,25 +427,30 @@ python src/interfaces/cli/agent.py \
 Health check:
 
 ```bash
-python src/interfaces/cli/agent.py --health-check
+uv run python src/interfaces/cli/agent.py --health-check
 ```
 
-### Run the API
+### Manual Startup Alternative
+
+Use this only if you want to run API and frontend in separate terminals.
+
+Terminal 1:
 
 ```bash
-python src/interfaces/api/main.py
+uv run python src/interfaces/api/main.py
 ```
 
 API:
 
-- `http://localhost:8000`
+- API: `http://localhost:8000`
 - Swagger docs: `http://localhost:8000/docs`
 
-### Run the Web UI
+Terminal 2:
 
 ```bash
 cd frontend
-npm start
+npm install
+API_BASE_URL=http://localhost:8000/api/v1 npm start
 ```
 
 Frontend:
