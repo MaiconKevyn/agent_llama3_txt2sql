@@ -13,6 +13,29 @@ from .plan_schema import (
     SemanticPlan,
 )
 
+_ALLOWED_DIMENSION_NAMES = {
+    "estado",
+    "estado_hospital",
+    "municipio",
+    "municipio_hospital",
+    "hospital",
+    "especialidade",
+    "cid_capitulo",
+    "diagnostico",
+    "procedimento",
+    "contraceptivo",
+    "sexo",
+    "raca_cor",
+    "instrucao",
+    "idade",
+    "faixa_etaria",
+    "ano",
+    "mes",
+    "trimestre",
+    "dia_semana",
+    "quartil",
+}
+
 
 class PlanReconciliationResult(BaseModel):
     reconciled_plan: SemanticPlan
@@ -159,10 +182,15 @@ def _merge_dimensions(
     if heuristic_shape.row_grain == "single_scalar":
         return heuristic_dimensions
     merged: dict[str, SemanticDimension] = {
-        _canonical_dimension_name(dimension.name): dimension for dimension in heuristic_dimensions
+        _canonical_dimension_name(dimension.name): _canonicalize_dimension(dimension)
+        for dimension in heuristic_dimensions
+        if _is_allowed_dimension_name(dimension.name)
     }
     for dimension in candidate_dimensions:
-        merged.setdefault(_canonical_dimension_name(dimension.name), dimension)
+        if not _is_allowed_dimension_name(dimension.name):
+            continue
+        canonical = _canonical_dimension_name(dimension.name)
+        merged.setdefault(canonical, _canonicalize_dimension(dimension))
     return list(merged.values())
 
 
@@ -247,12 +275,12 @@ def _merge_answer_shape(
         if heuristic.expected_row_count != "unknown"
         else candidate.expected_row_count,
         output_dimensions=required_dimensions,
-        filter_dimensions=_stable_union(
+        filter_dimensions=_merge_dimension_name_lists(
             heuristic.filter_dimensions,
             candidate.filter_dimensions,
         ),
         counted_entity=heuristic.counted_entity or candidate.counted_entity,
-        forbidden_output_dimensions=_stable_union(
+        forbidden_output_dimensions=_merge_dimension_name_lists(
             heuristic.forbidden_output_dimensions,
             candidate.forbidden_output_dimensions,
         ),
@@ -285,9 +313,10 @@ def _merge_required_dimensions(
         return []
     merged: dict[str, str] = {}
     for dimension in heuristic_dimensions + candidate_dimensions:
-        merged.setdefault(
-            _canonical_dimension_name(dimension), _canonical_dimension_name(dimension)
-        )
+        if not _is_allowed_dimension_name(dimension):
+            continue
+        canonical = _canonical_dimension_name(dimension)
+        merged.setdefault(canonical, canonical)
     return list(merged.values())
 
 
@@ -295,11 +324,34 @@ def _canonical_dimension_name(name: str) -> str:
     aliases = {
         "estado_residencia": "estado",
         "ano_internacao": "ano",
+        "cid": "diagnostico",
         "codigo_cid": "diagnostico",
         "diagnostico_principal": "diagnostico",
         "diagnostico_secundario": "diagnostico",
     }
     return aliases.get(name, name)
+
+
+def _is_allowed_dimension_name(name: str) -> bool:
+    return _canonical_dimension_name(name) in _ALLOWED_DIMENSION_NAMES
+
+
+def _canonicalize_dimension(dimension: SemanticDimension) -> SemanticDimension:
+    canonical = _canonical_dimension_name(dimension.name)
+    if canonical == dimension.name:
+        return dimension
+    return dimension.model_copy(update={"name": canonical})
+
+
+def _merge_dimension_name_lists(left: list[str], right: list[str]) -> list[str]:
+    merged: list[str] = []
+    for dimension in left + right:
+        if not _is_allowed_dimension_name(dimension):
+            continue
+        canonical = _canonical_dimension_name(dimension)
+        if canonical not in merged:
+            merged.append(canonical)
+    return merged
 
 
 def _stable_union(left: list[str], right: list[str]) -> list[str]:

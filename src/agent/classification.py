@@ -1,7 +1,6 @@
 """Query classification node — routes queries to DATABASE / CONVERSATIONAL / SCHEMA."""
 
 import time
-from typing import Optional, Tuple
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
@@ -9,6 +8,7 @@ from ..utils.classification import (
     combine_scores,
     detect_sql_snippets,
     heuristic_route,
+    normalize_text,
     try_extract_json_block,
 )
 from ..utils.logging_config import get_nodes_logger
@@ -27,7 +27,7 @@ _FOLLOWUP_ANAPHORA = ("isso", "disso", "esse", "essa", "esses", "essas", "mesmo"
                       "anterior", "delas", "deles", "tal", "acima", "abaixo")
 
 
-def _extract_prior_context(messages: list) -> Tuple[Optional[str], Optional[str]]:
+def _extract_prior_context(messages: list) -> tuple[str | None, str | None]:
     """Return (prior_human_query, prior_ai_final_response) from accumulated messages.
 
     Uses clean_conversation_messages to strip workflow artifacts, then scans
@@ -37,8 +37,8 @@ def _extract_prior_context(messages: list) -> Tuple[Optional[str], Optional[str]
     # (the current HumanMessage that triggered this classification)
     clean = clean_conversation_messages(messages[:-1])
 
-    prior_ai: Optional[str] = None
-    prior_human: Optional[str] = None
+    prior_ai: str | None = None
+    prior_human: str | None = None
 
     for msg in reversed(clean):
         if isinstance(msg, AIMessage) and prior_ai is None:
@@ -50,7 +50,7 @@ def _extract_prior_context(messages: list) -> Tuple[Optional[str], Optional[str]
     return prior_human, prior_ai
 
 
-def _is_followup(query: str, prior_human: Optional[str]) -> bool:
+def _is_followup(query: str, prior_human: str | None) -> bool:
     """Heuristic: return True when the query looks like a follow-up turn."""
     if prior_human is None:
         return False
@@ -60,6 +60,38 @@ def _is_followup(query: str, prior_human: Optional[str]) -> bool:
     if any(ref in q for ref in _FOLLOWUP_ANAPHORA):
         return True
     return False
+
+
+def _looks_like_health_analytic_database_query(query: str) -> bool:
+    q = normalize_text(query)
+    health_data_terms = (
+        "internacao",
+        "internacoes",
+        "mortalidade",
+        "morte",
+        "mortes",
+        "obito",
+        "obitos",
+        "diagnostico",
+        "diagnosticos",
+        "cid",
+    )
+    analytic_terms = (
+        "relacao",
+        "associacao",
+        "diferenca",
+        "compar",
+        "tendencia",
+        "taxa",
+        "por sexo",
+        "por raca",
+        "por idade",
+        "homens",
+        "mulheres",
+    )
+    return any(term in q for term in health_data_terms) and any(
+        term in q for term in analytic_terms
+    )
 
 
 def query_classification_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
@@ -160,6 +192,11 @@ def query_classification_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2S
             query_route = QueryRoute.DATABASE
             confidence_score = 0.95
             reasoning = "Explicit SQL detected in input."
+        elif _looks_like_health_analytic_database_query(user_query):
+            query_route = QueryRoute.DATABASE
+            confidence_score = 0.9
+            reasoning = "Health analytic query requires database execution."
+            logger.info(reasoning)
         elif (
             heur_scores.get("DATABASE", 0) >= HEURISTIC_SKIP_THRESHOLD
             and heur_route_str == "DATABASE"

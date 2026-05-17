@@ -9,6 +9,7 @@ from src.semantic.catalog import (
     render_catalog_context_for_plan,
     render_catalog_prompt_context,
 )
+from src.semantic.concept_resolver import resolve_clinical_concept
 from src.semantic.data_profile import (
     ColumnProfileSpec,
     build_column_profile_queries,
@@ -34,6 +35,73 @@ def test_semantic_plan_detects_generic_top_n_per_group():
     assert "top_n_per_group_requires_window_partition" in plan.constraints
     assert "estado_hospital" in plan.answer_shape.required_dimensions
     assert "hospital" in plan.answer_shape.required_dimensions
+
+
+def test_clinical_concept_resolver_maps_prostate_cancer_to_c61():
+    concept = resolve_clinical_concept("cancer de prostata")
+
+    assert concept is not None
+    assert concept.resolved_codes == ["C61"]
+    assert concept.canonical_name == "cancer de prostata"
+    assert concept.default_denominator_filters == {"sexo": "1"}
+
+
+def test_clinical_concept_resolver_maps_pulmonary_diseases_to_respiratory_cid_prefix():
+    concept = resolve_clinical_concept("doencas pulmonares")
+
+    assert concept is not None
+    assert concept.resolved_codes == []
+    assert concept.resolved_prefixes == ["J%"]
+    assert concept.labels == ["CID J00-J99 - Doencas do aparelho respiratorio"]
+
+
+def test_semantic_plan_detects_age_diagnosis_association():
+    plan = build_semantic_plan("Existe relação entre idade e câncer de próstata?")
+
+    assert plan.intent == "association"
+    assert "age_diagnosis_association_required" in plan.constraints
+    assert "analytic_response_required" in plan.constraints
+    assert "diagnosis_concept_resolution_required" in plan.constraints
+    assert any(filter_.field == "diagnostico_principal_codigo" for filter_ in plan.filters)
+    assert any(filter_.field == "sexo" and filter_.values == ["1"] for filter_ in plan.filters)
+    assert plan.answer_shape.row_grain == "single_scalar"
+    assert plan.answer_shape.answer_kind == "single_row"
+
+
+def test_semantic_plan_detects_age_respiratory_disease_association():
+    plan = build_semantic_plan("Existe relação entre idade e doenças pulmonares?")
+
+    assert plan.intent == "association"
+    assert "age_diagnosis_association_required" in plan.constraints
+    assert any(
+        filter_.field == "diagnostico_principal_prefix" and filter_.values == ["J%"]
+        for filter_ in plan.filters
+    )
+    assert not any(filter_.field == "sexo" for filter_ in plan.filters)
+
+
+def test_semantic_plan_keeps_scalar_age_average_as_scalar_not_association():
+    plan = build_semantic_plan("Qual a idade média dos pacientes internados?")
+
+    assert plan.intent != "association"
+    assert "age_diagnosis_association_required" not in plan.constraints
+
+
+def test_semantic_validator_rejects_simple_age_grouping_for_analytic_association():
+    plan = build_semantic_plan("Existe relação entre idade e câncer de próstata?")
+    sql = """
+        SELECT i."IDADE", COUNT(*) AS total_internacoes
+        FROM internacoes i
+        JOIN cid c ON i."DIAG_PRINC" = c."CID"
+        WHERE c."DESCRICAO" ILIKE '%câncer de próstata%'
+        GROUP BY i."IDADE"
+        ORDER BY i."IDADE"
+    """
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert valid is False
+    assert "analytic age-diagnosis" in (message or "").lower()
 
 
 def test_semantic_plan_treats_city_mention_as_filter_for_top_procedures_in_state():
@@ -1564,6 +1632,54 @@ def test_semantic_plan_treats_respiratory_disease_as_filter_not_breakdown():
         filter_.field == "mes_internacao" and filter_.values == ["6", "7", "8"]
         for filter_ in plan.filters
     )
+
+
+def test_semantic_plan_treats_named_diagnosis_lookup_as_resolved_cid_filter():
+    plan = build_semantic_plan("tem diagnostico de covid?")
+
+    assert plan.intent == "count"
+    assert plan.base_grain == "internacao"
+    assert plan.answer_shape.row_grain == "single_scalar"
+    assert "diagnostico" not in plan.answer_shape.required_dimensions
+    assert "diagnostico" in plan.answer_shape.forbidden_output_dimensions
+    assert "diagnosis_description_lookup_required" not in plan.constraints
+    assert "death_cause_description_requires_diag_princ_with_morte" not in plan.constraints
+
+    diagnosis_filters = [
+        filter_ for filter_ in plan.filters if filter_.field == "diagnostico_principal_codigo"
+    ]
+    assert diagnosis_filters
+    assert diagnosis_filters[0].operator == "IN"
+    assert set(diagnosis_filters[0].values) == {"B342", "B972"}
+
+
+def test_semantic_validator_rejects_literal_covid_lookup_without_catalog_synonym():
+    plan = build_semantic_plan("tem diagnostico de covid?")
+    sql = """
+        SELECT COUNT(*) AS total_diagnosticos_covid
+        FROM internacoes i
+        JOIN cid c ON i."DIAG_PRINC" = c."CID"
+        WHERE c."DESCRICAO" ILIKE '%covid%'
+    """
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert valid is False
+    assert "resolved diagnosis code" in (message or "").lower()
+
+
+def test_semantic_validator_accepts_resolved_covid_code_lookup():
+    plan = build_semantic_plan("tem diagnostico de covid?")
+    sql = """
+        SELECT COUNT(*) AS total_internacoes
+        FROM internacoes i
+        WHERE i."DIAG_PRINC" IN ('B342', 'B972')
+    """
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert valid is True
+    assert message is None
 
 
 def test_semantic_validator_rejects_grouped_sql_for_scalar_count():

@@ -46,6 +46,26 @@ def test_validate_table_selection_forces_wide_socioeconomic_metric_tables():
     assert validated == ["socioeconomico", "municipios"]
 
 
+def test_validate_table_selection_removes_socioeconomico_from_diagnosis_lookup():
+    validated = ts._validate_table_selection(
+        user_query="tem diagnostico de covid?",
+        selected_tables=["cid", "internacoes", "socioeconomico"],
+        available_tables=["cid", "internacoes", "socioeconomico"],
+    )
+
+    assert validated == ["cid", "internacoes"]
+
+
+def test_validate_table_selection_removes_procedure_tables_from_diagnosis_association():
+    validated = ts._validate_table_selection(
+        user_query="existe relação entre idade e cancer de prostata?",
+        selected_tables=["internacoes", "cid", "procedimentos"],
+        available_tables=["internacoes", "cid", "procedimentos"],
+    )
+
+    assert validated == ["internacoes", "cid"]
+
+
 def test_validate_table_selection_removes_redundant_sexo_lookup():
     validated = ts._validate_table_selection(
         user_query="Quais são as três causas de morte mais frequentes entre mulheres?",

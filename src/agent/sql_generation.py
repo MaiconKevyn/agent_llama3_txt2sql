@@ -6,8 +6,10 @@ import time
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
+from ..semantic.analytic_templates import analytic_metadata_for_plan
 from ..semantic.plan_schema import SemanticPlan
 from ..utils.logging_config import get_nodes_logger
+from .analytic_sql import build_analytic_sql_package
 from .llamaindex_context import should_use_llamaindex_sql_draft
 from .llm_manager import get_llm_manager
 from .prompt_builder import build_pregeneration_hints, build_sql_generation_messages
@@ -103,6 +105,63 @@ def _build_pregeneration_hints(selected_tables, user_query):
     return build_pregeneration_hints(selected_tables, user_query)
 
 
+def _analytic_response_templates_enabled(flags: dict | None) -> bool:
+    return bool((flags or {}).get("enable_analytic_response_templates", True))
+
+
+def _build_deterministic_analytic_sql(semantic_plan, flags: dict | None = None) -> str | None:
+    if not _analytic_response_templates_enabled(flags):
+        return None
+    return build_analytic_sql_package(semantic_plan)
+
+
+def _sql_string_literal(value: str) -> str:
+    return "'" + str(value).strip().replace("'", "''") + "'"
+
+
+def _build_deterministic_diagnosis_count_sql(plan: SemanticPlan) -> str | None:
+    if plan.base_grain != "internacao" or plan.answer_shape.row_grain != "single_scalar":
+        return None
+    if not any(metric.name in {"total", "total_internacoes"} for metric in plan.metrics):
+        return None
+
+    where_conditions: list[str] = []
+    has_diagnosis_target = False
+    for semantic_filter in plan.filters:
+        values = [str(value).strip() for value in semantic_filter.values if str(value).strip()]
+        if semantic_filter.field == "diagnostico_principal_codigo" and values:
+            has_diagnosis_target = True
+            quoted = ", ".join(_sql_string_literal(value.upper()) for value in values)
+            where_conditions.append(f'"DIAG_PRINC" IN ({quoted})')
+        elif semantic_filter.field == "diagnostico_principal_prefix" and values:
+            has_diagnosis_target = True
+            prefix_conditions = " OR ".join(
+                f'"CID" LIKE {_sql_string_literal(value.upper())}'
+                for value in values
+            )
+            where_conditions.append(
+                f'"DIAG_PRINC" IN (SELECT "CID" FROM cid WHERE {prefix_conditions})'
+            )
+        elif semantic_filter.field == "ano" and values:
+            if len(values) == 1:
+                where_conditions.append(f'EXTRACT(YEAR FROM "DT_INTER") = {values[0]}')
+            else:
+                where_conditions.append(
+                    f'EXTRACT(YEAR FROM "DT_INTER") IN ({", ".join(values)})'
+                )
+        elif semantic_filter.field == "sexo" and values:
+            where_conditions.append(f'"SEXO" IN ({", ".join(values)})')
+        elif semantic_filter.field == "diagnostico_conceito_label":
+            continue
+        else:
+            return None
+
+    if not has_diagnosis_target:
+        return None
+    where_clause = f" WHERE {' AND '.join(where_conditions)}" if where_conditions else ""
+    return f"SELECT COUNT(*) AS total_internacoes FROM internacoes{where_clause};"
+
+
 def _build_deterministic_scalar_sql(semantic_plan) -> str | None:
     if not semantic_plan:
         return None
@@ -117,6 +176,10 @@ def _build_deterministic_scalar_sql(semantic_plan) -> str | None:
 
     if plan.base_grain != "internacao" or plan.answer_shape.row_grain != "single_scalar":
         return None
+
+    diagnosis_count_sql = _build_deterministic_diagnosis_count_sql(plan)
+    if diagnosis_count_sql:
+        return diagnosis_count_sql
 
     race_color_code_map = {
         "branca": "1",
@@ -226,6 +289,30 @@ def generate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         selected_tables = state.get("selected_tables", [])
         semantic_plan = state.get("semantic_plan")
         chart_plan = state.get("chart_plan")
+        ablation_flags = state.get("ablation_flags") or {}
+
+        deterministic_sql = _build_deterministic_analytic_sql(semantic_plan, ablation_flags)
+        if deterministic_sql:
+            state["generated_sql"] = deterministic_sql
+            state["current_error"] = None
+            state = add_ai_message(
+                state,
+                f"Generated SQL query (deterministic_analytic): {deterministic_sql}",
+            )
+            meta = state.get("response_metadata", {}) or {}
+            meta["sql_generation_confidence"] = 1.0
+            meta["sql_generation_reasoning"] = (
+                "Deterministic analytic SQL generated from the semantic plan."
+            )
+            meta.update(analytic_metadata_for_plan(semantic_plan))
+            state["response_metadata"] = meta
+            execution_time = time.time() - start_time
+            state = update_phase(state, ExecutionPhase.SQL_GENERATION, execution_time)
+            logger.info(
+                "SQL generated via deterministic analytic macro",
+                extra={"sql": deterministic_sql[:200], "execution_time": execution_time},
+            )
+            return state
 
         deterministic_sql = _build_deterministic_scalar_sql(semantic_plan)
         if deterministic_sql:
@@ -296,7 +383,6 @@ def generate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
 
         logger.info("Tables selected for SQL generation", extra={"tables": selected_tables})
 
-        ablation_flags = state.get("ablation_flags") or {}
         formatted_messages, pregeneration_hints = build_sql_generation_messages(
             user_query=user_query,
             schema_context=schema_context,
@@ -468,6 +554,8 @@ __all__ = [
     "SQLOutput",
     "reasoning_node",
     "_build_pregeneration_hints",
+    "_analytic_response_templates_enabled",
+    "_build_deterministic_analytic_sql",
     "build_sql_generation_messages",
     "generate_sql_node",
 ]

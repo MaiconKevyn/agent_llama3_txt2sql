@@ -1,0 +1,1666 @@
+{
+  "trace_schema_version": 2,
+  "status": "completed",
+  "run_id": "20260517_gt228_full",
+  "question_index": 124,
+  "total_questions": 228,
+  "question_fingerprint": "52d87cad8d30b848f0d83b499df776c95ef8646c647ff3a2b809757e18e02d73",
+  "trace_path": "/home/maiconkevyn/PycharmProjects/txt2sql_refactor_openai_v2/evaluation/results/dag_evaluation_20260517_gt228_full/queries/GT130/trace.json",
+  "written_at": "2026-05-17T06:42:28.041547",
+  "id": "GT130",
+  "difficulty": "hard",
+  "question_pt": "Quais são os 10 municípios com maior taxa de mortalidade em internações obstétricas, entre aqueles com mais de 200 internações obstétricas e taxa acima da média nacional obstétrica?",
+  "question_started_at": "2026-05-17T06:42:05.557943",
+  "question_completed_at": "2026-05-17T06:42:26.487459",
+  "ground_truth_sql": "WITH media_obs AS (\n    SELECT SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_media_obstetrica\n    FROM internacoes i\n    WHERE i.\"ESPEC\" = 2\n)\nSELECT mu.\"NO_MUNICIPIO\" AS nome,\n       mu.\"SG_UF\" AS estado,\n       COUNT(*) AS total_obstetrico,\n       SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes,\n       ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 4) AS taxa_mort_obstetrica,\n       ROUND(mo.taxa_media_obstetrica, 4) AS media_nacional\nFROM internacoes i\nJOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\", media_obs mo\nWHERE i.\"ESPEC\" = 2\nGROUP BY mu.\"NO_MUNICIPIO\", mu.\"SG_UF\", mo.taxa_media_obstetrica\nHAVING COUNT(*) > 200\n   AND SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) > mo.taxa_media_obstetrica\nORDER BY taxa_mort_obstetrica DESC\nLIMIT 10;",
+  "generated_sql": "WITH media_nacional AS ( SELECT SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_ref FROM internacoes WHERE \"ESPEC\" = 2 ), por_municipio AS ( SELECT mu.\"NO_MUNICIPIO\" AS municipio, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_mortalidade FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"ESPEC\" = 2 GROUP BY mu.\"NO_MUNICIPIO\" HAVING COUNT(*) > 200 ) SELECT pm.municipio, pm.total_internacoes, ROUND(pm.taxa_mortalidade, 2) AS taxa_mortalidade FROM por_municipio pm, media_nacional mn WHERE pm.taxa_mortalidade > mn.taxa_ref ORDER BY pm.taxa_mortalidade DESC LIMIT 10;",
+  "agent_success": true,
+  "agent_error": null,
+  "agent_output": {
+    "success": true,
+    "sql_query": "WITH media_nacional AS ( SELECT SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_ref FROM internacoes WHERE \"ESPEC\" = 2 ), por_municipio AS ( SELECT mu.\"NO_MUNICIPIO\" AS municipio, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_mortalidade FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"ESPEC\" = 2 GROUP BY mu.\"NO_MUNICIPIO\" HAVING COUNT(*) > 200 ) SELECT pm.municipio, pm.total_internacoes, ROUND(pm.taxa_mortalidade, 2) AS taxa_mortalidade FROM por_municipio pm, media_nacional mn WHERE pm.taxa_mortalidade > mn.taxa_ref ORDER BY pm.taxa_mortalidade DESC LIMIT 10;",
+    "response": "Os 10 municípios com maior taxa de mortalidade em internações obstétricas são:\n\n1. Canutama: 2.160 internações, taxa de mortalidade 0,88\n2. Conceição do Tocantins: 570 internações, taxa de mortalidade 0,88\n3. Lavras do Sul: 828 internações, taxa de mortalidade 0,85\n4. Italva: 241 internações, taxa de mortalidade 0,83\n5. Córrego Danta: 251 internações, taxa de mortalidade 0,80\n6. Ibituruna: 327 internações, taxa de mortalidade 0,61\n7. Aceguá: 659 internações, taxa de mortalidade 0,61\n8. Casca: 718 internações, taxa de mortalidade 0,56\n9. São Pedro dos Crentes: 377 internações, taxa de mortalidade 0,53\n10. Vila Nova do Sul: 387 internações, taxa de mortalidade 0,52",
+    "row_count": 10,
+    "results_preview": [
+      {
+        "result": [
+          "Canutama",
+          2160,
+          0.88
+        ]
+      },
+      {
+        "result": [
+          "Conceição do Tocantins",
+          570,
+          0.88
+        ]
+      },
+      {
+        "result": [
+          "Lavras do Sul",
+          828,
+          0.85
+        ]
+      },
+      {
+        "result": [
+          "Italva",
+          241,
+          0.83
+        ]
+      },
+      {
+        "result": [
+          "Córrego Danta",
+          251,
+          0.8
+        ]
+      },
+      {
+        "result": [
+          "Ibituruna",
+          327,
+          0.61
+        ]
+      },
+      {
+        "result": [
+          "Aceguá",
+          659,
+          0.61
+        ]
+      },
+      {
+        "result": [
+          "Casca",
+          718,
+          0.56
+        ]
+      },
+      {
+        "result": [
+          "São Pedro dos Crentes",
+          377,
+          0.53
+        ]
+      },
+      {
+        "result": [
+          "Vila Nova do Sul",
+          387,
+          0.52
+        ]
+      }
+    ],
+    "final_result_rows_preview": null,
+    "error": null,
+    "cost": {
+      "prompt_tokens": 17280,
+      "completion_tokens": 1376,
+      "total_tokens": 18656,
+      "total_cost_usd": 0.002957,
+      "successful_requests": 5
+    },
+    "chart": null
+  },
+  "evaluation_source": "sql_query",
+  "latency_seconds": 20.929507970809937,
+  "generated_sql_valid": true,
+  "generated_sql_validation_errors": [],
+  "generated_sql_validation_warnings": [],
+  "generated_execution_status": "passed",
+  "ground_truth_execution_status": "passed",
+  "comparison_mode": "execution_accuracy",
+  "result_match": true,
+  "ex_score": 1.0,
+  "shape_match": false,
+  "projected_match": true,
+  "expected_columns": [
+    "nome",
+    "estado",
+    "total_obstetrico",
+    "total_mortes",
+    "taxa_mort_obstetrica",
+    "media_nacional"
+  ],
+  "actual_columns": [
+    "municipio",
+    "total_internacoes",
+    "taxa_mortalidade"
+  ],
+  "expected_preview_values": [
+    [
+      "Canutama",
+      "AM",
+      2160,
+      19,
+      0.8796,
+      0.0294
+    ],
+    [
+      "Conceição do Tocantins",
+      "TO",
+      570,
+      5,
+      0.8772,
+      0.0294
+    ],
+    [
+      "Lavras do Sul",
+      "RS",
+      828,
+      7,
+      0.8454,
+      0.0294
+    ],
+    [
+      "Italva",
+      "RJ",
+      241,
+      2,
+      0.8299,
+      0.0294
+    ],
+    [
+      "Córrego Danta",
+      "MG",
+      251,
+      2,
+      0.7968,
+      0.0294
+    ],
+    [
+      "Ibituruna",
+      "MG",
+      327,
+      2,
+      0.6116,
+      0.0294
+    ],
+    [
+      "Aceguá",
+      "RS",
+      659,
+      4,
+      0.607,
+      0.0294
+    ],
+    [
+      "Casca",
+      "RS",
+      718,
+      4,
+      0.5571,
+      0.0294
+    ],
+    [
+      "São Pedro dos Crentes",
+      "MA",
+      377,
+      2,
+      0.5305,
+      0.0294
+    ],
+    [
+      "Vila Nova do Sul",
+      "RS",
+      387,
+      2,
+      0.5168,
+      0.0294
+    ]
+  ],
+  "actual_preview_values": [
+    [
+      "Canutama",
+      2160,
+      0.88
+    ],
+    [
+      "Conceição do Tocantins",
+      570,
+      0.88
+    ],
+    [
+      "Lavras do Sul",
+      828,
+      0.85
+    ],
+    [
+      "Italva",
+      241,
+      0.83
+    ],
+    [
+      "Córrego Danta",
+      251,
+      0.8
+    ],
+    [
+      "Ibituruna",
+      327,
+      0.61
+    ],
+    [
+      "Aceguá",
+      659,
+      0.61
+    ],
+    [
+      "Casca",
+      718,
+      0.56
+    ],
+    [
+      "São Pedro dos Crentes",
+      377,
+      0.53
+    ],
+    [
+      "Vila Nova do Sul",
+      387,
+      0.52
+    ]
+  ],
+  "expected_row_count": 10,
+  "actual_row_count": 10,
+  "expected_truncated": false,
+  "actual_truncated": false,
+  "ground_truth_execution_error": null,
+  "generated_execution_error": null,
+  "ground_truth_execution_latency_seconds": 0.4713263511657715,
+  "generated_execution_latency_seconds": 0.31776881217956543,
+  "error_category": null,
+  "error_message": null,
+  "metric_details": {
+    "ground_truth_executed": true,
+    "predicted_executed": true,
+    "ground_truth_rows": 10,
+    "predicted_rows": 10,
+    "results_match": true,
+    "comparison_details": {
+      "gt_size": 10,
+      "pred_size": 10,
+      "normalized_match": true,
+      "projected_match": true,
+      "reverse_projected_match": true,
+      "gt_col_count": 6,
+      "pred_col_count": 3,
+      "matching_column_indices": [
+        0,
+        2,
+        4
+      ]
+    }
+  },
+  "comparison_details": {
+    "gt_size": 10,
+    "pred_size": 10,
+    "normalized_match": true,
+    "projected_match": true,
+    "reverse_projected_match": true,
+    "gt_col_count": 6,
+    "pred_col_count": 3,
+    "matching_column_indices": [
+      0,
+      2,
+      4
+    ]
+  },
+  "multi_query": {
+    "is_multi_query": false,
+    "plan_type": "global_local_avg",
+    "execution_mode": "single",
+    "multi_query_allowed": false,
+    "allowed_multi_plan_types": [
+      "bind_then_query",
+      "fanout_concat",
+      "verification_side_query"
+    ],
+    "query_plan": {
+      "strategy": "single",
+      "reasoning": "Comparações contra média global/estadual devem permanecer em uma SQL.",
+      "plan_type": "global_local_avg",
+      "merge_strategy": "none",
+      "output_nodes": [
+        "sq1"
+      ],
+      "required_constraints": [],
+      "expected_output_shape": {},
+      "verifier_checks": [],
+      "fallback_policy": {},
+      "sub_queries": [
+        {
+          "id": "sq1",
+          "description": "Quais são os 10 municípios com maior taxa de mortalidade em internações obstétricas, entre aqueles com mais de 200 internações obstétricas e taxa acima da média nacional obstétrica?",
+          "purpose": "final_output",
+          "output_role": "output",
+          "expected_result_kind": "rowset",
+          "expected_max_rows": null,
+          "required_constraints": [],
+          "selected_tables": [],
+          "bind_keys": [],
+          "sql": null,
+          "validated_sql": null,
+          "result_raw": null,
+          "parsed_rows": null,
+          "success": false,
+          "error": null,
+          "depends_on": [],
+          "repair_attempts": 0
+        }
+      ]
+    },
+    "sub_query_results": [],
+    "merged_rows": null,
+    "merged_rows_source": null,
+    "merge_strategy": "none",
+    "verifier_outcome": null,
+    "single_fallback_active": false,
+    "single_fallback_reason": null,
+    "final_sql_query": null,
+    "failure_taxonomy": []
+  },
+  "tables_used": [
+    "internacoes"
+  ],
+  "selected_tables": {
+    "llamaindex": [
+      "socioeconomico",
+      "internacoes",
+      "municipios"
+    ],
+    "raw": [
+      "socioeconomico",
+      "internacoes",
+      "municipios"
+    ],
+    "validated": [
+      "internacoes"
+    ]
+  },
+  "table_selection": {
+    "mode": "llamaindex_context",
+    "llamaindex_enabled": true,
+    "llamaindex_mode": "context",
+    "llamaindex_confidence": 0.4963955091609675,
+    "llamaindex_error": ""
+  },
+  "semantic_plan": {
+    "intent": "ranking",
+    "base_grain": "internacao",
+    "metrics": [
+      {
+        "name": "taxa_mortalidade",
+        "expression_type": "rate",
+        "numerator_condition": "MORTE = true",
+        "denominator_scope": "all_rows_matching_non_outcome_filters",
+        "required_filters": []
+      }
+    ],
+    "dimensions": [
+      {
+        "name": "municipio",
+        "source": "municipios.NO_MUNICIPIO",
+        "role": "group"
+      }
+    ],
+    "filters": [
+      {
+        "field": "obstetrico",
+        "values": [
+          "ESPEC = 2"
+        ],
+        "operator": "semantic"
+      },
+      {
+        "field": "minimum_group_count",
+        "values": [
+          "200"
+        ],
+        "operator": ">"
+      }
+    ],
+    "answer_shape": {
+      "row_grain": "top_n_global",
+      "top_n": 10,
+      "top_n_scope": "global",
+      "required_dimensions": [
+        "municipio"
+      ],
+      "partition_dimensions": [],
+      "ranked_dimensions": [],
+      "requires_group_by": true,
+      "include_unknown_bucket": false,
+      "answer_kind": "top_n_global",
+      "expected_row_count": "bounded_n",
+      "output_dimensions": [
+        "municipio"
+      ],
+      "filter_dimensions": [],
+      "forbidden_output_dimensions": []
+    },
+    "constraints": [
+      "rate_denominator_must_preserve_full_scope"
+    ],
+    "null_policy": [],
+    "ambiguities": []
+  },
+  "semantic_planner": {
+    "mode": "llm_reconciled",
+    "confidence": 0.9,
+    "reasoning": "A intenção é classificar os municípios com base na taxa de mortalidade em internações obstétricas. A métrica 'taxa_mortalidade' é calculada como a razão entre o número de mortes e o total de internações, respeitando a condição de desfecho. As dimensões incluem o município, que é necessário para agrupar os resultados. Os filtros garantem que apenas municípios com mais de 200 internações obstétricas e que atendem ao critério de taxa acima da média nacional sejam considerados. O formato de resposta é o top 10 global, que se alinha com a solicitação do usuário.",
+    "conflicts": [],
+    "accepted_llm_fields": [
+      "metrics"
+    ],
+    "rejected_llm_fields": []
+  },
+  "semantic_validation": {
+    "passed": true,
+    "constraints": [
+      "rate_denominator_must_preserve_full_scope"
+    ],
+    "null_policy": [],
+    "message": null
+  },
+  "chart_plan": {
+    "requested": false,
+    "chart_type": "auto",
+    "metric": null,
+    "metric_expression": null,
+    "x_dimension": null,
+    "series_dimension": null,
+    "y_column": null,
+    "grain": "unknown",
+    "expected_result_shape": "unknown",
+    "filters": [],
+    "time_window": {
+      "type": "none",
+      "n": null,
+      "start_year": null,
+      "end_year": null,
+      "date_column": "DT_INTER"
+    },
+    "required_columns": [],
+    "sql_shape_guidance": "",
+    "reason": "visualization not requested"
+  },
+  "chart_plan_validation": {
+    "passed": true,
+    "message": null,
+    "chart_plan": {
+      "requested": false,
+      "chart_type": "auto",
+      "metric": null,
+      "metric_expression": null,
+      "x_dimension": null,
+      "series_dimension": null,
+      "y_column": null,
+      "grain": "unknown",
+      "expected_result_shape": "unknown",
+      "filters": [],
+      "time_window": {
+        "type": "none",
+        "n": null,
+        "start_year": null,
+        "end_year": null,
+        "date_column": "DT_INTER"
+      },
+      "required_columns": [],
+      "sql_shape_guidance": "",
+      "reason": "visualization not requested"
+    }
+  },
+  "workflow_metrics": {
+    "overall_success": true,
+    "completion_rate": 0.5714285714285714,
+    "phases_completed": 8,
+    "total_phases": 14,
+    "tool_success_rate": 1.0,
+    "total_tools_used": 3,
+    "retry_count": 0,
+    "error_count": 0,
+    "execution_time": 20.88117218017578
+  },
+  "latency_by_component": {
+    "query_classification": 0.00035691261291503906,
+    "table_discovery": 0.4653737545013428,
+    "schema_analysis": 0.0005617141723632812,
+    "reasoning": 4.981711387634277,
+    "sql_generation": 5.187527418136597,
+    "sql_validation": 3.806974411010742,
+    "sql_execution": 0.3260834217071533,
+    "completed": 3.252474308013916
+  },
+  "tool_calls": [
+    {
+      "name": "sql_db_list_tables",
+      "success": true,
+      "execution_time": 0.4653031826019287
+    },
+    {
+      "name": "sql_db_query_checker",
+      "success": true,
+      "execution_time": 3.806945323944092
+    },
+    {
+      "name": "sql_db_query",
+      "success": true,
+      "execution_time": 0.3259561061859131
+    }
+  ],
+  "phases_completed": [
+    "initialization",
+    "query_classification",
+    "table_discovery",
+    "schema_analysis",
+    "reasoning",
+    "sql_generation",
+    "sql_validation",
+    "sql_execution"
+  ],
+  "agent_metadata": {
+    "langgraph_v3": true,
+    "messages_state": true,
+    "query_route": "database",
+    "classification": {
+      "route": "database",
+      "confidence": 0.9,
+      "requires_tools": true
+    },
+    "workflow_metrics": {
+      "overall_success": true,
+      "completion_rate": 0.5714285714285714,
+      "phases_completed": 8,
+      "total_phases": 14,
+      "tool_success_rate": 1.0,
+      "total_tools_used": 3,
+      "retry_count": 0,
+      "error_count": 0,
+      "execution_time": 20.88117218017578
+    },
+    "phases_completed": [
+      "initialization",
+      "query_classification",
+      "table_discovery",
+      "schema_analysis",
+      "reasoning",
+      "sql_generation",
+      "sql_validation",
+      "sql_execution"
+    ],
+    "current_phase": "completed",
+    "tool_calls": [
+      {
+        "name": "sql_db_list_tables",
+        "success": true,
+        "execution_time": 0.4653031826019287
+      },
+      {
+        "name": "sql_db_query_checker",
+        "success": true,
+        "execution_time": 3.806945323944092
+      },
+      {
+        "name": "sql_db_query",
+        "success": true,
+        "execution_time": 0.3259561061859131
+      }
+    ],
+    "message_count": 13,
+    "retry_count": 0,
+    "error_count": 0,
+    "tables_used": [
+      "internacoes"
+    ],
+    "schema_context_length": 11552,
+    "latency_by_component": {
+      "query_classification": 0.00035691261291503906,
+      "table_discovery": 0.4653737545013428,
+      "schema_analysis": 0.0005617141723632812,
+      "reasoning": 4.981711387634277,
+      "sql_generation": 5.187527418136597,
+      "sql_validation": 3.806974411010742,
+      "sql_execution": 0.3260834217071533,
+      "completed": 3.252474308013916
+    },
+    "multi_query": {
+      "is_multi_query": false,
+      "plan_type": "global_local_avg",
+      "execution_mode": "single",
+      "multi_query_allowed": false,
+      "allowed_multi_plan_types": [
+        "bind_then_query",
+        "fanout_concat",
+        "verification_side_query"
+      ],
+      "query_plan": {
+        "strategy": "single",
+        "reasoning": "Comparações contra média global/estadual devem permanecer em uma SQL.",
+        "plan_type": "global_local_avg",
+        "merge_strategy": "none",
+        "output_nodes": [
+          "sq1"
+        ],
+        "required_constraints": [],
+        "expected_output_shape": {},
+        "verifier_checks": [],
+        "fallback_policy": {},
+        "sub_queries": [
+          {
+            "id": "sq1",
+            "description": "Quais são os 10 municípios com maior taxa de mortalidade em internações obstétricas, entre aqueles com mais de 200 internações obstétricas e taxa acima da média nacional obstétrica?",
+            "purpose": "final_output",
+            "output_role": "output",
+            "expected_result_kind": "rowset",
+            "expected_max_rows": null,
+            "required_constraints": [],
+            "selected_tables": [],
+            "bind_keys": [],
+            "sql": null,
+            "validated_sql": null,
+            "result_raw": null,
+            "parsed_rows": null,
+            "success": false,
+            "error": null,
+            "depends_on": [],
+            "repair_attempts": 0
+          }
+        ]
+      },
+      "sub_query_results": [],
+      "merged_rows": null,
+      "merged_rows_source": null,
+      "merge_strategy": "none",
+      "verifier_outcome": null,
+      "single_fallback_active": false,
+      "single_fallback_reason": null,
+      "final_sql_query": null,
+      "failure_taxonomy": []
+    },
+    "semantic_plan": {
+      "intent": "ranking",
+      "base_grain": "internacao",
+      "metrics": [
+        {
+          "name": "taxa_mortalidade",
+          "expression_type": "rate",
+          "numerator_condition": "MORTE = true",
+          "denominator_scope": "all_rows_matching_non_outcome_filters",
+          "required_filters": []
+        }
+      ],
+      "dimensions": [
+        {
+          "name": "municipio",
+          "source": "municipios.NO_MUNICIPIO",
+          "role": "group"
+        }
+      ],
+      "filters": [
+        {
+          "field": "obstetrico",
+          "values": [
+            "ESPEC = 2"
+          ],
+          "operator": "semantic"
+        },
+        {
+          "field": "minimum_group_count",
+          "values": [
+            "200"
+          ],
+          "operator": ">"
+        }
+      ],
+      "answer_shape": {
+        "row_grain": "top_n_global",
+        "top_n": 10,
+        "top_n_scope": "global",
+        "required_dimensions": [
+          "municipio"
+        ],
+        "partition_dimensions": [],
+        "ranked_dimensions": [],
+        "requires_group_by": true,
+        "include_unknown_bucket": false,
+        "answer_kind": "top_n_global",
+        "expected_row_count": "bounded_n",
+        "output_dimensions": [
+          "municipio"
+        ],
+        "filter_dimensions": [],
+        "forbidden_output_dimensions": []
+      },
+      "constraints": [
+        "rate_denominator_must_preserve_full_scope"
+      ],
+      "null_policy": [],
+      "ambiguities": []
+    },
+    "visualization_intent": {
+      "requested": false,
+      "source": "none",
+      "uses_last_result": false,
+      "chart_hint": "auto",
+      "reason": ""
+    },
+    "chart_plan": {
+      "requested": false,
+      "chart_type": "auto",
+      "metric": null,
+      "metric_expression": null,
+      "x_dimension": null,
+      "series_dimension": null,
+      "y_column": null,
+      "grain": "unknown",
+      "expected_result_shape": "unknown",
+      "filters": [],
+      "time_window": {
+        "type": "none",
+        "n": null,
+        "start_year": null,
+        "end_year": null,
+        "date_column": "DT_INTER"
+      },
+      "required_columns": [],
+      "sql_shape_guidance": "",
+      "reason": "visualization not requested"
+    },
+    "chart_spec": null,
+    "llamaindex_enabled": true,
+    "llamaindex_mode": "context",
+    "llamaindex_retrieval_mode": "llamaindex_schema",
+    "llamaindex_selected_tables": [
+      "socioeconomico",
+      "internacoes",
+      "municipios"
+    ],
+    "llamaindex_confidence": 0.4963955091609675,
+    "llamaindex_error": "",
+    "raw_selected_tables": [
+      "socioeconomico",
+      "internacoes",
+      "municipios"
+    ],
+    "validated_selected_tables": [
+      "internacoes"
+    ],
+    "table_selection_mode": "llamaindex_context",
+    "schema_context_source": "llamaindex",
+    "schema_context_verified_with_db": false,
+    "schema_context_tables": [
+      "internacoes"
+    ],
+    "semantic_constraints": [
+      "rate_denominator_must_preserve_full_scope"
+    ],
+    "semantic_null_policy": [],
+    "semantic_planner": {
+      "mode": "llm_reconciled",
+      "confidence": 0.9,
+      "reasoning": "A intenção é classificar os municípios com base na taxa de mortalidade em internações obstétricas. A métrica 'taxa_mortalidade' é calculada como a razão entre o número de mortes e o total de internações, respeitando a condição de desfecho. As dimensões incluem o município, que é necessário para agrupar os resultados. Os filtros garantem que apenas municípios com mais de 200 internações obstétricas e que atendem ao critério de taxa acima da média nacional sejam considerados. O formato de resposta é o top 10 global, que se alinha com a solicitação do usuário.",
+      "conflicts": [],
+      "accepted_llm_fields": [
+        "metrics"
+      ],
+      "rejected_llm_fields": []
+    },
+    "sql_generation_confidence": 0.9,
+    "sql_generation_reasoning": "The query calculates the mortality rate for obstetric hospitalizations by municipality, filtering for those with more than 200 hospitalizations and comparing against the national average mortality rate for obstetric cases. It uses CTEs to first compute the national average and then the local rates per municipality, ensuring accurate comparisons.",
+    "sql_generation_source": "current_structured_output",
+    "chart_plan_validation": {
+      "passed": true,
+      "message": null,
+      "chart_plan": {
+        "requested": false,
+        "chart_type": "auto",
+        "metric": null,
+        "metric_expression": null,
+        "x_dimension": null,
+        "series_dimension": null,
+        "y_column": null,
+        "grain": "unknown",
+        "expected_result_shape": "unknown",
+        "filters": [],
+        "time_window": {
+          "type": "none",
+          "n": null,
+          "start_year": null,
+          "end_year": null,
+          "date_column": "DT_INTER"
+        },
+        "required_columns": [],
+        "sql_shape_guidance": "",
+        "reason": "visualization not requested"
+      }
+    },
+    "semantic_validation": {
+      "passed": true,
+      "constraints": [
+        "rate_denominator_must_preserve_full_scope"
+      ],
+      "null_policy": [],
+      "message": null
+    },
+    "orchestrator_v3": true,
+    "current_model": {
+      "provider": "openai",
+      "model_name": "gpt-4o-mini",
+      "temperature": 0.0
+    },
+    "environment": "production",
+    "session_id": "session_25557",
+    "query_number": 124,
+    "orchestrator_execution_time": 20.899757862091064
+  },
+  "steps": [
+    {
+      "name": "evaluation_input",
+      "status": "passed",
+      "details": {
+        "question_id": "GT130",
+        "difficulty": "hard",
+        "question_pt": "Quais são os 10 municípios com maior taxa de mortalidade em internações obstétricas, entre aqueles com mais de 200 internações obstétricas e taxa acima da média nacional obstétrica?",
+        "ground_truth_sql": "WITH media_obs AS (\n    SELECT SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_media_obstetrica\n    FROM internacoes i\n    WHERE i.\"ESPEC\" = 2\n)\nSELECT mu.\"NO_MUNICIPIO\" AS nome,\n       mu.\"SG_UF\" AS estado,\n       COUNT(*) AS total_obstetrico,\n       SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes,\n       ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 4) AS taxa_mort_obstetrica,\n       ROUND(mo.taxa_media_obstetrica, 4) AS media_nacional\nFROM internacoes i\nJOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\", media_obs mo\nWHERE i.\"ESPEC\" = 2\nGROUP BY mu.\"NO_MUNICIPIO\", mu.\"SG_UF\", mo.taxa_media_obstetrica\nHAVING COUNT(*) > 200\n   AND SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) > mo.taxa_media_obstetrica\nORDER BY taxa_mort_obstetrica DESC\nLIMIT 10;"
+      }
+    },
+    {
+      "name": "agent.process_query",
+      "status": "passed",
+      "latency_seconds": 20.929507970809937,
+      "input": {
+        "question": "Quais são os 10 municípios com maior taxa de mortalidade em internações obstétricas, entre aqueles com mais de 200 internações obstétricas e taxa acima da média nacional obstétrica?"
+      },
+      "output": {
+        "success": true,
+        "sql_query": "WITH media_nacional AS ( SELECT SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_ref FROM internacoes WHERE \"ESPEC\" = 2 ), por_municipio AS ( SELECT mu.\"NO_MUNICIPIO\" AS municipio, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_mortalidade FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"ESPEC\" = 2 GROUP BY mu.\"NO_MUNICIPIO\" HAVING COUNT(*) > 200 ) SELECT pm.municipio, pm.total_internacoes, ROUND(pm.taxa_mortalidade, 2) AS taxa_mortalidade FROM por_municipio pm, media_nacional mn WHERE pm.taxa_mortalidade > mn.taxa_ref ORDER BY pm.taxa_mortalidade DESC LIMIT 10;",
+        "response": "Os 10 municípios com maior taxa de mortalidade em internações obstétricas são:\n\n1. Canutama: 2.160 internações, taxa de mortalidade 0,88\n2. Conceição do Tocantins: 570 internações, taxa de mortalidade 0,88\n3. Lavras do Sul: 828 internações, taxa de mortalidade 0,85\n4. Italva: 241 internações, taxa de mortalidade 0,83\n5. Córrego Danta: 251 internações, taxa de mortalidade 0,80\n6. Ibituruna: 327 internações, taxa de mortalidade 0,61\n7. Aceguá: 659 internações, taxa de mortalidade 0,61\n8. Casca: 718 internações, taxa de mortalidade 0,56\n9. São Pedro dos Crentes: 377 internações, taxa de mortalidade 0,53\n10. Vila Nova do Sul: 387 internações, taxa de mortalidade 0,52",
+        "row_count": 10,
+        "results_preview": [
+          {
+            "result": [
+              "Canutama",
+              2160,
+              0.88
+            ]
+          },
+          {
+            "result": [
+              "Conceição do Tocantins",
+              570,
+              0.88
+            ]
+          },
+          {
+            "result": [
+              "Lavras do Sul",
+              828,
+              0.85
+            ]
+          },
+          {
+            "result": [
+              "Italva",
+              241,
+              0.83
+            ]
+          },
+          {
+            "result": [
+              "Córrego Danta",
+              251,
+              0.8
+            ]
+          },
+          {
+            "result": [
+              "Ibituruna",
+              327,
+              0.61
+            ]
+          },
+          {
+            "result": [
+              "Aceguá",
+              659,
+              0.61
+            ]
+          },
+          {
+            "result": [
+              "Casca",
+              718,
+              0.56
+            ]
+          },
+          {
+            "result": [
+              "São Pedro dos Crentes",
+              377,
+              0.53
+            ]
+          },
+          {
+            "result": [
+              "Vila Nova do Sul",
+              387,
+              0.52
+            ]
+          }
+        ],
+        "final_result_rows_preview": null,
+        "error": null,
+        "cost": {
+          "prompt_tokens": 17280,
+          "completion_tokens": 1376,
+          "total_tokens": 18656,
+          "total_cost_usd": 0.002957,
+          "successful_requests": 5
+        },
+        "chart": null
+      },
+      "error": null
+    },
+    {
+      "name": "workflow.initialization",
+      "status": "passed",
+      "latency_seconds": null,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.query_classification",
+      "status": "passed",
+      "latency_seconds": 0.00035691261291503906,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.table_discovery",
+      "status": "passed",
+      "latency_seconds": 0.4653737545013428,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.schema_analysis",
+      "status": "passed",
+      "latency_seconds": 0.0005617141723632812,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.reasoning",
+      "status": "passed",
+      "latency_seconds": 4.981711387634277,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "municipio",
+              "source": "municipios.NO_MUNICIPIO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "obstetrico",
+              "values": [
+                "ESPEC = 2"
+              ],
+              "operator": "semantic"
+            },
+            {
+              "field": "minimum_group_count",
+              "values": [
+                "200"
+              ],
+              "operator": ">"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "municipio"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "municipio"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.sql_generation",
+      "status": "passed",
+      "latency_seconds": 5.187527418136597,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.sql_validation",
+      "status": "passed",
+      "latency_seconds": 3.806974411010742,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "message": null
+        }
+      }
+    },
+    {
+      "name": "workflow.sql_execution",
+      "status": "passed",
+      "latency_seconds": 0.3260834217071533,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "tool.sql_db_list_tables",
+      "status": "passed",
+      "latency_seconds": 0.4653031826019287,
+      "details": {
+        "name": "sql_db_list_tables",
+        "success": true,
+        "execution_time": 0.4653031826019287
+      }
+    },
+    {
+      "name": "tool.sql_db_query_checker",
+      "status": "passed",
+      "latency_seconds": 3.806945323944092,
+      "details": {
+        "name": "sql_db_query_checker",
+        "success": true,
+        "execution_time": 3.806945323944092
+      }
+    },
+    {
+      "name": "tool.sql_db_query",
+      "status": "passed",
+      "latency_seconds": 0.3259561061859131,
+      "details": {
+        "name": "sql_db_query",
+        "success": true,
+        "execution_time": 0.3259561061859131
+      }
+    },
+    {
+      "name": "metric.Execution Accuracy (EX)",
+      "status": "passed",
+      "score": 1.0,
+      "error": null,
+      "details": {
+        "ground_truth_executed": true,
+        "predicted_executed": true,
+        "ground_truth_rows": 10,
+        "predicted_rows": 10,
+        "results_match": true,
+        "comparison_details": {
+          "gt_size": 10,
+          "pred_size": 10,
+          "normalized_match": true,
+          "projected_match": true,
+          "reverse_projected_match": true,
+          "gt_col_count": 6,
+          "pred_col_count": 3,
+          "matching_column_indices": [
+            0,
+            2,
+            4
+          ]
+        }
+      }
+    },
+    {
+      "name": "final_result",
+      "status": "passed",
+      "details": {
+        "generated_sql": "WITH media_nacional AS ( SELECT SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_ref FROM internacoes WHERE \"ESPEC\" = 2 ), por_municipio AS ( SELECT mu.\"NO_MUNICIPIO\" AS municipio, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_mortalidade FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"ESPEC\" = 2 GROUP BY mu.\"NO_MUNICIPIO\" HAVING COUNT(*) > 200 ) SELECT pm.municipio, pm.total_internacoes, ROUND(pm.taxa_mortalidade, 2) AS taxa_mortalidade FROM por_municipio pm, media_nacional mn WHERE pm.taxa_mortalidade > mn.taxa_ref ORDER BY pm.taxa_mortalidade DESC LIMIT 10;",
+        "generated_execution_status": "passed",
+        "ground_truth_execution_status": "passed",
+        "result_match": true,
+        "ex_score": 1.0
+      }
+    }
+  ],
+  "detailed_result": {
+    "question_id": "GT130",
+    "difficulty": "hard",
+    "question": "Quais são os 10 municípios com maior taxa de mortalidade em internações obstétricas, entre aqueles com mais de 200 internações obstétricas e taxa acima da média nacional obstétrica?",
+    "ground_truth_sql": "WITH media_obs AS (\n    SELECT SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_media_obstetrica\n    FROM internacoes i\n    WHERE i.\"ESPEC\" = 2\n)\nSELECT mu.\"NO_MUNICIPIO\" AS nome,\n       mu.\"SG_UF\" AS estado,\n       COUNT(*) AS total_obstetrico,\n       SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes,\n       ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 4) AS taxa_mort_obstetrica,\n       ROUND(mo.taxa_media_obstetrica, 4) AS media_nacional\nFROM internacoes i\nJOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\", media_obs mo\nWHERE i.\"ESPEC\" = 2\nGROUP BY mu.\"NO_MUNICIPIO\", mu.\"SG_UF\", mo.taxa_media_obstetrica\nHAVING COUNT(*) > 200\n   AND SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) > mo.taxa_media_obstetrica\nORDER BY taxa_mort_obstetrica DESC\nLIMIT 10;",
+    "predicted_sql": "WITH media_nacional AS ( SELECT SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_ref FROM internacoes WHERE \"ESPEC\" = 2 ), por_municipio AS ( SELECT mu.\"NO_MUNICIPIO\" AS municipio, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_mortalidade FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"ESPEC\" = 2 GROUP BY mu.\"NO_MUNICIPIO\" HAVING COUNT(*) > 200 ) SELECT pm.municipio, pm.total_internacoes, ROUND(pm.taxa_mortalidade, 2) AS taxa_mortalidade FROM por_municipio pm, media_nacional mn WHERE pm.taxa_mortalidade > mn.taxa_ref ORDER BY pm.taxa_mortalidade DESC LIMIT 10;",
+    "agent_success": true,
+    "agent_execution_time": 20.929507970809937,
+    "question_started_at": "2026-05-17T06:42:05.557943",
+    "question_completed_at": "2026-05-17T06:42:26.487459",
+    "evaluation_source": "sql_query",
+    "stored_rows": null,
+    "agent_output": {
+      "success": true,
+      "sql_query": "WITH media_nacional AS ( SELECT SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_ref FROM internacoes WHERE \"ESPEC\" = 2 ), por_municipio AS ( SELECT mu.\"NO_MUNICIPIO\" AS municipio, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_mortalidade FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"ESPEC\" = 2 GROUP BY mu.\"NO_MUNICIPIO\" HAVING COUNT(*) > 200 ) SELECT pm.municipio, pm.total_internacoes, ROUND(pm.taxa_mortalidade, 2) AS taxa_mortalidade FROM por_municipio pm, media_nacional mn WHERE pm.taxa_mortalidade > mn.taxa_ref ORDER BY pm.taxa_mortalidade DESC LIMIT 10;",
+      "response": "Os 10 municípios com maior taxa de mortalidade em internações obstétricas são:\n\n1. Canutama: 2.160 internações, taxa de mortalidade 0,88\n2. Conceição do Tocantins: 570 internações, taxa de mortalidade 0,88\n3. Lavras do Sul: 828 internações, taxa de mortalidade 0,85\n4. Italva: 241 internações, taxa de mortalidade 0,83\n5. Córrego Danta: 251 internações, taxa de mortalidade 0,80\n6. Ibituruna: 327 internações, taxa de mortalidade 0,61\n7. Aceguá: 659 internações, taxa de mortalidade 0,61\n8. Casca: 718 internações, taxa de mortalidade 0,56\n9. São Pedro dos Crentes: 377 internações, taxa de mortalidade 0,53\n10. Vila Nova do Sul: 387 internações, taxa de mortalidade 0,52",
+      "row_count": 10,
+      "results_preview": [
+        {
+          "result": [
+            "Canutama",
+            2160,
+            0.88
+          ]
+        },
+        {
+          "result": [
+            "Conceição do Tocantins",
+            570,
+            0.88
+          ]
+        },
+        {
+          "result": [
+            "Lavras do Sul",
+            828,
+            0.85
+          ]
+        },
+        {
+          "result": [
+            "Italva",
+            241,
+            0.83
+          ]
+        },
+        {
+          "result": [
+            "Córrego Danta",
+            251,
+            0.8
+          ]
+        },
+        {
+          "result": [
+            "Ibituruna",
+            327,
+            0.61
+          ]
+        },
+        {
+          "result": [
+            "Aceguá",
+            659,
+            0.61
+          ]
+        },
+        {
+          "result": [
+            "Casca",
+            718,
+            0.56
+          ]
+        },
+        {
+          "result": [
+            "São Pedro dos Crentes",
+            377,
+            0.53
+          ]
+        },
+        {
+          "result": [
+            "Vila Nova do Sul",
+            387,
+            0.52
+          ]
+        }
+      ],
+      "final_result_rows_preview": null,
+      "error": null,
+      "cost": {
+        "prompt_tokens": 17280,
+        "completion_tokens": 1376,
+        "total_tokens": 18656,
+        "total_cost_usd": 0.002957,
+        "successful_requests": 5
+      },
+      "chart": null
+    },
+    "agent_metadata": {
+      "langgraph_v3": true,
+      "messages_state": true,
+      "query_route": "database",
+      "classification": {
+        "route": "database",
+        "confidence": 0.9,
+        "requires_tools": true
+      },
+      "workflow_metrics": {
+        "overall_success": true,
+        "completion_rate": 0.5714285714285714,
+        "phases_completed": 8,
+        "total_phases": 14,
+        "tool_success_rate": 1.0,
+        "total_tools_used": 3,
+        "retry_count": 0,
+        "error_count": 0,
+        "execution_time": 20.88117218017578
+      },
+      "phases_completed": [
+        "initialization",
+        "query_classification",
+        "table_discovery",
+        "schema_analysis",
+        "reasoning",
+        "sql_generation",
+        "sql_validation",
+        "sql_execution"
+      ],
+      "current_phase": "completed",
+      "tool_calls": [
+        {
+          "name": "sql_db_list_tables",
+          "success": true,
+          "execution_time": 0.4653031826019287
+        },
+        {
+          "name": "sql_db_query_checker",
+          "success": true,
+          "execution_time": 3.806945323944092
+        },
+        {
+          "name": "sql_db_query",
+          "success": true,
+          "execution_time": 0.3259561061859131
+        }
+      ],
+      "message_count": 13,
+      "retry_count": 0,
+      "error_count": 0,
+      "tables_used": [
+        "internacoes"
+      ],
+      "schema_context_length": 11552,
+      "latency_by_component": {
+        "query_classification": 0.00035691261291503906,
+        "table_discovery": 0.4653737545013428,
+        "schema_analysis": 0.0005617141723632812,
+        "reasoning": 4.981711387634277,
+        "sql_generation": 5.187527418136597,
+        "sql_validation": 3.806974411010742,
+        "sql_execution": 0.3260834217071533,
+        "completed": 3.252474308013916
+      },
+      "multi_query": {
+        "is_multi_query": false,
+        "plan_type": "global_local_avg",
+        "execution_mode": "single",
+        "multi_query_allowed": false,
+        "allowed_multi_plan_types": [
+          "bind_then_query",
+          "fanout_concat",
+          "verification_side_query"
+        ],
+        "query_plan": {
+          "strategy": "single",
+          "reasoning": "Comparações contra média global/estadual devem permanecer em uma SQL.",
+          "plan_type": "global_local_avg",
+          "merge_strategy": "none",
+          "output_nodes": [
+            "sq1"
+          ],
+          "required_constraints": [],
+          "expected_output_shape": {},
+          "verifier_checks": [],
+          "fallback_policy": {},
+          "sub_queries": [
+            {
+              "id": "sq1",
+              "description": "Quais são os 10 municípios com maior taxa de mortalidade em internações obstétricas, entre aqueles com mais de 200 internações obstétricas e taxa acima da média nacional obstétrica?",
+              "purpose": "final_output",
+              "output_role": "output",
+              "expected_result_kind": "rowset",
+              "expected_max_rows": null,
+              "required_constraints": [],
+              "selected_tables": [],
+              "bind_keys": [],
+              "sql": null,
+              "validated_sql": null,
+              "result_raw": null,
+              "parsed_rows": null,
+              "success": false,
+              "error": null,
+              "depends_on": [],
+              "repair_attempts": 0
+            }
+          ]
+        },
+        "sub_query_results": [],
+        "merged_rows": null,
+        "merged_rows_source": null,
+        "merge_strategy": "none",
+        "verifier_outcome": null,
+        "single_fallback_active": false,
+        "single_fallback_reason": null,
+        "final_sql_query": null,
+        "failure_taxonomy": []
+      },
+      "semantic_plan": {
+        "intent": "ranking",
+        "base_grain": "internacao",
+        "metrics": [
+          {
+            "name": "taxa_mortalidade",
+            "expression_type": "rate",
+            "numerator_condition": "MORTE = true",
+            "denominator_scope": "all_rows_matching_non_outcome_filters",
+            "required_filters": []
+          }
+        ],
+        "dimensions": [
+          {
+            "name": "municipio",
+            "source": "municipios.NO_MUNICIPIO",
+            "role": "group"
+          }
+        ],
+        "filters": [
+          {
+            "field": "obstetrico",
+            "values": [
+              "ESPEC = 2"
+            ],
+            "operator": "semantic"
+          },
+          {
+            "field": "minimum_group_count",
+            "values": [
+              "200"
+            ],
+            "operator": ">"
+          }
+        ],
+        "answer_shape": {
+          "row_grain": "top_n_global",
+          "top_n": 10,
+          "top_n_scope": "global",
+          "required_dimensions": [
+            "municipio"
+          ],
+          "partition_dimensions": [],
+          "ranked_dimensions": [],
+          "requires_group_by": true,
+          "include_unknown_bucket": false,
+          "answer_kind": "top_n_global",
+          "expected_row_count": "bounded_n",
+          "output_dimensions": [
+            "municipio"
+          ],
+          "filter_dimensions": [],
+          "forbidden_output_dimensions": []
+        },
+        "constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "null_policy": [],
+        "ambiguities": []
+      },
+      "visualization_intent": {
+        "requested": false,
+        "source": "none",
+        "uses_last_result": false,
+        "chart_hint": "auto",
+        "reason": ""
+      },
+      "chart_plan": {
+        "requested": false,
+        "chart_type": "auto",
+        "metric": null,
+        "metric_expression": null,
+        "x_dimension": null,
+        "series_dimension": null,
+        "y_column": null,
+        "grain": "unknown",
+        "expected_result_shape": "unknown",
+        "filters": [],
+        "time_window": {
+          "type": "none",
+          "n": null,
+          "start_year": null,
+          "end_year": null,
+          "date_column": "DT_INTER"
+        },
+        "required_columns": [],
+        "sql_shape_guidance": "",
+        "reason": "visualization not requested"
+      },
+      "chart_spec": null,
+      "llamaindex_enabled": true,
+      "llamaindex_mode": "context",
+      "llamaindex_retrieval_mode": "llamaindex_schema",
+      "llamaindex_selected_tables": [
+        "socioeconomico",
+        "internacoes",
+        "municipios"
+      ],
+      "llamaindex_confidence": 0.4963955091609675,
+      "llamaindex_error": "",
+      "raw_selected_tables": [
+        "socioeconomico",
+        "internacoes",
+        "municipios"
+      ],
+      "validated_selected_tables": [
+        "internacoes"
+      ],
+      "table_selection_mode": "llamaindex_context",
+      "schema_context_source": "llamaindex",
+      "schema_context_verified_with_db": false,
+      "schema_context_tables": [
+        "internacoes"
+      ],
+      "semantic_constraints": [
+        "rate_denominator_must_preserve_full_scope"
+      ],
+      "semantic_null_policy": [],
+      "semantic_planner": {
+        "mode": "llm_reconciled",
+        "confidence": 0.9,
+        "reasoning": "A intenção é classificar os municípios com base na taxa de mortalidade em internações obstétricas. A métrica 'taxa_mortalidade' é calculada como a razão entre o número de mortes e o total de internações, respeitando a condição de desfecho. As dimensões incluem o município, que é necessário para agrupar os resultados. Os filtros garantem que apenas municípios com mais de 200 internações obstétricas e que atendem ao critério de taxa acima da média nacional sejam considerados. O formato de resposta é o top 10 global, que se alinha com a solicitação do usuário.",
+        "conflicts": [],
+        "accepted_llm_fields": [
+          "metrics"
+        ],
+        "rejected_llm_fields": []
+      },
+      "sql_generation_confidence": 0.9,
+      "sql_generation_reasoning": "The query calculates the mortality rate for obstetric hospitalizations by municipality, filtering for those with more than 200 hospitalizations and comparing against the national average mortality rate for obstetric cases. It uses CTEs to first compute the national average and then the local rates per municipality, ensuring accurate comparisons.",
+      "sql_generation_source": "current_structured_output",
+      "chart_plan_validation": {
+        "passed": true,
+        "message": null,
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        }
+      },
+      "semantic_validation": {
+        "passed": true,
+        "constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "null_policy": [],
+        "message": null
+      },
+      "orchestrator_v3": true,
+      "current_model": {
+        "provider": "openai",
+        "model_name": "gpt-4o-mini",
+        "temperature": 0.0
+      },
+      "environment": "production",
+      "session_id": "session_25557",
+      "query_number": 124,
+      "orchestrator_execution_time": 20.899757862091064
+    },
+    "multi_query": {
+      "is_multi_query": false,
+      "plan_type": "global_local_avg",
+      "execution_mode": "single",
+      "multi_query_allowed": false,
+      "allowed_multi_plan_types": [
+        "bind_then_query",
+        "fanout_concat",
+        "verification_side_query"
+      ],
+      "query_plan": {
+        "strategy": "single",
+        "reasoning": "Comparações contra média global/estadual devem permanecer em uma SQL.",
+        "plan_type": "global_local_avg",
+        "merge_strategy": "none",
+        "output_nodes": [
+          "sq1"
+        ],
+        "required_constraints": [],
+        "expected_output_shape": {},
+        "verifier_checks": [],
+        "fallback_policy": {},
+        "sub_queries": [
+          {
+            "id": "sq1",
+            "description": "Quais são os 10 municípios com maior taxa de mortalidade em internações obstétricas, entre aqueles com mais de 200 internações obstétricas e taxa acima da média nacional obstétrica?",
+            "purpose": "final_output",
+            "output_role": "output",
+            "expected_result_kind": "rowset",
+            "expected_max_rows": null,
+            "required_constraints": [],
+            "selected_tables": [],
+            "bind_keys": [],
+            "sql": null,
+            "validated_sql": null,
+            "result_raw": null,
+            "parsed_rows": null,
+            "success": false,
+            "error": null,
+            "depends_on": [],
+            "repair_attempts": 0
+          }
+        ]
+      },
+      "sub_query_results": [],
+      "merged_rows": null,
+      "merged_rows_source": null,
+      "merge_strategy": "none",
+      "verifier_outcome": null,
+      "single_fallback_active": false,
+      "single_fallback_reason": null,
+      "final_sql_query": null,
+      "failure_taxonomy": []
+    },
+    "agent_error": null,
+    "metrics": {
+      "Execution Accuracy (EX)": {
+        "score": 1.0,
+        "is_correct": true,
+        "error": null,
+        "details": {
+          "ground_truth_executed": true,
+          "predicted_executed": true,
+          "ground_truth_rows": 10,
+          "predicted_rows": 10,
+          "results_match": true,
+          "comparison_details": {
+            "gt_size": 10,
+            "pred_size": 10,
+            "normalized_match": true,
+            "projected_match": true,
+            "reverse_projected_match": true,
+            "gt_col_count": 6,
+            "pred_col_count": 3,
+            "matching_column_indices": [
+              0,
+              2,
+              4
+            ]
+          }
+        }
+      }
+    },
+    "run_id": "20260517_gt228_full",
+    "question_index": 124,
+    "total_questions": 228,
+    "question_fingerprint": "52d87cad8d30b848f0d83b499df776c95ef8646c647ff3a2b809757e18e02d73",
+    "trace_path": "/home/maiconkevyn/PycharmProjects/txt2sql_refactor_openai_v2/evaluation/results/dag_evaluation_20260517_gt228_full/queries/GT130/trace.json"
+  }
+}

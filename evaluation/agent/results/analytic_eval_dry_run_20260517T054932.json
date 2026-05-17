@@ -1,0 +1,522 @@
+{
+  "created_at": "2026-05-17T05:49:32.121023",
+  "dry_run": true,
+  "items": [
+    {
+      "id": "AN001",
+      "question": "Existe relação entre idade e câncer de próstata?",
+      "expected_template": "numeric_factor_by_condition",
+      "detected_template": "numeric_factor_by_condition",
+      "semantic_plan": {
+        "intent": "association",
+        "base_grain": "internacao",
+        "metrics": [
+          {
+            "name": "total_internacoes",
+            "expression_type": "count",
+            "required_filters": []
+          },
+          {
+            "name": "taxa_por_denominador",
+            "expression_type": "rate",
+            "denominator_scope": "same_scope_without_target_diagnosis",
+            "required_filters": []
+          },
+          {
+            "name": "razao_taxas",
+            "expression_type": "ratio",
+            "required_filters": []
+          },
+          {
+            "name": "idade_media",
+            "expression_type": "avg",
+            "required_filters": []
+          },
+          {
+            "name": "idade_mediana",
+            "expression_type": "value",
+            "required_filters": []
+          }
+        ],
+        "dimensions": [],
+        "filters": [
+          {
+            "field": "diagnostico_principal_codigo",
+            "values": [
+              "C61"
+            ],
+            "operator": "="
+          },
+          {
+            "field": "diagnostico_conceito_label",
+            "values": [
+              "C61 - Neopl malig da prostata"
+            ],
+            "operator": "metadata"
+          },
+          {
+            "field": "sexo",
+            "values": [
+              "1"
+            ],
+            "operator": "="
+          }
+        ],
+        "answer_shape": {
+          "row_grain": "single_scalar",
+          "top_n_scope": "none",
+          "required_dimensions": [],
+          "partition_dimensions": [],
+          "ranked_dimensions": [],
+          "requires_group_by": false,
+          "include_unknown_bucket": false,
+          "answer_kind": "single_row",
+          "expected_row_count": "one",
+          "output_dimensions": [],
+          "filter_dimensions": [],
+          "forbidden_output_dimensions": [
+            "idade"
+          ]
+        },
+        "constraints": [
+          "analytic_response_required",
+          "diagnosis_concept_resolution_required",
+          "age_diagnosis_association_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary",
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "null_policy": [],
+        "ambiguities": []
+      },
+      "template_match": true
+    },
+    {
+      "id": "AN002",
+      "question": "Existe relação entre idade e doenças pulmonares?",
+      "expected_template": "numeric_factor_by_condition",
+      "detected_template": "numeric_factor_by_condition",
+      "semantic_plan": {
+        "intent": "association",
+        "base_grain": "internacao",
+        "metrics": [
+          {
+            "name": "total_internacoes",
+            "expression_type": "count",
+            "required_filters": []
+          },
+          {
+            "name": "taxa_por_denominador",
+            "expression_type": "rate",
+            "denominator_scope": "same_scope_without_target_diagnosis",
+            "required_filters": []
+          },
+          {
+            "name": "razao_taxas",
+            "expression_type": "ratio",
+            "required_filters": []
+          },
+          {
+            "name": "idade_media",
+            "expression_type": "avg",
+            "required_filters": []
+          },
+          {
+            "name": "idade_mediana",
+            "expression_type": "value",
+            "required_filters": []
+          }
+        ],
+        "dimensions": [],
+        "filters": [
+          {
+            "field": "diagnostico_principal_prefix",
+            "values": [
+              "J%"
+            ],
+            "operator": "LIKE"
+          },
+          {
+            "field": "diagnostico_conceito_label",
+            "values": [
+              "CID J00-J99 - Doencas do aparelho respiratorio"
+            ],
+            "operator": "metadata"
+          }
+        ],
+        "answer_shape": {
+          "row_grain": "single_scalar",
+          "top_n_scope": "none",
+          "required_dimensions": [],
+          "partition_dimensions": [],
+          "ranked_dimensions": [],
+          "requires_group_by": false,
+          "include_unknown_bucket": false,
+          "answer_kind": "single_row",
+          "expected_row_count": "one",
+          "output_dimensions": [],
+          "filter_dimensions": [
+            "diagnostico"
+          ],
+          "forbidden_output_dimensions": [
+            "diagnostico",
+            "idade"
+          ]
+        },
+        "constraints": [
+          "analytic_response_required",
+          "diagnosis_concept_resolution_required",
+          "age_diagnosis_association_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary",
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "null_policy": [],
+        "ambiguities": []
+      },
+      "template_match": true
+    },
+    {
+      "id": "AN003",
+      "question": "Qual a relação entre raça/cor e mortalidade?",
+      "expected_template": "categorical_factor_by_outcome",
+      "detected_template": "categorical_factor_by_outcome",
+      "semantic_plan": {
+        "intent": "association",
+        "base_grain": "internacao",
+        "metrics": [
+          {
+            "name": "total_internacoes",
+            "expression_type": "count",
+            "required_filters": []
+          },
+          {
+            "name": "total_mortes",
+            "expression_type": "count",
+            "numerator_condition": "MORTE = true",
+            "required_filters": []
+          },
+          {
+            "name": "taxa_mortalidade",
+            "expression_type": "rate",
+            "numerator_condition": "MORTE = true",
+            "denominator_scope": "all_rows_matching_non_outcome_filters_per_category",
+            "required_filters": []
+          }
+        ],
+        "dimensions": [
+          {
+            "name": "raca_cor",
+            "source": "internacoes.RACA_COR",
+            "role": "group"
+          }
+        ],
+        "filters": [],
+        "answer_shape": {
+          "row_grain": "one_row_per_group",
+          "top_n_scope": "none",
+          "required_dimensions": [
+            "raca_cor"
+          ],
+          "partition_dimensions": [],
+          "ranked_dimensions": [],
+          "requires_group_by": true,
+          "include_unknown_bucket": false,
+          "answer_kind": "grouped_table",
+          "expected_row_count": "one_per_group",
+          "output_dimensions": [
+            "raca_cor"
+          ],
+          "filter_dimensions": [],
+          "forbidden_output_dimensions": []
+        },
+        "constraints": [
+          "analytic_response_required",
+          "categorical_outcome_association_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary",
+          "rate_denominator_must_preserve_full_scope",
+          "categorical_lookup_label_required"
+        ],
+        "null_policy": [],
+        "ambiguities": []
+      },
+      "template_match": true
+    },
+    {
+      "id": "AN004",
+      "question": "Qual a relação entre instrução e taxa de mortalidade?",
+      "expected_template": "categorical_factor_by_outcome",
+      "detected_template": "categorical_factor_by_outcome",
+      "semantic_plan": {
+        "intent": "association",
+        "base_grain": "internacao",
+        "metrics": [
+          {
+            "name": "total_internacoes",
+            "expression_type": "count",
+            "required_filters": []
+          },
+          {
+            "name": "total_mortes",
+            "expression_type": "count",
+            "numerator_condition": "MORTE = true",
+            "required_filters": []
+          },
+          {
+            "name": "taxa_mortalidade",
+            "expression_type": "rate",
+            "numerator_condition": "MORTE = true",
+            "denominator_scope": "all_rows_matching_non_outcome_filters_per_category",
+            "required_filters": []
+          }
+        ],
+        "dimensions": [
+          {
+            "name": "instrucao",
+            "source": "instrucao.DESCRICAO",
+            "role": "group"
+          }
+        ],
+        "filters": [
+          {
+            "field": "instrucao_valid",
+            "values": [
+              "INSTRU IS NOT NULL",
+              "INSTRU != 0"
+            ],
+            "operator": "semantic"
+          }
+        ],
+        "answer_shape": {
+          "row_grain": "one_row_per_group",
+          "top_n_scope": "none",
+          "required_dimensions": [
+            "instrucao"
+          ],
+          "partition_dimensions": [],
+          "ranked_dimensions": [],
+          "requires_group_by": true,
+          "include_unknown_bucket": false,
+          "answer_kind": "grouped_table",
+          "expected_row_count": "one_per_group",
+          "output_dimensions": [
+            "instrucao"
+          ],
+          "filter_dimensions": [],
+          "forbidden_output_dimensions": []
+        },
+        "constraints": [
+          "analytic_response_required",
+          "categorical_outcome_association_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary",
+          "rate_denominator_must_preserve_full_scope",
+          "domain_instrucao_valid_required"
+        ],
+        "null_policy": [],
+        "ambiguities": []
+      },
+      "template_match": true
+    },
+    {
+      "id": "AN005",
+      "question": "Compare a taxa de internações por doenças respiratórias por estado.",
+      "expected_template": "geographic_factor_by_condition",
+      "detected_template": "geographic_factor_by_condition",
+      "semantic_plan": {
+        "intent": "rate",
+        "base_grain": "internacao",
+        "metrics": [
+          {
+            "name": "proporcao",
+            "expression_type": "rate",
+            "denominator_scope": "all_rows_matching_scope_filters",
+            "required_filters": []
+          }
+        ],
+        "dimensions": [
+          {
+            "name": "estado",
+            "source": "municipios.SG_UF",
+            "role": "group"
+          }
+        ],
+        "filters": [
+          {
+            "field": "diagnostico_principal_prefix",
+            "values": [
+              "J%"
+            ],
+            "operator": "LIKE"
+          }
+        ],
+        "answer_shape": {
+          "row_grain": "one_row_per_group",
+          "top_n_scope": "none",
+          "required_dimensions": [
+            "estado"
+          ],
+          "partition_dimensions": [],
+          "ranked_dimensions": [],
+          "requires_group_by": true,
+          "include_unknown_bucket": false,
+          "answer_kind": "grouped_table",
+          "expected_row_count": "one_per_group",
+          "output_dimensions": [
+            "estado"
+          ],
+          "filter_dimensions": [
+            "diagnostico"
+          ],
+          "forbidden_output_dimensions": []
+        },
+        "constraints": [
+          "rate_denominator_must_preserve_full_scope",
+          "diagnosis_filter_dimension_not_output"
+        ],
+        "null_policy": [],
+        "ambiguities": []
+      },
+      "template_match": true
+    },
+    {
+      "id": "AN006",
+      "question": "Qual a tendência anual de doenças respiratórias?",
+      "expected_template": "temporal_trend_by_condition",
+      "detected_template": "temporal_trend_by_condition",
+      "semantic_plan": {
+        "intent": "trend",
+        "base_grain": "internacao",
+        "metrics": [
+          {
+            "name": "requested_metric",
+            "expression_type": "unknown",
+            "required_filters": []
+          }
+        ],
+        "dimensions": [
+          {
+            "name": "ano",
+            "source": "EXTRACT(YEAR FROM internacoes.DT_INTER)",
+            "role": "group"
+          }
+        ],
+        "filters": [
+          {
+            "field": "diagnostico_principal_prefix",
+            "values": [
+              "J%"
+            ],
+            "operator": "LIKE"
+          }
+        ],
+        "answer_shape": {
+          "row_grain": "time_series",
+          "top_n_scope": "none",
+          "required_dimensions": [
+            "ano"
+          ],
+          "partition_dimensions": [],
+          "ranked_dimensions": [],
+          "requires_group_by": true,
+          "include_unknown_bucket": false,
+          "answer_kind": "time_series",
+          "expected_row_count": "one_per_group",
+          "output_dimensions": [
+            "ano"
+          ],
+          "filter_dimensions": [
+            "diagnostico"
+          ],
+          "forbidden_output_dimensions": []
+        },
+        "constraints": [],
+        "null_policy": [],
+        "ambiguities": []
+      },
+      "template_match": true
+    },
+    {
+      "id": "AN007",
+      "question": "Existe diferença de mortalidade entre homens e mulheres?",
+      "expected_template": "categorical_factor_by_outcome",
+      "detected_template": "categorical_factor_by_outcome",
+      "semantic_plan": {
+        "intent": "association",
+        "base_grain": "internacao",
+        "metrics": [
+          {
+            "name": "total_internacoes",
+            "expression_type": "count",
+            "required_filters": []
+          },
+          {
+            "name": "total_mortes",
+            "expression_type": "count",
+            "numerator_condition": "MORTE = true",
+            "required_filters": []
+          },
+          {
+            "name": "taxa_mortalidade",
+            "expression_type": "rate",
+            "numerator_condition": "MORTE = true",
+            "denominator_scope": "all_rows_matching_non_outcome_filters_per_category",
+            "required_filters": []
+          }
+        ],
+        "dimensions": [
+          {
+            "name": "sexo",
+            "source": "internacoes.SEXO",
+            "role": "group"
+          }
+        ],
+        "filters": [
+          {
+            "field": "sexo",
+            "values": [
+              "1",
+              "3"
+            ],
+            "operator": "IN"
+          }
+        ],
+        "answer_shape": {
+          "row_grain": "one_row_per_group",
+          "top_n_scope": "none",
+          "required_dimensions": [
+            "sexo"
+          ],
+          "partition_dimensions": [],
+          "ranked_dimensions": [],
+          "requires_group_by": true,
+          "include_unknown_bucket": false,
+          "answer_kind": "grouped_table",
+          "expected_row_count": "one_per_group",
+          "output_dimensions": [
+            "sexo"
+          ],
+          "filter_dimensions": [],
+          "forbidden_output_dimensions": []
+        },
+        "constraints": [
+          "analytic_response_required",
+          "categorical_outcome_association_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary",
+          "rate_denominator_must_preserve_full_scope",
+          "sex_label_output_required"
+        ],
+        "null_policy": [],
+        "ambiguities": []
+      },
+      "template_match": true
+    }
+  ]
+}

@@ -1,0 +1,1572 @@
+{
+  "trace_schema_version": 2,
+  "status": "completed",
+  "run_id": "20260517_gt228_full",
+  "question_index": 88,
+  "total_questions": 228,
+  "question_fingerprint": "0f4beb7d6a336602be04fc95f7512c9bd98de5b7136665e1dc75aa731d80bfa5",
+  "trace_path": "/home/maiconkevyn/PycharmProjects/txt2sql_refactor_openai_v2/evaluation/results/dag_evaluation_20260517_gt228_full/queries/GT093/trace.json",
+  "written_at": "2026-05-17T06:40:06.403588",
+  "id": "GT093",
+  "difficulty": "hard",
+  "question_pt": "Em qual ano ocorreu o maior número de mortes em cada estado (MA e RS)?",
+  "question_started_at": "2026-05-17T06:39:29.632297",
+  "question_completed_at": "2026-05-17T06:40:05.962856",
+  "ground_truth_sql": "SELECT estado, ano, total_mortes\nFROM (\n    SELECT mu.\"SG_UF\" AS estado,\n           EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano,\n           COUNT(*) AS total_mortes,\n           ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY COUNT(*) DESC) AS rn\n    FROM internacoes i\n    JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\"\n    WHERE i.\"MORTE\" = true AND mu.\"SG_UF\" IN ('MA', 'RS') AND i.\"DT_INTER\" IS NOT NULL\n    GROUP BY mu.\"SG_UF\", ano\n) sub\nWHERE rn = 1\nORDER BY estado;",
+  "generated_sql": "SELECT sub.\"SG_UF\" AS estado, sub.ano, sub.total_mortes FROM ( SELECT mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_mortes, ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY COUNT(*) DESC) AS rn FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"MORTE\" = true AND mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") ) sub WHERE sub.rn = 1 ORDER BY estado;",
+  "agent_success": true,
+  "agent_error": null,
+  "agent_output": {
+    "success": true,
+    "sql_query": "SELECT sub.\"SG_UF\" AS estado, sub.ano, sub.total_mortes FROM ( SELECT mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_mortes, ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY COUNT(*) DESC) AS rn FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"MORTE\" = true AND mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") ) sub WHERE sub.rn = 1 ORDER BY estado;",
+    "response": "Em 2021, o Maranhão (MA) registrou 17.704 mortes, enquanto o Rio Grande do Sul (RS) teve 56.416 mortes.",
+    "row_count": 2,
+    "results_preview": [
+      {
+        "result": [
+          "MA",
+          2021,
+          17704
+        ]
+      },
+      {
+        "result": [
+          "RS",
+          2021,
+          56416
+        ]
+      }
+    ],
+    "final_result_rows_preview": null,
+    "error": null,
+    "cost": {
+      "prompt_tokens": 21073,
+      "completion_tokens": 1312,
+      "total_tokens": 22385,
+      "total_cost_usd": 0.003651,
+      "successful_requests": 7
+    },
+    "chart": null
+  },
+  "evaluation_source": "sql_query",
+  "latency_seconds": 36.330551624298096,
+  "generated_sql_valid": true,
+  "generated_sql_validation_errors": [],
+  "generated_sql_validation_warnings": [],
+  "generated_execution_status": "passed",
+  "ground_truth_execution_status": "passed",
+  "comparison_mode": "execution_accuracy",
+  "result_match": true,
+  "ex_score": 1.0,
+  "shape_match": true,
+  "projected_match": false,
+  "expected_columns": [
+    "estado",
+    "ano",
+    "total_mortes"
+  ],
+  "actual_columns": [
+    "estado",
+    "ano",
+    "total_mortes"
+  ],
+  "expected_preview_values": [
+    [
+      "MA",
+      2021,
+      17704
+    ],
+    [
+      "RS",
+      2021,
+      56416
+    ]
+  ],
+  "actual_preview_values": [
+    [
+      "MA",
+      2021,
+      17704
+    ],
+    [
+      "RS",
+      2021,
+      56416
+    ]
+  ],
+  "expected_row_count": 2,
+  "actual_row_count": 2,
+  "expected_truncated": false,
+  "actual_truncated": false,
+  "ground_truth_execution_error": null,
+  "generated_execution_error": null,
+  "ground_truth_execution_latency_seconds": 0.11204910278320312,
+  "generated_execution_latency_seconds": 0.10804557800292969,
+  "error_category": null,
+  "error_message": null,
+  "metric_details": {
+    "ground_truth_executed": true,
+    "predicted_executed": true,
+    "ground_truth_rows": 2,
+    "predicted_rows": 2,
+    "results_match": true,
+    "comparison_details": {
+      "gt_size": 2,
+      "pred_size": 2,
+      "normalized_match": true
+    }
+  },
+  "comparison_details": {
+    "gt_size": 2,
+    "pred_size": 2,
+    "normalized_match": true
+  },
+  "multi_query": {
+    "is_multi_query": false,
+    "plan_type": "single_window",
+    "execution_mode": "single",
+    "multi_query_allowed": false,
+    "allowed_multi_plan_types": [
+      "bind_then_query",
+      "fanout_concat",
+      "verification_side_query"
+    ],
+    "query_plan": {
+      "strategy": "single",
+      "reasoning": "Ranking por grupo com partição deve permanecer em uma única SQL.",
+      "plan_type": "single_window",
+      "merge_strategy": "none",
+      "output_nodes": [
+        "sq1"
+      ],
+      "required_constraints": [],
+      "expected_output_shape": {},
+      "verifier_checks": [],
+      "fallback_policy": {},
+      "sub_queries": [
+        {
+          "id": "sq1",
+          "description": "Em qual ano ocorreu o maior número de mortes em cada estado (MA e RS)?",
+          "purpose": "final_output",
+          "output_role": "output",
+          "expected_result_kind": "rowset",
+          "expected_max_rows": null,
+          "required_constraints": [],
+          "selected_tables": [],
+          "bind_keys": [],
+          "sql": null,
+          "validated_sql": null,
+          "result_raw": null,
+          "parsed_rows": null,
+          "success": false,
+          "error": null,
+          "depends_on": [],
+          "repair_attempts": 0
+        }
+      ]
+    },
+    "sub_query_results": [],
+    "merged_rows": null,
+    "merged_rows_source": null,
+    "merge_strategy": "none",
+    "verifier_outcome": null,
+    "single_fallback_active": false,
+    "single_fallback_reason": null,
+    "final_sql_query": null,
+    "failure_taxonomy": [
+      "top_n_scope"
+    ]
+  },
+  "tables_used": [
+    "internacoes",
+    "municipios"
+  ],
+  "selected_tables": {
+    "llamaindex": [
+      "internacoes",
+      "socioeconomico",
+      "municipios"
+    ],
+    "raw": [
+      "internacoes",
+      "socioeconomico",
+      "municipios"
+    ],
+    "validated": [
+      "internacoes",
+      "municipios"
+    ]
+  },
+  "table_selection": {
+    "mode": "llamaindex_context",
+    "llamaindex_enabled": true,
+    "llamaindex_mode": "context",
+    "llamaindex_confidence": 0.304461938965471,
+    "llamaindex_error": ""
+  },
+  "semantic_plan": {
+    "intent": "ranking",
+    "base_grain": "internacao",
+    "metrics": [
+      {
+        "name": "total",
+        "expression_type": "count",
+        "required_filters": []
+      }
+    ],
+    "dimensions": [
+      {
+        "name": "estado",
+        "source": "municipios.SG_UF",
+        "role": "group"
+      },
+      {
+        "name": "ano",
+        "source": "EXTRACT(YEAR FROM internacoes.DT_INTER)",
+        "role": "group"
+      }
+    ],
+    "filters": [
+      {
+        "field": "estado",
+        "values": [
+          "MA",
+          "RS"
+        ],
+        "operator": "IN"
+      },
+      {
+        "field": "desfecho",
+        "values": [
+          "MORTE = true"
+        ],
+        "operator": "semantic"
+      }
+    ],
+    "answer_shape": {
+      "row_grain": "top_n_per_group",
+      "top_n": 1,
+      "top_n_scope": "per_group",
+      "required_dimensions": [
+        "estado",
+        "ano"
+      ],
+      "partition_dimensions": [
+        "estado"
+      ],
+      "ranked_dimensions": [
+        "ano"
+      ],
+      "requires_group_by": true,
+      "include_unknown_bucket": false,
+      "answer_kind": "top_n_per_group",
+      "expected_row_count": "one_per_group",
+      "output_dimensions": [
+        "estado",
+        "ano"
+      ],
+      "filter_dimensions": [],
+      "forbidden_output_dimensions": []
+    },
+    "constraints": [
+      "top_n_per_group_requires_window_partition"
+    ],
+    "null_policy": [],
+    "ambiguities": [
+      "profile_temporal_coverage: internacoes.DT_INTER ranges from 2008-01-01 to 2023-12-31",
+      "profile_cardinality: ano uses high-cardinality identifier internacoes.DT_INTER"
+    ]
+  },
+  "semantic_planner": {
+    "mode": "llm_reconciled",
+    "confidence": 0.9,
+    "reasoning": "A intenção é classificar os anos com o maior número de mortes por estado (MA e RS). A métrica conta o total de mortes, filtrando por estado e considerando apenas os registros de morte. As dimensões agrupam os resultados por estado e ano, permitindo identificar o ano com o maior número de mortes em cada estado. O uso de top_n_per_group garante que apenas o ano com o maior número de mortes seja retornado para cada estado.",
+    "conflicts": [],
+    "accepted_llm_fields": [
+      "metrics"
+    ],
+    "rejected_llm_fields": []
+  },
+  "semantic_validation": {
+    "passed": true,
+    "constraints": [
+      "top_n_per_group_requires_window_partition"
+    ],
+    "null_policy": [],
+    "message": null
+  },
+  "chart_plan": {
+    "requested": false,
+    "chart_type": "auto",
+    "metric": null,
+    "metric_expression": null,
+    "x_dimension": null,
+    "series_dimension": null,
+    "y_column": null,
+    "grain": "unknown",
+    "expected_result_shape": "unknown",
+    "filters": [],
+    "time_window": {
+      "type": "none",
+      "n": null,
+      "start_year": null,
+      "end_year": null,
+      "date_column": "DT_INTER"
+    },
+    "required_columns": [],
+    "sql_shape_guidance": "",
+    "reason": "visualization not requested"
+  },
+  "chart_plan_validation": {
+    "passed": true,
+    "message": null,
+    "chart_plan": {
+      "requested": false,
+      "chart_type": "auto",
+      "metric": null,
+      "metric_expression": null,
+      "x_dimension": null,
+      "series_dimension": null,
+      "y_column": null,
+      "grain": "unknown",
+      "expected_result_shape": "unknown",
+      "filters": [],
+      "time_window": {
+        "type": "none",
+        "n": null,
+        "start_year": null,
+        "end_year": null,
+        "date_column": "DT_INTER"
+      },
+      "required_columns": [],
+      "sql_shape_guidance": "",
+      "reason": "visualization not requested"
+    }
+  },
+  "workflow_metrics": {
+    "overall_success": true,
+    "completion_rate": 0.6428571428571429,
+    "phases_completed": 9,
+    "total_phases": 14,
+    "tool_success_rate": 1.0,
+    "total_tools_used": 4,
+    "retry_count": 0,
+    "error_count": 1,
+    "execution_time": 36.285558462142944
+  },
+  "latency_by_component": {
+    "query_classification": 0.0003159046173095703,
+    "table_discovery": 0.4839916229248047,
+    "schema_analysis": 0.0008065700531005859,
+    "reasoning": 6.088768005371094,
+    "sql_generation": 12.391589641571045,
+    "sql_validation": 8.017812728881836,
+    "sql_repair": 1.7863256931304932,
+    "sql_execution": 0.10878419876098633,
+    "completed": 1.0022196769714355
+  },
+  "tool_calls": [
+    {
+      "name": "sql_db_list_tables",
+      "success": true,
+      "execution_time": 0.48391008377075195
+    },
+    {
+      "name": "sql_db_query_checker",
+      "success": true,
+      "execution_time": 2.2307496070861816
+    },
+    {
+      "name": "sql_db_query_checker",
+      "success": true,
+      "execution_time": 8.017783641815186
+    },
+    {
+      "name": "sql_db_query",
+      "success": true,
+      "execution_time": 0.1086740493774414
+    }
+  ],
+  "phases_completed": [
+    "initialization",
+    "query_classification",
+    "table_discovery",
+    "schema_analysis",
+    "reasoning",
+    "sql_generation",
+    "sql_validation",
+    "sql_repair",
+    "sql_execution"
+  ],
+  "agent_metadata": {
+    "langgraph_v3": true,
+    "messages_state": true,
+    "query_route": "database",
+    "classification": {
+      "route": "database",
+      "confidence": 0.9,
+      "requires_tools": true
+    },
+    "workflow_metrics": {
+      "overall_success": true,
+      "completion_rate": 0.6428571428571429,
+      "phases_completed": 9,
+      "total_phases": 14,
+      "tool_success_rate": 1.0,
+      "total_tools_used": 4,
+      "retry_count": 0,
+      "error_count": 1,
+      "execution_time": 36.285558462142944
+    },
+    "phases_completed": [
+      "initialization",
+      "query_classification",
+      "table_discovery",
+      "schema_analysis",
+      "reasoning",
+      "sql_generation",
+      "sql_validation",
+      "sql_repair",
+      "sql_execution"
+    ],
+    "current_phase": "completed",
+    "tool_calls": [
+      {
+        "name": "sql_db_list_tables",
+        "success": true,
+        "execution_time": 0.48391008377075195
+      },
+      {
+        "name": "sql_db_query_checker",
+        "success": true,
+        "execution_time": 2.2307496070861816
+      },
+      {
+        "name": "sql_db_query_checker",
+        "success": true,
+        "execution_time": 8.017783641815186
+      },
+      {
+        "name": "sql_db_query",
+        "success": true,
+        "execution_time": 0.1086740493774414
+      }
+    ],
+    "message_count": 16,
+    "retry_count": 0,
+    "error_count": 1,
+    "tables_used": [
+      "internacoes",
+      "municipios"
+    ],
+    "schema_context_length": 10847,
+    "latency_by_component": {
+      "query_classification": 0.0003159046173095703,
+      "table_discovery": 0.4839916229248047,
+      "schema_analysis": 0.0008065700531005859,
+      "reasoning": 6.088768005371094,
+      "sql_generation": 12.391589641571045,
+      "sql_validation": 8.017812728881836,
+      "sql_repair": 1.7863256931304932,
+      "sql_execution": 0.10878419876098633,
+      "completed": 1.0022196769714355
+    },
+    "multi_query": {
+      "is_multi_query": false,
+      "plan_type": "single_window",
+      "execution_mode": "single",
+      "multi_query_allowed": false,
+      "allowed_multi_plan_types": [
+        "bind_then_query",
+        "fanout_concat",
+        "verification_side_query"
+      ],
+      "query_plan": {
+        "strategy": "single",
+        "reasoning": "Ranking por grupo com partição deve permanecer em uma única SQL.",
+        "plan_type": "single_window",
+        "merge_strategy": "none",
+        "output_nodes": [
+          "sq1"
+        ],
+        "required_constraints": [],
+        "expected_output_shape": {},
+        "verifier_checks": [],
+        "fallback_policy": {},
+        "sub_queries": [
+          {
+            "id": "sq1",
+            "description": "Em qual ano ocorreu o maior número de mortes em cada estado (MA e RS)?",
+            "purpose": "final_output",
+            "output_role": "output",
+            "expected_result_kind": "rowset",
+            "expected_max_rows": null,
+            "required_constraints": [],
+            "selected_tables": [],
+            "bind_keys": [],
+            "sql": null,
+            "validated_sql": null,
+            "result_raw": null,
+            "parsed_rows": null,
+            "success": false,
+            "error": null,
+            "depends_on": [],
+            "repair_attempts": 0
+          }
+        ]
+      },
+      "sub_query_results": [],
+      "merged_rows": null,
+      "merged_rows_source": null,
+      "merge_strategy": "none",
+      "verifier_outcome": null,
+      "single_fallback_active": false,
+      "single_fallback_reason": null,
+      "final_sql_query": null,
+      "failure_taxonomy": [
+        "top_n_scope"
+      ]
+    },
+    "semantic_plan": {
+      "intent": "ranking",
+      "base_grain": "internacao",
+      "metrics": [
+        {
+          "name": "total",
+          "expression_type": "count",
+          "required_filters": []
+        }
+      ],
+      "dimensions": [
+        {
+          "name": "estado",
+          "source": "municipios.SG_UF",
+          "role": "group"
+        },
+        {
+          "name": "ano",
+          "source": "EXTRACT(YEAR FROM internacoes.DT_INTER)",
+          "role": "group"
+        }
+      ],
+      "filters": [
+        {
+          "field": "estado",
+          "values": [
+            "MA",
+            "RS"
+          ],
+          "operator": "IN"
+        },
+        {
+          "field": "desfecho",
+          "values": [
+            "MORTE = true"
+          ],
+          "operator": "semantic"
+        }
+      ],
+      "answer_shape": {
+        "row_grain": "top_n_per_group",
+        "top_n": 1,
+        "top_n_scope": "per_group",
+        "required_dimensions": [
+          "estado",
+          "ano"
+        ],
+        "partition_dimensions": [
+          "estado"
+        ],
+        "ranked_dimensions": [
+          "ano"
+        ],
+        "requires_group_by": true,
+        "include_unknown_bucket": false,
+        "answer_kind": "top_n_per_group",
+        "expected_row_count": "one_per_group",
+        "output_dimensions": [
+          "estado",
+          "ano"
+        ],
+        "filter_dimensions": [],
+        "forbidden_output_dimensions": []
+      },
+      "constraints": [
+        "top_n_per_group_requires_window_partition"
+      ],
+      "null_policy": [],
+      "ambiguities": [
+        "profile_temporal_coverage: internacoes.DT_INTER ranges from 2008-01-01 to 2023-12-31",
+        "profile_cardinality: ano uses high-cardinality identifier internacoes.DT_INTER"
+      ]
+    },
+    "visualization_intent": {
+      "requested": false,
+      "source": "none",
+      "uses_last_result": false,
+      "chart_hint": "auto",
+      "reason": ""
+    },
+    "chart_plan": {
+      "requested": false,
+      "chart_type": "auto",
+      "metric": null,
+      "metric_expression": null,
+      "x_dimension": null,
+      "series_dimension": null,
+      "y_column": null,
+      "grain": "unknown",
+      "expected_result_shape": "unknown",
+      "filters": [],
+      "time_window": {
+        "type": "none",
+        "n": null,
+        "start_year": null,
+        "end_year": null,
+        "date_column": "DT_INTER"
+      },
+      "required_columns": [],
+      "sql_shape_guidance": "",
+      "reason": "visualization not requested"
+    },
+    "chart_spec": null,
+    "llamaindex_enabled": true,
+    "llamaindex_mode": "context",
+    "llamaindex_retrieval_mode": "llamaindex_schema",
+    "llamaindex_selected_tables": [
+      "internacoes",
+      "socioeconomico",
+      "municipios"
+    ],
+    "llamaindex_confidence": 0.304461938965471,
+    "llamaindex_error": "",
+    "raw_selected_tables": [
+      "internacoes",
+      "socioeconomico",
+      "municipios"
+    ],
+    "validated_selected_tables": [
+      "internacoes",
+      "municipios"
+    ],
+    "table_selection_mode": "llamaindex_context",
+    "schema_context_source": "llamaindex",
+    "schema_context_verified_with_db": false,
+    "schema_context_tables": [
+      "internacoes",
+      "municipios"
+    ],
+    "semantic_constraints": [
+      "top_n_per_group_requires_window_partition"
+    ],
+    "semantic_null_policy": [],
+    "analytic_intent": "ranking",
+    "analytic_template": "geographic_factor_by_condition",
+    "denominator_policy": "same_geographic_scope_per_group",
+    "analytic_sections_present": [
+      "direct_answer",
+      "scope",
+      "denominator",
+      "group_distribution"
+    ],
+    "concept_resolution": {
+      "diagnosis_codes": [],
+      "diagnosis_prefixes": [],
+      "labels": [],
+      "resolved": false
+    },
+    "semantic_planner": {
+      "mode": "llm_reconciled",
+      "confidence": 0.9,
+      "reasoning": "A intenção é classificar os anos com o maior número de mortes por estado (MA e RS). A métrica conta o total de mortes, filtrando por estado e considerando apenas os registros de morte. As dimensões agrupam os resultados por estado e ano, permitindo identificar o ano com o maior número de mortes em cada estado. O uso de top_n_per_group garante que apenas o ano com o maior número de mortes seja retornado para cada estado.",
+      "conflicts": [],
+      "accepted_llm_fields": [
+        "metrics"
+      ],
+      "rejected_llm_fields": []
+    },
+    "sql_generation_confidence": 1.0,
+    "sql_generation_reasoning": "The query counts the number of deaths per year for each state (MA and RS) and uses ROW_NUMBER() to rank the years by the number of deaths within each state. It filters for deaths and groups by state and year, ensuring only the top year per state is returned.",
+    "sql_generation_source": "current_structured_output",
+    "chart_plan_validation": {
+      "passed": true,
+      "message": null,
+      "chart_plan": {
+        "requested": false,
+        "chart_type": "auto",
+        "metric": null,
+        "metric_expression": null,
+        "x_dimension": null,
+        "series_dimension": null,
+        "y_column": null,
+        "grain": "unknown",
+        "expected_result_shape": "unknown",
+        "filters": [],
+        "time_window": {
+          "type": "none",
+          "n": null,
+          "start_year": null,
+          "end_year": null,
+          "date_column": "DT_INTER"
+        },
+        "required_columns": [],
+        "sql_shape_guidance": "",
+        "reason": "visualization not requested"
+      }
+    },
+    "semantic_error": {
+      "category": "top_n_scope",
+      "severity": "error",
+      "message": "(_duckdb.BinderException) Binder Error: Referenced table \"mu\" not found!\nCandidate tables: \"sub\"\n\nLINE 1: EXPLAIN SELECT mu.\"SG_UF\" AS estado, sub.ano, sub.total_mortes FROM ( SELECT...\n                       ^\n[SQL: EXPLAIN SELECT mu.\"SG_UF\" AS estado, sub.ano, sub.total_mortes FROM ( SELECT mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_mortes, ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY COUNT(*) DESC) AS rn FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"MORTE\" = true AND mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") ) sub WHERE sub.rn = 1 ORDER BY estado;]\n(Background on this error at: https://sqlalche.me/e/20/f405)"
+    },
+    "repair_attempts": [
+      {
+        "previous_sql": "SELECT mu.\"SG_UF\" AS estado, sub.ano, sub.total_mortes FROM ( SELECT mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_mortes, ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY COUNT(*) DESC) AS rn FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"MORTE\" = true AND mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") ) sub WHERE sub.rn = 1 ORDER BY estado;",
+        "error_message": "(_duckdb.BinderException) Binder Error: Referenced table \"mu\" not found!\nCandidate tables: \"sub\"\n\nLINE 1: EXPLAIN SELECT mu.\"SG_UF\" AS estado, sub.ano, sub.total_mortes FROM ( SELECT...\n                       ^\n[SQL: EXPLAIN SELECT mu.\"SG_UF\" AS estado, sub.ano, sub.total_mortes FROM ( SELECT mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_mortes, ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY COUNT(*) DESC) AS rn FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"MORTE\" = true AND mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") ) sub WHERE sub.rn = 1 ORDER BY estado;]\n(Background on this error at: https://sqlalche.me/e/20/f405)",
+        "semantic_category": "top_n_scope",
+        "semantic_guidance": "Top-N por grupo",
+        "violated_contract": {
+          "answer_shape.top_n": 1,
+          "answer_shape.top_n_scope": "per_group",
+          "answer_shape.required_dimensions": [
+            "estado",
+            "ano"
+          ],
+          "answer_shape.partition_dimensions": [
+            "estado"
+          ],
+          "answer_shape.ranked_dimensions": [
+            "ano"
+          ]
+        },
+        "repair_strategy": "llm_guided",
+        "timestamp": "2026-05-17T06:39:56.798102",
+        "post_repair_validation": {
+          "passed": true,
+          "message": null
+        }
+      }
+    ],
+    "semantic_repair": {
+      "original_category": "top_n_scope",
+      "original_message": "(_duckdb.BinderException) Binder Error: Referenced table \"mu\" not found!\nCandidate tables: \"sub\"\n\nLINE 1: EXPLAIN SELECT mu.\"SG_UF\" AS estado, sub.ano, sub.total_mortes FROM ( SELECT...\n                       ^\n[SQL: EXPLAIN SELECT mu.\"SG_UF\" AS estado, sub.ano, sub.total_mortes FROM ( SELECT mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_mortes, ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY COUNT(*) DESC) AS rn FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"MORTE\" = true AND mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") ) sub WHERE sub.rn = 1 ORDER BY estado;]\n(Background on this error at: https://sqlalche.me/e/20/f405)",
+      "guidance_title": "Top-N por grupo",
+      "strategy": "llm_guided",
+      "post_repair_category": null,
+      "post_repair_message": null,
+      "validation_passed_after_repair": true
+    },
+    "semantic_validation": {
+      "passed": true,
+      "constraints": [
+        "top_n_per_group_requires_window_partition"
+      ],
+      "null_policy": [],
+      "message": null
+    },
+    "orchestrator_v3": true,
+    "current_model": {
+      "provider": "openai",
+      "model_name": "gpt-4o-mini",
+      "temperature": 0.0
+    },
+    "environment": "production",
+    "session_id": "session_69632",
+    "query_number": 88,
+    "orchestrator_execution_time": 36.30152678489685
+  },
+  "steps": [
+    {
+      "name": "evaluation_input",
+      "status": "passed",
+      "details": {
+        "question_id": "GT093",
+        "difficulty": "hard",
+        "question_pt": "Em qual ano ocorreu o maior número de mortes em cada estado (MA e RS)?",
+        "ground_truth_sql": "SELECT estado, ano, total_mortes\nFROM (\n    SELECT mu.\"SG_UF\" AS estado,\n           EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano,\n           COUNT(*) AS total_mortes,\n           ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY COUNT(*) DESC) AS rn\n    FROM internacoes i\n    JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\"\n    WHERE i.\"MORTE\" = true AND mu.\"SG_UF\" IN ('MA', 'RS') AND i.\"DT_INTER\" IS NOT NULL\n    GROUP BY mu.\"SG_UF\", ano\n) sub\nWHERE rn = 1\nORDER BY estado;"
+      }
+    },
+    {
+      "name": "agent.process_query",
+      "status": "passed",
+      "latency_seconds": 36.330551624298096,
+      "input": {
+        "question": "Em qual ano ocorreu o maior número de mortes em cada estado (MA e RS)?"
+      },
+      "output": {
+        "success": true,
+        "sql_query": "SELECT sub.\"SG_UF\" AS estado, sub.ano, sub.total_mortes FROM ( SELECT mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_mortes, ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY COUNT(*) DESC) AS rn FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"MORTE\" = true AND mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") ) sub WHERE sub.rn = 1 ORDER BY estado;",
+        "response": "Em 2021, o Maranhão (MA) registrou 17.704 mortes, enquanto o Rio Grande do Sul (RS) teve 56.416 mortes.",
+        "row_count": 2,
+        "results_preview": [
+          {
+            "result": [
+              "MA",
+              2021,
+              17704
+            ]
+          },
+          {
+            "result": [
+              "RS",
+              2021,
+              56416
+            ]
+          }
+        ],
+        "final_result_rows_preview": null,
+        "error": null,
+        "cost": {
+          "prompt_tokens": 21073,
+          "completion_tokens": 1312,
+          "total_tokens": 22385,
+          "total_cost_usd": 0.003651,
+          "successful_requests": 7
+        },
+        "chart": null
+      },
+      "error": null
+    },
+    {
+      "name": "workflow.initialization",
+      "status": "passed",
+      "latency_seconds": null,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.query_classification",
+      "status": "passed",
+      "latency_seconds": 0.0003159046173095703,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.table_discovery",
+      "status": "passed",
+      "latency_seconds": 0.4839916229248047,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.schema_analysis",
+      "status": "passed",
+      "latency_seconds": 0.0008065700531005859,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.reasoning",
+      "status": "passed",
+      "latency_seconds": 6.088768005371094,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            },
+            {
+              "name": "ano",
+              "source": "EXTRACT(YEAR FROM internacoes.DT_INTER)",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "estado",
+              "values": [
+                "MA",
+                "RS"
+              ],
+              "operator": "IN"
+            },
+            {
+              "field": "desfecho",
+              "values": [
+                "MORTE = true"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_per_group",
+            "top_n": 1,
+            "top_n_scope": "per_group",
+            "required_dimensions": [
+              "estado",
+              "ano"
+            ],
+            "partition_dimensions": [
+              "estado"
+            ],
+            "ranked_dimensions": [
+              "ano"
+            ],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_per_group",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado",
+              "ano"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "top_n_per_group_requires_window_partition"
+          ],
+          "null_policy": [],
+          "ambiguities": [
+            "profile_temporal_coverage: internacoes.DT_INTER ranges from 2008-01-01 to 2023-12-31",
+            "profile_cardinality: ano uses high-cardinality identifier internacoes.DT_INTER"
+          ]
+        },
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.sql_generation",
+      "status": "passed",
+      "latency_seconds": 12.391589641571045,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.sql_validation",
+      "status": "passed",
+      "latency_seconds": 8.017812728881836,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "top_n_per_group_requires_window_partition"
+          ],
+          "null_policy": [],
+          "message": null
+        }
+      }
+    },
+    {
+      "name": "workflow.sql_repair",
+      "status": "passed",
+      "latency_seconds": 1.7863256931304932,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.sql_execution",
+      "status": "passed",
+      "latency_seconds": 0.10878419876098633,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "tool.sql_db_list_tables",
+      "status": "passed",
+      "latency_seconds": 0.48391008377075195,
+      "details": {
+        "name": "sql_db_list_tables",
+        "success": true,
+        "execution_time": 0.48391008377075195
+      }
+    },
+    {
+      "name": "tool.sql_db_query_checker",
+      "status": "passed",
+      "latency_seconds": 2.2307496070861816,
+      "details": {
+        "name": "sql_db_query_checker",
+        "success": true,
+        "execution_time": 2.2307496070861816
+      }
+    },
+    {
+      "name": "tool.sql_db_query_checker",
+      "status": "passed",
+      "latency_seconds": 8.017783641815186,
+      "details": {
+        "name": "sql_db_query_checker",
+        "success": true,
+        "execution_time": 8.017783641815186
+      }
+    },
+    {
+      "name": "tool.sql_db_query",
+      "status": "passed",
+      "latency_seconds": 0.1086740493774414,
+      "details": {
+        "name": "sql_db_query",
+        "success": true,
+        "execution_time": 0.1086740493774414
+      }
+    },
+    {
+      "name": "metric.Execution Accuracy (EX)",
+      "status": "passed",
+      "score": 1.0,
+      "error": null,
+      "details": {
+        "ground_truth_executed": true,
+        "predicted_executed": true,
+        "ground_truth_rows": 2,
+        "predicted_rows": 2,
+        "results_match": true,
+        "comparison_details": {
+          "gt_size": 2,
+          "pred_size": 2,
+          "normalized_match": true
+        }
+      }
+    },
+    {
+      "name": "final_result",
+      "status": "passed",
+      "details": {
+        "generated_sql": "SELECT sub.\"SG_UF\" AS estado, sub.ano, sub.total_mortes FROM ( SELECT mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_mortes, ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY COUNT(*) DESC) AS rn FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"MORTE\" = true AND mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") ) sub WHERE sub.rn = 1 ORDER BY estado;",
+        "generated_execution_status": "passed",
+        "ground_truth_execution_status": "passed",
+        "result_match": true,
+        "ex_score": 1.0
+      }
+    }
+  ],
+  "detailed_result": {
+    "question_id": "GT093",
+    "difficulty": "hard",
+    "question": "Em qual ano ocorreu o maior número de mortes em cada estado (MA e RS)?",
+    "ground_truth_sql": "SELECT estado, ano, total_mortes\nFROM (\n    SELECT mu.\"SG_UF\" AS estado,\n           EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano,\n           COUNT(*) AS total_mortes,\n           ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY COUNT(*) DESC) AS rn\n    FROM internacoes i\n    JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\"\n    WHERE i.\"MORTE\" = true AND mu.\"SG_UF\" IN ('MA', 'RS') AND i.\"DT_INTER\" IS NOT NULL\n    GROUP BY mu.\"SG_UF\", ano\n) sub\nWHERE rn = 1\nORDER BY estado;",
+    "predicted_sql": "SELECT sub.\"SG_UF\" AS estado, sub.ano, sub.total_mortes FROM ( SELECT mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_mortes, ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY COUNT(*) DESC) AS rn FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"MORTE\" = true AND mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") ) sub WHERE sub.rn = 1 ORDER BY estado;",
+    "agent_success": true,
+    "agent_execution_time": 36.330551624298096,
+    "question_started_at": "2026-05-17T06:39:29.632297",
+    "question_completed_at": "2026-05-17T06:40:05.962856",
+    "evaluation_source": "sql_query",
+    "stored_rows": null,
+    "agent_output": {
+      "success": true,
+      "sql_query": "SELECT sub.\"SG_UF\" AS estado, sub.ano, sub.total_mortes FROM ( SELECT mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_mortes, ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY COUNT(*) DESC) AS rn FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"MORTE\" = true AND mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") ) sub WHERE sub.rn = 1 ORDER BY estado;",
+      "response": "Em 2021, o Maranhão (MA) registrou 17.704 mortes, enquanto o Rio Grande do Sul (RS) teve 56.416 mortes.",
+      "row_count": 2,
+      "results_preview": [
+        {
+          "result": [
+            "MA",
+            2021,
+            17704
+          ]
+        },
+        {
+          "result": [
+            "RS",
+            2021,
+            56416
+          ]
+        }
+      ],
+      "final_result_rows_preview": null,
+      "error": null,
+      "cost": {
+        "prompt_tokens": 21073,
+        "completion_tokens": 1312,
+        "total_tokens": 22385,
+        "total_cost_usd": 0.003651,
+        "successful_requests": 7
+      },
+      "chart": null
+    },
+    "agent_metadata": {
+      "langgraph_v3": true,
+      "messages_state": true,
+      "query_route": "database",
+      "classification": {
+        "route": "database",
+        "confidence": 0.9,
+        "requires_tools": true
+      },
+      "workflow_metrics": {
+        "overall_success": true,
+        "completion_rate": 0.6428571428571429,
+        "phases_completed": 9,
+        "total_phases": 14,
+        "tool_success_rate": 1.0,
+        "total_tools_used": 4,
+        "retry_count": 0,
+        "error_count": 1,
+        "execution_time": 36.285558462142944
+      },
+      "phases_completed": [
+        "initialization",
+        "query_classification",
+        "table_discovery",
+        "schema_analysis",
+        "reasoning",
+        "sql_generation",
+        "sql_validation",
+        "sql_repair",
+        "sql_execution"
+      ],
+      "current_phase": "completed",
+      "tool_calls": [
+        {
+          "name": "sql_db_list_tables",
+          "success": true,
+          "execution_time": 0.48391008377075195
+        },
+        {
+          "name": "sql_db_query_checker",
+          "success": true,
+          "execution_time": 2.2307496070861816
+        },
+        {
+          "name": "sql_db_query_checker",
+          "success": true,
+          "execution_time": 8.017783641815186
+        },
+        {
+          "name": "sql_db_query",
+          "success": true,
+          "execution_time": 0.1086740493774414
+        }
+      ],
+      "message_count": 16,
+      "retry_count": 0,
+      "error_count": 1,
+      "tables_used": [
+        "internacoes",
+        "municipios"
+      ],
+      "schema_context_length": 10847,
+      "latency_by_component": {
+        "query_classification": 0.0003159046173095703,
+        "table_discovery": 0.4839916229248047,
+        "schema_analysis": 0.0008065700531005859,
+        "reasoning": 6.088768005371094,
+        "sql_generation": 12.391589641571045,
+        "sql_validation": 8.017812728881836,
+        "sql_repair": 1.7863256931304932,
+        "sql_execution": 0.10878419876098633,
+        "completed": 1.0022196769714355
+      },
+      "multi_query": {
+        "is_multi_query": false,
+        "plan_type": "single_window",
+        "execution_mode": "single",
+        "multi_query_allowed": false,
+        "allowed_multi_plan_types": [
+          "bind_then_query",
+          "fanout_concat",
+          "verification_side_query"
+        ],
+        "query_plan": {
+          "strategy": "single",
+          "reasoning": "Ranking por grupo com partição deve permanecer em uma única SQL.",
+          "plan_type": "single_window",
+          "merge_strategy": "none",
+          "output_nodes": [
+            "sq1"
+          ],
+          "required_constraints": [],
+          "expected_output_shape": {},
+          "verifier_checks": [],
+          "fallback_policy": {},
+          "sub_queries": [
+            {
+              "id": "sq1",
+              "description": "Em qual ano ocorreu o maior número de mortes em cada estado (MA e RS)?",
+              "purpose": "final_output",
+              "output_role": "output",
+              "expected_result_kind": "rowset",
+              "expected_max_rows": null,
+              "required_constraints": [],
+              "selected_tables": [],
+              "bind_keys": [],
+              "sql": null,
+              "validated_sql": null,
+              "result_raw": null,
+              "parsed_rows": null,
+              "success": false,
+              "error": null,
+              "depends_on": [],
+              "repair_attempts": 0
+            }
+          ]
+        },
+        "sub_query_results": [],
+        "merged_rows": null,
+        "merged_rows_source": null,
+        "merge_strategy": "none",
+        "verifier_outcome": null,
+        "single_fallback_active": false,
+        "single_fallback_reason": null,
+        "final_sql_query": null,
+        "failure_taxonomy": [
+          "top_n_scope"
+        ]
+      },
+      "semantic_plan": {
+        "intent": "ranking",
+        "base_grain": "internacao",
+        "metrics": [
+          {
+            "name": "total",
+            "expression_type": "count",
+            "required_filters": []
+          }
+        ],
+        "dimensions": [
+          {
+            "name": "estado",
+            "source": "municipios.SG_UF",
+            "role": "group"
+          },
+          {
+            "name": "ano",
+            "source": "EXTRACT(YEAR FROM internacoes.DT_INTER)",
+            "role": "group"
+          }
+        ],
+        "filters": [
+          {
+            "field": "estado",
+            "values": [
+              "MA",
+              "RS"
+            ],
+            "operator": "IN"
+          },
+          {
+            "field": "desfecho",
+            "values": [
+              "MORTE = true"
+            ],
+            "operator": "semantic"
+          }
+        ],
+        "answer_shape": {
+          "row_grain": "top_n_per_group",
+          "top_n": 1,
+          "top_n_scope": "per_group",
+          "required_dimensions": [
+            "estado",
+            "ano"
+          ],
+          "partition_dimensions": [
+            "estado"
+          ],
+          "ranked_dimensions": [
+            "ano"
+          ],
+          "requires_group_by": true,
+          "include_unknown_bucket": false,
+          "answer_kind": "top_n_per_group",
+          "expected_row_count": "one_per_group",
+          "output_dimensions": [
+            "estado",
+            "ano"
+          ],
+          "filter_dimensions": [],
+          "forbidden_output_dimensions": []
+        },
+        "constraints": [
+          "top_n_per_group_requires_window_partition"
+        ],
+        "null_policy": [],
+        "ambiguities": [
+          "profile_temporal_coverage: internacoes.DT_INTER ranges from 2008-01-01 to 2023-12-31",
+          "profile_cardinality: ano uses high-cardinality identifier internacoes.DT_INTER"
+        ]
+      },
+      "visualization_intent": {
+        "requested": false,
+        "source": "none",
+        "uses_last_result": false,
+        "chart_hint": "auto",
+        "reason": ""
+      },
+      "chart_plan": {
+        "requested": false,
+        "chart_type": "auto",
+        "metric": null,
+        "metric_expression": null,
+        "x_dimension": null,
+        "series_dimension": null,
+        "y_column": null,
+        "grain": "unknown",
+        "expected_result_shape": "unknown",
+        "filters": [],
+        "time_window": {
+          "type": "none",
+          "n": null,
+          "start_year": null,
+          "end_year": null,
+          "date_column": "DT_INTER"
+        },
+        "required_columns": [],
+        "sql_shape_guidance": "",
+        "reason": "visualization not requested"
+      },
+      "chart_spec": null,
+      "llamaindex_enabled": true,
+      "llamaindex_mode": "context",
+      "llamaindex_retrieval_mode": "llamaindex_schema",
+      "llamaindex_selected_tables": [
+        "internacoes",
+        "socioeconomico",
+        "municipios"
+      ],
+      "llamaindex_confidence": 0.304461938965471,
+      "llamaindex_error": "",
+      "raw_selected_tables": [
+        "internacoes",
+        "socioeconomico",
+        "municipios"
+      ],
+      "validated_selected_tables": [
+        "internacoes",
+        "municipios"
+      ],
+      "table_selection_mode": "llamaindex_context",
+      "schema_context_source": "llamaindex",
+      "schema_context_verified_with_db": false,
+      "schema_context_tables": [
+        "internacoes",
+        "municipios"
+      ],
+      "semantic_constraints": [
+        "top_n_per_group_requires_window_partition"
+      ],
+      "semantic_null_policy": [],
+      "analytic_intent": "ranking",
+      "analytic_template": "geographic_factor_by_condition",
+      "denominator_policy": "same_geographic_scope_per_group",
+      "analytic_sections_present": [
+        "direct_answer",
+        "scope",
+        "denominator",
+        "group_distribution"
+      ],
+      "concept_resolution": {
+        "diagnosis_codes": [],
+        "diagnosis_prefixes": [],
+        "labels": [],
+        "resolved": false
+      },
+      "semantic_planner": {
+        "mode": "llm_reconciled",
+        "confidence": 0.9,
+        "reasoning": "A intenção é classificar os anos com o maior número de mortes por estado (MA e RS). A métrica conta o total de mortes, filtrando por estado e considerando apenas os registros de morte. As dimensões agrupam os resultados por estado e ano, permitindo identificar o ano com o maior número de mortes em cada estado. O uso de top_n_per_group garante que apenas o ano com o maior número de mortes seja retornado para cada estado.",
+        "conflicts": [],
+        "accepted_llm_fields": [
+          "metrics"
+        ],
+        "rejected_llm_fields": []
+      },
+      "sql_generation_confidence": 1.0,
+      "sql_generation_reasoning": "The query counts the number of deaths per year for each state (MA and RS) and uses ROW_NUMBER() to rank the years by the number of deaths within each state. It filters for deaths and groups by state and year, ensuring only the top year per state is returned.",
+      "sql_generation_source": "current_structured_output",
+      "chart_plan_validation": {
+        "passed": true,
+        "message": null,
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        }
+      },
+      "semantic_error": {
+        "category": "top_n_scope",
+        "severity": "error",
+        "message": "(_duckdb.BinderException) Binder Error: Referenced table \"mu\" not found!\nCandidate tables: \"sub\"\n\nLINE 1: EXPLAIN SELECT mu.\"SG_UF\" AS estado, sub.ano, sub.total_mortes FROM ( SELECT...\n                       ^\n[SQL: EXPLAIN SELECT mu.\"SG_UF\" AS estado, sub.ano, sub.total_mortes FROM ( SELECT mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_mortes, ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY COUNT(*) DESC) AS rn FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"MORTE\" = true AND mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") ) sub WHERE sub.rn = 1 ORDER BY estado;]\n(Background on this error at: https://sqlalche.me/e/20/f405)"
+      },
+      "repair_attempts": [
+        {
+          "previous_sql": "SELECT mu.\"SG_UF\" AS estado, sub.ano, sub.total_mortes FROM ( SELECT mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_mortes, ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY COUNT(*) DESC) AS rn FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"MORTE\" = true AND mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") ) sub WHERE sub.rn = 1 ORDER BY estado;",
+          "error_message": "(_duckdb.BinderException) Binder Error: Referenced table \"mu\" not found!\nCandidate tables: \"sub\"\n\nLINE 1: EXPLAIN SELECT mu.\"SG_UF\" AS estado, sub.ano, sub.total_mortes FROM ( SELECT...\n                       ^\n[SQL: EXPLAIN SELECT mu.\"SG_UF\" AS estado, sub.ano, sub.total_mortes FROM ( SELECT mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_mortes, ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY COUNT(*) DESC) AS rn FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"MORTE\" = true AND mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") ) sub WHERE sub.rn = 1 ORDER BY estado;]\n(Background on this error at: https://sqlalche.me/e/20/f405)",
+          "semantic_category": "top_n_scope",
+          "semantic_guidance": "Top-N por grupo",
+          "violated_contract": {
+            "answer_shape.top_n": 1,
+            "answer_shape.top_n_scope": "per_group",
+            "answer_shape.required_dimensions": [
+              "estado",
+              "ano"
+            ],
+            "answer_shape.partition_dimensions": [
+              "estado"
+            ],
+            "answer_shape.ranked_dimensions": [
+              "ano"
+            ]
+          },
+          "repair_strategy": "llm_guided",
+          "timestamp": "2026-05-17T06:39:56.798102",
+          "post_repair_validation": {
+            "passed": true,
+            "message": null
+          }
+        }
+      ],
+      "semantic_repair": {
+        "original_category": "top_n_scope",
+        "original_message": "(_duckdb.BinderException) Binder Error: Referenced table \"mu\" not found!\nCandidate tables: \"sub\"\n\nLINE 1: EXPLAIN SELECT mu.\"SG_UF\" AS estado, sub.ano, sub.total_mortes FROM ( SELECT...\n                       ^\n[SQL: EXPLAIN SELECT mu.\"SG_UF\" AS estado, sub.ano, sub.total_mortes FROM ( SELECT mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_mortes, ROW_NUMBER() OVER (PARTITION BY mu.\"SG_UF\" ORDER BY COUNT(*) DESC) AS rn FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"MORTE\" = true AND mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\", EXTRACT(YEAR FROM i.\"DT_INTER\") ) sub WHERE sub.rn = 1 ORDER BY estado;]\n(Background on this error at: https://sqlalche.me/e/20/f405)",
+        "guidance_title": "Top-N por grupo",
+        "strategy": "llm_guided",
+        "post_repair_category": null,
+        "post_repair_message": null,
+        "validation_passed_after_repair": true
+      },
+      "semantic_validation": {
+        "passed": true,
+        "constraints": [
+          "top_n_per_group_requires_window_partition"
+        ],
+        "null_policy": [],
+        "message": null
+      },
+      "orchestrator_v3": true,
+      "current_model": {
+        "provider": "openai",
+        "model_name": "gpt-4o-mini",
+        "temperature": 0.0
+      },
+      "environment": "production",
+      "session_id": "session_69632",
+      "query_number": 88,
+      "orchestrator_execution_time": 36.30152678489685
+    },
+    "multi_query": {
+      "is_multi_query": false,
+      "plan_type": "single_window",
+      "execution_mode": "single",
+      "multi_query_allowed": false,
+      "allowed_multi_plan_types": [
+        "bind_then_query",
+        "fanout_concat",
+        "verification_side_query"
+      ],
+      "query_plan": {
+        "strategy": "single",
+        "reasoning": "Ranking por grupo com partição deve permanecer em uma única SQL.",
+        "plan_type": "single_window",
+        "merge_strategy": "none",
+        "output_nodes": [
+          "sq1"
+        ],
+        "required_constraints": [],
+        "expected_output_shape": {},
+        "verifier_checks": [],
+        "fallback_policy": {},
+        "sub_queries": [
+          {
+            "id": "sq1",
+            "description": "Em qual ano ocorreu o maior número de mortes em cada estado (MA e RS)?",
+            "purpose": "final_output",
+            "output_role": "output",
+            "expected_result_kind": "rowset",
+            "expected_max_rows": null,
+            "required_constraints": [],
+            "selected_tables": [],
+            "bind_keys": [],
+            "sql": null,
+            "validated_sql": null,
+            "result_raw": null,
+            "parsed_rows": null,
+            "success": false,
+            "error": null,
+            "depends_on": [],
+            "repair_attempts": 0
+          }
+        ]
+      },
+      "sub_query_results": [],
+      "merged_rows": null,
+      "merged_rows_source": null,
+      "merge_strategy": "none",
+      "verifier_outcome": null,
+      "single_fallback_active": false,
+      "single_fallback_reason": null,
+      "final_sql_query": null,
+      "failure_taxonomy": [
+        "top_n_scope"
+      ]
+    },
+    "agent_error": null,
+    "metrics": {
+      "Execution Accuracy (EX)": {
+        "score": 1.0,
+        "is_correct": true,
+        "error": null,
+        "details": {
+          "ground_truth_executed": true,
+          "predicted_executed": true,
+          "ground_truth_rows": 2,
+          "predicted_rows": 2,
+          "results_match": true,
+          "comparison_details": {
+            "gt_size": 2,
+            "pred_size": 2,
+            "normalized_match": true
+          }
+        }
+      }
+    },
+    "run_id": "20260517_gt228_full",
+    "question_index": 88,
+    "total_questions": 228,
+    "question_fingerprint": "0f4beb7d6a336602be04fc95f7512c9bd98de5b7136665e1dc75aa731d80bfa5",
+    "trace_path": "/home/maiconkevyn/PycharmProjects/txt2sql_refactor_openai_v2/evaluation/results/dag_evaluation_20260517_gt228_full/queries/GT093/trace.json"
+  }
+}

@@ -126,6 +126,257 @@ def test_build_filtered_category_period_percentage_sql_from_semantic_plan():
     assert "GROUP BY EXTRACT(QUARTER" in sql
 
 
+def test_build_age_diagnosis_association_sql_from_semantic_plan():
+    from src.agent.analytic_sql import build_age_diagnosis_association_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan("Existe relação entre idade e câncer de próstata?")
+
+    sql = build_age_diagnosis_association_sql(plan)
+
+    assert sql is not None
+    assert "diagnosticos_alvo" in sql
+    assert "'C61'" in sql
+    assert "faixas_etarias" in sql
+    assert "homens" in sql
+    assert "rate_ratio_maior_igual_50_vs_menor_50" in sql
+    assert "top_idades" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_build_age_diagnosis_association_sql_supports_cid_prefix_and_age_quality_warning():
+    from src.agent.analytic_sql import build_age_diagnosis_association_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan("Existe relação entre idade e doenças pulmonares?")
+
+    sql = build_age_diagnosis_association_sql(plan)
+
+    assert sql is not None
+    assert "SELECT c.\"CID\" FROM cid c WHERE c.\"CID\" LIKE 'J%'" in sql
+    assert "'CID J00-J99 - Doencas do aparelho respiratorio' AS resolved_concept" in sql
+    assert "date_diff('day', \"NASC\", \"DT_INTER\") >= 365" in sql
+    assert "idade_zero_inconsistente_nasc" in sql
+    assert "AS warnings" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_build_age_diagnosis_association_sql_supports_generic_diagnosis_description():
+    from src.agent.analytic_sql import build_age_diagnosis_association_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan("Existe relação entre idade e diabetes?")
+
+    sql = build_age_diagnosis_association_sql(plan)
+
+    assert sql is not None
+    assert "SELECT c.\"CID\" FROM cid c WHERE c.\"DESCRICAO\" ILIKE '%diabetes%'" in sql
+    assert 'JOIN diagnosticos_alvo d ON i."DIAG_PRINC" = d."CID"' in sql
+    assert "faixas_etarias" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_analytic_sql_respects_rollout_flag():
+    from src.agent.sql_generation import _build_deterministic_analytic_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan("Existe relação entre idade e doenças pulmonares?")
+
+    assert (
+        _build_deterministic_analytic_sql(
+            plan, {"enable_analytic_response_templates": False}
+        )
+        is None
+    )
+    assert _build_deterministic_analytic_sql(
+        plan, {"enable_analytic_response_templates": True}
+    )
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Qual a relação entre raça/cor e mortalidade?",
+        "Qual a relação entre instrução e taxa de mortalidade?",
+        "Existe diferença de mortalidade entre homens e mulheres?",
+    ],
+)
+def test_build_categorical_outcome_association_sql_packages(question):
+    from src.agent.analytic_sql import build_analytic_sql_package
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(question)
+
+    sql = build_analytic_sql_package(plan)
+
+    assert sql is not None
+    assert "'categorical_outcome_association' AS analysis_type" in sql
+    assert "taxa_mortalidade_percentual" in sql
+    assert "group_distribution" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Existe relação entre morte por covid e raça/cor?",
+        "Existe diferença de mortalidade por coronavirus entre raças/cores?",
+    ],
+)
+def test_categorical_outcome_association_preserves_resolved_clinical_concept(question):
+    from src.agent.analytic_sql import build_analytic_sql_package
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(question)
+
+    diagnosis_filters = [
+        semantic_filter
+        for semantic_filter in plan.filters
+        if semantic_filter.field == "diagnostico_principal_codigo"
+    ]
+    assert diagnosis_filters
+    assert diagnosis_filters[0].values == ["B342", "B972"]
+    assert "raca_cor" in plan.answer_shape.required_dimensions
+    assert "categorical_outcome_association_required" in plan.constraints
+
+    sql = build_analytic_sql_package(plan)
+
+    assert sql is not None
+    assert "'B342'" in sql
+    assert "'B972'" in sql
+    assert 'JOIN diagnosticos_alvo d ON i."DIAG_PRINC" = d."CID"' in sql
+    assert 'i."RACA_COR" IN (1, 2, 3, 4, 5)' in sql
+    assert 'SUM(CASE WHEN "MORTE" = true THEN 1 ELSE 0 END)' in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+@pytest.mark.parametrize(
+    ("question", "term", "dimension_sql"),
+    [
+        (
+            "Existe relação entre morte por dengue e raça/cor?",
+            "dengue",
+            'JOIN raca_cor rc ON i."RACA_COR" = rc."RACA_COR"',
+        ),
+        (
+            "Existe relação entre mortalidade por pneumonia e sexo?",
+            "pneumonia",
+            'CASE WHEN i."SEXO" = 1 THEN',
+        ),
+        (
+            "Óbitos por dengue variam por raça/cor?",
+            "dengue",
+            'JOIN raca_cor rc ON i."RACA_COR" = rc."RACA_COR"',
+        ),
+    ],
+)
+def test_categorical_outcome_association_preserves_generic_clinical_condition(
+    question,
+    term,
+    dimension_sql,
+):
+    from src.agent.analytic_sql import build_analytic_sql_package
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(question)
+
+    description_filters = [
+        semantic_filter
+        for semantic_filter in plan.filters
+        if semantic_filter.field == "diagnostico_principal_descricao"
+    ]
+    assert description_filters
+    assert description_filters[0].values == [term]
+    assert "categorical_outcome_association_required" in plan.constraints
+    assert "diagnosis_description_lookup_required" in plan.constraints
+
+    sql = build_analytic_sql_package(plan)
+
+    assert sql is not None
+    assert 'SELECT c."CID" FROM cid c WHERE' in sql
+    assert f'c."DESCRICAO" ILIKE \'%{term}%\'' in sql
+    assert 'JOIN diagnosticos_alvo d ON i."DIAG_PRINC" = d."CID"' in sql
+    assert dimension_sql in sql
+    assert 'SUM(CASE WHEN "MORTE" = true THEN 1 ELSE 0 END)' in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_build_geographic_condition_rate_sql_package():
+    from src.agent.analytic_sql import build_analytic_sql_package
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(
+        "Compare a taxa de internações por doenças respiratórias por estado."
+    )
+
+    sql = build_analytic_sql_package(plan)
+
+    assert sql is not None
+    assert "'geographic_condition_rate' AS analysis_type" in sql
+    assert 'JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"' in sql
+    assert "taxa_por_100k_denominador" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_build_temporal_condition_trend_sql_package_resolves_covid():
+    from src.agent.analytic_sql import build_analytic_sql_package
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan("Qual a tendência anual de internações por covid?")
+
+    sql = build_analytic_sql_package(plan)
+
+    assert sql is not None
+    assert "'temporal_condition_trend' AS analysis_type" in sql
+    assert "'B342'" in sql
+    assert "'B972'" in sql
+    assert "time_series" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_build_temporal_condition_trend_sql_package_supports_generic_diagnosis_description():
+    from src.agent.analytic_sql import build_analytic_sql_package
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan("Qual a tendência anual de internações por dengue?")
+
+    sql = build_analytic_sql_package(plan)
+
+    assert sql is not None
+    assert "'temporal_condition_trend' AS analysis_type" in sql
+    assert "SELECT c.\"CID\" FROM cid c WHERE c.\"DESCRICAO\" ILIKE '%dengue%'" in sql
+    assert 'JOIN diagnosticos_alvo d ON i."DIAG_PRINC" = d."CID"' in sql
+    assert "time_series" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
 def test_build_temporal_period_comparison_sql_from_semantic_plan():
     from src.agent.execution import _build_temporal_period_comparison_sql
     from src.semantic.planner import build_semantic_plan
@@ -274,6 +525,25 @@ def test_build_goalv2_death_cause_description_count_sql():
     assert 'i."MORTE" = true' in sql
     assert "c.\"DESCRICAO\" ILIKE '%meningite%'" in sql
     assert 'i."CID_MORTE"' not in sql
+
+
+def test_build_goalv2_diagnosis_description_lookup_sql_expands_covid():
+    from src.agent.execution import _build_diagnosis_description_lookup_sql
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan("tem diagnostico de covid?")
+
+    sql = _build_diagnosis_description_lookup_sql(plan)
+
+    assert sql is not None
+    assert "WITH diagnosticos_alvo AS" in sql
+    assert 'FROM cid c' in sql
+    assert 'c."CID" IN (\'B342\', \'B972\')' in sql
+    assert 'FROM internacoes i' in sql
+    assert 'i."DIAG_PRINC" IN (SELECT "CID" FROM diagnosticos_alvo)' in sql
+    assert "GROUP BY" not in sql
+    assert 'i."CID_MORTE"' not in sql
+    assert "total_internacoes" in sql
 
 
 def test_build_death_cause_top_n_sql_uses_diag_princ_with_death_filter():

@@ -1,0 +1,1648 @@
+{
+  "trace_schema_version": 2,
+  "status": "completed",
+  "run_id": "20260517_gt228_full",
+  "question_index": 108,
+  "total_questions": 228,
+  "question_fingerprint": "1c2c9a5a65d994cbf53fc98ea15d2d5dae7e05c4348c769fd5e2d63e570faace",
+  "trace_path": "/home/maiconkevyn/PycharmProjects/txt2sql_refactor_openai_v2/evaluation/results/dag_evaluation_20260517_gt228_full/queries/GT113/trace.json",
+  "written_at": "2026-05-17T06:40:57.934761",
+  "id": "GT113",
+  "difficulty": "hard",
+  "question_pt": "Quais são os 10 municípios do RS com taxa de mortalidade acima da média estadual (considerando apenas municípios com mais de 500 internações)?",
+  "question_started_at": "2026-05-17T06:40:33.027450",
+  "question_completed_at": "2026-05-17T06:40:56.808981",
+  "ground_truth_sql": "WITH media_rs AS (\n    SELECT ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 4) AS taxa_media\n    FROM internacoes i\n    JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\"\n    WHERE mu.\"SG_UF\" = 'RS'\n), por_municipio AS (\n    SELECT mu.\"NO_MUNICIPIO\" AS nome,\n           COUNT(*) AS total_internacoes,\n           ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade\n    FROM internacoes i\n    JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\"\n    WHERE mu.\"SG_UF\" = 'RS'\n    GROUP BY mu.\"NO_MUNICIPIO\"\n    HAVING COUNT(*) > 500\n)\nSELECT pm.nome, pm.total_internacoes, pm.taxa_mortalidade\nFROM por_municipio pm, media_rs mr\nWHERE pm.taxa_mortalidade > mr.taxa_media\nORDER BY pm.taxa_mortalidade DESC\nLIMIT 10;",
+  "generated_sql": "WITH media_estado AS ( SELECT SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_ref FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE mu.\"SG_UF\" = 'RS' ), por_municipio AS ( SELECT mu.\"NO_MUNICIPIO\" AS nome, COUNT(*) AS total, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE mu.\"SG_UF\" = 'RS' GROUP BY mu.\"NO_MUNICIPIO\" HAVING COUNT(*) > 500 ) SELECT pm.nome, pm.total, ROUND(pm.taxa, 2) AS taxa_mortalidade FROM por_municipio pm, media_estado me WHERE pm.taxa > me.taxa_ref ORDER BY pm.taxa DESC LIMIT 10;",
+  "agent_success": true,
+  "agent_error": null,
+  "agent_output": {
+    "success": true,
+    "sql_query": "WITH media_estado AS ( SELECT SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_ref FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE mu.\"SG_UF\" = 'RS' ), por_municipio AS ( SELECT mu.\"NO_MUNICIPIO\" AS nome, COUNT(*) AS total, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE mu.\"SG_UF\" = 'RS' GROUP BY mu.\"NO_MUNICIPIO\" HAVING COUNT(*) > 500 ) SELECT pm.nome, pm.total, ROUND(pm.taxa, 2) AS taxa_mortalidade FROM por_municipio pm, media_estado me WHERE pm.taxa > me.taxa_ref ORDER BY pm.taxa DESC LIMIT 10;",
+    "response": "Os 10 municípios do RS com taxa de mortalidade acima da média estadual são:\n\n1. Santo Antônio das Missões - 7,71%\n2. Rosário do Sul - 7,41%\n3. Pinheiro Machado - 7,41%\n4. Morro Redondo - 7,40%\n5. Dezesseis de Novembro - 7,34%\n6. Pirapó - 7,34%\n7. Uruguaiana - 7,24%\n8. Bagé - 7,16%\n9. Tramandaí - 7,02%\n10. Bozano - 6,92%",
+    "row_count": 10,
+    "results_preview": [
+      {
+        "result": [
+          "Santo Antônio das Missões",
+          9236,
+          7.71
+        ]
+      },
+      {
+        "result": [
+          "Rosário do Sul",
+          46230,
+          7.41
+        ]
+      },
+      {
+        "result": [
+          "Pinheiro Machado",
+          11262,
+          7.41
+        ]
+      },
+      {
+        "result": [
+          "Morro Redondo",
+          5418,
+          7.4
+        ]
+      },
+      {
+        "result": [
+          "Dezesseis de Novembro",
+          3132,
+          7.34
+        ]
+      },
+      {
+        "result": [
+          "Pirapó",
+          2575,
+          7.34
+        ]
+      },
+      {
+        "result": [
+          "Uruguaiana",
+          106480,
+          7.24
+        ]
+      },
+      {
+        "result": [
+          "Bagé",
+          120220,
+          7.16
+        ]
+      },
+      {
+        "result": [
+          "Tramandaí",
+          52076,
+          7.02
+        ]
+      },
+      {
+        "result": [
+          "Bozano",
+          2008,
+          6.92
+        ]
+      }
+    ],
+    "final_result_rows_preview": null,
+    "error": null,
+    "cost": {
+      "prompt_tokens": 18875,
+      "completion_tokens": 1357,
+      "total_tokens": 20232,
+      "total_cost_usd": 0.003405,
+      "successful_requests": 5
+    },
+    "chart": null
+  },
+  "evaluation_source": "sql_query",
+  "latency_seconds": 23.781519412994385,
+  "generated_sql_valid": true,
+  "generated_sql_validation_errors": [],
+  "generated_sql_validation_warnings": [],
+  "generated_execution_status": "passed",
+  "ground_truth_execution_status": "passed",
+  "comparison_mode": "execution_accuracy",
+  "result_match": true,
+  "ex_score": 1.0,
+  "shape_match": true,
+  "projected_match": false,
+  "expected_columns": [
+    "nome",
+    "total_internacoes",
+    "taxa_mortalidade"
+  ],
+  "actual_columns": [
+    "nome",
+    "total",
+    "taxa_mortalidade"
+  ],
+  "expected_preview_values": [
+    [
+      "Santo Antônio das Missões",
+      9236,
+      7.71
+    ],
+    [
+      "Rosário do Sul",
+      46230,
+      7.41
+    ],
+    [
+      "Pinheiro Machado",
+      11262,
+      7.41
+    ],
+    [
+      "Morro Redondo",
+      5418,
+      7.4
+    ],
+    [
+      "Pirapó",
+      2575,
+      7.34
+    ],
+    [
+      "Dezesseis de Novembro",
+      3132,
+      7.34
+    ],
+    [
+      "Uruguaiana",
+      106480,
+      7.24
+    ],
+    [
+      "Bagé",
+      120220,
+      7.16
+    ],
+    [
+      "Tramandaí",
+      52076,
+      7.02
+    ],
+    [
+      "Bozano",
+      2008,
+      6.92
+    ]
+  ],
+  "actual_preview_values": [
+    [
+      "Santo Antônio das Missões",
+      9236,
+      7.71
+    ],
+    [
+      "Rosário do Sul",
+      46230,
+      7.41
+    ],
+    [
+      "Pinheiro Machado",
+      11262,
+      7.41
+    ],
+    [
+      "Morro Redondo",
+      5418,
+      7.4
+    ],
+    [
+      "Dezesseis de Novembro",
+      3132,
+      7.34
+    ],
+    [
+      "Pirapó",
+      2575,
+      7.34
+    ],
+    [
+      "Uruguaiana",
+      106480,
+      7.24
+    ],
+    [
+      "Bagé",
+      120220,
+      7.16
+    ],
+    [
+      "Tramandaí",
+      52076,
+      7.02
+    ],
+    [
+      "Bozano",
+      2008,
+      6.92
+    ]
+  ],
+  "expected_row_count": 10,
+  "actual_row_count": 10,
+  "expected_truncated": false,
+  "actual_truncated": false,
+  "ground_truth_execution_error": null,
+  "generated_execution_error": null,
+  "ground_truth_execution_latency_seconds": 0.22947931289672852,
+  "generated_execution_latency_seconds": 0.2056102752685547,
+  "error_category": null,
+  "error_message": null,
+  "metric_details": {
+    "ground_truth_executed": true,
+    "predicted_executed": true,
+    "ground_truth_rows": 10,
+    "predicted_rows": 10,
+    "results_match": true,
+    "comparison_details": {
+      "gt_size": 10,
+      "pred_size": 10,
+      "normalized_match": true
+    }
+  },
+  "comparison_details": {
+    "gt_size": 10,
+    "pred_size": 10,
+    "normalized_match": true
+  },
+  "multi_query": {
+    "is_multi_query": false,
+    "plan_type": "global_local_avg",
+    "execution_mode": "single",
+    "multi_query_allowed": false,
+    "allowed_multi_plan_types": [
+      "bind_then_query",
+      "fanout_concat",
+      "verification_side_query"
+    ],
+    "query_plan": {
+      "strategy": "single",
+      "reasoning": "Comparações contra média global/estadual devem permanecer em uma SQL.",
+      "plan_type": "global_local_avg",
+      "merge_strategy": "none",
+      "output_nodes": [
+        "sq1"
+      ],
+      "required_constraints": [],
+      "expected_output_shape": {},
+      "verifier_checks": [],
+      "fallback_policy": {},
+      "sub_queries": [
+        {
+          "id": "sq1",
+          "description": "Quais são os 10 municípios do RS com taxa de mortalidade acima da média estadual (considerando apenas municípios com mais de 500 internações)?",
+          "purpose": "final_output",
+          "output_role": "output",
+          "expected_result_kind": "rowset",
+          "expected_max_rows": null,
+          "required_constraints": [],
+          "selected_tables": [],
+          "bind_keys": [],
+          "sql": null,
+          "validated_sql": null,
+          "result_raw": null,
+          "parsed_rows": null,
+          "success": false,
+          "error": null,
+          "depends_on": [],
+          "repair_attempts": 0
+        }
+      ]
+    },
+    "sub_query_results": [],
+    "merged_rows": null,
+    "merged_rows_source": null,
+    "merge_strategy": "none",
+    "verifier_outcome": null,
+    "single_fallback_active": false,
+    "single_fallback_reason": null,
+    "final_sql_query": null,
+    "failure_taxonomy": []
+  },
+  "tables_used": [
+    "municipios",
+    "internacoes"
+  ],
+  "selected_tables": {
+    "llamaindex": [
+      "socioeconomico",
+      "municipios",
+      "internacoes"
+    ],
+    "raw": [
+      "socioeconomico",
+      "municipios",
+      "internacoes"
+    ],
+    "validated": [
+      "municipios",
+      "internacoes"
+    ]
+  },
+  "table_selection": {
+    "mode": "llamaindex_context",
+    "llamaindex_enabled": true,
+    "llamaindex_mode": "context",
+    "llamaindex_confidence": 0.45723207390788034,
+    "llamaindex_error": ""
+  },
+  "semantic_plan": {
+    "intent": "ranking",
+    "base_grain": "internacao",
+    "metrics": [
+      {
+        "name": "taxa_mortalidade",
+        "expression_type": "rate",
+        "numerator_condition": "MORTE = true",
+        "denominator_scope": "all_rows_matching_non_outcome_filters",
+        "required_filters": []
+      }
+    ],
+    "dimensions": [
+      {
+        "name": "municipio",
+        "source": "municipios",
+        "role": "group"
+      }
+    ],
+    "filters": [
+      {
+        "field": "estado",
+        "values": [
+          "RS"
+        ],
+        "operator": "="
+      },
+      {
+        "field": "minimum_group_count",
+        "values": [
+          "500"
+        ],
+        "operator": ">"
+      }
+    ],
+    "answer_shape": {
+      "row_grain": "top_n_global",
+      "top_n": 10,
+      "top_n_scope": "global",
+      "required_dimensions": [
+        "municipio"
+      ],
+      "partition_dimensions": [],
+      "ranked_dimensions": [],
+      "requires_group_by": false,
+      "include_unknown_bucket": false,
+      "answer_kind": "top_n_global",
+      "expected_row_count": "bounded_n",
+      "output_dimensions": [
+        "municipio"
+      ],
+      "filter_dimensions": [
+        "municipio"
+      ],
+      "counted_entity": "internacao",
+      "forbidden_output_dimensions": []
+    },
+    "constraints": [
+      "rate_denominator_must_preserve_full_scope",
+      "geographic_filter_dimension_not_output"
+    ],
+    "null_policy": [],
+    "ambiguities": []
+  },
+  "semantic_planner": {
+    "mode": "llm_reconciled",
+    "confidence": 0.9,
+    "reasoning": "A intenção é classificar os municípios do RS com base na taxa de mortalidade, considerando apenas aqueles com mais de 500 internações. A métrica 'taxa_mortalidade' é calculada como uma taxa, onde o numerador conta as mortes e o denominador considera todas as internações. A dimensão 'municipio' é utilizada para agrupar os resultados, e a filtragem garante que apenas municípios do RS com mais de 500 internações sejam considerados. O resultado deve ser os 10 municípios com a maior taxa de mortalidade, por isso a configuração de 'top_n_per_group'.",
+    "conflicts": [
+      "row_grain_mismatch: heuristic=top_n_global; llm=top_n_per_group",
+      "top_n_scope_mismatch: heuristic=global; llm=per_group"
+    ],
+    "accepted_llm_fields": [
+      "metrics",
+      "dimensions"
+    ],
+    "rejected_llm_fields": [
+      "answer_shape.row_grain",
+      "answer_shape.top_n_scope"
+    ]
+  },
+  "semantic_validation": {
+    "passed": true,
+    "constraints": [
+      "rate_denominator_must_preserve_full_scope",
+      "geographic_filter_dimension_not_output"
+    ],
+    "null_policy": [],
+    "message": null
+  },
+  "chart_plan": {
+    "requested": false,
+    "chart_type": "auto",
+    "metric": null,
+    "metric_expression": null,
+    "x_dimension": null,
+    "series_dimension": null,
+    "y_column": null,
+    "grain": "unknown",
+    "expected_result_shape": "unknown",
+    "filters": [],
+    "time_window": {
+      "type": "none",
+      "n": null,
+      "start_year": null,
+      "end_year": null,
+      "date_column": "DT_INTER"
+    },
+    "required_columns": [],
+    "sql_shape_guidance": "",
+    "reason": "visualization not requested"
+  },
+  "chart_plan_validation": {
+    "passed": true,
+    "message": null,
+    "chart_plan": {
+      "requested": false,
+      "chart_type": "auto",
+      "metric": null,
+      "metric_expression": null,
+      "x_dimension": null,
+      "series_dimension": null,
+      "y_column": null,
+      "grain": "unknown",
+      "expected_result_shape": "unknown",
+      "filters": [],
+      "time_window": {
+        "type": "none",
+        "n": null,
+        "start_year": null,
+        "end_year": null,
+        "date_column": "DT_INTER"
+      },
+      "required_columns": [],
+      "sql_shape_guidance": "",
+      "reason": "visualization not requested"
+    }
+  },
+  "workflow_metrics": {
+    "overall_success": true,
+    "completion_rate": 0.5714285714285714,
+    "phases_completed": 8,
+    "total_phases": 14,
+    "tool_success_rate": 1.0,
+    "total_tools_used": 3,
+    "retry_count": 0,
+    "error_count": 0,
+    "execution_time": 23.701663494110107
+  },
+  "latency_by_component": {
+    "query_classification": 0.00040340423583984375,
+    "table_discovery": 0.508474588394165,
+    "schema_analysis": 0.0006883144378662109,
+    "reasoning": 5.12670373916626,
+    "sql_generation": 8.83283257484436,
+    "sql_validation": 3.482436418533325,
+    "sql_execution": 0.20871949195861816,
+    "completed": 1.7389473915100098
+  },
+  "tool_calls": [
+    {
+      "name": "sql_db_list_tables",
+      "success": true,
+      "execution_time": 0.5084030628204346
+    },
+    {
+      "name": "sql_db_query_checker",
+      "success": true,
+      "execution_time": 3.4824066162109375
+    },
+    {
+      "name": "sql_db_query",
+      "success": true,
+      "execution_time": 0.20860862731933594
+    }
+  ],
+  "phases_completed": [
+    "initialization",
+    "query_classification",
+    "table_discovery",
+    "schema_analysis",
+    "reasoning",
+    "sql_generation",
+    "sql_validation",
+    "sql_execution"
+  ],
+  "agent_metadata": {
+    "langgraph_v3": true,
+    "messages_state": true,
+    "query_route": "database",
+    "classification": {
+      "route": "database",
+      "confidence": 0.9,
+      "requires_tools": true
+    },
+    "workflow_metrics": {
+      "overall_success": true,
+      "completion_rate": 0.5714285714285714,
+      "phases_completed": 8,
+      "total_phases": 14,
+      "tool_success_rate": 1.0,
+      "total_tools_used": 3,
+      "retry_count": 0,
+      "error_count": 0,
+      "execution_time": 23.701663494110107
+    },
+    "phases_completed": [
+      "initialization",
+      "query_classification",
+      "table_discovery",
+      "schema_analysis",
+      "reasoning",
+      "sql_generation",
+      "sql_validation",
+      "sql_execution"
+    ],
+    "current_phase": "completed",
+    "tool_calls": [
+      {
+        "name": "sql_db_list_tables",
+        "success": true,
+        "execution_time": 0.5084030628204346
+      },
+      {
+        "name": "sql_db_query_checker",
+        "success": true,
+        "execution_time": 3.4824066162109375
+      },
+      {
+        "name": "sql_db_query",
+        "success": true,
+        "execution_time": 0.20860862731933594
+      }
+    ],
+    "message_count": 13,
+    "retry_count": 0,
+    "error_count": 0,
+    "tables_used": [
+      "municipios",
+      "internacoes"
+    ],
+    "schema_context_length": 11552,
+    "latency_by_component": {
+      "query_classification": 0.00040340423583984375,
+      "table_discovery": 0.508474588394165,
+      "schema_analysis": 0.0006883144378662109,
+      "reasoning": 5.12670373916626,
+      "sql_generation": 8.83283257484436,
+      "sql_validation": 3.482436418533325,
+      "sql_execution": 0.20871949195861816,
+      "completed": 1.7389473915100098
+    },
+    "multi_query": {
+      "is_multi_query": false,
+      "plan_type": "global_local_avg",
+      "execution_mode": "single",
+      "multi_query_allowed": false,
+      "allowed_multi_plan_types": [
+        "bind_then_query",
+        "fanout_concat",
+        "verification_side_query"
+      ],
+      "query_plan": {
+        "strategy": "single",
+        "reasoning": "Comparações contra média global/estadual devem permanecer em uma SQL.",
+        "plan_type": "global_local_avg",
+        "merge_strategy": "none",
+        "output_nodes": [
+          "sq1"
+        ],
+        "required_constraints": [],
+        "expected_output_shape": {},
+        "verifier_checks": [],
+        "fallback_policy": {},
+        "sub_queries": [
+          {
+            "id": "sq1",
+            "description": "Quais são os 10 municípios do RS com taxa de mortalidade acima da média estadual (considerando apenas municípios com mais de 500 internações)?",
+            "purpose": "final_output",
+            "output_role": "output",
+            "expected_result_kind": "rowset",
+            "expected_max_rows": null,
+            "required_constraints": [],
+            "selected_tables": [],
+            "bind_keys": [],
+            "sql": null,
+            "validated_sql": null,
+            "result_raw": null,
+            "parsed_rows": null,
+            "success": false,
+            "error": null,
+            "depends_on": [],
+            "repair_attempts": 0
+          }
+        ]
+      },
+      "sub_query_results": [],
+      "merged_rows": null,
+      "merged_rows_source": null,
+      "merge_strategy": "none",
+      "verifier_outcome": null,
+      "single_fallback_active": false,
+      "single_fallback_reason": null,
+      "final_sql_query": null,
+      "failure_taxonomy": []
+    },
+    "semantic_plan": {
+      "intent": "ranking",
+      "base_grain": "internacao",
+      "metrics": [
+        {
+          "name": "taxa_mortalidade",
+          "expression_type": "rate",
+          "numerator_condition": "MORTE = true",
+          "denominator_scope": "all_rows_matching_non_outcome_filters",
+          "required_filters": []
+        }
+      ],
+      "dimensions": [
+        {
+          "name": "municipio",
+          "source": "municipios",
+          "role": "group"
+        }
+      ],
+      "filters": [
+        {
+          "field": "estado",
+          "values": [
+            "RS"
+          ],
+          "operator": "="
+        },
+        {
+          "field": "minimum_group_count",
+          "values": [
+            "500"
+          ],
+          "operator": ">"
+        }
+      ],
+      "answer_shape": {
+        "row_grain": "top_n_global",
+        "top_n": 10,
+        "top_n_scope": "global",
+        "required_dimensions": [
+          "municipio"
+        ],
+        "partition_dimensions": [],
+        "ranked_dimensions": [],
+        "requires_group_by": false,
+        "include_unknown_bucket": false,
+        "answer_kind": "top_n_global",
+        "expected_row_count": "bounded_n",
+        "output_dimensions": [
+          "municipio"
+        ],
+        "filter_dimensions": [
+          "municipio"
+        ],
+        "counted_entity": "internacao",
+        "forbidden_output_dimensions": []
+      },
+      "constraints": [
+        "rate_denominator_must_preserve_full_scope",
+        "geographic_filter_dimension_not_output"
+      ],
+      "null_policy": [],
+      "ambiguities": []
+    },
+    "visualization_intent": {
+      "requested": false,
+      "source": "none",
+      "uses_last_result": false,
+      "chart_hint": "auto",
+      "reason": ""
+    },
+    "chart_plan": {
+      "requested": false,
+      "chart_type": "auto",
+      "metric": null,
+      "metric_expression": null,
+      "x_dimension": null,
+      "series_dimension": null,
+      "y_column": null,
+      "grain": "unknown",
+      "expected_result_shape": "unknown",
+      "filters": [],
+      "time_window": {
+        "type": "none",
+        "n": null,
+        "start_year": null,
+        "end_year": null,
+        "date_column": "DT_INTER"
+      },
+      "required_columns": [],
+      "sql_shape_guidance": "",
+      "reason": "visualization not requested"
+    },
+    "chart_spec": null,
+    "llamaindex_enabled": true,
+    "llamaindex_mode": "context",
+    "llamaindex_retrieval_mode": "llamaindex_schema",
+    "llamaindex_selected_tables": [
+      "socioeconomico",
+      "municipios",
+      "internacoes"
+    ],
+    "llamaindex_confidence": 0.45723207390788034,
+    "llamaindex_error": "",
+    "raw_selected_tables": [
+      "socioeconomico",
+      "municipios",
+      "internacoes"
+    ],
+    "validated_selected_tables": [
+      "municipios",
+      "internacoes"
+    ],
+    "table_selection_mode": "llamaindex_context",
+    "schema_context_source": "llamaindex",
+    "schema_context_verified_with_db": false,
+    "schema_context_tables": [
+      "municipios",
+      "internacoes"
+    ],
+    "semantic_constraints": [
+      "rate_denominator_must_preserve_full_scope",
+      "geographic_filter_dimension_not_output"
+    ],
+    "semantic_null_policy": [],
+    "semantic_planner": {
+      "mode": "llm_reconciled",
+      "confidence": 0.9,
+      "reasoning": "A intenção é classificar os municípios do RS com base na taxa de mortalidade, considerando apenas aqueles com mais de 500 internações. A métrica 'taxa_mortalidade' é calculada como uma taxa, onde o numerador conta as mortes e o denominador considera todas as internações. A dimensão 'municipio' é utilizada para agrupar os resultados, e a filtragem garante que apenas municípios do RS com mais de 500 internações sejam considerados. O resultado deve ser os 10 municípios com a maior taxa de mortalidade, por isso a configuração de 'top_n_per_group'.",
+      "conflicts": [
+        "row_grain_mismatch: heuristic=top_n_global; llm=top_n_per_group",
+        "top_n_scope_mismatch: heuristic=global; llm=per_group"
+      ],
+      "accepted_llm_fields": [
+        "metrics",
+        "dimensions"
+      ],
+      "rejected_llm_fields": [
+        "answer_shape.row_grain",
+        "answer_shape.top_n_scope"
+      ]
+    },
+    "sql_generation_confidence": 0.9,
+    "sql_generation_reasoning": "The query calculates the mortality rate for municipalities in RS with more than 500 hospitalizations, comparing each municipality's rate to the state average. It uses a CTE to compute the state average mortality rate and filters municipalities accordingly, ensuring accurate comparisons.",
+    "sql_generation_source": "current_structured_output",
+    "chart_plan_validation": {
+      "passed": true,
+      "message": null,
+      "chart_plan": {
+        "requested": false,
+        "chart_type": "auto",
+        "metric": null,
+        "metric_expression": null,
+        "x_dimension": null,
+        "series_dimension": null,
+        "y_column": null,
+        "grain": "unknown",
+        "expected_result_shape": "unknown",
+        "filters": [],
+        "time_window": {
+          "type": "none",
+          "n": null,
+          "start_year": null,
+          "end_year": null,
+          "date_column": "DT_INTER"
+        },
+        "required_columns": [],
+        "sql_shape_guidance": "",
+        "reason": "visualization not requested"
+      }
+    },
+    "semantic_validation": {
+      "passed": true,
+      "constraints": [
+        "rate_denominator_must_preserve_full_scope",
+        "geographic_filter_dimension_not_output"
+      ],
+      "null_policy": [],
+      "message": null
+    },
+    "orchestrator_v3": true,
+    "current_model": {
+      "provider": "openai",
+      "model_name": "gpt-4o-mini",
+      "temperature": 0.0
+    },
+    "environment": "production",
+    "session_id": "session_33027",
+    "query_number": 108,
+    "orchestrator_execution_time": 23.721370935440063
+  },
+  "steps": [
+    {
+      "name": "evaluation_input",
+      "status": "passed",
+      "details": {
+        "question_id": "GT113",
+        "difficulty": "hard",
+        "question_pt": "Quais são os 10 municípios do RS com taxa de mortalidade acima da média estadual (considerando apenas municípios com mais de 500 internações)?",
+        "ground_truth_sql": "WITH media_rs AS (\n    SELECT ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 4) AS taxa_media\n    FROM internacoes i\n    JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\"\n    WHERE mu.\"SG_UF\" = 'RS'\n), por_municipio AS (\n    SELECT mu.\"NO_MUNICIPIO\" AS nome,\n           COUNT(*) AS total_internacoes,\n           ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade\n    FROM internacoes i\n    JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\"\n    WHERE mu.\"SG_UF\" = 'RS'\n    GROUP BY mu.\"NO_MUNICIPIO\"\n    HAVING COUNT(*) > 500\n)\nSELECT pm.nome, pm.total_internacoes, pm.taxa_mortalidade\nFROM por_municipio pm, media_rs mr\nWHERE pm.taxa_mortalidade > mr.taxa_media\nORDER BY pm.taxa_mortalidade DESC\nLIMIT 10;"
+      }
+    },
+    {
+      "name": "agent.process_query",
+      "status": "passed",
+      "latency_seconds": 23.781519412994385,
+      "input": {
+        "question": "Quais são os 10 municípios do RS com taxa de mortalidade acima da média estadual (considerando apenas municípios com mais de 500 internações)?"
+      },
+      "output": {
+        "success": true,
+        "sql_query": "WITH media_estado AS ( SELECT SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_ref FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE mu.\"SG_UF\" = 'RS' ), por_municipio AS ( SELECT mu.\"NO_MUNICIPIO\" AS nome, COUNT(*) AS total, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE mu.\"SG_UF\" = 'RS' GROUP BY mu.\"NO_MUNICIPIO\" HAVING COUNT(*) > 500 ) SELECT pm.nome, pm.total, ROUND(pm.taxa, 2) AS taxa_mortalidade FROM por_municipio pm, media_estado me WHERE pm.taxa > me.taxa_ref ORDER BY pm.taxa DESC LIMIT 10;",
+        "response": "Os 10 municípios do RS com taxa de mortalidade acima da média estadual são:\n\n1. Santo Antônio das Missões - 7,71%\n2. Rosário do Sul - 7,41%\n3. Pinheiro Machado - 7,41%\n4. Morro Redondo - 7,40%\n5. Dezesseis de Novembro - 7,34%\n6. Pirapó - 7,34%\n7. Uruguaiana - 7,24%\n8. Bagé - 7,16%\n9. Tramandaí - 7,02%\n10. Bozano - 6,92%",
+        "row_count": 10,
+        "results_preview": [
+          {
+            "result": [
+              "Santo Antônio das Missões",
+              9236,
+              7.71
+            ]
+          },
+          {
+            "result": [
+              "Rosário do Sul",
+              46230,
+              7.41
+            ]
+          },
+          {
+            "result": [
+              "Pinheiro Machado",
+              11262,
+              7.41
+            ]
+          },
+          {
+            "result": [
+              "Morro Redondo",
+              5418,
+              7.4
+            ]
+          },
+          {
+            "result": [
+              "Dezesseis de Novembro",
+              3132,
+              7.34
+            ]
+          },
+          {
+            "result": [
+              "Pirapó",
+              2575,
+              7.34
+            ]
+          },
+          {
+            "result": [
+              "Uruguaiana",
+              106480,
+              7.24
+            ]
+          },
+          {
+            "result": [
+              "Bagé",
+              120220,
+              7.16
+            ]
+          },
+          {
+            "result": [
+              "Tramandaí",
+              52076,
+              7.02
+            ]
+          },
+          {
+            "result": [
+              "Bozano",
+              2008,
+              6.92
+            ]
+          }
+        ],
+        "final_result_rows_preview": null,
+        "error": null,
+        "cost": {
+          "prompt_tokens": 18875,
+          "completion_tokens": 1357,
+          "total_tokens": 20232,
+          "total_cost_usd": 0.003405,
+          "successful_requests": 5
+        },
+        "chart": null
+      },
+      "error": null
+    },
+    {
+      "name": "workflow.initialization",
+      "status": "passed",
+      "latency_seconds": null,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.query_classification",
+      "status": "passed",
+      "latency_seconds": 0.00040340423583984375,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.table_discovery",
+      "status": "passed",
+      "latency_seconds": 0.508474588394165,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.schema_analysis",
+      "status": "passed",
+      "latency_seconds": 0.0006883144378662109,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.reasoning",
+      "status": "passed",
+      "latency_seconds": 5.12670373916626,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "municipio",
+              "source": "municipios",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "estado",
+              "values": [
+                "RS"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "minimum_group_count",
+              "values": [
+                "500"
+              ],
+              "operator": ">"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "municipio"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "municipio"
+            ],
+            "filter_dimensions": [
+              "municipio"
+            ],
+            "counted_entity": "internacao",
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope",
+            "geographic_filter_dimension_not_output"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.sql_generation",
+      "status": "passed",
+      "latency_seconds": 8.83283257484436,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.sql_validation",
+      "status": "passed",
+      "latency_seconds": 3.482436418533325,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope",
+            "geographic_filter_dimension_not_output"
+          ],
+          "null_policy": [],
+          "message": null
+        }
+      }
+    },
+    {
+      "name": "workflow.sql_execution",
+      "status": "passed",
+      "latency_seconds": 0.20871949195861816,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "tool.sql_db_list_tables",
+      "status": "passed",
+      "latency_seconds": 0.5084030628204346,
+      "details": {
+        "name": "sql_db_list_tables",
+        "success": true,
+        "execution_time": 0.5084030628204346
+      }
+    },
+    {
+      "name": "tool.sql_db_query_checker",
+      "status": "passed",
+      "latency_seconds": 3.4824066162109375,
+      "details": {
+        "name": "sql_db_query_checker",
+        "success": true,
+        "execution_time": 3.4824066162109375
+      }
+    },
+    {
+      "name": "tool.sql_db_query",
+      "status": "passed",
+      "latency_seconds": 0.20860862731933594,
+      "details": {
+        "name": "sql_db_query",
+        "success": true,
+        "execution_time": 0.20860862731933594
+      }
+    },
+    {
+      "name": "metric.Execution Accuracy (EX)",
+      "status": "passed",
+      "score": 1.0,
+      "error": null,
+      "details": {
+        "ground_truth_executed": true,
+        "predicted_executed": true,
+        "ground_truth_rows": 10,
+        "predicted_rows": 10,
+        "results_match": true,
+        "comparison_details": {
+          "gt_size": 10,
+          "pred_size": 10,
+          "normalized_match": true
+        }
+      }
+    },
+    {
+      "name": "final_result",
+      "status": "passed",
+      "details": {
+        "generated_sql": "WITH media_estado AS ( SELECT SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_ref FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE mu.\"SG_UF\" = 'RS' ), por_municipio AS ( SELECT mu.\"NO_MUNICIPIO\" AS nome, COUNT(*) AS total, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE mu.\"SG_UF\" = 'RS' GROUP BY mu.\"NO_MUNICIPIO\" HAVING COUNT(*) > 500 ) SELECT pm.nome, pm.total, ROUND(pm.taxa, 2) AS taxa_mortalidade FROM por_municipio pm, media_estado me WHERE pm.taxa > me.taxa_ref ORDER BY pm.taxa DESC LIMIT 10;",
+        "generated_execution_status": "passed",
+        "ground_truth_execution_status": "passed",
+        "result_match": true,
+        "ex_score": 1.0
+      }
+    }
+  ],
+  "detailed_result": {
+    "question_id": "GT113",
+    "difficulty": "hard",
+    "question": "Quais são os 10 municípios do RS com taxa de mortalidade acima da média estadual (considerando apenas municípios com mais de 500 internações)?",
+    "ground_truth_sql": "WITH media_rs AS (\n    SELECT ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 4) AS taxa_media\n    FROM internacoes i\n    JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\"\n    WHERE mu.\"SG_UF\" = 'RS'\n), por_municipio AS (\n    SELECT mu.\"NO_MUNICIPIO\" AS nome,\n           COUNT(*) AS total_internacoes,\n           ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade\n    FROM internacoes i\n    JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\"\n    WHERE mu.\"SG_UF\" = 'RS'\n    GROUP BY mu.\"NO_MUNICIPIO\"\n    HAVING COUNT(*) > 500\n)\nSELECT pm.nome, pm.total_internacoes, pm.taxa_mortalidade\nFROM por_municipio pm, media_rs mr\nWHERE pm.taxa_mortalidade > mr.taxa_media\nORDER BY pm.taxa_mortalidade DESC\nLIMIT 10;",
+    "predicted_sql": "WITH media_estado AS ( SELECT SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_ref FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE mu.\"SG_UF\" = 'RS' ), por_municipio AS ( SELECT mu.\"NO_MUNICIPIO\" AS nome, COUNT(*) AS total, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE mu.\"SG_UF\" = 'RS' GROUP BY mu.\"NO_MUNICIPIO\" HAVING COUNT(*) > 500 ) SELECT pm.nome, pm.total, ROUND(pm.taxa, 2) AS taxa_mortalidade FROM por_municipio pm, media_estado me WHERE pm.taxa > me.taxa_ref ORDER BY pm.taxa DESC LIMIT 10;",
+    "agent_success": true,
+    "agent_execution_time": 23.781519412994385,
+    "question_started_at": "2026-05-17T06:40:33.027450",
+    "question_completed_at": "2026-05-17T06:40:56.808981",
+    "evaluation_source": "sql_query",
+    "stored_rows": null,
+    "agent_output": {
+      "success": true,
+      "sql_query": "WITH media_estado AS ( SELECT SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa_ref FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE mu.\"SG_UF\" = 'RS' ), por_municipio AS ( SELECT mu.\"NO_MUNICIPIO\" AS nome, COUNT(*) AS total, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS taxa FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE mu.\"SG_UF\" = 'RS' GROUP BY mu.\"NO_MUNICIPIO\" HAVING COUNT(*) > 500 ) SELECT pm.nome, pm.total, ROUND(pm.taxa, 2) AS taxa_mortalidade FROM por_municipio pm, media_estado me WHERE pm.taxa > me.taxa_ref ORDER BY pm.taxa DESC LIMIT 10;",
+      "response": "Os 10 municípios do RS com taxa de mortalidade acima da média estadual são:\n\n1. Santo Antônio das Missões - 7,71%\n2. Rosário do Sul - 7,41%\n3. Pinheiro Machado - 7,41%\n4. Morro Redondo - 7,40%\n5. Dezesseis de Novembro - 7,34%\n6. Pirapó - 7,34%\n7. Uruguaiana - 7,24%\n8. Bagé - 7,16%\n9. Tramandaí - 7,02%\n10. Bozano - 6,92%",
+      "row_count": 10,
+      "results_preview": [
+        {
+          "result": [
+            "Santo Antônio das Missões",
+            9236,
+            7.71
+          ]
+        },
+        {
+          "result": [
+            "Rosário do Sul",
+            46230,
+            7.41
+          ]
+        },
+        {
+          "result": [
+            "Pinheiro Machado",
+            11262,
+            7.41
+          ]
+        },
+        {
+          "result": [
+            "Morro Redondo",
+            5418,
+            7.4
+          ]
+        },
+        {
+          "result": [
+            "Dezesseis de Novembro",
+            3132,
+            7.34
+          ]
+        },
+        {
+          "result": [
+            "Pirapó",
+            2575,
+            7.34
+          ]
+        },
+        {
+          "result": [
+            "Uruguaiana",
+            106480,
+            7.24
+          ]
+        },
+        {
+          "result": [
+            "Bagé",
+            120220,
+            7.16
+          ]
+        },
+        {
+          "result": [
+            "Tramandaí",
+            52076,
+            7.02
+          ]
+        },
+        {
+          "result": [
+            "Bozano",
+            2008,
+            6.92
+          ]
+        }
+      ],
+      "final_result_rows_preview": null,
+      "error": null,
+      "cost": {
+        "prompt_tokens": 18875,
+        "completion_tokens": 1357,
+        "total_tokens": 20232,
+        "total_cost_usd": 0.003405,
+        "successful_requests": 5
+      },
+      "chart": null
+    },
+    "agent_metadata": {
+      "langgraph_v3": true,
+      "messages_state": true,
+      "query_route": "database",
+      "classification": {
+        "route": "database",
+        "confidence": 0.9,
+        "requires_tools": true
+      },
+      "workflow_metrics": {
+        "overall_success": true,
+        "completion_rate": 0.5714285714285714,
+        "phases_completed": 8,
+        "total_phases": 14,
+        "tool_success_rate": 1.0,
+        "total_tools_used": 3,
+        "retry_count": 0,
+        "error_count": 0,
+        "execution_time": 23.701663494110107
+      },
+      "phases_completed": [
+        "initialization",
+        "query_classification",
+        "table_discovery",
+        "schema_analysis",
+        "reasoning",
+        "sql_generation",
+        "sql_validation",
+        "sql_execution"
+      ],
+      "current_phase": "completed",
+      "tool_calls": [
+        {
+          "name": "sql_db_list_tables",
+          "success": true,
+          "execution_time": 0.5084030628204346
+        },
+        {
+          "name": "sql_db_query_checker",
+          "success": true,
+          "execution_time": 3.4824066162109375
+        },
+        {
+          "name": "sql_db_query",
+          "success": true,
+          "execution_time": 0.20860862731933594
+        }
+      ],
+      "message_count": 13,
+      "retry_count": 0,
+      "error_count": 0,
+      "tables_used": [
+        "municipios",
+        "internacoes"
+      ],
+      "schema_context_length": 11552,
+      "latency_by_component": {
+        "query_classification": 0.00040340423583984375,
+        "table_discovery": 0.508474588394165,
+        "schema_analysis": 0.0006883144378662109,
+        "reasoning": 5.12670373916626,
+        "sql_generation": 8.83283257484436,
+        "sql_validation": 3.482436418533325,
+        "sql_execution": 0.20871949195861816,
+        "completed": 1.7389473915100098
+      },
+      "multi_query": {
+        "is_multi_query": false,
+        "plan_type": "global_local_avg",
+        "execution_mode": "single",
+        "multi_query_allowed": false,
+        "allowed_multi_plan_types": [
+          "bind_then_query",
+          "fanout_concat",
+          "verification_side_query"
+        ],
+        "query_plan": {
+          "strategy": "single",
+          "reasoning": "Comparações contra média global/estadual devem permanecer em uma SQL.",
+          "plan_type": "global_local_avg",
+          "merge_strategy": "none",
+          "output_nodes": [
+            "sq1"
+          ],
+          "required_constraints": [],
+          "expected_output_shape": {},
+          "verifier_checks": [],
+          "fallback_policy": {},
+          "sub_queries": [
+            {
+              "id": "sq1",
+              "description": "Quais são os 10 municípios do RS com taxa de mortalidade acima da média estadual (considerando apenas municípios com mais de 500 internações)?",
+              "purpose": "final_output",
+              "output_role": "output",
+              "expected_result_kind": "rowset",
+              "expected_max_rows": null,
+              "required_constraints": [],
+              "selected_tables": [],
+              "bind_keys": [],
+              "sql": null,
+              "validated_sql": null,
+              "result_raw": null,
+              "parsed_rows": null,
+              "success": false,
+              "error": null,
+              "depends_on": [],
+              "repair_attempts": 0
+            }
+          ]
+        },
+        "sub_query_results": [],
+        "merged_rows": null,
+        "merged_rows_source": null,
+        "merge_strategy": "none",
+        "verifier_outcome": null,
+        "single_fallback_active": false,
+        "single_fallback_reason": null,
+        "final_sql_query": null,
+        "failure_taxonomy": []
+      },
+      "semantic_plan": {
+        "intent": "ranking",
+        "base_grain": "internacao",
+        "metrics": [
+          {
+            "name": "taxa_mortalidade",
+            "expression_type": "rate",
+            "numerator_condition": "MORTE = true",
+            "denominator_scope": "all_rows_matching_non_outcome_filters",
+            "required_filters": []
+          }
+        ],
+        "dimensions": [
+          {
+            "name": "municipio",
+            "source": "municipios",
+            "role": "group"
+          }
+        ],
+        "filters": [
+          {
+            "field": "estado",
+            "values": [
+              "RS"
+            ],
+            "operator": "="
+          },
+          {
+            "field": "minimum_group_count",
+            "values": [
+              "500"
+            ],
+            "operator": ">"
+          }
+        ],
+        "answer_shape": {
+          "row_grain": "top_n_global",
+          "top_n": 10,
+          "top_n_scope": "global",
+          "required_dimensions": [
+            "municipio"
+          ],
+          "partition_dimensions": [],
+          "ranked_dimensions": [],
+          "requires_group_by": false,
+          "include_unknown_bucket": false,
+          "answer_kind": "top_n_global",
+          "expected_row_count": "bounded_n",
+          "output_dimensions": [
+            "municipio"
+          ],
+          "filter_dimensions": [
+            "municipio"
+          ],
+          "counted_entity": "internacao",
+          "forbidden_output_dimensions": []
+        },
+        "constraints": [
+          "rate_denominator_must_preserve_full_scope",
+          "geographic_filter_dimension_not_output"
+        ],
+        "null_policy": [],
+        "ambiguities": []
+      },
+      "visualization_intent": {
+        "requested": false,
+        "source": "none",
+        "uses_last_result": false,
+        "chart_hint": "auto",
+        "reason": ""
+      },
+      "chart_plan": {
+        "requested": false,
+        "chart_type": "auto",
+        "metric": null,
+        "metric_expression": null,
+        "x_dimension": null,
+        "series_dimension": null,
+        "y_column": null,
+        "grain": "unknown",
+        "expected_result_shape": "unknown",
+        "filters": [],
+        "time_window": {
+          "type": "none",
+          "n": null,
+          "start_year": null,
+          "end_year": null,
+          "date_column": "DT_INTER"
+        },
+        "required_columns": [],
+        "sql_shape_guidance": "",
+        "reason": "visualization not requested"
+      },
+      "chart_spec": null,
+      "llamaindex_enabled": true,
+      "llamaindex_mode": "context",
+      "llamaindex_retrieval_mode": "llamaindex_schema",
+      "llamaindex_selected_tables": [
+        "socioeconomico",
+        "municipios",
+        "internacoes"
+      ],
+      "llamaindex_confidence": 0.45723207390788034,
+      "llamaindex_error": "",
+      "raw_selected_tables": [
+        "socioeconomico",
+        "municipios",
+        "internacoes"
+      ],
+      "validated_selected_tables": [
+        "municipios",
+        "internacoes"
+      ],
+      "table_selection_mode": "llamaindex_context",
+      "schema_context_source": "llamaindex",
+      "schema_context_verified_with_db": false,
+      "schema_context_tables": [
+        "municipios",
+        "internacoes"
+      ],
+      "semantic_constraints": [
+        "rate_denominator_must_preserve_full_scope",
+        "geographic_filter_dimension_not_output"
+      ],
+      "semantic_null_policy": [],
+      "semantic_planner": {
+        "mode": "llm_reconciled",
+        "confidence": 0.9,
+        "reasoning": "A intenção é classificar os municípios do RS com base na taxa de mortalidade, considerando apenas aqueles com mais de 500 internações. A métrica 'taxa_mortalidade' é calculada como uma taxa, onde o numerador conta as mortes e o denominador considera todas as internações. A dimensão 'municipio' é utilizada para agrupar os resultados, e a filtragem garante que apenas municípios do RS com mais de 500 internações sejam considerados. O resultado deve ser os 10 municípios com a maior taxa de mortalidade, por isso a configuração de 'top_n_per_group'.",
+        "conflicts": [
+          "row_grain_mismatch: heuristic=top_n_global; llm=top_n_per_group",
+          "top_n_scope_mismatch: heuristic=global; llm=per_group"
+        ],
+        "accepted_llm_fields": [
+          "metrics",
+          "dimensions"
+        ],
+        "rejected_llm_fields": [
+          "answer_shape.row_grain",
+          "answer_shape.top_n_scope"
+        ]
+      },
+      "sql_generation_confidence": 0.9,
+      "sql_generation_reasoning": "The query calculates the mortality rate for municipalities in RS with more than 500 hospitalizations, comparing each municipality's rate to the state average. It uses a CTE to compute the state average mortality rate and filters municipalities accordingly, ensuring accurate comparisons.",
+      "sql_generation_source": "current_structured_output",
+      "chart_plan_validation": {
+        "passed": true,
+        "message": null,
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        }
+      },
+      "semantic_validation": {
+        "passed": true,
+        "constraints": [
+          "rate_denominator_must_preserve_full_scope",
+          "geographic_filter_dimension_not_output"
+        ],
+        "null_policy": [],
+        "message": null
+      },
+      "orchestrator_v3": true,
+      "current_model": {
+        "provider": "openai",
+        "model_name": "gpt-4o-mini",
+        "temperature": 0.0
+      },
+      "environment": "production",
+      "session_id": "session_33027",
+      "query_number": 108,
+      "orchestrator_execution_time": 23.721370935440063
+    },
+    "multi_query": {
+      "is_multi_query": false,
+      "plan_type": "global_local_avg",
+      "execution_mode": "single",
+      "multi_query_allowed": false,
+      "allowed_multi_plan_types": [
+        "bind_then_query",
+        "fanout_concat",
+        "verification_side_query"
+      ],
+      "query_plan": {
+        "strategy": "single",
+        "reasoning": "Comparações contra média global/estadual devem permanecer em uma SQL.",
+        "plan_type": "global_local_avg",
+        "merge_strategy": "none",
+        "output_nodes": [
+          "sq1"
+        ],
+        "required_constraints": [],
+        "expected_output_shape": {},
+        "verifier_checks": [],
+        "fallback_policy": {},
+        "sub_queries": [
+          {
+            "id": "sq1",
+            "description": "Quais são os 10 municípios do RS com taxa de mortalidade acima da média estadual (considerando apenas municípios com mais de 500 internações)?",
+            "purpose": "final_output",
+            "output_role": "output",
+            "expected_result_kind": "rowset",
+            "expected_max_rows": null,
+            "required_constraints": [],
+            "selected_tables": [],
+            "bind_keys": [],
+            "sql": null,
+            "validated_sql": null,
+            "result_raw": null,
+            "parsed_rows": null,
+            "success": false,
+            "error": null,
+            "depends_on": [],
+            "repair_attempts": 0
+          }
+        ]
+      },
+      "sub_query_results": [],
+      "merged_rows": null,
+      "merged_rows_source": null,
+      "merge_strategy": "none",
+      "verifier_outcome": null,
+      "single_fallback_active": false,
+      "single_fallback_reason": null,
+      "final_sql_query": null,
+      "failure_taxonomy": []
+    },
+    "agent_error": null,
+    "metrics": {
+      "Execution Accuracy (EX)": {
+        "score": 1.0,
+        "is_correct": true,
+        "error": null,
+        "details": {
+          "ground_truth_executed": true,
+          "predicted_executed": true,
+          "ground_truth_rows": 10,
+          "predicted_rows": 10,
+          "results_match": true,
+          "comparison_details": {
+            "gt_size": 10,
+            "pred_size": 10,
+            "normalized_match": true
+          }
+        }
+      }
+    },
+    "run_id": "20260517_gt228_full",
+    "question_index": 108,
+    "total_questions": 228,
+    "question_fingerprint": "1c2c9a5a65d994cbf53fc98ea15d2d5dae7e05c4348c769fd5e2d63e570faace",
+    "trace_path": "/home/maiconkevyn/PycharmProjects/txt2sql_refactor_openai_v2/evaluation/results/dag_evaluation_20260517_gt228_full/queries/GT113/trace.json"
+  }
+}

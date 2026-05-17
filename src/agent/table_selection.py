@@ -79,6 +79,27 @@ def _validate_table_selection(
                     "Added table for supported socioeconomic indicator",
                     extra={"table": table},
                 )
+    elif "socioeconomico" in validated_tables and any(
+        table in validated_tables
+        for table in ("internacoes", "cid", "hospital", "procedimentos", "internacao_procedimento")
+    ):
+        validated_tables.remove("socioeconomico")
+        logger.info(
+            "Removed 'socioeconomico': query does not mention a supported socioeconomic indicator"
+        )
+
+    diagnosis_context = bool(
+        re.search(r"diagn[oó]stic|cid|doen[cç]a|c[aâ]ncer|cancer|covid|neoplas", query_lower)
+    )
+    procedure_context = bool(re.search(r"procediment|proc_rea|cirurg", query_lower))
+    if diagnosis_context and not procedure_context:
+        for table in ("procedimentos", "internacao_procedimento"):
+            if table in validated_tables:
+                validated_tables.remove(table)
+                logger.info(
+                    "Removed procedure table from diagnosis-only query",
+                    extra={"table": table},
+                )
 
     # Rule 1: Death queries — MORTE is a boolean in internacoes
     if any(keyword in query_lower for keyword in ["morte", "óbito", "falecimento", "mortalidade"]):

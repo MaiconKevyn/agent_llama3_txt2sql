@@ -100,6 +100,9 @@ class OrchestratorConfig:
     enable_llamaindex_sql_draft: bool = (
         False  # let LlamaIndex draft SQL before current fallback generator
     )
+    enable_analytic_response_templates: bool = (
+        True  # enable deterministic analytic SQL/response templates for analytic intents
+    )
     llamaindex_index_dir: str = ".llamaindex_schema"  # local persisted schema index
     llamaindex_top_k_tables: int = 6
     llamaindex_mode: str = "context"  # context | sql_draft | hybrid

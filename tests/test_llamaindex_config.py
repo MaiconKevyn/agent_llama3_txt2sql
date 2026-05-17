@@ -10,6 +10,7 @@ def test_llamaindex_flags_default_to_context_pipeline():
     assert cfg.llamaindex_top_k_tables == 6
     assert cfg.llamaindex_rebuild_index is False
     assert cfg.verify_llamaindex_schema_with_db is False
+    assert cfg.enable_analytic_response_templates is True
 
 
 def test_llamaindex_env_config_enables_api_factory_mode(monkeypatch):
@@ -30,3 +31,14 @@ def test_llamaindex_env_config_enables_api_factory_mode(monkeypatch):
     assert cfg.llamaindex_index_dir == "/tmp/li-index"
     assert cfg.llamaindex_rebuild_index is True
     assert cfg.verify_llamaindex_schema_with_db is True
+    assert cfg.enable_analytic_response_templates is True
+
+
+def test_analytic_response_templates_can_be_disabled_from_env(monkeypatch):
+    from src.agent.orchestrator import _orchestrator_config_from_env
+
+    monkeypatch.setenv("ENABLE_ANALYTIC_RESPONSE_TEMPLATES", "false")
+
+    cfg = _orchestrator_config_from_env()
+
+    assert cfg.enable_analytic_response_templates is False

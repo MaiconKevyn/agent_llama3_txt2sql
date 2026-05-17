@@ -1,0 +1,1674 @@
+{
+  "trace_schema_version": 2,
+  "status": "completed",
+  "run_id": "20260517_gt228_full",
+  "question_index": 176,
+  "total_questions": 228,
+  "question_fingerprint": "6ab36e174e46a68e32ab2bb96ed76f9d63b6b4d0ecd780b808478fa034bafe8e",
+  "trace_path": "/home/maiconkevyn/PycharmProjects/txt2sql_refactor_openai_v2/evaluation/results/dag_evaluation_20260517_gt228_full/queries/GT182/trace.json",
+  "written_at": "2026-05-17T06:45:22.827825",
+  "id": "GT182",
+  "difficulty": "medium",
+  "question_pt": "Qual a evolucao anual de internacoes e mortes por COVID ou coronavirus?",
+  "question_started_at": "2026-05-17T06:45:03.144566",
+  "question_completed_at": "2026-05-17T06:45:21.494548",
+  "ground_truth_sql": "SELECT EXTRACT(YEAR FROM \"DT_INTER\") AS ano, COUNT(*) AS total_internacoes, SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes FROM internacoes WHERE \"DIAG_PRINC\" IN ('B342', 'B972') AND \"DT_INTER\" IS NOT NULL GROUP BY ano ORDER BY ano;",
+  "generated_sql": "WITH diagnosticos_alvo(\"CID\") AS ( VALUES ('B342'), ('B972') ), diagnosticos_resolvidos AS ( SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\" FROM diagnosticos_alvo d LEFT JOIN cid c ON c.\"CID\" = d.\"CID\" ), denominador_ano AS ( SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_denominador FROM internacoes i WHERE i.\"DT_INTER\" IS NOT NULL GROUP BY ano ), casos_ano AS ( SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes FROM internacoes i JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\" WHERE i.\"DT_INTER\" IS NOT NULL GROUP BY ano ), serie AS ( SELECT d.ano, COALESCE(c.total_internacoes, 0) AS total_internacoes, COALESCE(c.total_mortes, 0) AS total_mortes, d.total_denominador, ROUND(COALESCE(c.total_internacoes, 0) * 100000.0 / NULLIF(d.total_denominador, 0), 2) AS taxa_por_100k_denominador FROM denominador_ano d LEFT JOIN casos_ano c ON c.ano = d.ano ), extremos AS ( SELECT (SELECT ano FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_ano, (SELECT total_internacoes FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_total, (SELECT total_mortes FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_mortes, (SELECT ano FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_ano, (SELECT total_internacoes FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_total, (SELECT total_mortes FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_mortes, (SELECT ano FROM serie ORDER BY total_internacoes DESC, ano ASC LIMIT 1) AS ano_pico, (SELECT total_internacoes FROM serie ORDER BY total_internacoes DESC, ano ASC LIMIT 1) AS total_pico ) SELECT 'temporal_condition_trend' AS analysis_type, (SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos) AS resolved_concept, 'ano de internacao' AS factor_name, (SELECT SUM(total_internacoes) FROM serie) AS total_internacoes, (SELECT SUM(total_mortes) FROM serie) AS total_mortes, 'internacoes por ano no mesmo escopo' AS denominador, (SELECT STRING_AGG( CAST(ano AS VARCHAR) || ':' || total_internacoes || ':' || total_denominador || ':' || total_mortes || ':' || taxa_por_100k_denominador, ' | ' ORDER BY ano) FROM serie) AS time_series, (SELECT primeiro_ano FROM extremos) AS first_period, (SELECT primeiro_total FROM extremos) AS first_total, (SELECT primeiro_mortes FROM extremos) AS first_mortes, (SELECT ultimo_ano FROM extremos) AS last_period, (SELECT ultimo_total FROM extremos) AS last_total, (SELECT ultimo_mortes FROM extremos) AS last_mortes, (SELECT ultimo_total - primeiro_total FROM extremos) AS delta_absolute, (SELECT ROUND((ultimo_total - primeiro_total) * 100.0 / NULLIF(primeiro_total, 0), 2) FROM extremos) AS delta_percent, (SELECT ano_pico FROM extremos) AS peak_period, (SELECT total_pico FROM extremos) AS peak_total, NULL AS warnings FROM (SELECT 1) AS analytic_singleton;",
+  "agent_success": true,
+  "agent_error": null,
+  "agent_output": {
+    "success": true,
+    "sql_query": "WITH diagnosticos_alvo(\"CID\") AS ( VALUES ('B342'), ('B972') ), diagnosticos_resolvidos AS ( SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\" FROM diagnosticos_alvo d LEFT JOIN cid c ON c.\"CID\" = d.\"CID\" ), denominador_ano AS ( SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_denominador FROM internacoes i WHERE i.\"DT_INTER\" IS NOT NULL GROUP BY ano ), casos_ano AS ( SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes FROM internacoes i JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\" WHERE i.\"DT_INTER\" IS NOT NULL GROUP BY ano ), serie AS ( SELECT d.ano, COALESCE(c.total_internacoes, 0) AS total_internacoes, COALESCE(c.total_mortes, 0) AS total_mortes, d.total_denominador, ROUND(COALESCE(c.total_internacoes, 0) * 100000.0 / NULLIF(d.total_denominador, 0), 2) AS taxa_por_100k_denominador FROM denominador_ano d LEFT JOIN casos_ano c ON c.ano = d.ano ), extremos AS ( SELECT (SELECT ano FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_ano, (SELECT total_internacoes FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_total, (SELECT total_mortes FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_mortes, (SELECT ano FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_ano, (SELECT total_internacoes FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_total, (SELECT total_mortes FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_mortes, (SELECT ano FROM serie ORDER BY total_internacoes DESC, ano ASC LIMIT 1) AS ano_pico, (SELECT total_internacoes FROM serie ORDER BY total_internacoes DESC, ano ASC LIMIT 1) AS total_pico ) SELECT 'temporal_condition_trend' AS analysis_type, (SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos) AS resolved_concept, 'ano de internacao' AS factor_name, (SELECT SUM(total_internacoes) FROM serie) AS total_internacoes, (SELECT SUM(total_mortes) FROM serie) AS total_mortes, 'internacoes por ano no mesmo escopo' AS denominador, (SELECT STRING_AGG( CAST(ano AS VARCHAR) || ':' || total_internacoes || ':' || total_denominador || ':' || total_mortes || ':' || taxa_por_100k_denominador, ' | ' ORDER BY ano) FROM serie) AS time_series, (SELECT primeiro_ano FROM extremos) AS first_period, (SELECT primeiro_total FROM extremos) AS first_total, (SELECT primeiro_mortes FROM extremos) AS first_mortes, (SELECT ultimo_ano FROM extremos) AS last_period, (SELECT ultimo_total FROM extremos) AS last_total, (SELECT ultimo_mortes FROM extremos) AS last_mortes, (SELECT ultimo_total - primeiro_total FROM extremos) AS delta_absolute, (SELECT ROUND((ultimo_total - primeiro_total) * 100.0 / NULLIF(primeiro_total, 0), 2) FROM extremos) AS delta_percent, (SELECT ano_pico FROM extremos) AS peak_period, (SELECT total_pico FROM extremos) AS peak_total, NULL AS warnings FROM (SELECT 1) AS analytic_singleton;",
+    "response": "Há uma tendência temporal observada no recorte solicitado.\n\nEscopo usado: B342 - Infecc p/coronavirus NE | B972 - Coronavirus como doenc class outr cap; denominador: internações por ano no mesmo escopo.\nResumo: 1.862.525 internações no diagnóstico resolvido ao longo da série.\n\nLeitura objetiva: de 2000 (0) a 2023 (13.267), a variação absoluta foi 13.267 internações (-%). O pico foi em 2021, com 1.153.020 internações.\nLimite: isto descreve evolução observada nos registros, não causalidade.",
+    "row_count": 1,
+    "results_preview": [
+      {
+        "result": [
+          "temporal_condition_trend",
+          "B342 - Infecc p/coronavirus NE | B972 - Coronavirus como doenc class outr cap",
+          "ano de internacao",
+          1862525,
+          393450,
+          "internacoes por ano no mesmo escopo",
+          "2000:0:9:0:0.0 | 2001:0:2:0:0.0 | 2002:0:2:0:0.0 | 2003:0:1:0:0.0 | 2005:0:6:0:0.0 | 2006:0:7:0:0.0 | 2007:0:602947:0:0.0 | 2008:4:10847458:0:0.04 | 2009:3:11114857:0:0.03 | 2010:7:11347880:0:0.06 | 2011:6:11267097:0:0.05 | 2012:1:11103250:0:0.01 | 2013:6:11179438:0:0.05 | 2014:6:11353704:0:0.05...",
+          2000,
+          0,
+          0,
+          2023,
+          13267,
+          1664,
+          13267,
+          null,
+          2021,
+          1153020,
+          null
+        ]
+      }
+    ],
+    "final_result_rows_preview": null,
+    "error": null,
+    "cost": {
+      "prompt_tokens": 4281,
+      "completion_tokens": 1460,
+      "total_tokens": 5741,
+      "total_cost_usd": 0.001441,
+      "successful_requests": 3
+    },
+    "chart": null
+  },
+  "evaluation_source": "sql_query",
+  "latency_seconds": 18.349973678588867,
+  "generated_sql_valid": true,
+  "generated_sql_validation_errors": [],
+  "generated_sql_validation_warnings": [],
+  "generated_execution_status": "passed",
+  "ground_truth_execution_status": "passed",
+  "comparison_mode": "execution_accuracy",
+  "result_match": false,
+  "ex_score": 0.0,
+  "shape_match": false,
+  "projected_match": false,
+  "expected_columns": [
+    "ano",
+    "total_internacoes",
+    "total_mortes"
+  ],
+  "actual_columns": [
+    "analysis_type",
+    "resolved_concept",
+    "factor_name",
+    "total_internacoes",
+    "total_mortes",
+    "denominador",
+    "time_series",
+    "first_period",
+    "first_total",
+    "first_mortes",
+    "last_period",
+    "last_total",
+    "last_mortes",
+    "delta_absolute",
+    "delta_percent",
+    "peak_period",
+    "peak_total",
+    "warnings"
+  ],
+  "expected_preview_values": [
+    [
+      2008,
+      4,
+      0
+    ],
+    [
+      2009,
+      3,
+      0
+    ],
+    [
+      2010,
+      7,
+      0
+    ],
+    [
+      2011,
+      6,
+      0
+    ],
+    [
+      2012,
+      1,
+      0
+    ],
+    [
+      2013,
+      6,
+      0
+    ],
+    [
+      2014,
+      6,
+      0
+    ],
+    [
+      2015,
+      6,
+      0
+    ],
+    [
+      2016,
+      15,
+      0
+    ],
+    [
+      2017,
+      16,
+      0
+    ],
+    [
+      2018,
+      8,
+      0
+    ],
+    [
+      2019,
+      12,
+      0
+    ],
+    [
+      2020,
+      542705,
+      115829
+    ],
+    [
+      2021,
+      1153020,
+      246511
+    ],
+    [
+      2022,
+      153443,
+      29446
+    ],
+    [
+      2023,
+      13267,
+      1664
+    ]
+  ],
+  "actual_preview_values": [
+    [
+      "temporal_condition_trend",
+      "B342 - Infecc p/coronavirus NE | B972 - Coronavirus como doenc class outr cap",
+      "ano de internacao",
+      1862525,
+      393450,
+      "internacoes por ano no mesmo escopo",
+      "2000:0:9:0:0.0 | 2001:0:2:0:0.0 | 2002:0:2:0:0.0 | 2003:0:1:0:0.0 | 2005:0:6:0:0.0 | 2006:0:7:0:0.0 | 2007:0:602947:0:0.0 | 2008:4:10847458:0:0.04 | 2009:3:11114857:0:0.03 | 2010:7:11347880:0:0.06 | 2011:6:11267097:0:0.05 | 2012:1:11103250:0:0.01 | 2013:6:11179438:0:0.05 | 2014:6:11353704:0:0.05 | 2015:6:11325421:0:0.05 | 2016:15:11256224:0:0.13 | 2017:16:11522847:0:0.14 | 2018:8:11857648:0:0.07 | 2019:12:12185437:0:0.1 | 2020:542705:10531843:115829:5152.99 | 2021:1153020:11566528:246511:9968.59 | 2022:153443:12363889:29446:1241.06 | 2023:13267:12450724:1664:106.56",
+      2000,
+      0,
+      0,
+      2023,
+      13267,
+      1664,
+      13267,
+      null,
+      2021,
+      1153020,
+      null
+    ]
+  ],
+  "expected_row_count": 16,
+  "actual_row_count": 1,
+  "expected_truncated": false,
+  "actual_truncated": false,
+  "ground_truth_execution_error": null,
+  "generated_execution_error": null,
+  "ground_truth_execution_latency_seconds": 0.21274638175964355,
+  "generated_execution_latency_seconds": 0.3891792297363281,
+  "error_category": "row_count_mismatch",
+  "error_message": null,
+  "metric_details": {
+    "ground_truth_executed": true,
+    "predicted_executed": true,
+    "ground_truth_rows": 16,
+    "predicted_rows": 1,
+    "results_match": false,
+    "comparison_details": {
+      "size_mismatch": true,
+      "gt_size": 16,
+      "pred_size": 1,
+      "size_difference": -15
+    }
+  },
+  "comparison_details": {
+    "size_mismatch": true,
+    "gt_size": 16,
+    "pred_size": 1,
+    "size_difference": -15
+  },
+  "multi_query": {
+    "is_multi_query": false,
+    "plan_type": "single_cte",
+    "execution_mode": "single",
+    "multi_query_allowed": false,
+    "allowed_multi_plan_types": [
+      "bind_then_query",
+      "fanout_concat",
+      "verification_side_query"
+    ],
+    "query_plan": {
+      "strategy": "single",
+      "reasoning": "Comparações temporais e lógica global devem permanecer em uma única SQL.",
+      "plan_type": "single_cte",
+      "merge_strategy": "none",
+      "output_nodes": [
+        "sq1"
+      ],
+      "required_constraints": [],
+      "expected_output_shape": {},
+      "verifier_checks": [],
+      "fallback_policy": {},
+      "sub_queries": [
+        {
+          "id": "sq1",
+          "description": "Qual a evolucao anual de internacoes e mortes por COVID ou coronavirus?",
+          "purpose": "final_output",
+          "output_role": "output",
+          "expected_result_kind": "rowset",
+          "expected_max_rows": null,
+          "required_constraints": [],
+          "selected_tables": [],
+          "bind_keys": [],
+          "sql": null,
+          "validated_sql": null,
+          "result_raw": null,
+          "parsed_rows": null,
+          "success": false,
+          "error": null,
+          "depends_on": [],
+          "repair_attempts": 0
+        }
+      ]
+    },
+    "sub_query_results": [],
+    "merged_rows": null,
+    "merged_rows_source": null,
+    "merge_strategy": "none",
+    "verifier_outcome": null,
+    "single_fallback_active": false,
+    "single_fallback_reason": null,
+    "final_sql_query": null,
+    "failure_taxonomy": [
+      "unknown"
+    ]
+  },
+  "tables_used": [
+    "internacoes",
+    "cid"
+  ],
+  "selected_tables": {
+    "llamaindex": [
+      "internacoes",
+      "cid",
+      "socioeconomico"
+    ],
+    "raw": [
+      "internacoes",
+      "cid",
+      "socioeconomico"
+    ],
+    "validated": [
+      "internacoes",
+      "cid"
+    ]
+  },
+  "table_selection": {
+    "mode": "llamaindex_context",
+    "llamaindex_enabled": true,
+    "llamaindex_mode": "context",
+    "llamaindex_confidence": 0.359342334390192,
+    "llamaindex_error": ""
+  },
+  "semantic_plan": {
+    "intent": "trend",
+    "base_grain": "internacao",
+    "metrics": [
+      {
+        "name": "total",
+        "expression_type": "count",
+        "required_filters": []
+      },
+      {
+        "name": "total_internacoes",
+        "expression_type": "count",
+        "required_filters": []
+      }
+    ],
+    "dimensions": [
+      {
+        "name": "ano",
+        "source": "EXTRACT(YEAR FROM internacoes.DT_INTER)",
+        "role": "group"
+      }
+    ],
+    "filters": [
+      {
+        "field": "desfecho",
+        "values": [
+          "MORTE = true"
+        ],
+        "operator": "semantic"
+      },
+      {
+        "field": "diagnostico_principal_codigo",
+        "values": [
+          "B342",
+          "B972"
+        ],
+        "operator": "IN"
+      },
+      {
+        "field": "diagnostico_conceito_label",
+        "values": [
+          "B342 - Infecc p/coronavirus NE",
+          "B972 - Coronavirus como causa de doenc class outr cap"
+        ],
+        "operator": "metadata"
+      }
+    ],
+    "answer_shape": {
+      "row_grain": "time_series",
+      "top_n_scope": "none",
+      "required_dimensions": [
+        "ano"
+      ],
+      "partition_dimensions": [],
+      "ranked_dimensions": [],
+      "requires_group_by": true,
+      "include_unknown_bucket": false,
+      "answer_kind": "time_series",
+      "expected_row_count": "one_per_group",
+      "output_dimensions": [
+        "ano"
+      ],
+      "filter_dimensions": [],
+      "forbidden_output_dimensions": []
+    },
+    "constraints": [],
+    "null_policy": [],
+    "ambiguities": [
+      "profile_temporal_coverage: internacoes.DT_INTER ranges from 2008-01-01 to 2023-12-31",
+      "profile_cardinality: ano uses high-cardinality identifier internacoes.DT_INTER"
+    ]
+  },
+  "semantic_planner": {
+    "mode": "llm_reconciled",
+    "confidence": 0.9,
+    "reasoning": "A evolução anual de internações e mortes por COVID ou coronavírus requer a contagem de internações e mortes agrupadas por ano. As métricas foram definidas para contar o total de internações e o total de mortes, com filtros aplicados para garantir que apenas os registros relevantes para COVID sejam considerados. A dimensão 'ano' foi extraída da data de internação para permitir a análise temporal.",
+    "conflicts": [
+      "unknown_metric_ignored: total_mortes",
+      "metric_mismatch: heuristic=['total']; llm=['total_internacoes', 'total_mortes']"
+    ],
+    "accepted_llm_fields": [
+      "metrics"
+    ],
+    "rejected_llm_fields": []
+  },
+  "semantic_validation": {
+    "passed": true,
+    "constraints": [],
+    "null_policy": [],
+    "message": null
+  },
+  "chart_plan": {
+    "requested": false,
+    "chart_type": "auto",
+    "metric": null,
+    "metric_expression": null,
+    "x_dimension": null,
+    "series_dimension": null,
+    "y_column": null,
+    "grain": "unknown",
+    "expected_result_shape": "unknown",
+    "filters": [],
+    "time_window": {
+      "type": "none",
+      "n": null,
+      "start_year": null,
+      "end_year": null,
+      "date_column": "DT_INTER"
+    },
+    "required_columns": [],
+    "sql_shape_guidance": "",
+    "reason": "visualization not requested"
+  },
+  "chart_plan_validation": {
+    "passed": true,
+    "message": null,
+    "chart_plan": {
+      "requested": false,
+      "chart_type": "auto",
+      "metric": null,
+      "metric_expression": null,
+      "x_dimension": null,
+      "series_dimension": null,
+      "y_column": null,
+      "grain": "unknown",
+      "expected_result_shape": "unknown",
+      "filters": [],
+      "time_window": {
+        "type": "none",
+        "n": null,
+        "start_year": null,
+        "end_year": null,
+        "date_column": "DT_INTER"
+      },
+      "required_columns": [],
+      "sql_shape_guidance": "",
+      "reason": "visualization not requested"
+    }
+  },
+  "workflow_metrics": {
+    "overall_success": true,
+    "completion_rate": 0.6428571428571429,
+    "phases_completed": 9,
+    "total_phases": 14,
+    "tool_success_rate": 1.0,
+    "total_tools_used": 4,
+    "retry_count": 0,
+    "error_count": 1,
+    "execution_time": 18.295071601867676
+  },
+  "latency_by_component": {
+    "query_classification": 0.00032901763916015625,
+    "table_discovery": 0.4674088954925537,
+    "schema_analysis": 0.0004763603210449219,
+    "reasoning": 5.781858205795288,
+    "sql_generation": 0.0010933876037597656,
+    "sql_validation": 0.08484435081481934,
+    "sql_repair": 8.582509279251099,
+    "sql_execution": 0.38962697982788086,
+    "completed": 0.00039958953857421875
+  },
+  "tool_calls": [
+    {
+      "name": "sql_db_list_tables",
+      "success": true,
+      "execution_time": 0.4673454761505127
+    },
+    {
+      "name": "sql_db_query_checker",
+      "success": true,
+      "execution_time": 0.04260683059692383
+    },
+    {
+      "name": "sql_db_query_checker",
+      "success": true,
+      "execution_time": 0.08481383323669434
+    },
+    {
+      "name": "sql_db_query",
+      "success": true,
+      "execution_time": 0.389512300491333
+    }
+  ],
+  "phases_completed": [
+    "initialization",
+    "query_classification",
+    "table_discovery",
+    "schema_analysis",
+    "reasoning",
+    "sql_generation",
+    "sql_validation",
+    "sql_repair",
+    "sql_execution"
+  ],
+  "agent_metadata": {
+    "langgraph_v3": true,
+    "messages_state": true,
+    "query_route": "database",
+    "classification": {
+      "route": "database",
+      "confidence": 0.8,
+      "requires_tools": true
+    },
+    "workflow_metrics": {
+      "overall_success": true,
+      "completion_rate": 0.6428571428571429,
+      "phases_completed": 9,
+      "total_phases": 14,
+      "tool_success_rate": 1.0,
+      "total_tools_used": 4,
+      "retry_count": 0,
+      "error_count": 1,
+      "execution_time": 18.295071601867676
+    },
+    "phases_completed": [
+      "initialization",
+      "query_classification",
+      "table_discovery",
+      "schema_analysis",
+      "reasoning",
+      "sql_generation",
+      "sql_validation",
+      "sql_repair",
+      "sql_execution"
+    ],
+    "current_phase": "completed",
+    "tool_calls": [
+      {
+        "name": "sql_db_list_tables",
+        "success": true,
+        "execution_time": 0.4673454761505127
+      },
+      {
+        "name": "sql_db_query_checker",
+        "success": true,
+        "execution_time": 0.04260683059692383
+      },
+      {
+        "name": "sql_db_query_checker",
+        "success": true,
+        "execution_time": 0.08481383323669434
+      },
+      {
+        "name": "sql_db_query",
+        "success": true,
+        "execution_time": 0.389512300491333
+      }
+    ],
+    "message_count": 16,
+    "retry_count": 0,
+    "error_count": 1,
+    "tables_used": [
+      "internacoes",
+      "cid"
+    ],
+    "schema_context_length": 11935,
+    "latency_by_component": {
+      "query_classification": 0.00032901763916015625,
+      "table_discovery": 0.4674088954925537,
+      "schema_analysis": 0.0004763603210449219,
+      "reasoning": 5.781858205795288,
+      "sql_generation": 0.0010933876037597656,
+      "sql_validation": 0.08484435081481934,
+      "sql_repair": 8.582509279251099,
+      "sql_execution": 0.38962697982788086,
+      "completed": 0.00039958953857421875
+    },
+    "multi_query": {
+      "is_multi_query": false,
+      "plan_type": "single_cte",
+      "execution_mode": "single",
+      "multi_query_allowed": false,
+      "allowed_multi_plan_types": [
+        "bind_then_query",
+        "fanout_concat",
+        "verification_side_query"
+      ],
+      "query_plan": {
+        "strategy": "single",
+        "reasoning": "Comparações temporais e lógica global devem permanecer em uma única SQL.",
+        "plan_type": "single_cte",
+        "merge_strategy": "none",
+        "output_nodes": [
+          "sq1"
+        ],
+        "required_constraints": [],
+        "expected_output_shape": {},
+        "verifier_checks": [],
+        "fallback_policy": {},
+        "sub_queries": [
+          {
+            "id": "sq1",
+            "description": "Qual a evolucao anual de internacoes e mortes por COVID ou coronavirus?",
+            "purpose": "final_output",
+            "output_role": "output",
+            "expected_result_kind": "rowset",
+            "expected_max_rows": null,
+            "required_constraints": [],
+            "selected_tables": [],
+            "bind_keys": [],
+            "sql": null,
+            "validated_sql": null,
+            "result_raw": null,
+            "parsed_rows": null,
+            "success": false,
+            "error": null,
+            "depends_on": [],
+            "repair_attempts": 0
+          }
+        ]
+      },
+      "sub_query_results": [],
+      "merged_rows": null,
+      "merged_rows_source": null,
+      "merge_strategy": "none",
+      "verifier_outcome": null,
+      "single_fallback_active": false,
+      "single_fallback_reason": null,
+      "final_sql_query": null,
+      "failure_taxonomy": [
+        "unknown"
+      ]
+    },
+    "semantic_plan": {
+      "intent": "trend",
+      "base_grain": "internacao",
+      "metrics": [
+        {
+          "name": "total",
+          "expression_type": "count",
+          "required_filters": []
+        },
+        {
+          "name": "total_internacoes",
+          "expression_type": "count",
+          "required_filters": []
+        }
+      ],
+      "dimensions": [
+        {
+          "name": "ano",
+          "source": "EXTRACT(YEAR FROM internacoes.DT_INTER)",
+          "role": "group"
+        }
+      ],
+      "filters": [
+        {
+          "field": "desfecho",
+          "values": [
+            "MORTE = true"
+          ],
+          "operator": "semantic"
+        },
+        {
+          "field": "diagnostico_principal_codigo",
+          "values": [
+            "B342",
+            "B972"
+          ],
+          "operator": "IN"
+        },
+        {
+          "field": "diagnostico_conceito_label",
+          "values": [
+            "B342 - Infecc p/coronavirus NE",
+            "B972 - Coronavirus como causa de doenc class outr cap"
+          ],
+          "operator": "metadata"
+        }
+      ],
+      "answer_shape": {
+        "row_grain": "time_series",
+        "top_n_scope": "none",
+        "required_dimensions": [
+          "ano"
+        ],
+        "partition_dimensions": [],
+        "ranked_dimensions": [],
+        "requires_group_by": true,
+        "include_unknown_bucket": false,
+        "answer_kind": "time_series",
+        "expected_row_count": "one_per_group",
+        "output_dimensions": [
+          "ano"
+        ],
+        "filter_dimensions": [],
+        "forbidden_output_dimensions": []
+      },
+      "constraints": [],
+      "null_policy": [],
+      "ambiguities": [
+        "profile_temporal_coverage: internacoes.DT_INTER ranges from 2008-01-01 to 2023-12-31",
+        "profile_cardinality: ano uses high-cardinality identifier internacoes.DT_INTER"
+      ]
+    },
+    "visualization_intent": {
+      "requested": false,
+      "source": "none",
+      "uses_last_result": false,
+      "chart_hint": "auto",
+      "reason": ""
+    },
+    "chart_plan": {
+      "requested": false,
+      "chart_type": "auto",
+      "metric": null,
+      "metric_expression": null,
+      "x_dimension": null,
+      "series_dimension": null,
+      "y_column": null,
+      "grain": "unknown",
+      "expected_result_shape": "unknown",
+      "filters": [],
+      "time_window": {
+        "type": "none",
+        "n": null,
+        "start_year": null,
+        "end_year": null,
+        "date_column": "DT_INTER"
+      },
+      "required_columns": [],
+      "sql_shape_guidance": "",
+      "reason": "visualization not requested"
+    },
+    "chart_spec": null,
+    "llamaindex_enabled": true,
+    "llamaindex_mode": "context",
+    "llamaindex_retrieval_mode": "llamaindex_schema",
+    "llamaindex_selected_tables": [
+      "internacoes",
+      "cid",
+      "socioeconomico"
+    ],
+    "llamaindex_confidence": 0.359342334390192,
+    "llamaindex_error": "",
+    "raw_selected_tables": [
+      "internacoes",
+      "cid",
+      "socioeconomico"
+    ],
+    "validated_selected_tables": [
+      "internacoes",
+      "cid"
+    ],
+    "table_selection_mode": "llamaindex_context",
+    "schema_context_source": "llamaindex",
+    "schema_context_verified_with_db": false,
+    "schema_context_tables": [
+      "internacoes",
+      "cid"
+    ],
+    "semantic_constraints": [],
+    "semantic_null_policy": [],
+    "analytic_intent": "trend",
+    "analytic_template": "temporal_trend_by_condition",
+    "denominator_policy": "period_rows_matching_same_condition",
+    "analytic_sections_present": [
+      "direct_answer",
+      "scope",
+      "time_series",
+      "trend_summary",
+      "limitations"
+    ],
+    "concept_resolution": {
+      "diagnosis_codes": [
+        "B342",
+        "B972"
+      ],
+      "diagnosis_prefixes": [],
+      "labels": [
+        "B342 - Infecc p/coronavirus NE",
+        "B972 - Coronavirus como causa de doenc class outr cap"
+      ],
+      "resolved": true
+    },
+    "semantic_planner": {
+      "mode": "llm_reconciled",
+      "confidence": 0.9,
+      "reasoning": "A evolução anual de internações e mortes por COVID ou coronavírus requer a contagem de internações e mortes agrupadas por ano. As métricas foram definidas para contar o total de internações e o total de mortes, com filtros aplicados para garantir que apenas os registros relevantes para COVID sejam considerados. A dimensão 'ano' foi extraída da data de internação para permitir a análise temporal.",
+      "conflicts": [
+        "unknown_metric_ignored: total_mortes",
+        "metric_mismatch: heuristic=['total']; llm=['total_internacoes', 'total_mortes']"
+      ],
+      "accepted_llm_fields": [
+        "metrics"
+      ],
+      "rejected_llm_fields": []
+    },
+    "sql_generation_confidence": 1.0,
+    "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+    "chart_plan_validation": {
+      "passed": true,
+      "message": null,
+      "chart_plan": {
+        "requested": false,
+        "chart_type": "auto",
+        "metric": null,
+        "metric_expression": null,
+        "x_dimension": null,
+        "series_dimension": null,
+        "y_column": null,
+        "grain": "unknown",
+        "expected_result_shape": "unknown",
+        "filters": [],
+        "time_window": {
+          "type": "none",
+          "n": null,
+          "start_year": null,
+          "end_year": null,
+          "date_column": "DT_INTER"
+        },
+        "required_columns": [],
+        "sql_shape_guidance": "",
+        "reason": "visualization not requested"
+      }
+    },
+    "semantic_validation": {
+      "passed": true,
+      "constraints": [],
+      "null_policy": [],
+      "message": null
+    },
+    "semantic_error": {
+      "category": "unknown",
+      "severity": "error",
+      "message": "SEMANTIC PLAN ERROR: SQL does not apply the requested death filter."
+    },
+    "repair_attempts": [
+      {
+        "previous_sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    VALUES ('B342'), ('B972')\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), denominador_ano AS (\n    SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_denominador\n    FROM internacoes i\n    WHERE i.\"DT_INTER\" IS NOT NULL\n    GROUP BY ano\n), casos_ano AS (\n    SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_internacoes\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"DT_INTER\" IS NOT NULL\n    GROUP BY ano\n), serie AS (\n    SELECT\n        d.ano,\n        COALESCE(c.total_internacoes, 0) AS total_internacoes,\n        d.total_denominador,\n        ROUND(COALESCE(c.total_internacoes, 0) * 100000.0 / NULLIF(d.total_denominador, 0), 2)\n            AS taxa_por_100k_denominador\n    FROM denominador_ano d\n    LEFT JOIN casos_ano c ON c.ano = d.ano\n), extremos AS (\n    SELECT\n        (SELECT ano FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_ano,\n        (SELECT total_internacoes FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_total,\n        (SELECT ano FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_ano,\n        (SELECT total_internacoes FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_total,\n        (SELECT ano FROM serie ORDER BY total_internacoes DESC, ano ASC LIMIT 1) AS ano_pico,\n        (SELECT total_internacoes FROM serie ORDER BY total_internacoes DESC, ano ASC LIMIT 1)\n            AS total_pico\n)\nSELECT\n    'temporal_condition_trend' AS analysis_type,\n    (SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos) AS resolved_concept,\n    'ano de internacao' AS factor_name,\n    (SELECT SUM(total_internacoes) FROM serie) AS total_internacoes,\n    'internacoes por ano no mesmo escopo' AS denominador,\n    (SELECT STRING_AGG(\n        CAST(ano AS VARCHAR) || ':' || total_internacoes || ':' || total_denominador || ':' ||\n        taxa_por_100k_denominador,\n        ' | ' ORDER BY ano)\n     FROM serie) AS time_series,\n    (SELECT primeiro_ano FROM extremos) AS first_period,\n    (SELECT primeiro_total FROM extremos) AS first_total,\n    (SELECT ultimo_ano FROM extremos) AS last_period,\n    (SELECT ultimo_total FROM extremos) AS last_total,\n    (SELECT ultimo_total - primeiro_total FROM extremos) AS delta_absolute,\n    (SELECT ROUND((ultimo_total - primeiro_total) * 100.0 / NULLIF(primeiro_total, 0), 2)\n     FROM extremos) AS delta_percent,\n    (SELECT ano_pico FROM extremos) AS peak_period,\n    (SELECT total_pico FROM extremos) AS peak_total,\n    NULL AS warnings\nFROM (SELECT 1) AS analytic_singleton;",
+        "error_message": "SEMANTIC PLAN ERROR: SQL does not apply the requested death filter.",
+        "semantic_category": "unknown",
+        "semantic_guidance": "Erro semantico desconhecido",
+        "violated_contract": {},
+        "repair_strategy": "llm_guided",
+        "timestamp": "2026-05-17T06:45:20.972782",
+        "post_repair_validation": {
+          "passed": true,
+          "message": null
+        }
+      }
+    ],
+    "semantic_repair": {
+      "original_category": "unknown",
+      "original_message": "SEMANTIC PLAN ERROR: SQL does not apply the requested death filter.",
+      "guidance_title": "Erro semantico desconhecido",
+      "strategy": "llm_guided",
+      "post_repair_category": null,
+      "post_repair_message": null,
+      "validation_passed_after_repair": true
+    },
+    "orchestrator_v3": true,
+    "current_model": {
+      "provider": "openai",
+      "model_name": "gpt-4o-mini",
+      "temperature": 0.0
+    },
+    "environment": "production",
+    "session_id": "session_3144",
+    "query_number": 176,
+    "orchestrator_execution_time": 18.321524381637573
+  },
+  "steps": [
+    {
+      "name": "evaluation_input",
+      "status": "passed",
+      "details": {
+        "question_id": "GT182",
+        "difficulty": "medium",
+        "question_pt": "Qual a evolucao anual de internacoes e mortes por COVID ou coronavirus?",
+        "ground_truth_sql": "SELECT EXTRACT(YEAR FROM \"DT_INTER\") AS ano, COUNT(*) AS total_internacoes, SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes FROM internacoes WHERE \"DIAG_PRINC\" IN ('B342', 'B972') AND \"DT_INTER\" IS NOT NULL GROUP BY ano ORDER BY ano;"
+      }
+    },
+    {
+      "name": "agent.process_query",
+      "status": "passed",
+      "latency_seconds": 18.349973678588867,
+      "input": {
+        "question": "Qual a evolucao anual de internacoes e mortes por COVID ou coronavirus?"
+      },
+      "output": {
+        "success": true,
+        "sql_query": "WITH diagnosticos_alvo(\"CID\") AS ( VALUES ('B342'), ('B972') ), diagnosticos_resolvidos AS ( SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\" FROM diagnosticos_alvo d LEFT JOIN cid c ON c.\"CID\" = d.\"CID\" ), denominador_ano AS ( SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_denominador FROM internacoes i WHERE i.\"DT_INTER\" IS NOT NULL GROUP BY ano ), casos_ano AS ( SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes FROM internacoes i JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\" WHERE i.\"DT_INTER\" IS NOT NULL GROUP BY ano ), serie AS ( SELECT d.ano, COALESCE(c.total_internacoes, 0) AS total_internacoes, COALESCE(c.total_mortes, 0) AS total_mortes, d.total_denominador, ROUND(COALESCE(c.total_internacoes, 0) * 100000.0 / NULLIF(d.total_denominador, 0), 2) AS taxa_por_100k_denominador FROM denominador_ano d LEFT JOIN casos_ano c ON c.ano = d.ano ), extremos AS ( SELECT (SELECT ano FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_ano, (SELECT total_internacoes FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_total, (SELECT total_mortes FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_mortes, (SELECT ano FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_ano, (SELECT total_internacoes FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_total, (SELECT total_mortes FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_mortes, (SELECT ano FROM serie ORDER BY total_internacoes DESC, ano ASC LIMIT 1) AS ano_pico, (SELECT total_internacoes FROM serie ORDER BY total_internacoes DESC, ano ASC LIMIT 1) AS total_pico ) SELECT 'temporal_condition_trend' AS analysis_type, (SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos) AS resolved_concept, 'ano de internacao' AS factor_name, (SELECT SUM(total_internacoes) FROM serie) AS total_internacoes, (SELECT SUM(total_mortes) FROM serie) AS total_mortes, 'internacoes por ano no mesmo escopo' AS denominador, (SELECT STRING_AGG( CAST(ano AS VARCHAR) || ':' || total_internacoes || ':' || total_denominador || ':' || total_mortes || ':' || taxa_por_100k_denominador, ' | ' ORDER BY ano) FROM serie) AS time_series, (SELECT primeiro_ano FROM extremos) AS first_period, (SELECT primeiro_total FROM extremos) AS first_total, (SELECT primeiro_mortes FROM extremos) AS first_mortes, (SELECT ultimo_ano FROM extremos) AS last_period, (SELECT ultimo_total FROM extremos) AS last_total, (SELECT ultimo_mortes FROM extremos) AS last_mortes, (SELECT ultimo_total - primeiro_total FROM extremos) AS delta_absolute, (SELECT ROUND((ultimo_total - primeiro_total) * 100.0 / NULLIF(primeiro_total, 0), 2) FROM extremos) AS delta_percent, (SELECT ano_pico FROM extremos) AS peak_period, (SELECT total_pico FROM extremos) AS peak_total, NULL AS warnings FROM (SELECT 1) AS analytic_singleton;",
+        "response": "Há uma tendência temporal observada no recorte solicitado.\n\nEscopo usado: B342 - Infecc p/coronavirus NE | B972 - Coronavirus como doenc class outr cap; denominador: internações por ano no mesmo escopo.\nResumo: 1.862.525 internações no diagnóstico resolvido ao longo da série.\n\nLeitura objetiva: de 2000 (0) a 2023 (13.267), a variação absoluta foi 13.267 internações (-%). O pico foi em 2021, com 1.153.020 internações.\nLimite: isto descreve evolução observada nos registros, não causalidade.",
+        "row_count": 1,
+        "results_preview": [
+          {
+            "result": [
+              "temporal_condition_trend",
+              "B342 - Infecc p/coronavirus NE | B972 - Coronavirus como doenc class outr cap",
+              "ano de internacao",
+              1862525,
+              393450,
+              "internacoes por ano no mesmo escopo",
+              "2000:0:9:0:0.0 | 2001:0:2:0:0.0 | 2002:0:2:0:0.0 | 2003:0:1:0:0.0 | 2005:0:6:0:0.0 | 2006:0:7:0:0.0 | 2007:0:602947:0:0.0 | 2008:4:10847458:0:0.04 | 2009:3:11114857:0:0.03 | 2010:7:11347880:0:0.06 | 2011:6:11267097:0:0.05 | 2012:1:11103250:0:0.01 | 2013:6:11179438:0:0.05 | 2014:6:11353704:0:0.05...",
+              2000,
+              0,
+              0,
+              2023,
+              13267,
+              1664,
+              13267,
+              null,
+              2021,
+              1153020,
+              null
+            ]
+          }
+        ],
+        "final_result_rows_preview": null,
+        "error": null,
+        "cost": {
+          "prompt_tokens": 4281,
+          "completion_tokens": 1460,
+          "total_tokens": 5741,
+          "total_cost_usd": 0.001441,
+          "successful_requests": 3
+        },
+        "chart": null
+      },
+      "error": null
+    },
+    {
+      "name": "workflow.initialization",
+      "status": "passed",
+      "latency_seconds": null,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.query_classification",
+      "status": "passed",
+      "latency_seconds": 0.00032901763916015625,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.table_discovery",
+      "status": "passed",
+      "latency_seconds": 0.4674088954925537,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.schema_analysis",
+      "status": "passed",
+      "latency_seconds": 0.0004763603210449219,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.reasoning",
+      "status": "passed",
+      "latency_seconds": 5.781858205795288,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": {
+          "intent": "trend",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            },
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "ano",
+              "source": "EXTRACT(YEAR FROM internacoes.DT_INTER)",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "desfecho",
+              "values": [
+                "MORTE = true"
+              ],
+              "operator": "semantic"
+            },
+            {
+              "field": "diagnostico_principal_codigo",
+              "values": [
+                "B342",
+                "B972"
+              ],
+              "operator": "IN"
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "values": [
+                "B342 - Infecc p/coronavirus NE",
+                "B972 - Coronavirus como causa de doenc class outr cap"
+              ],
+              "operator": "metadata"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "time_series",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "ano"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "time_series",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "ano"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": [
+            "profile_temporal_coverage: internacoes.DT_INTER ranges from 2008-01-01 to 2023-12-31",
+            "profile_cardinality: ano uses high-cardinality identifier internacoes.DT_INTER"
+          ]
+        },
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.sql_generation",
+      "status": "passed",
+      "latency_seconds": 0.0010933876037597656,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.sql_validation",
+      "status": "passed",
+      "latency_seconds": 0.08484435081481934,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        }
+      }
+    },
+    {
+      "name": "workflow.sql_repair",
+      "status": "passed",
+      "latency_seconds": 8.582509279251099,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "workflow.sql_execution",
+      "status": "passed",
+      "latency_seconds": 0.38962697982788086,
+      "details": {
+        "current_phase": "completed",
+        "semantic_plan": null,
+        "semantic_validation": null
+      }
+    },
+    {
+      "name": "tool.sql_db_list_tables",
+      "status": "passed",
+      "latency_seconds": 0.4673454761505127,
+      "details": {
+        "name": "sql_db_list_tables",
+        "success": true,
+        "execution_time": 0.4673454761505127
+      }
+    },
+    {
+      "name": "tool.sql_db_query_checker",
+      "status": "passed",
+      "latency_seconds": 0.04260683059692383,
+      "details": {
+        "name": "sql_db_query_checker",
+        "success": true,
+        "execution_time": 0.04260683059692383
+      }
+    },
+    {
+      "name": "tool.sql_db_query_checker",
+      "status": "passed",
+      "latency_seconds": 0.08481383323669434,
+      "details": {
+        "name": "sql_db_query_checker",
+        "success": true,
+        "execution_time": 0.08481383323669434
+      }
+    },
+    {
+      "name": "tool.sql_db_query",
+      "status": "passed",
+      "latency_seconds": 0.389512300491333,
+      "details": {
+        "name": "sql_db_query",
+        "success": true,
+        "execution_time": 0.389512300491333
+      }
+    },
+    {
+      "name": "metric.Execution Accuracy (EX)",
+      "status": "failed",
+      "score": 0.0,
+      "error": null,
+      "details": {
+        "ground_truth_executed": true,
+        "predicted_executed": true,
+        "ground_truth_rows": 16,
+        "predicted_rows": 1,
+        "results_match": false,
+        "comparison_details": {
+          "size_mismatch": true,
+          "gt_size": 16,
+          "pred_size": 1,
+          "size_difference": -15
+        }
+      }
+    },
+    {
+      "name": "final_result",
+      "status": "failed",
+      "details": {
+        "generated_sql": "WITH diagnosticos_alvo(\"CID\") AS ( VALUES ('B342'), ('B972') ), diagnosticos_resolvidos AS ( SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\" FROM diagnosticos_alvo d LEFT JOIN cid c ON c.\"CID\" = d.\"CID\" ), denominador_ano AS ( SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_denominador FROM internacoes i WHERE i.\"DT_INTER\" IS NOT NULL GROUP BY ano ), casos_ano AS ( SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes FROM internacoes i JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\" WHERE i.\"DT_INTER\" IS NOT NULL GROUP BY ano ), serie AS ( SELECT d.ano, COALESCE(c.total_internacoes, 0) AS total_internacoes, COALESCE(c.total_mortes, 0) AS total_mortes, d.total_denominador, ROUND(COALESCE(c.total_internacoes, 0) * 100000.0 / NULLIF(d.total_denominador, 0), 2) AS taxa_por_100k_denominador FROM denominador_ano d LEFT JOIN casos_ano c ON c.ano = d.ano ), extremos AS ( SELECT (SELECT ano FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_ano, (SELECT total_internacoes FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_total, (SELECT total_mortes FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_mortes, (SELECT ano FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_ano, (SELECT total_internacoes FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_total, (SELECT total_mortes FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_mortes, (SELECT ano FROM serie ORDER BY total_internacoes DESC, ano ASC LIMIT 1) AS ano_pico, (SELECT total_internacoes FROM serie ORDER BY total_internacoes DESC, ano ASC LIMIT 1) AS total_pico ) SELECT 'temporal_condition_trend' AS analysis_type, (SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos) AS resolved_concept, 'ano de internacao' AS factor_name, (SELECT SUM(total_internacoes) FROM serie) AS total_internacoes, (SELECT SUM(total_mortes) FROM serie) AS total_mortes, 'internacoes por ano no mesmo escopo' AS denominador, (SELECT STRING_AGG( CAST(ano AS VARCHAR) || ':' || total_internacoes || ':' || total_denominador || ':' || total_mortes || ':' || taxa_por_100k_denominador, ' | ' ORDER BY ano) FROM serie) AS time_series, (SELECT primeiro_ano FROM extremos) AS first_period, (SELECT primeiro_total FROM extremos) AS first_total, (SELECT primeiro_mortes FROM extremos) AS first_mortes, (SELECT ultimo_ano FROM extremos) AS last_period, (SELECT ultimo_total FROM extremos) AS last_total, (SELECT ultimo_mortes FROM extremos) AS last_mortes, (SELECT ultimo_total - primeiro_total FROM extremos) AS delta_absolute, (SELECT ROUND((ultimo_total - primeiro_total) * 100.0 / NULLIF(primeiro_total, 0), 2) FROM extremos) AS delta_percent, (SELECT ano_pico FROM extremos) AS peak_period, (SELECT total_pico FROM extremos) AS peak_total, NULL AS warnings FROM (SELECT 1) AS analytic_singleton;",
+        "generated_execution_status": "passed",
+        "ground_truth_execution_status": "passed",
+        "result_match": false,
+        "ex_score": 0.0
+      }
+    }
+  ],
+  "detailed_result": {
+    "question_id": "GT182",
+    "difficulty": "medium",
+    "question": "Qual a evolucao anual de internacoes e mortes por COVID ou coronavirus?",
+    "ground_truth_sql": "SELECT EXTRACT(YEAR FROM \"DT_INTER\") AS ano, COUNT(*) AS total_internacoes, SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes FROM internacoes WHERE \"DIAG_PRINC\" IN ('B342', 'B972') AND \"DT_INTER\" IS NOT NULL GROUP BY ano ORDER BY ano;",
+    "predicted_sql": "WITH diagnosticos_alvo(\"CID\") AS ( VALUES ('B342'), ('B972') ), diagnosticos_resolvidos AS ( SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\" FROM diagnosticos_alvo d LEFT JOIN cid c ON c.\"CID\" = d.\"CID\" ), denominador_ano AS ( SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_denominador FROM internacoes i WHERE i.\"DT_INTER\" IS NOT NULL GROUP BY ano ), casos_ano AS ( SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes FROM internacoes i JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\" WHERE i.\"DT_INTER\" IS NOT NULL GROUP BY ano ), serie AS ( SELECT d.ano, COALESCE(c.total_internacoes, 0) AS total_internacoes, COALESCE(c.total_mortes, 0) AS total_mortes, d.total_denominador, ROUND(COALESCE(c.total_internacoes, 0) * 100000.0 / NULLIF(d.total_denominador, 0), 2) AS taxa_por_100k_denominador FROM denominador_ano d LEFT JOIN casos_ano c ON c.ano = d.ano ), extremos AS ( SELECT (SELECT ano FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_ano, (SELECT total_internacoes FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_total, (SELECT total_mortes FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_mortes, (SELECT ano FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_ano, (SELECT total_internacoes FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_total, (SELECT total_mortes FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_mortes, (SELECT ano FROM serie ORDER BY total_internacoes DESC, ano ASC LIMIT 1) AS ano_pico, (SELECT total_internacoes FROM serie ORDER BY total_internacoes DESC, ano ASC LIMIT 1) AS total_pico ) SELECT 'temporal_condition_trend' AS analysis_type, (SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos) AS resolved_concept, 'ano de internacao' AS factor_name, (SELECT SUM(total_internacoes) FROM serie) AS total_internacoes, (SELECT SUM(total_mortes) FROM serie) AS total_mortes, 'internacoes por ano no mesmo escopo' AS denominador, (SELECT STRING_AGG( CAST(ano AS VARCHAR) || ':' || total_internacoes || ':' || total_denominador || ':' || total_mortes || ':' || taxa_por_100k_denominador, ' | ' ORDER BY ano) FROM serie) AS time_series, (SELECT primeiro_ano FROM extremos) AS first_period, (SELECT primeiro_total FROM extremos) AS first_total, (SELECT primeiro_mortes FROM extremos) AS first_mortes, (SELECT ultimo_ano FROM extremos) AS last_period, (SELECT ultimo_total FROM extremos) AS last_total, (SELECT ultimo_mortes FROM extremos) AS last_mortes, (SELECT ultimo_total - primeiro_total FROM extremos) AS delta_absolute, (SELECT ROUND((ultimo_total - primeiro_total) * 100.0 / NULLIF(primeiro_total, 0), 2) FROM extremos) AS delta_percent, (SELECT ano_pico FROM extremos) AS peak_period, (SELECT total_pico FROM extremos) AS peak_total, NULL AS warnings FROM (SELECT 1) AS analytic_singleton;",
+    "agent_success": true,
+    "agent_execution_time": 18.349973678588867,
+    "question_started_at": "2026-05-17T06:45:03.144566",
+    "question_completed_at": "2026-05-17T06:45:21.494548",
+    "evaluation_source": "sql_query",
+    "stored_rows": null,
+    "agent_output": {
+      "success": true,
+      "sql_query": "WITH diagnosticos_alvo(\"CID\") AS ( VALUES ('B342'), ('B972') ), diagnosticos_resolvidos AS ( SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\" FROM diagnosticos_alvo d LEFT JOIN cid c ON c.\"CID\" = d.\"CID\" ), denominador_ano AS ( SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_denominador FROM internacoes i WHERE i.\"DT_INTER\" IS NOT NULL GROUP BY ano ), casos_ano AS ( SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes FROM internacoes i JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\" WHERE i.\"DT_INTER\" IS NOT NULL GROUP BY ano ), serie AS ( SELECT d.ano, COALESCE(c.total_internacoes, 0) AS total_internacoes, COALESCE(c.total_mortes, 0) AS total_mortes, d.total_denominador, ROUND(COALESCE(c.total_internacoes, 0) * 100000.0 / NULLIF(d.total_denominador, 0), 2) AS taxa_por_100k_denominador FROM denominador_ano d LEFT JOIN casos_ano c ON c.ano = d.ano ), extremos AS ( SELECT (SELECT ano FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_ano, (SELECT total_internacoes FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_total, (SELECT total_mortes FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_mortes, (SELECT ano FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_ano, (SELECT total_internacoes FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_total, (SELECT total_mortes FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_mortes, (SELECT ano FROM serie ORDER BY total_internacoes DESC, ano ASC LIMIT 1) AS ano_pico, (SELECT total_internacoes FROM serie ORDER BY total_internacoes DESC, ano ASC LIMIT 1) AS total_pico ) SELECT 'temporal_condition_trend' AS analysis_type, (SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos) AS resolved_concept, 'ano de internacao' AS factor_name, (SELECT SUM(total_internacoes) FROM serie) AS total_internacoes, (SELECT SUM(total_mortes) FROM serie) AS total_mortes, 'internacoes por ano no mesmo escopo' AS denominador, (SELECT STRING_AGG( CAST(ano AS VARCHAR) || ':' || total_internacoes || ':' || total_denominador || ':' || total_mortes || ':' || taxa_por_100k_denominador, ' | ' ORDER BY ano) FROM serie) AS time_series, (SELECT primeiro_ano FROM extremos) AS first_period, (SELECT primeiro_total FROM extremos) AS first_total, (SELECT primeiro_mortes FROM extremos) AS first_mortes, (SELECT ultimo_ano FROM extremos) AS last_period, (SELECT ultimo_total FROM extremos) AS last_total, (SELECT ultimo_mortes FROM extremos) AS last_mortes, (SELECT ultimo_total - primeiro_total FROM extremos) AS delta_absolute, (SELECT ROUND((ultimo_total - primeiro_total) * 100.0 / NULLIF(primeiro_total, 0), 2) FROM extremos) AS delta_percent, (SELECT ano_pico FROM extremos) AS peak_period, (SELECT total_pico FROM extremos) AS peak_total, NULL AS warnings FROM (SELECT 1) AS analytic_singleton;",
+      "response": "Há uma tendência temporal observada no recorte solicitado.\n\nEscopo usado: B342 - Infecc p/coronavirus NE | B972 - Coronavirus como doenc class outr cap; denominador: internações por ano no mesmo escopo.\nResumo: 1.862.525 internações no diagnóstico resolvido ao longo da série.\n\nLeitura objetiva: de 2000 (0) a 2023 (13.267), a variação absoluta foi 13.267 internações (-%). O pico foi em 2021, com 1.153.020 internações.\nLimite: isto descreve evolução observada nos registros, não causalidade.",
+      "row_count": 1,
+      "results_preview": [
+        {
+          "result": [
+            "temporal_condition_trend",
+            "B342 - Infecc p/coronavirus NE | B972 - Coronavirus como doenc class outr cap",
+            "ano de internacao",
+            1862525,
+            393450,
+            "internacoes por ano no mesmo escopo",
+            "2000:0:9:0:0.0 | 2001:0:2:0:0.0 | 2002:0:2:0:0.0 | 2003:0:1:0:0.0 | 2005:0:6:0:0.0 | 2006:0:7:0:0.0 | 2007:0:602947:0:0.0 | 2008:4:10847458:0:0.04 | 2009:3:11114857:0:0.03 | 2010:7:11347880:0:0.06 | 2011:6:11267097:0:0.05 | 2012:1:11103250:0:0.01 | 2013:6:11179438:0:0.05 | 2014:6:11353704:0:0.05...",
+            2000,
+            0,
+            0,
+            2023,
+            13267,
+            1664,
+            13267,
+            null,
+            2021,
+            1153020,
+            null
+          ]
+        }
+      ],
+      "final_result_rows_preview": null,
+      "error": null,
+      "cost": {
+        "prompt_tokens": 4281,
+        "completion_tokens": 1460,
+        "total_tokens": 5741,
+        "total_cost_usd": 0.001441,
+        "successful_requests": 3
+      },
+      "chart": null
+    },
+    "agent_metadata": {
+      "langgraph_v3": true,
+      "messages_state": true,
+      "query_route": "database",
+      "classification": {
+        "route": "database",
+        "confidence": 0.8,
+        "requires_tools": true
+      },
+      "workflow_metrics": {
+        "overall_success": true,
+        "completion_rate": 0.6428571428571429,
+        "phases_completed": 9,
+        "total_phases": 14,
+        "tool_success_rate": 1.0,
+        "total_tools_used": 4,
+        "retry_count": 0,
+        "error_count": 1,
+        "execution_time": 18.295071601867676
+      },
+      "phases_completed": [
+        "initialization",
+        "query_classification",
+        "table_discovery",
+        "schema_analysis",
+        "reasoning",
+        "sql_generation",
+        "sql_validation",
+        "sql_repair",
+        "sql_execution"
+      ],
+      "current_phase": "completed",
+      "tool_calls": [
+        {
+          "name": "sql_db_list_tables",
+          "success": true,
+          "execution_time": 0.4673454761505127
+        },
+        {
+          "name": "sql_db_query_checker",
+          "success": true,
+          "execution_time": 0.04260683059692383
+        },
+        {
+          "name": "sql_db_query_checker",
+          "success": true,
+          "execution_time": 0.08481383323669434
+        },
+        {
+          "name": "sql_db_query",
+          "success": true,
+          "execution_time": 0.389512300491333
+        }
+      ],
+      "message_count": 16,
+      "retry_count": 0,
+      "error_count": 1,
+      "tables_used": [
+        "internacoes",
+        "cid"
+      ],
+      "schema_context_length": 11935,
+      "latency_by_component": {
+        "query_classification": 0.00032901763916015625,
+        "table_discovery": 0.4674088954925537,
+        "schema_analysis": 0.0004763603210449219,
+        "reasoning": 5.781858205795288,
+        "sql_generation": 0.0010933876037597656,
+        "sql_validation": 0.08484435081481934,
+        "sql_repair": 8.582509279251099,
+        "sql_execution": 0.38962697982788086,
+        "completed": 0.00039958953857421875
+      },
+      "multi_query": {
+        "is_multi_query": false,
+        "plan_type": "single_cte",
+        "execution_mode": "single",
+        "multi_query_allowed": false,
+        "allowed_multi_plan_types": [
+          "bind_then_query",
+          "fanout_concat",
+          "verification_side_query"
+        ],
+        "query_plan": {
+          "strategy": "single",
+          "reasoning": "Comparações temporais e lógica global devem permanecer em uma única SQL.",
+          "plan_type": "single_cte",
+          "merge_strategy": "none",
+          "output_nodes": [
+            "sq1"
+          ],
+          "required_constraints": [],
+          "expected_output_shape": {},
+          "verifier_checks": [],
+          "fallback_policy": {},
+          "sub_queries": [
+            {
+              "id": "sq1",
+              "description": "Qual a evolucao anual de internacoes e mortes por COVID ou coronavirus?",
+              "purpose": "final_output",
+              "output_role": "output",
+              "expected_result_kind": "rowset",
+              "expected_max_rows": null,
+              "required_constraints": [],
+              "selected_tables": [],
+              "bind_keys": [],
+              "sql": null,
+              "validated_sql": null,
+              "result_raw": null,
+              "parsed_rows": null,
+              "success": false,
+              "error": null,
+              "depends_on": [],
+              "repair_attempts": 0
+            }
+          ]
+        },
+        "sub_query_results": [],
+        "merged_rows": null,
+        "merged_rows_source": null,
+        "merge_strategy": "none",
+        "verifier_outcome": null,
+        "single_fallback_active": false,
+        "single_fallback_reason": null,
+        "final_sql_query": null,
+        "failure_taxonomy": [
+          "unknown"
+        ]
+      },
+      "semantic_plan": {
+        "intent": "trend",
+        "base_grain": "internacao",
+        "metrics": [
+          {
+            "name": "total",
+            "expression_type": "count",
+            "required_filters": []
+          },
+          {
+            "name": "total_internacoes",
+            "expression_type": "count",
+            "required_filters": []
+          }
+        ],
+        "dimensions": [
+          {
+            "name": "ano",
+            "source": "EXTRACT(YEAR FROM internacoes.DT_INTER)",
+            "role": "group"
+          }
+        ],
+        "filters": [
+          {
+            "field": "desfecho",
+            "values": [
+              "MORTE = true"
+            ],
+            "operator": "semantic"
+          },
+          {
+            "field": "diagnostico_principal_codigo",
+            "values": [
+              "B342",
+              "B972"
+            ],
+            "operator": "IN"
+          },
+          {
+            "field": "diagnostico_conceito_label",
+            "values": [
+              "B342 - Infecc p/coronavirus NE",
+              "B972 - Coronavirus como causa de doenc class outr cap"
+            ],
+            "operator": "metadata"
+          }
+        ],
+        "answer_shape": {
+          "row_grain": "time_series",
+          "top_n_scope": "none",
+          "required_dimensions": [
+            "ano"
+          ],
+          "partition_dimensions": [],
+          "ranked_dimensions": [],
+          "requires_group_by": true,
+          "include_unknown_bucket": false,
+          "answer_kind": "time_series",
+          "expected_row_count": "one_per_group",
+          "output_dimensions": [
+            "ano"
+          ],
+          "filter_dimensions": [],
+          "forbidden_output_dimensions": []
+        },
+        "constraints": [],
+        "null_policy": [],
+        "ambiguities": [
+          "profile_temporal_coverage: internacoes.DT_INTER ranges from 2008-01-01 to 2023-12-31",
+          "profile_cardinality: ano uses high-cardinality identifier internacoes.DT_INTER"
+        ]
+      },
+      "visualization_intent": {
+        "requested": false,
+        "source": "none",
+        "uses_last_result": false,
+        "chart_hint": "auto",
+        "reason": ""
+      },
+      "chart_plan": {
+        "requested": false,
+        "chart_type": "auto",
+        "metric": null,
+        "metric_expression": null,
+        "x_dimension": null,
+        "series_dimension": null,
+        "y_column": null,
+        "grain": "unknown",
+        "expected_result_shape": "unknown",
+        "filters": [],
+        "time_window": {
+          "type": "none",
+          "n": null,
+          "start_year": null,
+          "end_year": null,
+          "date_column": "DT_INTER"
+        },
+        "required_columns": [],
+        "sql_shape_guidance": "",
+        "reason": "visualization not requested"
+      },
+      "chart_spec": null,
+      "llamaindex_enabled": true,
+      "llamaindex_mode": "context",
+      "llamaindex_retrieval_mode": "llamaindex_schema",
+      "llamaindex_selected_tables": [
+        "internacoes",
+        "cid",
+        "socioeconomico"
+      ],
+      "llamaindex_confidence": 0.359342334390192,
+      "llamaindex_error": "",
+      "raw_selected_tables": [
+        "internacoes",
+        "cid",
+        "socioeconomico"
+      ],
+      "validated_selected_tables": [
+        "internacoes",
+        "cid"
+      ],
+      "table_selection_mode": "llamaindex_context",
+      "schema_context_source": "llamaindex",
+      "schema_context_verified_with_db": false,
+      "schema_context_tables": [
+        "internacoes",
+        "cid"
+      ],
+      "semantic_constraints": [],
+      "semantic_null_policy": [],
+      "analytic_intent": "trend",
+      "analytic_template": "temporal_trend_by_condition",
+      "denominator_policy": "period_rows_matching_same_condition",
+      "analytic_sections_present": [
+        "direct_answer",
+        "scope",
+        "time_series",
+        "trend_summary",
+        "limitations"
+      ],
+      "concept_resolution": {
+        "diagnosis_codes": [
+          "B342",
+          "B972"
+        ],
+        "diagnosis_prefixes": [],
+        "labels": [
+          "B342 - Infecc p/coronavirus NE",
+          "B972 - Coronavirus como causa de doenc class outr cap"
+        ],
+        "resolved": true
+      },
+      "semantic_planner": {
+        "mode": "llm_reconciled",
+        "confidence": 0.9,
+        "reasoning": "A evolução anual de internações e mortes por COVID ou coronavírus requer a contagem de internações e mortes agrupadas por ano. As métricas foram definidas para contar o total de internações e o total de mortes, com filtros aplicados para garantir que apenas os registros relevantes para COVID sejam considerados. A dimensão 'ano' foi extraída da data de internação para permitir a análise temporal.",
+        "conflicts": [
+          "unknown_metric_ignored: total_mortes",
+          "metric_mismatch: heuristic=['total']; llm=['total_internacoes', 'total_mortes']"
+        ],
+        "accepted_llm_fields": [
+          "metrics"
+        ],
+        "rejected_llm_fields": []
+      },
+      "sql_generation_confidence": 1.0,
+      "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+      "chart_plan_validation": {
+        "passed": true,
+        "message": null,
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        }
+      },
+      "semantic_validation": {
+        "passed": true,
+        "constraints": [],
+        "null_policy": [],
+        "message": null
+      },
+      "semantic_error": {
+        "category": "unknown",
+        "severity": "error",
+        "message": "SEMANTIC PLAN ERROR: SQL does not apply the requested death filter."
+      },
+      "repair_attempts": [
+        {
+          "previous_sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    VALUES ('B342'), ('B972')\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), denominador_ano AS (\n    SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_denominador\n    FROM internacoes i\n    WHERE i.\"DT_INTER\" IS NOT NULL\n    GROUP BY ano\n), casos_ano AS (\n    SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_internacoes\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"DT_INTER\" IS NOT NULL\n    GROUP BY ano\n), serie AS (\n    SELECT\n        d.ano,\n        COALESCE(c.total_internacoes, 0) AS total_internacoes,\n        d.total_denominador,\n        ROUND(COALESCE(c.total_internacoes, 0) * 100000.0 / NULLIF(d.total_denominador, 0), 2)\n            AS taxa_por_100k_denominador\n    FROM denominador_ano d\n    LEFT JOIN casos_ano c ON c.ano = d.ano\n), extremos AS (\n    SELECT\n        (SELECT ano FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_ano,\n        (SELECT total_internacoes FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_total,\n        (SELECT ano FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_ano,\n        (SELECT total_internacoes FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_total,\n        (SELECT ano FROM serie ORDER BY total_internacoes DESC, ano ASC LIMIT 1) AS ano_pico,\n        (SELECT total_internacoes FROM serie ORDER BY total_internacoes DESC, ano ASC LIMIT 1)\n            AS total_pico\n)\nSELECT\n    'temporal_condition_trend' AS analysis_type,\n    (SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos) AS resolved_concept,\n    'ano de internacao' AS factor_name,\n    (SELECT SUM(total_internacoes) FROM serie) AS total_internacoes,\n    'internacoes por ano no mesmo escopo' AS denominador,\n    (SELECT STRING_AGG(\n        CAST(ano AS VARCHAR) || ':' || total_internacoes || ':' || total_denominador || ':' ||\n        taxa_por_100k_denominador,\n        ' | ' ORDER BY ano)\n     FROM serie) AS time_series,\n    (SELECT primeiro_ano FROM extremos) AS first_period,\n    (SELECT primeiro_total FROM extremos) AS first_total,\n    (SELECT ultimo_ano FROM extremos) AS last_period,\n    (SELECT ultimo_total FROM extremos) AS last_total,\n    (SELECT ultimo_total - primeiro_total FROM extremos) AS delta_absolute,\n    (SELECT ROUND((ultimo_total - primeiro_total) * 100.0 / NULLIF(primeiro_total, 0), 2)\n     FROM extremos) AS delta_percent,\n    (SELECT ano_pico FROM extremos) AS peak_period,\n    (SELECT total_pico FROM extremos) AS peak_total,\n    NULL AS warnings\nFROM (SELECT 1) AS analytic_singleton;",
+          "error_message": "SEMANTIC PLAN ERROR: SQL does not apply the requested death filter.",
+          "semantic_category": "unknown",
+          "semantic_guidance": "Erro semantico desconhecido",
+          "violated_contract": {},
+          "repair_strategy": "llm_guided",
+          "timestamp": "2026-05-17T06:45:20.972782",
+          "post_repair_validation": {
+            "passed": true,
+            "message": null
+          }
+        }
+      ],
+      "semantic_repair": {
+        "original_category": "unknown",
+        "original_message": "SEMANTIC PLAN ERROR: SQL does not apply the requested death filter.",
+        "guidance_title": "Erro semantico desconhecido",
+        "strategy": "llm_guided",
+        "post_repair_category": null,
+        "post_repair_message": null,
+        "validation_passed_after_repair": true
+      },
+      "orchestrator_v3": true,
+      "current_model": {
+        "provider": "openai",
+        "model_name": "gpt-4o-mini",
+        "temperature": 0.0
+      },
+      "environment": "production",
+      "session_id": "session_3144",
+      "query_number": 176,
+      "orchestrator_execution_time": 18.321524381637573
+    },
+    "multi_query": {
+      "is_multi_query": false,
+      "plan_type": "single_cte",
+      "execution_mode": "single",
+      "multi_query_allowed": false,
+      "allowed_multi_plan_types": [
+        "bind_then_query",
+        "fanout_concat",
+        "verification_side_query"
+      ],
+      "query_plan": {
+        "strategy": "single",
+        "reasoning": "Comparações temporais e lógica global devem permanecer em uma única SQL.",
+        "plan_type": "single_cte",
+        "merge_strategy": "none",
+        "output_nodes": [
+          "sq1"
+        ],
+        "required_constraints": [],
+        "expected_output_shape": {},
+        "verifier_checks": [],
+        "fallback_policy": {},
+        "sub_queries": [
+          {
+            "id": "sq1",
+            "description": "Qual a evolucao anual de internacoes e mortes por COVID ou coronavirus?",
+            "purpose": "final_output",
+            "output_role": "output",
+            "expected_result_kind": "rowset",
+            "expected_max_rows": null,
+            "required_constraints": [],
+            "selected_tables": [],
+            "bind_keys": [],
+            "sql": null,
+            "validated_sql": null,
+            "result_raw": null,
+            "parsed_rows": null,
+            "success": false,
+            "error": null,
+            "depends_on": [],
+            "repair_attempts": 0
+          }
+        ]
+      },
+      "sub_query_results": [],
+      "merged_rows": null,
+      "merged_rows_source": null,
+      "merge_strategy": "none",
+      "verifier_outcome": null,
+      "single_fallback_active": false,
+      "single_fallback_reason": null,
+      "final_sql_query": null,
+      "failure_taxonomy": [
+        "unknown"
+      ]
+    },
+    "agent_error": null,
+    "metrics": {
+      "Execution Accuracy (EX)": {
+        "score": 0.0,
+        "is_correct": false,
+        "error": null,
+        "details": {
+          "ground_truth_executed": true,
+          "predicted_executed": true,
+          "ground_truth_rows": 16,
+          "predicted_rows": 1,
+          "results_match": false,
+          "comparison_details": {
+            "size_mismatch": true,
+            "gt_size": 16,
+            "pred_size": 1,
+            "size_difference": -15
+          }
+        }
+      }
+    },
+    "run_id": "20260517_gt228_full",
+    "question_index": 176,
+    "total_questions": 228,
+    "question_fingerprint": "6ab36e174e46a68e32ab2bb96ed76f9d63b6b4d0ecd780b808478fa034bafe8e",
+    "trace_path": "/home/maiconkevyn/PycharmProjects/txt2sql_refactor_openai_v2/evaluation/results/dag_evaluation_20260517_gt228_full/queries/GT182/trace.json"
+  }
+}

@@ -95,6 +95,32 @@ def test_classification_node_detects_explicit_sql(monkeypatch):
     assert new_state["classification"].route == QueryRoute.DATABASE
 
 
+def test_classification_node_routes_health_analytic_difference_to_database(monkeypatch):
+    class ConversationalLLM(DummyLLM):
+        def invoke(self, messages):
+            return DummyResp('{"route":"CONVERSATIONAL","confidence":0.95,"reasons":"diferença"}')
+
+    class Mgr:
+        def __init__(self):
+            self._llm = ConversationalLLM()
+
+        def get_bound_llm(self):
+            return self._llm
+
+        def invoke_chat(self, messages):
+            return self._llm.invoke(messages)
+
+    monkeypatch.setattr(classification_module, "get_llm_manager", lambda: Mgr())
+
+    state = create_initial_messages_state(
+        "Existe diferença de mortalidade entre homens e mulheres?",
+        session_id="s-analytic-route",
+    )
+    new_state = nodes.query_classification_node(state)
+
+    assert new_state["classification"].route == QueryRoute.DATABASE
+
+
 def test_classification_node_routes_explicit_chart_columns_to_database(monkeypatch):
     class SchemaLLM(DummyLLM):
         def invoke(self, messages):

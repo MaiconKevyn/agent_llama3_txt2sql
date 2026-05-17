@@ -94,6 +94,7 @@ def create_orchestrator_config(args) -> OrchestratorConfig:
         conversational_fallback=True,  # Enable fallback if conversational LLM fails
         enable_llamaindex_context=args.llamaindex_mode in {"context", "sql_draft", "hybrid"},
         enable_llamaindex_sql_draft=args.llamaindex_mode == "sql_draft",
+        enable_analytic_response_templates=not args.disable_analytic_response_templates,
         llamaindex_mode=args.llamaindex_mode,
         llamaindex_top_k_tables=args.llamaindex_top_k_tables,
         llamaindex_index_dir=args.llamaindex_index_dir,
@@ -635,6 +636,11 @@ def main():
         "--verify-llamaindex-schema-with-db",
         action="store_true",
         help="Chama sql_db_schema para verificar o contexto de schema recuperado pelo LlamaIndex.",
+    )
+    parser.add_argument(
+        "--disable-analytic-response-templates",
+        action="store_true",
+        help="Desliga templates analíticos determinísticos para rollout/ablação.",
     )
 
     args = parser.parse_args()
