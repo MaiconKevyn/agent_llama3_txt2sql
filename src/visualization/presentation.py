@@ -46,6 +46,12 @@ def enrich_chart_presentation(spec: ChartSpec) -> ChartSpec:
     y_label = current.y_label or _label(spec.y)
     series_label = current.series_label or _label(spec.series)
     footnote = current.footnote
+    limit_warning = next(
+        (warning for warning in spec.warnings if warning.code == "bar_limited_for_readability"),
+        None,
+    )
+    if limit_warning and not footnote:
+        footnote = limit_warning.message
 
     spec.presentation = ChartPresentation(
         title=current.title or _build_title(spec, x_label=x_label, y_label=y_label),

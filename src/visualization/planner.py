@@ -11,6 +11,7 @@ from .validator import validate_chart_spec
 
 MAX_BAR_CATEGORIES = 30
 MAX_PIE_CATEGORIES = 8
+MAX_READABLE_BAR_CATEGORIES = 15
 
 
 def plan_chart(planning_input: ChartPlanningInput | dict[str, Any]) -> ChartSpec:
@@ -333,6 +334,10 @@ def _prepare_chart_data_for_spec(
         )
     if chart_type in {"pie", "donut"}:
         normalized_rows = _limit_pie_categories(normalized_rows, x=x, y=y)
+    if chart_type == "bar" and not series:
+        normalized_rows, bar_warning = _limit_bar_categories(normalized_rows, x=x, y=y)
+        if bar_warning:
+            warnings.append(bar_warning)
     return normalized_rows, warnings
 
 
@@ -358,6 +363,31 @@ def _limit_pie_categories(
     if other_value:
         kept.append({x: "Outros", y: other_value})
     return kept
+
+
+def _limit_bar_categories(
+    rows: list[dict[str, Any]],
+    *,
+    x: str,
+    y: str,
+) -> tuple[list[dict[str, Any]], ChartWarning | None]:
+    categories = {row.get(x) for row in rows}
+    if len(categories) <= MAX_READABLE_BAR_CATEGORIES:
+        return rows, None
+    sorted_rows = sorted(
+        rows,
+        key=lambda row: row.get(y) if isinstance(row.get(y), int | float) else 0,
+        reverse=True,
+    )
+    limited = sorted_rows[:MAX_READABLE_BAR_CATEGORIES]
+    return limited, ChartWarning(
+        code="bar_limited_for_readability",
+        message=(
+            f"Exibindo os {MAX_READABLE_BAR_CATEGORIES} maiores valores "
+            f"de {len(categories)} categorias."
+        ),
+        severity="info",
+    )
 
 
 def _resolve_column_name(name: str | None, column_lookup: dict[str, str]) -> str | None:
