@@ -6,6 +6,20 @@ const DEBUG_MODE_KEY = 'debugModeEnabled';
 const MAX_CONVERSATION_TURNS = 10;
 const MAX_HISTORY_MESSAGES = MAX_CONVERSATION_TURNS * 2;
 const MAX_MESSAGE_LENGTH = 1000;
+const SAFE_AGENT_ERROR_MESSAGE = 'Nao foi possivel processar sua consulta com seguranca. Tente refinar o recorte ou pedir o grafico de outra forma.';
+const INTERNAL_AGENT_ERROR_PATTERNS = [
+    /SEMANTIC PLAN ERROR/i,
+    /CHART PLAN ERROR/i,
+    /Binder Error/i,
+    /Catalog Error/i,
+    /Parser Error/i,
+    /Traceback/i,
+    /sqlalchemy/i,
+    /duckdb/i,
+    /KeyError/i,
+    /ValueError/i,
+    /Internal Server Error/i
+];
 
 let isLoading = false;
 let isDebugEnabled = false;
@@ -179,7 +193,7 @@ async function sendMessage() {
                 agentMetadata: isDebugEnabled ? data.metadata || {} : null
             });
         } else {
-            const errorMessage = data.error_message || data.answer || data.response || 'Nao foi possivel processar a consulta.';
+            const errorMessage = sanitizeAgentError(data.error_message || data.answer || data.response || 'Nao foi possivel processar a consulta.');
             addMessage(errorMessage, 'error', {
                 executionTime: data.execution_time,
                 sql: data.sql || data.sql_query || null,
@@ -205,6 +219,9 @@ async function sendMessage() {
 }
 
 function buildUserFacingError(error) {
+    if (hasInternalAgentError(error.message)) {
+        return SAFE_AGENT_ERROR_MESSAGE;
+    }
     if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
         return 'Nao foi possivel conectar ao agent do DataVisSUS. Confirme se o servico esta rodando e tente novamente.';
     }
@@ -215,6 +232,14 @@ function buildUserFacingError(error) {
         return 'O agent retornou erro interno. Tente novamente em alguns instantes ou refine o recorte da consulta.';
     }
     return `Erro de conexao: ${error.message}`;
+}
+
+function hasInternalAgentError(message) {
+    return INTERNAL_AGENT_ERROR_PATTERNS.some((pattern) => pattern.test(message || ''));
+}
+
+function sanitizeAgentError(message) {
+    return hasInternalAgentError(message) ? SAFE_AGENT_ERROR_MESSAGE : message;
 }
 
 function showWelcomeState() {
@@ -271,9 +296,10 @@ function createMessageElement(messageData) {
 
     const text = document.createElement('div');
     text.className = 'message-text';
+    const displayContent = type === 'error' ? sanitizeAgentError(content) : content;
     text.innerHTML = type === 'error'
-        ? `<strong>Erro:</strong> ${escapeHtml(content)}`
-        : formatMessageContent(content);
+        ? `<strong>Erro:</strong> ${escapeHtml(displayContent)}`
+        : formatMessageContent(displayContent);
 
     const meta = document.createElement('div');
     meta.className = 'message-meta';

@@ -13,5 +13,6 @@
 | Curated prod canary | 100% success | pass | `run_chart_agent_prod_eval.py`: success_rate=1.0, chart_contract_validity=1.0, semantic_dimension_validity=1.0 |
 | Online full repeat 1 | 100% success | not_run | pending |
 | Online full repeat 2 | 100% success | not_run | pending |
-| Zero raw internal errors | 0 | pass | offline canary and `PROD_MORT_LOC_001` online both no_raw_internal_error=1.0 |
+| Zero raw internal errors | 0 | pass | offline canary and `PROD_MORT_LOC_001` online both no_raw_internal_error=1.0; API/frontend tests sanitize `SEMANTIC PLAN ERROR` |
+| User-facing error boundary | no raw internal details | pass | `_build_query_response`, `process_query`, frontend app and proxy sanitize known internal markers |
 | Frontend smoke | pass | not_run | pending |

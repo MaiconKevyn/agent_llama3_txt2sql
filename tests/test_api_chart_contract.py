@@ -26,3 +26,23 @@ def test_query_response_includes_optional_chart_payload():
 
     assert response.chart == chart
     assert response.session_id == "s1"
+
+
+def test_query_response_hides_raw_internal_planning_error():
+    response = _build_query_response(
+        {
+            "success": False,
+            "response": (
+                "Não foi possível processar sua consulta: SEMANTIC PLAN ERROR: "
+                "internal validator details"
+            ),
+            "metadata": {"session_id": "s1"},
+        },
+        started_at=time.time(),
+        session_id=None,
+    )
+
+    assert response.success is False
+    assert "SEMANTIC PLAN ERROR" not in response.answer
+    assert "internal validator details" not in response.answer
+    assert "segurança" in response.answer

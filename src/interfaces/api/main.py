@@ -91,11 +91,45 @@ class ModelsResponse(BaseModel):
     timestamp: str
 
 
+SAFE_INTERNAL_AGENT_ERROR = (
+    "Não foi possível processar sua consulta com segurança. "
+    "Tente refinar o recorte ou peça o gráfico de outra forma."
+)
+
+INTERNAL_ERROR_MARKERS = (
+    "SEMANTIC PLAN ERROR",
+    "CHART PLAN ERROR",
+    "Binder Error",
+    "Catalog Error",
+    "Parser Error",
+    "Traceback",
+    "sqlalchemy",
+    "duckdb",
+    "KeyError",
+    "ValueError",
+    "Internal Server Error",
+)
+
+
+def _contains_internal_error(text: str | None) -> bool:
+    if not text:
+        return False
+    lowered = text.lower()
+    return any(marker.lower() in lowered for marker in INTERNAL_ERROR_MARKERS)
+
+
+def _sanitize_user_response(text: str | None) -> str:
+    if _contains_internal_error(text):
+        return SAFE_INTERNAL_AGENT_ERROR
+    return text or "Resposta não disponível"
+
+
 def _build_query_response(
     result: dict[str, Any], started_at: float, session_id: str | None
 ) -> QueryResponse:
     success = bool(result.get("success"))
-    answer = result.get("response") or result.get("error_message") or "Resposta não disponível"
+    raw_answer = result.get("response") or result.get("error_message") or "Resposta não disponível"
+    answer = _sanitize_user_response(raw_answer)
     sql_query = result.get("sql_query")
     metadata = result.get("metadata", {}) or {}
 
@@ -458,18 +492,19 @@ async def process_query(request: QueryRequest):
             result["sql_query"] = None
         return _build_query_response(result, start_time, request.session_id)
     except Exception as e:
+        answer = SAFE_INTERNAL_AGENT_ERROR
         return QueryResponse(
             success=False,
             status="error",
-            answer=f"Erro: {str(e)}",
-            response=f"Erro: {str(e)}",
+            answer=answer,
+            response=answer,
             sql=None,
             sql_query=None,
             execution_time=round(time.time() - start_time, 2),
             timestamp=datetime.now().isoformat(),
             session_id=request.session_id,
             chart=None,
-            metadata={},
+            metadata={"error_type": type(e).__name__},
         )
 
 
