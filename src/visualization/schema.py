@@ -11,6 +11,8 @@ ChartHint = Literal["bar", "line", "scatter", "area", "pie", "donut", "table", "
 ColumnType = Literal["string", "number", "temporal", "boolean", "unknown"]
 IntentSource = Literal["none", "explicit_current_query", "explicit_followup"]
 WarningSeverity = Literal["info", "warning", "error"]
+ValueFormat = Literal["integer", "decimal", "percent", "currency_brl"]
+SortOrder = Literal["asc", "desc", "temporal", "as_returned"]
 ExpectedResultShape = Literal[
     "single_metric",
     "category_metric",
@@ -49,6 +51,20 @@ class ChartWarning(BaseModel):
     code: str
     message: str
     severity: WarningSeverity = "warning"
+
+
+class ChartPresentation(BaseModel):
+    """User-facing display metadata for a validated chart."""
+
+    title: str | None = None
+    subtitle: str | None = None
+    x_label: str | None = None
+    y_label: str | None = None
+    series_label: str | None = None
+    value_format: ValueFormat = "integer"
+    sort_order: SortOrder = "as_returned"
+    footnote: str | None = None
+    summary: str | None = None
 
 
 class ChartFilter(BaseModel):
@@ -138,6 +154,7 @@ class ChartSpec(BaseModel):
     data: list[dict[str, Any]] = Field(default_factory=list)
     reason: str | None = None
     warnings: list[ChartWarning] = Field(default_factory=list)
+    presentation: ChartPresentation = Field(default_factory=ChartPresentation)
 
     @model_validator(mode="after")
     def _validate_shape(self) -> ChartSpec:
