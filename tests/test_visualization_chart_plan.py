@@ -79,6 +79,38 @@ def test_build_chart_plan_prioritizes_value_metric_over_admission_word():
     assert plan.required_columns == ["receita_total"]
 
 
+def test_chart_plan_validation_rejects_revenue_from_socioeconomico():
+    query = "Mostre em grafico de area o valor total por ano."
+    plan = build_chart_plan(query, detect_visualization_intent(query))
+    sql = """
+        SELECT "NU_ANO" AS ano, SUM("VAL_TOT") AS receita_total
+        FROM socioeconomico
+        GROUP BY "NU_ANO"
+        ORDER BY "NU_ANO";
+    """
+
+    passed, message = validate_sql_against_chart_plan(plan, sql)
+
+    assert passed is False
+    assert "internacoes.VAL_TOT" in (message or "")
+
+
+def test_chart_plan_validation_accepts_revenue_from_internacoes():
+    query = "Mostre em grafico de area o valor total por ano."
+    plan = build_chart_plan(query, detect_visualization_intent(query))
+    sql = """
+        SELECT EXTRACT(YEAR FROM "DT_INTER") AS ano, SUM("VAL_TOT") AS receita_total
+        FROM internacoes
+        GROUP BY ano
+        ORDER BY ano;
+    """
+
+    passed, message = validate_sql_against_chart_plan(plan, sql)
+
+    assert passed is True
+    assert message is None
+
+
 def test_build_chart_plan_for_scatter_uses_two_numeric_axes():
     query = "Gere um grafico de dispersao entre receita total e taxa de mortalidade por estado."
     plan = build_chart_plan(query, detect_visualization_intent(query))

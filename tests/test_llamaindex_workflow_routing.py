@@ -80,6 +80,58 @@ def test_list_tables_node_uses_llamaindex_context_when_available(monkeypatch):
     assert new_state["response_metadata"]["table_selection_mode"] == "llamaindex_context"
 
 
+def test_list_tables_node_rebuilds_schema_context_after_financial_table_validation(monkeypatch):
+    class _FinancialListTablesTool:
+        name = "sql_db_list_tables"
+
+        def invoke(self, _input):
+            return "socioeconomico: municipal indicators\ninternacoes: hospitalization facts"
+
+    class _FinancialLLMManager:
+        def get_sql_tools(self):
+            return [_FinancialListTablesTool()]
+
+        def get_database(self):
+            raise AssertionError("database fallback should not be needed")
+
+    class _FakeContext:
+        selected_tables = ["socioeconomico"]
+        table_context = ["TABLE: socioeconomico\n- NU_ANO: INTEGER"]
+        schema_context = "TABLE: socioeconomico\n- NU_ANO: INTEGER"
+        retrieval_mode = "llamaindex_schema"
+        confidence = 0.91
+        error = ""
+
+    class _Doc:
+        metadata = {"table_name": "internacoes"}
+
+        def get_content(self):
+            return 'TABLE: internacoes\n- VAL_TOT: NUMERIC\n- DT_INTER: DATE'
+
+    monkeypatch.setattr(table_selection, "get_llm_manager", lambda: _FinancialLLMManager())
+    monkeypatch.setattr(
+        table_selection,
+        "retrieve_llamaindex_schema_context",
+        lambda **_kwargs: _FakeContext(),
+    )
+    monkeypatch.setattr(
+        table_selection,
+        "build_llamaindex_schema_documents",
+        lambda tables: [_Doc()] if tables == ["internacoes"] else [],
+    )
+    state = create_initial_messages_state(
+        "Mostre em grafico de area o valor total por ano.",
+        session_id="test",
+    )
+
+    new_state = table_selection.list_tables_node(state)
+
+    assert new_state["selected_tables"] == ["internacoes"]
+    assert new_state["response_metadata"]["raw_selected_tables"] == ["socioeconomico"]
+    assert "TABLE: internacoes" in new_state["llamaindex_context"]["schema_context"]
+    assert "TABLE: socioeconomico" not in new_state["llamaindex_context"]["schema_context"]
+
+
 def test_list_tables_node_does_not_fallback_when_llamaindex_has_no_tables(monkeypatch):
     monkeypatch.setattr(table_selection, "get_llm_manager", lambda: _FakeLLMManager())
 

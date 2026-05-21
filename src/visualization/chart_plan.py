@@ -128,6 +128,14 @@ def validate_sql_against_chart_plan(
             f"{', '.join(missing_columns)}."
         )
 
+    if plan.metric == "receita_total":
+        if not _sql_uses_table(text, "internacoes") or not _sql_sums_val_tot(text):
+            return False, (
+                "CHART PLAN ERROR: receita_total charts must aggregate "
+                "internacoes.VAL_TOT with SUM and use internacoes as the fact table, "
+                "not socioeconomico."
+            )
+
     if plan.series_dimension == "sexo" or plan.x_dimension == "sexo":
         has_labels = bool(
             re.search(
@@ -551,3 +559,11 @@ def _sql_outputs_column(sql_lower: str, column: str) -> bool:
         rf"\b\"?{re.escape(normalized_column)}\"?\s+from\b",
     ]
     return any(re.search(pattern, sql_lower, re.I) for pattern in patterns)
+
+
+def _sql_uses_table(sql_lower: str, table: str) -> bool:
+    return bool(re.search(rf"\b(?:from|join)\s+\"?{re.escape(table.lower())}\"?\b", sql_lower))
+
+
+def _sql_sums_val_tot(sql_lower: str) -> bool:
+    return bool(re.search(r'\bsum\s*\(\s*(?:[a-z_][\w]*\.)?"?val_tot"?\s*\)', sql_lower))

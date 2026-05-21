@@ -1623,7 +1623,10 @@ def _infer_metrics(query_lower: str) -> list[SemanticMetric]:
             )
         )
 
-    if _contains_any(query_lower, ["receita total", "receita", "faturamento total"]):
+    has_explicit_sum_metric = any(metric.expression_type == "sum" for metric in metrics)
+    if _contains_any(query_lower, ["receita total", "receita", "faturamento total"]) or (
+        _contains_any(query_lower, ["valor total", "total gasto"]) and not has_explicit_sum_metric
+    ):
         metrics.append(
             SemanticMetric(
                 name="receita_total",

@@ -2917,6 +2917,18 @@ def test_goalv2_plan_uses_sum_for_total_days_and_total_cost_values():
         )
 
 
+def test_semantic_plan_treats_chart_value_total_by_year_as_revenue_sum():
+    plan = build_semantic_plan("Mostre em grafico de area o valor total por ano.")
+
+    assert plan.base_grain == "internacao"
+    assert plan.answer_shape.required_dimensions == ["ano"]
+    assert {metric.name for metric in plan.metrics} == {"receita_total"}
+    assert any(
+        metric.expression_type == "sum" and "SUM(VAL_TOT)" in metric.required_filters
+        for metric in plan.metrics
+    )
+
+
 def test_goalv2_deterministic_scalar_sql_handles_value_extremes_and_sums():
     cases = [
         (
