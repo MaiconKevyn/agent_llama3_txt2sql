@@ -13,11 +13,13 @@ from .plan_schema import SemanticPlan
 from .sql_inspector import SQLInspector
 
 _SOCIOECONOMIC_WIDE_METRIC_COLUMNS = {
-    "mortalidade_infantil_1ano": "vl_mort_infantil",
-    "populacao_total": "qt_populacao",
-    "pib_per_capita": "vl_pib_percapita",
-    "leitos_sus_total": "qt_leitos_sus",
-    "medicos_total": "qt_medicos",
+    "mortalidade_infantil_1ano": ("vl_mort_infantil",),
+    "populacao_total": ("qt_populacao",),
+    "pib_per_capita": ("vl_pib_percapita",),
+    "leitos_sus_total": ("qt_leitos_sus",),
+    "leitos_sus_1000": ("qt_leitos_sus", "qt_populacao"),
+    "medicos_total": ("qt_medicos",),
+    "medicos_1000": ("qt_medicos", "qt_populacao"),
 }
 
 
@@ -25,9 +27,9 @@ def _socioeconomic_expected_columns(plan: SemanticPlan) -> list[str]:
     metric_names = {metric.name for metric in plan.metrics}
     return sorted(
         {
-            _SOCIOECONOMIC_WIDE_METRIC_COLUMNS[name]
+            column
             for name in metric_names
-            if name in _SOCIOECONOMIC_WIDE_METRIC_COLUMNS
+            for column in _SOCIOECONOMIC_WIDE_METRIC_COLUMNS.get(name, ())
         }
     )
 
@@ -61,17 +63,25 @@ def _has_group_by_dimension(inspector: SQLInspector, dimension: str) -> bool:
         ],
         "municipio": [r"\b(?:no_municipio|nome|municipio|município)\b"],
         "municipio_hospital": [r"\b(?:no_municipio|nome|municipio|município)\b"],
+        "regiao_saude": [r"\b(?:regiao_saude|região_saude|no_regiao_saude|regiao|região)\b"],
         "hospital": [r"\b(?:cnes|\"cnes\")\b"],
         "especialidade": [r"\bespecialidade\b", r"\bdescri[cç][aã]o\b", r"\bespec\b"],
-        "cid_capitulo": [r"\bcap[ií]tulo\b", r"\bcapitulo_cid\b", r"\bcid_capitulo\b", r"\bsubstr\s*\("],
+        "cid_capitulo": [
+            r"\bcap[ií]tulo\b",
+            r"\bcapitulo_cid\b",
+            r"\bcid_capitulo\b",
+            r"\bds_capitulo\b",
+            r"\bsubstr\s*\(",
+        ],
         "diagnostico": [r"\b(?:descricao|\"descricao\"|diag_princ|cid)\b"],
         "procedimento": [r"\b(?:nome_proc|\"nome_proc\"|proc_rea)\b"],
         "contraceptivo": [r"\b(?:contraceptivo|contracep1|descricao|descri[cç][aã]o)\b"],
+        "nacionalidade": [r"\b(?:nacionalidade|nacional|descri[cç][aã]o)\b"],
         "sexo": [r"\bsexo\b"],
         "raca_cor": [r"\b(?:raca_cor|ra[cç]a|cor|descri[cç][aã]o)\b"],
         "instrucao": [r"\b(?:instru|instrucao|instru[cç][aã]o|descri[cç][aã]o)\b"],
         "idade": [r"\bidade\b"],
-        "ano": [r"\b(?:extract\s*\(\s*year|ano)\b"],
+        "ano": [r"\b(?:extract\s*\(\s*year|ano|nu_ano)\b"],
         "trimestre": [r"\b(?:extract\s*\(\s*quarter|trimestre)\b"],
         "dia_semana": [r"\b(?:dia_semana|dow|isodow|dayofweek|to_char)\b"],
         "quartil": [r"\b(?:ntile|quartil|ntile_grupo)\b"],
@@ -227,6 +237,7 @@ def validate_sql_against_semantic_plan(
                     "trimestre",
                     "dia_semana",
                     "quartil",
+                    "nacionalidade",
                 }:
                     if not inspector.has_group_by():
                         return False, (
@@ -1257,10 +1268,14 @@ def _validate_required_filters(
                     "year available in internacoes.DT_INTER, not CURRENT_DATE/NOW(), because "
                     "the dataset can lag behind the wall-clock date."
                 )
-            if not ("dt_inter" in text and "year" in text):
+            has_internacoes_anchor = "dt_inter" in text and "year" in text
+            has_socioeconomico_anchor = (
+                "socioeconomico" in text and "nu_ano" in text and "max(" in text
+            )
+            if not (has_internacoes_anchor or has_socioeconomico_anchor):
                 return False, (
                     "SEMANTIC PLAN ERROR: SQL does not apply the requested recent-year window "
-                    "using internacoes.DT_INTER."
+                    "using the latest available data year."
                 )
         elif field == "sexo" and values:
             if "sexo" not in text or not any(value in text for value in values):

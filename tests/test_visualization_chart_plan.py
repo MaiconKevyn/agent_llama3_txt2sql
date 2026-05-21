@@ -60,6 +60,19 @@ def test_build_chart_plan_for_state_series_over_years():
     assert plan.required_columns == ["ano", "estado", "total_internacoes"]
 
 
+def test_build_chart_plan_for_procedure_series_over_years():
+    query = "Procedimentos mais frequentes por ano em linha."
+    plan = build_chart_plan(query, detect_visualization_intent(query))
+
+    assert plan.requested is True
+    assert plan.chart_type == "line"
+    assert plan.x_dimension == "ano"
+    assert plan.series_dimension == "procedimento"
+    assert plan.y_column == "total_internacoes"
+    assert plan.expected_result_shape == "time_series_metric"
+    assert plan.required_columns == ["ano", "procedimento", "total_internacoes"]
+
+
 def test_build_chart_plan_for_monthly_plural_uses_month_axis():
     query = "Visualize em grafico as internacoes mensais."
     plan = build_chart_plan(query, detect_visualization_intent(query))
@@ -144,6 +157,59 @@ def test_build_chart_plan_for_uf_columns_request_uses_state_bar():
     assert plan.y_column == "taxa_mortalidade"
     assert plan.expected_result_shape == "category_metric"
     assert plan.required_columns == ["estado", "taxa_mortalidade"]
+
+
+def test_build_chart_plan_for_socioeconomic_scatter_uses_requested_axes():
+    query = "Compare PIB per capita e mortalidade infantil em scatter."
+    plan = build_chart_plan(query, detect_visualization_intent(query))
+
+    assert plan.requested is True
+    assert plan.chart_type == "scatter"
+    assert plan.x_dimension == "pib_per_capita"
+    assert plan.y_column == "mortalidade_infantil"
+    assert plan.required_columns == ["pib_per_capita", "mortalidade_infantil"]
+
+
+def test_build_chart_plan_defaults_unknown_category_metric_to_admission_count():
+    query = "Mostre graficamente as principais diferencas por sexo."
+    plan = build_chart_plan(query, detect_visualization_intent(query))
+
+    assert plan.requested is True
+    assert plan.x_dimension == "sexo"
+    assert plan.y_column == "total_internacoes"
+    assert plan.required_columns == ["sexo", "total_internacoes"]
+
+
+def test_chart_plan_validation_accepts_taxa_alias_for_mortality_rate():
+    query = "Gere um grafico dos estados com menor taxa de mortalidade hospitalar."
+    plan = build_chart_plan(query, detect_visualization_intent(query))
+    sql = """
+        SELECT mu."SG_UF" AS estado,
+               ROUND(SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa
+        FROM internacoes i
+        JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+        GROUP BY mu."SG_UF"
+        ORDER BY taxa ASC
+        LIMIT 10
+    """
+
+    passed, message = validate_sql_against_chart_plan(plan, sql)
+
+    assert passed is True
+    assert message is None
+
+
+def test_build_chart_plan_recent_available_period_keeps_requested_category_axis():
+    query = "Visualize a mortalidade hospitalar por municipio no periodo mais recente disponivel."
+    plan = build_chart_plan(query, detect_visualization_intent(query))
+
+    assert plan.requested is True
+    assert plan.chart_type == "bar"
+    assert plan.x_dimension == "municipio"
+    assert plan.y_column == "taxa_mortalidade"
+    assert plan.time_window.type == "last_n_available_years"
+    assert plan.time_window.n == 1
+    assert plan.required_columns == ["municipio", "taxa_mortalidade"]
 
 
 def test_build_chart_plan_supports_english_deaths_metric():

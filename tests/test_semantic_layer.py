@@ -2143,6 +2143,30 @@ def test_semantic_plan_mortality_rate_by_municipality_chart_defaults_to_readable
     assert "sexo" not in plan.answer_shape.required_dimensions
 
 
+def test_semantic_plan_mortality_rate_by_health_region_requires_grouping():
+    plan = build_semantic_plan(
+        "Mostre a taxa de mortalidade por regiao de saude em grafico de barras."
+    )
+
+    assert plan.intent == "rate"
+    assert plan.answer_shape.required_dimensions == ["regiao_saude"]
+    assert plan.answer_shape.requires_group_by is True
+
+
+def test_semantic_plan_recent_available_period_adds_one_year_window():
+    plan = build_semantic_plan(
+        "Visualize a mortalidade hospitalar por municipio no periodo mais recente disponivel."
+    )
+
+    assert plan.intent == "rate"
+    assert any(
+        filter_.field == "recent_years_available" and filter_.values == ["1"]
+        for filter_ in plan.filters
+    )
+    assert plan.answer_shape.required_dimensions == ["municipio"]
+    assert "ano" not in plan.answer_shape.required_dimensions
+
+
 def test_semantic_plan_singular_mortality_extreme_remains_top_one():
     plan = build_semantic_plan("Qual municipio tem a maior taxa de mortalidade?")
 

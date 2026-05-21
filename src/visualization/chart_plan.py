@@ -46,6 +46,8 @@ def build_chart_plan(
             y_column = _default_y_column(metric)
     else:
         y_column = _default_y_column(metric)
+        if metric == "requested_metric" and x_dimension:
+            y_column = "total_internacoes"
     expected_shape = _infer_expected_shape(
         x_dimension=x_dimension,
         series_dimension=series_dimension,
@@ -111,7 +113,9 @@ def validate_sql_against_chart_plan(
                 "to MAX(EXTRACT(YEAR FROM DT_INTER)), not compare DT_INTER dates directly to "
                 "a numeric year."
             )
-        if "dt_inter" not in text or "max(" not in text:
+        has_internacoes_anchor = "dt_inter" in text and "max(" in text
+        has_socioeconomico_anchor = "socioeconomico" in text and "nu_ano" in text and "max(" in text
+        if not (has_internacoes_anchor or has_socioeconomico_anchor):
             return False, (
                 "CHART PLAN ERROR: last_n_available_years charts must anchor the window on "
                 "MAX(EXTRACT(YEAR FROM DT_INTER)) from the data."
@@ -178,6 +182,26 @@ def _infer_metric(normalized_query: str) -> str:
         token in normalized_query for token in ["taxa de mortalidade", "mortalidade hospitalar"]
     ):
         return "taxa_mortalidade"
+    if "mortalidade infantil" in normalized_query:
+        return "mortalidade_infantil"
+    if "mortalidade" in normalized_query:
+        return "taxa_mortalidade"
+    if any(token in normalized_query for token in ["pib per capita", "produto interno bruto per capita"]):
+        return "pib_per_capita"
+    if any(token in normalized_query for token in ["leitos sus por 1000", "leitos por 1000"]):
+        return "leitos_sus_1000"
+    if any(token in normalized_query for token in ["leitos sus", "leito sus"]):
+        return "leitos_sus"
+    if any(token in normalized_query for token in ["medicos por 1000", "médicos por 1000"]):
+        return "medicos_1000"
+    if any(token in normalized_query for token in ["medicos", "médicos"]):
+        return "medicos"
+    if any(token in normalized_query for token in ["populacao", "população"]):
+        return "populacao"
+    if "uti" in normalized_query and any(token in normalized_query for token in ["valor", "custo"]):
+        return "valor_total_uti"
+    if any(token in normalized_query for token in ["custo medio", "custo médio", "valor medio", "valor médio"]):
+        return "custo_medio"
     if any(
         token in normalized_query
         for token in [
@@ -237,6 +261,8 @@ def _infer_x_dimension(normalized_query: str) -> str | None:
         return "mes"
     if any(token in normalized_query for token in ["por nacionalidade", "nacionalidade"]):
         return "nacionalidade"
+    if "perfil" in normalized_query:
+        return "sexo"
     if any(
         token in normalized_query
         for token in ["por municipio", "por cidade", "municipio", "municipios", "cidade", "cidades"]
@@ -301,13 +327,24 @@ def _infer_x_dimension(normalized_query: str) -> str | None:
         return "causa_morte"
     if "por sexo" in normalized_query or _mentions_both_sexes(normalized_query):
         return "sexo"
-    if any(token in normalized_query for token in ["por idade", "idade"]):
+    if "por idade" in normalized_query or re.search(r"\bidade\b", normalized_query):
         return "idade"
+    if "mortalidade" in normalized_query and any(
+        token in normalized_query for token in ["grafico", "gráfico", "visualize", "visualizacao"]
+    ):
+        return "ano"
     return None
 
 
 def _infer_scatter_axes(normalized_query: str) -> tuple[str, str] | None:
     metric_patterns = [
+        ("pib_per_capita", ["pib per capita", "produto interno bruto per capita"]),
+        ("mortalidade_infantil", ["mortalidade infantil"]),
+        ("leitos_sus_1000", ["leitos sus por 1000", "leitos por 1000"]),
+        ("leitos_sus", ["leitos sus", "leito sus"]),
+        ("medicos_1000", ["medicos por 1000", "médicos por 1000"]),
+        ("medicos", ["medicos", "médicos"]),
+        ("custo_medio", ["custo medio", "custo médio", "valor medio", "valor médio"]),
         ("receita_total", ["receita", "faturamento", "valor total", "custo", "cost", "revenue"]),
         ("taxa_mortalidade", ["taxa de mortalidade", "mortalidade hospitalar"]),
         ("idade_media", ["idade media", "idade média", "media de idade", "média de idade"]),
@@ -316,6 +353,8 @@ def _infer_scatter_axes(normalized_query: str) -> tuple[str, str] | None:
             [
                 "media de permanencia",
                 "média de permanência",
+                "permanencia media",
+                "permanência média",
                 "dias de permanencia",
                 "dias de permanência",
                 "media de dias",
@@ -324,19 +363,23 @@ def _infer_scatter_axes(normalized_query: str) -> tuple[str, str] | None:
         ("total_mortes", ["total de mortes", "mortes", "death", "deaths"]),
         ("total_internacoes", ["total de internacoes", "internacoes", "admissions"]),
     ]
-    matches: list[tuple[int, str]] = []
-    for metric, patterns in metric_patterns:
+    matches: list[tuple[int, int, str]] = []
+    for priority, (metric, patterns) in enumerate(metric_patterns):
         positions = [
             normalized_query.find(pattern)
             for pattern in patterns
             if normalized_query.find(pattern) >= 0
         ]
         if positions:
-            matches.append((min(positions), metric))
+            matches.append((min(positions), priority, metric))
     ordered = []
-    for _, metric in sorted(matches):
+    for _, _priority, metric in sorted(matches):
         if metric not in ordered:
             ordered.append(metric)
+    if "medicos_1000" in ordered and "medicos" in ordered:
+        ordered.remove("medicos")
+    if "leitos_sus_1000" in ordered and "leitos_sus" in ordered:
+        ordered.remove("leitos_sus")
     if len(ordered) >= 2:
         return ordered[0], ordered[1]
     return None
@@ -346,6 +389,8 @@ def _infer_series_dimension(normalized_query: str) -> str | None:
     is_temporal = _is_temporal_query(normalized_query)
     if is_temporal and _mentions_both_sexes(normalized_query):
         return "sexo"
+    if is_temporal and any(token in normalized_query for token in ["procedimento", "procedimentos"]):
+        return "procedimento"
     if "por estado" in normalized_query and is_temporal:
         return "estado"
     return None
@@ -539,6 +584,15 @@ def _default_y_column(metric: str) -> str:
         "total_mortes": "total_mortes",
         "total_internacoes": "total_internacoes",
         "taxa_mortalidade": "taxa_mortalidade",
+        "mortalidade_infantil": "mortalidade_infantil",
+        "pib_per_capita": "pib_per_capita",
+        "leitos_sus": "leitos_sus",
+        "leitos_sus_1000": "leitos_sus_1000",
+        "medicos": "medicos",
+        "medicos_1000": "medicos_1000",
+        "populacao": "populacao",
+        "valor_total_uti": "valor_total_uti",
+        "custo_medio": "custo_medio",
         "idade_media": "idade_media",
         "media_dias_permanencia": "media_dias_permanencia",
         "receita_total": "receita_total",
@@ -550,6 +604,15 @@ def _metric_expression(metric: str) -> str | None:
         "total_mortes": 'COUNT rows where "MORTE" = true',
         "total_internacoes": "COUNT rows",
         "taxa_mortalidade": "SUM(MORTE=true) * 100.0 / COUNT(*)",
+        "mortalidade_infantil": 'AVG("VL_MORT_INFANTIL")',
+        "pib_per_capita": 'AVG("VL_PIB_PERCAPITA")',
+        "leitos_sus": 'SUM("QT_LEITOS_SUS")',
+        "leitos_sus_1000": 'AVG("VL_LEITOS_SUS_1000")',
+        "medicos": 'SUM("QT_MEDICOS")',
+        "medicos_1000": 'AVG("VL_MEDICOS_1000")',
+        "populacao": 'SUM("QT_POPULACAO")',
+        "valor_total_uti": 'SUM("VAL_UTI")',
+        "custo_medio": 'AVG("VAL_TOT")',
         "idade_media": 'AVG("IDADE")',
         "media_dias_permanencia": 'AVG("DIAS_PERM")',
         "receita_total": 'SUM("VAL_TOT")',
@@ -562,12 +625,30 @@ def _infer_grain(x_dimension: str | None, series_dimension: str | None) -> str:
 
 
 def _recent_year_window(normalized_query: str) -> int | None:
+    if _is_recent_period_filter_only(normalized_query):
+        return 1
     match = re.search(r"\b(?:ultimos|ultimas)\s+(\d+)\s+anos\b", normalized_query)
     return int(match.group(1)) if match else None
 
 
+def _is_recent_period_filter_only(normalized_query: str) -> bool:
+    return any(
+        token in normalized_query
+        for token in [
+            "periodo mais recente",
+            "ano mais recente",
+            "mais recente disponivel",
+            "ultimo ano disponivel",
+        ]
+    )
+
+
 def _is_temporal_query(normalized_query: str) -> bool:
-    return bool(_recent_year_window(normalized_query)) or any(
+    recent_year_window = _recent_year_window(normalized_query)
+    return (
+        bool(recent_year_window)
+        and not _is_recent_period_filter_only(normalized_query)
+    ) or any(
         token in normalized_query
         for token in [
             "por ano",
@@ -598,10 +679,19 @@ def _mentions_female(normalized_query: str) -> bool:
 
 def _sql_outputs_column(sql_lower: str, column: str) -> bool:
     normalized_column = column.lower()
+    column_aliases = {
+        "taxa_mortalidade": ["taxa"],
+        "media_dias_permanencia": ["permanencia_media"],
+    }
+    candidates = [normalized_column, *column_aliases.get(normalized_column, [])]
+    return any(_sql_outputs_column_name(sql_lower, candidate) for candidate in candidates)
+
+
+def _sql_outputs_column_name(sql_lower: str, column: str) -> bool:
     patterns = [
-        rf"\bas\s+\"?{re.escape(normalized_column)}\"?\b",
-        rf"\b\"?{re.escape(normalized_column)}\"?\s*,",
-        rf"\b\"?{re.escape(normalized_column)}\"?\s+from\b",
+        rf"\bas\s+\"?{re.escape(column)}\"?\b",
+        rf"\b\"?{re.escape(column)}\"?\s*,",
+        rf"\b\"?{re.escape(column)}\"?\s+from\b",
     ]
     return any(re.search(pattern, sql_lower, re.I) for pattern in patterns)
 
