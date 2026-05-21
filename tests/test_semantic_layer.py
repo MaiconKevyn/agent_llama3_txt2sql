@@ -2929,6 +2929,15 @@ def test_semantic_plan_treats_chart_value_total_by_year_as_revenue_sum():
     )
 
 
+def test_semantic_plan_uses_chart_revenue_alias_for_value_total_kpi():
+    plan = build_semantic_plan("Gere um KPI com o valor total das internacoes.")
+
+    assert {metric.name for metric in plan.metrics} == {"receita_total"}
+    assert _build_deterministic_scalar_sql(plan) == (
+        'SELECT SUM("VAL_TOT") AS receita_total FROM internacoes;'
+    )
+
+
 def test_goalv2_deterministic_scalar_sql_handles_value_extremes_and_sums():
     cases = [
         (

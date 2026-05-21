@@ -258,6 +258,9 @@ def _build_deterministic_scalar_sql(semantic_plan) -> str | None:
         "valor_total_internacoes": {
             "sum": ('SUM("VAL_TOT")', "valor_total_internacoes"),
         },
+        "receita_total": {
+            "sum": ('SUM("VAL_TOT")', "receita_total"),
+        },
     }
     for metric in plan.metrics:
         expression = scalar_metric_sql.get(metric.name, {}).get(metric.expression_type)

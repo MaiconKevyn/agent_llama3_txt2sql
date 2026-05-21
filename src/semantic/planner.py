@@ -1552,9 +1552,14 @@ def _infer_metrics(query_lower: str) -> list[SemanticMetric]:
         elif _contains_any(query_lower, ["valor total", "total gasto"]) and _contains_any(
             query_lower, ["internação", "internacao", "internações", "internacoes"]
         ):
+            metric_name = (
+                "receita_total"
+                if _contains_any(query_lower, ["grafico", "gráfico", "chart", "kpi", "card"])
+                else "valor_total_internacoes"
+            )
             metrics.append(
                 SemanticMetric(
-                    name="valor_total_internacoes",
+                    name=metric_name,
                     expression_type="sum",
                     required_filters=["SUM(VAL_TOT)"],
                 )
