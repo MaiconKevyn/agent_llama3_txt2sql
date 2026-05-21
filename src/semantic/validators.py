@@ -155,10 +155,16 @@ def validate_sql_against_semantic_plan(
             return False, output_order_message
     elif answer_shape.top_n_scope == "global":
         scalar_extreme_aggregate = _is_scalar_extreme_aggregate_answer(plan, inspector)
+        has_global_window_rank_limit = bool(
+            re.search(r"\b(?:row_number|rank|dense_rank)\s*\(\s*\)\s+over\s*\(", sql_lower, re.I)
+            and not inspector.has_window_partition()
+            and inspector.constrains_rank(answer_shape.top_n)
+        )
         if (
             answer_shape.top_n is not None
             and not scalar_extreme_aggregate
             and not re.search(rf"\blimit\s+{answer_shape.top_n}\b", sql_lower, re.I)
+            and not has_global_window_rank_limit
         ):
             return False, (
                 "SEMANTIC PLAN ERROR: The plan requires a global top-N answer, but SQL does not "

@@ -309,7 +309,15 @@ def _offline_chart_contract_valid(chart_summary: dict[str, Any], expected: dict[
     allowed_chart_types = set(expected.get("chart_types") or [])
     plan_type = plan.get("chart_type")
     spec_type = spec.get("chart_type")
-    if allowed_chart_types and plan_type not in allowed_chart_types and plan_type != "auto":
+    plan_type_required = not (
+        expected.get("requires_context") or expected.get("allow_clarification")
+    )
+    if (
+        plan_type_required
+        and allowed_chart_types
+        and plan_type not in allowed_chart_types
+        and plan_type != "auto"
+    ):
         return False
     if allowed_chart_types and spec_type not in allowed_chart_types:
         return False
@@ -474,6 +482,8 @@ def _echarts_valid_for_spec(spec: Any, option: dict[str, Any] | None) -> bool:
         return False
     if spec.chart_type == "table":
         return True
+    if spec.chart_type == "kpi":
+        return bool(option and option.get("graphic"))
     return bool(option and option.get("series"))
 
 

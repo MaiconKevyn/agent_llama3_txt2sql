@@ -2124,6 +2124,69 @@ def test_semantic_plan_detects_rate_without_outcome_filter():
     assert "faixa_etaria" not in plan.answer_shape.required_dimensions
 
 
+def test_semantic_plan_mortality_rate_by_municipality_chart_defaults_to_readable_top10():
+    plan = build_semantic_plan(
+        "Quais sao os municipios com maior taxa de mortalidade? Mostre em grafico."
+    )
+
+    dimension_names = {dimension.name for dimension in plan.dimensions}
+    constraint_names = set(plan.constraints)
+    metric_names = {metric.name for metric in plan.metrics}
+
+    assert plan.intent == "ranking"
+    assert plan.answer_shape.top_n == 10
+    assert plan.answer_shape.top_n_scope == "global"
+    assert "municipio" in dimension_names
+    assert "municipio" in plan.answer_shape.required_dimensions
+    assert "taxa_mortalidade" in metric_names
+    assert "sex_label_output_required" not in constraint_names
+    assert "sexo" not in plan.answer_shape.required_dimensions
+
+
+def test_semantic_plan_singular_mortality_extreme_remains_top_one():
+    plan = build_semantic_plan("Qual municipio tem a maior taxa de mortalidade?")
+
+    assert plan.intent == "ranking"
+    assert plan.answer_shape.top_n == 1
+    assert plan.answer_shape.required_dimensions == ["municipio"]
+
+
+def test_semantic_validator_accepts_municipality_mortality_top10_rank_for_chart():
+    plan = build_semantic_plan(
+        "Quais sao os municipios com maior taxa de mortalidade? Mostre em grafico."
+    )
+    sql = """
+        WITH municipio_taxa AS (
+            SELECT mu."NO_MUNICIPIO" AS municipio,
+                   COUNT(*) AS total_internacoes,
+                   SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) AS total_mortes,
+                   ROUND(
+                       SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*),
+                       2
+                   ) AS taxa_mortalidade
+            FROM internacoes i
+            JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+            GROUP BY mu."NO_MUNICIPIO"
+        ),
+        ranked_municipios AS (
+            SELECT municipio,
+                   total_internacoes,
+                   total_mortes,
+                   taxa_mortalidade,
+                   ROW_NUMBER() OVER (ORDER BY taxa_mortalidade DESC) AS rank
+            FROM municipio_taxa
+        )
+        SELECT municipio, total_internacoes, total_mortes, taxa_mortalidade
+        FROM ranked_municipios
+        WHERE rank <= 10;
+    """
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert valid is True
+    assert message is None
+
+
 def test_semantic_plan_does_not_confuse_mortalidade_with_idade_dimension():
     plan = build_semantic_plan("Qual a evolução anual da taxa de mortalidade por estado?")
 

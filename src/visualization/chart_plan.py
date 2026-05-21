@@ -201,6 +201,8 @@ def _infer_metric(normalized_query: str) -> str:
         for token in [
             "media de permanencia",
             "média de permanência",
+            "permanencia media",
+            "permanência média",
             "dias de permanencia",
             "dias de permanência",
         ]
@@ -233,22 +235,61 @@ def _infer_x_dimension(normalized_query: str) -> str | None:
         return "ano"
     if any(token in normalized_query for token in ["por mes", "mensal", "mensais", "monthly"]):
         return "mes"
-    if any(token in normalized_query for token in ["por municipio", "por cidade"]):
-        return "municipio"
-    if "por estado" in normalized_query or "by state" in normalized_query:
-        return "estado"
+    if any(token in normalized_query for token in ["por nacionalidade", "nacionalidade"]):
+        return "nacionalidade"
     if any(
         token in normalized_query
-        for token in ["raca cor", "raça cor", "por raca", "por raça", "por cor"]
+        for token in ["por municipio", "por cidade", "municipio", "municipios", "cidade", "cidades"]
+    ):
+        return "municipio"
+    if any(
+        token in normalized_query
+        for token in ["por estado", "por uf", "estados", "estado", "ufs", "uf", "by state"]
+    ):
+        return "estado"
+    if "regiao de saude" in normalized_query or "regioes de saude" in normalized_query:
+        return "regiao_saude"
+    if any(
+        token in normalized_query
+        for token in ["raca cor", "raca/cor", "raça cor", "raça/cor", "por raca", "por raça", "por cor"]
     ):
         return "raca_cor"
     if any(
         token in normalized_query
-        for token in ["por especialidade", "especialidade medica", "especialidade médica"]
+        for token in [
+            "por especialidade",
+            "especialidade medica",
+            "especialidade médica",
+            "especialidades",
+        ]
     ):
         return "especialidade"
     if any(token in normalized_query for token in ["por procedimento", "procedimentos"]):
         return "procedimento"
+    if any(
+        token in normalized_query
+        for token in [
+            "capitulo cid",
+            "capitulos cid",
+            "grupo cid",
+            "grupos cid",
+            "categoria cid",
+            "categorias cid",
+        ]
+    ):
+        return "cid_capitulo"
+    if any(
+        token in normalized_query
+        for token in [
+            "diagnostico principal",
+            "diagnosticos principais",
+            "diagnosticos",
+            "diagnostico",
+            "cids",
+            "cid",
+        ]
+    ):
+        return "diagnostico"
     if any(token in normalized_query for token in ["por hospital", "hospitais"]):
         return "hospital"
     if any(
@@ -260,6 +301,8 @@ def _infer_x_dimension(normalized_query: str) -> str | None:
         return "causa_morte"
     if "por sexo" in normalized_query or _mentions_both_sexes(normalized_query):
         return "sexo"
+    if any(token in normalized_query for token in ["por idade", "idade"]):
+        return "idade"
     return None
 
 
@@ -532,6 +575,8 @@ def _is_temporal_query(normalized_query: str) -> bool:
             "ano a ano",
             "ao longo dos anos",
             "ao longo do tempo",
+            "evolucao",
+            "evolução",
             "serie temporal",
             "linha temporal",
             "temporal",

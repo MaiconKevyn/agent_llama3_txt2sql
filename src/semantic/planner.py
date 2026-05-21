@@ -374,9 +374,41 @@ def _extract_top_n(query_lower: str) -> int | None:
         r"\bprincipal\s+(?:causa|motivo)\s+(?:de|da|do)\s+(?:morte|[óo]bito)\b", query_lower
     ):
         return 1
+    if _is_plural_metric_ranking_without_explicit_limit(query_lower):
+        return 10
     if re.search(r"\b(?:maior|menor|mais\s+comum|mais\s+frequente)\b", query_lower):
         return 1
     return None
+
+
+def _is_plural_metric_ranking_without_explicit_limit(query_lower: str) -> bool:
+    """Default plural metric rankings to a readable top-10 instead of top-1."""
+
+    has_plural_ranked_entity = bool(
+        re.search(
+            r"\b(?:munic[ií]pios|cidades|estados|ufs|regi[oõ]es|hospitais|"
+            r"especialidades|procedimentos|diagn[oó]sticos|cids|cap[ií]tulos|causas)\b",
+            query_lower,
+        )
+    )
+    if not has_plural_ranked_entity:
+        return False
+    if re.search(r"\branking\b", query_lower):
+        return True
+    return bool(
+        re.search(
+            r"\b(?:maior(?:es)?|menor(?:es)?)\b[\s\S]{0,80}"
+            r"\b(?:taxa|mortalidade|valor|receita|custo|perman[eê]ncia|m[eé]dia|pib)\b",
+            query_lower,
+            re.I,
+        )
+        or re.search(
+            r"\b(?:taxa|mortalidade|valor|receita|custo|perman[eê]ncia|m[eé]dia|pib)\b"
+            r"[\s\S]{0,80}\b(?:maior(?:es)?|menor(?:es)?)\b",
+            query_lower,
+            re.I,
+        )
+    )
 
 
 def _extract_min_group_count(query_lower: str) -> int | None:

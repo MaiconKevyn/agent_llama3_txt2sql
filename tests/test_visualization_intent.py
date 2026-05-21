@@ -79,6 +79,16 @@ def test_detects_user_pie_request_with_typo():
     assert intent.source == "explicit_current_query"
 
 
+def test_detects_columns_as_explicit_bar_chart_request():
+    intent = detect_visualization_intent(
+        "Mostre em colunas a taxa de mortalidade por UF de residencia."
+    )
+
+    assert intent.requested is True
+    assert intent.chart_hint == "bar"
+    assert intent.source == "explicit_current_query"
+
+
 def test_detects_kpi_and_card_as_explicit_visualization_requests():
     kpi_intent = detect_visualization_intent("Gere um KPI com o total de internacoes")
     card_intent = detect_visualization_intent("Mostre um card com o total de mortes")

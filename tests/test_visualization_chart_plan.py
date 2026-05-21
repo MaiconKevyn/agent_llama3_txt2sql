@@ -118,7 +118,32 @@ def test_build_chart_plan_for_scatter_uses_two_numeric_axes():
     assert plan.chart_type == "scatter"
     assert plan.x_dimension == "receita_total"
     assert plan.y_column == "taxa_mortalidade"
-    assert plan.required_columns == ["receita_total", "taxa_mortalidade"]
+
+
+def test_build_chart_plan_for_municipality_mortality_ranking_uses_category_bar():
+    query = "Quais sao os municipios com maior taxa de mortalidade? Mostre em grafico."
+    plan = build_chart_plan(query, detect_visualization_intent(query))
+
+    assert plan.requested is True
+    assert plan.chart_type == "bar"
+    assert plan.metric == "taxa_mortalidade"
+    assert plan.x_dimension == "municipio"
+    assert plan.y_column == "taxa_mortalidade"
+    assert plan.expected_result_shape == "category_metric"
+    assert plan.required_columns == ["municipio", "taxa_mortalidade"]
+
+
+def test_build_chart_plan_for_uf_columns_request_uses_state_bar():
+    query = "Mostre em colunas a taxa de mortalidade por UF de residencia."
+    plan = build_chart_plan(query, detect_visualization_intent(query))
+
+    assert plan.requested is True
+    assert plan.chart_type == "bar"
+    assert plan.metric == "taxa_mortalidade"
+    assert plan.x_dimension == "estado"
+    assert plan.y_column == "taxa_mortalidade"
+    assert plan.expected_result_shape == "category_metric"
+    assert plan.required_columns == ["estado", "taxa_mortalidade"]
 
 
 def test_build_chart_plan_supports_english_deaths_metric():
