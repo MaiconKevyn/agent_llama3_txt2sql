@@ -206,3 +206,39 @@ def test_option_is_json_serializable():
     option = chart_spec_to_echarts_option(_bar_spec())
 
     json.dumps(option)
+
+
+def test_echarts_uses_presentation_labels_on_axes_and_tooltip_metadata():
+    spec = ChartSpec(
+        chartable=True,
+        chart_type="bar",
+        x="municipio",
+        y="total_internacoes",
+        encoding={"x_type": "nominal", "y_type": "quantitative"},
+        data=[{"municipio": "Porto Alegre", "total_internacoes": 1569537}],
+    )
+    from src.visualization.presentation import enrich_chart_presentation
+
+    option = chart_spec_to_echarts_option(enrich_chart_presentation(spec))
+
+    assert option["xAxis"]["name"] == "Total de internacoes"
+    assert option["yAxis"]["name"] == "Municipio"
+    assert option["_valueFormat"] == "integer"
+    assert option["_summary"] == "Porto Alegre lidera com 1.569.537."
+
+
+def test_echarts_percent_metric_exposes_percent_format():
+    spec = ChartSpec(
+        chartable=True,
+        chart_type="line",
+        x="ano",
+        y="taxa_mortalidade",
+        encoding={"x_type": "temporal", "y_type": "quantitative"},
+        data=[{"ano": 2022, "taxa_mortalidade": 4.31}],
+    )
+    from src.visualization.presentation import enrich_chart_presentation
+
+    option = chart_spec_to_echarts_option(enrich_chart_presentation(spec))
+
+    assert option["yAxis"]["name"] == "Taxa de mortalidade (%)"
+    assert option["_valueFormat"] == "percent"
