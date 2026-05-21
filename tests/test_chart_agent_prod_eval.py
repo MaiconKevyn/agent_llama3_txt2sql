@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+from evaluation.runners.run_chart_agent_prod_eval import evaluate_cases, load_cases, select_cases
+
 
 def _load_prod_cases() -> list[dict]:
     path = Path("evaluation/visualization/chart_agent_prod_cases.jsonl")
@@ -38,3 +40,32 @@ def test_chart_agent_prod_cases_cover_required_families():
     ]:
         family_ids = [case_id for case_id in ids if case_id.startswith(family)]
         assert len(family_ids) >= 10, family
+
+
+def test_chart_agent_prod_eval_runner_scores_static_cases():
+    rows = select_cases(load_cases(), only="PROD_MORT_LOC", limit=3)
+
+    report = evaluate_cases(rows)
+
+    assert set(report["metrics"]) == {
+        "success_rate",
+        "no_raw_internal_error",
+        "chart_contract_validity",
+        "sql_invariant_validity",
+        "semantic_dimension_validity",
+    }
+    assert report["metrics"]["no_raw_internal_error"] == 1.0
+    assert report["metrics"]["sql_invariant_validity"] == 1.0
+    assert report["metrics"]["semantic_dimension_validity"] == 1.0
+    assert len(report["details"]) == 3
+
+
+def test_chart_agent_prod_eval_selection_supports_shuffle_seed():
+    rows = load_cases()
+
+    first = [row["id"] for row in select_cases(rows, only="PROD_TIME", limit=4, shuffle=True, seed=123)]
+    second = [row["id"] for row in select_cases(rows, only="PROD_TIME", limit=4, shuffle=True, seed=123)]
+    unshuffled = [row["id"] for row in select_cases(rows, only="PROD_TIME", limit=4)]
+
+    assert first == second
+    assert first != unshuffled
