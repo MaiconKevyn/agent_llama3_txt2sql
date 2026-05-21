@@ -239,6 +239,27 @@ def test_chart_plan_pie_folds_excess_categories_into_outros():
     assert spec.data[-1]["especialidade"] == "Outros"
 
 
+def test_planner_enriches_chart_with_presentation_metadata():
+    spec = plan_chart(
+        ChartPlanningInput(
+            user_query="gere um grafico de barras",
+            columns=["municipio", "total_internacoes"],
+            column_types={"municipio": "string", "total_internacoes": "number"},
+            rows=[
+                {"municipio": "Porto Alegre", "total_internacoes": 10},
+                {"municipio": "Canoas", "total_internacoes": 8},
+            ],
+            row_count=2,
+        )
+    )
+
+    assert spec.presentation.title == "Total de internacoes por municipio"
+    assert spec.presentation.subtitle == "Ranking por valor"
+    assert spec.presentation.x_label == "Municipio"
+    assert spec.presentation.y_label == "Total de internacoes"
+    assert spec.presentation.summary == "Porto Alegre lidera com 10."
+
+
 def test_pie_chart_excludes_unfilled_clinical_categories_and_warns_user():
     query = "gere um gráfico de pizza com as 6 principais causas de morte"
     plan = build_chart_plan(query, detect_visualization_intent(query))

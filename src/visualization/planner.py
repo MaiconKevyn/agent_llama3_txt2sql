@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from .presentation import enrich_chart_presentation
 from .schema import ChartPlan, ChartPlanningInput, ChartSpec, ChartWarning
 from .text_normalization import normalize_chart_label
 from .validator import validate_chart_spec
@@ -48,7 +49,7 @@ def plan_chart(planning_input: ChartPlanningInput | dict[str, Any]) -> ChartSpec
 
     planned_spec = _plan_from_chart_plan(chart_input.chart_plan, chart_input)
     if planned_spec is not None:
-        return validate_chart_spec(planned_spec, columns, column_types)
+        return _finalize_spec(planned_spec, columns, column_types)
 
     if len(columns) == 1 and numeric_columns:
         spec = ChartSpec(
@@ -60,7 +61,7 @@ def plan_chart(planning_input: ChartPlanningInput | dict[str, Any]) -> ChartSpec
             data=chart_input.rows,
             reason="Resultado escalar numerico; usar KPI.",
         )
-        return validate_chart_spec(spec, columns, column_types)
+        return _finalize_spec(spec, columns, column_types)
 
     if len(chart_input.rows) == 1 and len(numeric_columns) >= 2:
         comparison_columns = _drop_total_metrics_when_breakdown_exists(numeric_columns)
@@ -78,7 +79,7 @@ def plan_chart(planning_input: ChartPlanningInput | dict[str, Any]) -> ChartSpec
             data=metric_rows,
             reason="Resultado escalar com multiplas metricas numericas; usar barras comparativas.",
         )
-        return validate_chart_spec(
+        return _finalize_spec(
             spec,
             ["metrica", "valor"],
             {"metrica": "string", "valor": "number"},
@@ -115,7 +116,7 @@ def plan_chart(planning_input: ChartPlanningInput | dict[str, Any]) -> ChartSpec
             data=series_rows,
             reason="Resultado temporal com multiplas metricas numericas; usar serie comparativa.",
         )
-        return validate_chart_spec(
+        return _finalize_spec(
             spec,
             [temporal_column, "serie", "valor"],
             {temporal_column: "temporal", "serie": "string", "valor": "number"},
@@ -141,7 +142,7 @@ def plan_chart(planning_input: ChartPlanningInput | dict[str, Any]) -> ChartSpec
             reason="Pedido explicito de grafico de proporcao.",
             warnings=warnings,
         )
-        return validate_chart_spec(spec, columns, column_types)
+        return _finalize_spec(spec, columns, column_types)
 
     if len(numeric_columns) >= 2 and chart_input.chart_hint == "scatter":
         spec = ChartSpec(
@@ -154,7 +155,7 @@ def plan_chart(planning_input: ChartPlanningInput | dict[str, Any]) -> ChartSpec
             data=chart_input.rows,
             reason="Pedido explicito de dispersao com duas metricas numericas.",
         )
-        return validate_chart_spec(spec, columns, column_types)
+        return _finalize_spec(spec, columns, column_types)
 
     if temporal_columns and numeric_columns:
         series = categorical_columns[0] if categorical_columns else None
@@ -169,7 +170,7 @@ def plan_chart(planning_input: ChartPlanningInput | dict[str, Any]) -> ChartSpec
             data=chart_input.rows,
             reason="Resultado temporal com metrica numerica.",
         )
-        return validate_chart_spec(spec, columns, column_types)
+        return _finalize_spec(spec, columns, column_types)
 
     if categorical_columns and numeric_columns:
         prepared_data, warnings = _prepare_chart_data_for_spec(
@@ -190,7 +191,7 @@ def plan_chart(planning_input: ChartPlanningInput | dict[str, Any]) -> ChartSpec
             reason="Resultado categorico com metrica numerica.",
             warnings=warnings,
         )
-        return validate_chart_spec(spec, columns, column_types)
+        return _finalize_spec(spec, columns, column_types)
 
     return ChartSpec(
         chartable=False,
@@ -488,3 +489,11 @@ def _build_chart_plan_title(chart_plan: ChartPlan) -> str:
     if chart_plan.x_dimension:
         return f"{metric} por {_humanize(chart_plan.x_dimension)}"
     return metric.capitalize()
+
+
+def _finalize_spec(
+    spec: ChartSpec,
+    columns: list[str],
+    column_types: dict[str, str],
+) -> ChartSpec:
+    return enrich_chart_presentation(validate_chart_spec(spec, columns, column_types))

@@ -5,6 +5,7 @@ from .data import build_chart_planning_input, infer_column_types, normalize_resu
 from .echarts import chart_spec_to_echarts_option
 from .intent import detect_visualization_intent
 from .planner import plan_chart
+from .presentation import enrich_chart_presentation, format_chart_value
 from .schema import (
     ChartPlan,
     ChartPlanningInput,
@@ -26,6 +27,8 @@ __all__ = [
     "build_chart_planning_input",
     "chart_spec_to_echarts_option",
     "detect_visualization_intent",
+    "enrich_chart_presentation",
+    "format_chart_value",
     "infer_column_types",
     "normalize_result_rows",
     "plan_chart",
