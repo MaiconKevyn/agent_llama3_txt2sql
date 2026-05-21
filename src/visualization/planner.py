@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
+from .presentation import enrich_chart_presentation
 from .schema import ChartPlan, ChartPlanningInput, ChartSpec, ChartWarning
 from .text_normalization import normalize_chart_label
 from .validator import validate_chart_spec
 
 MAX_BAR_CATEGORIES = 30
 MAX_PIE_CATEGORIES = 8
+MAX_READABLE_BAR_CATEGORIES = 15
 
 
 def plan_chart(planning_input: ChartPlanningInput | dict[str, Any]) -> ChartSpec:
@@ -48,7 +50,7 @@ def plan_chart(planning_input: ChartPlanningInput | dict[str, Any]) -> ChartSpec
 
     planned_spec = _plan_from_chart_plan(chart_input.chart_plan, chart_input)
     if planned_spec is not None:
-        return validate_chart_spec(planned_spec, columns, column_types)
+        return _finalize_spec(planned_spec, columns, column_types)
 
     if len(columns) == 1 and numeric_columns:
         spec = ChartSpec(
@@ -60,7 +62,7 @@ def plan_chart(planning_input: ChartPlanningInput | dict[str, Any]) -> ChartSpec
             data=chart_input.rows,
             reason="Resultado escalar numerico; usar KPI.",
         )
-        return validate_chart_spec(spec, columns, column_types)
+        return _finalize_spec(spec, columns, column_types)
 
     if len(chart_input.rows) == 1 and len(numeric_columns) >= 2:
         comparison_columns = _drop_total_metrics_when_breakdown_exists(numeric_columns)
@@ -78,7 +80,7 @@ def plan_chart(planning_input: ChartPlanningInput | dict[str, Any]) -> ChartSpec
             data=metric_rows,
             reason="Resultado escalar com multiplas metricas numericas; usar barras comparativas.",
         )
-        return validate_chart_spec(
+        return _finalize_spec(
             spec,
             ["metrica", "valor"],
             {"metrica": "string", "valor": "number"},
@@ -115,7 +117,7 @@ def plan_chart(planning_input: ChartPlanningInput | dict[str, Any]) -> ChartSpec
             data=series_rows,
             reason="Resultado temporal com multiplas metricas numericas; usar serie comparativa.",
         )
-        return validate_chart_spec(
+        return _finalize_spec(
             spec,
             [temporal_column, "serie", "valor"],
             {temporal_column: "temporal", "serie": "string", "valor": "number"},
@@ -141,7 +143,7 @@ def plan_chart(planning_input: ChartPlanningInput | dict[str, Any]) -> ChartSpec
             reason="Pedido explicito de grafico de proporcao.",
             warnings=warnings,
         )
-        return validate_chart_spec(spec, columns, column_types)
+        return _finalize_spec(spec, columns, column_types)
 
     if len(numeric_columns) >= 2 and chart_input.chart_hint == "scatter":
         spec = ChartSpec(
@@ -154,7 +156,7 @@ def plan_chart(planning_input: ChartPlanningInput | dict[str, Any]) -> ChartSpec
             data=chart_input.rows,
             reason="Pedido explicito de dispersao com duas metricas numericas.",
         )
-        return validate_chart_spec(spec, columns, column_types)
+        return _finalize_spec(spec, columns, column_types)
 
     if temporal_columns and numeric_columns:
         series = categorical_columns[0] if categorical_columns else None
@@ -169,7 +171,7 @@ def plan_chart(planning_input: ChartPlanningInput | dict[str, Any]) -> ChartSpec
             data=chart_input.rows,
             reason="Resultado temporal com metrica numerica.",
         )
-        return validate_chart_spec(spec, columns, column_types)
+        return _finalize_spec(spec, columns, column_types)
 
     if categorical_columns and numeric_columns:
         prepared_data, warnings = _prepare_chart_data_for_spec(
@@ -190,7 +192,7 @@ def plan_chart(planning_input: ChartPlanningInput | dict[str, Any]) -> ChartSpec
             reason="Resultado categorico com metrica numerica.",
             warnings=warnings,
         )
-        return validate_chart_spec(spec, columns, column_types)
+        return _finalize_spec(spec, columns, column_types)
 
     return ChartSpec(
         chartable=False,
@@ -332,6 +334,10 @@ def _prepare_chart_data_for_spec(
         )
     if chart_type in {"pie", "donut"}:
         normalized_rows = _limit_pie_categories(normalized_rows, x=x, y=y)
+    if chart_type == "bar" and not series:
+        normalized_rows, bar_warning = _limit_bar_categories(normalized_rows, x=x, y=y)
+        if bar_warning:
+            warnings.append(bar_warning)
     return normalized_rows, warnings
 
 
@@ -357,6 +363,31 @@ def _limit_pie_categories(
     if other_value:
         kept.append({x: "Outros", y: other_value})
     return kept
+
+
+def _limit_bar_categories(
+    rows: list[dict[str, Any]],
+    *,
+    x: str,
+    y: str,
+) -> tuple[list[dict[str, Any]], ChartWarning | None]:
+    categories = {row.get(x) for row in rows}
+    if len(categories) <= MAX_READABLE_BAR_CATEGORIES:
+        return rows, None
+    sorted_rows = sorted(
+        rows,
+        key=lambda row: row.get(y) if isinstance(row.get(y), int | float) else 0,
+        reverse=True,
+    )
+    limited = sorted_rows[:MAX_READABLE_BAR_CATEGORIES]
+    return limited, ChartWarning(
+        code="bar_limited_for_readability",
+        message=(
+            f"Exibindo os {MAX_READABLE_BAR_CATEGORIES} maiores valores "
+            f"de {len(categories)} categorias."
+        ),
+        severity="info",
+    )
 
 
 def _resolve_column_name(name: str | None, column_lookup: dict[str, str]) -> str | None:
@@ -488,3 +519,11 @@ def _build_chart_plan_title(chart_plan: ChartPlan) -> str:
     if chart_plan.x_dimension:
         return f"{metric} por {_humanize(chart_plan.x_dimension)}"
     return metric.capitalize()
+
+
+def _finalize_spec(
+    spec: ChartSpec,
+    columns: list[str],
+    column_types: dict[str, str],
+) -> ChartSpec:
+    return enrich_chart_presentation(validate_chart_spec(spec, columns, column_types))

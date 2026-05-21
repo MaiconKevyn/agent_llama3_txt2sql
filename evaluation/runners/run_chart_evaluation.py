@@ -68,6 +68,8 @@ def evaluate_items(
         "series_expected": 0,
         "echarts_valid": 0,
         "echarts_expected": 0,
+        "presentation_expected": 0,
+        "presentation_correct": 0,
         "agent_expected": 0,
         "agent_success": 0,
         "agent_chart_type_correct": 0,
@@ -132,6 +134,18 @@ def evaluate_items(
                     counts["echarts_expected"] += 1
                     if _echarts_has_series_type(echarts_option, item["expected_echarts_series_type"]):
                         counts["echarts_valid"] += 1
+                if any(
+                    key in item
+                    for key in [
+                        "expected_value_format",
+                        "expected_x_label",
+                        "expected_y_label",
+                        "expected_warning_codes",
+                    ]
+                ):
+                    counts["presentation_expected"] += 1
+                    if _presentation_matches(spec, item):
+                        counts["presentation_correct"] += 1
             except Exception as exc:
                 spec_error = str(exc)
 
@@ -193,6 +207,11 @@ def evaluate_items(
         "echarts_validity": (
             counts["echarts_valid"] / counts["echarts_expected"] if counts["echarts_expected"] else 1.0
         ),
+        "presentation_validity": (
+            counts["presentation_correct"] / counts["presentation_expected"]
+            if counts["presentation_expected"]
+            else 1.0
+        ),
     }
     if run_agent:
         metrics.update(
@@ -241,6 +260,23 @@ def _same_optional_field(actual: str | None, expected: str | None) -> bool:
     if expected is None:
         return actual is None
     return _same_field(actual, expected)
+
+
+def _presentation_matches(spec, item: dict[str, Any]) -> bool:
+    presentation = spec.presentation
+    if item.get("expected_value_format") and presentation.value_format != item["expected_value_format"]:
+        return False
+    if item.get("expected_x_label") and presentation.x_label != item["expected_x_label"]:
+        return False
+    if item.get("expected_y_label") and presentation.y_label != item["expected_y_label"]:
+        return False
+    expected_warning_codes = set(item.get("expected_warning_codes") or [])
+    actual_warning_codes = {warning.code for warning in spec.warnings}
+    if not expected_warning_codes.issubset(actual_warning_codes):
+        return False
+    if spec.chartable and not presentation.title:
+        return False
+    return True
 
 
 def _echarts_has_series_type(option: dict[str, Any] | None, expected_type: str) -> bool:

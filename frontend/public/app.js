@@ -501,10 +501,23 @@ function createChartElement(chartPayload) {
     const header = document.createElement('div');
     header.className = 'chart-header';
 
+    const presentation = spec.presentation || {};
+    const titleGroup = document.createElement('div');
+    titleGroup.className = 'chart-title-group';
+
     const title = document.createElement('div');
     title.className = 'chart-title';
-    title.textContent = spec.title || chartTypeLabel(spec.chart_type);
-    header.appendChild(title);
+    title.textContent = presentation.title || spec.title || chartTypeLabel(spec.chart_type);
+    titleGroup.appendChild(title);
+
+    if (presentation.subtitle) {
+        const subtitle = document.createElement('div');
+        subtitle.className = 'chart-subtitle';
+        subtitle.textContent = presentation.subtitle;
+        titleGroup.appendChild(subtitle);
+    }
+
+    header.appendChild(titleGroup);
 
     const badge = document.createElement('div');
     badge.className = 'chart-type-badge';
@@ -526,6 +539,8 @@ function createChartElement(chartPayload) {
         // Fallback when ECharts is unavailable or the spec is a plain table.
         renderTableChart(container, spec);
     }
+
+    renderChartPresentationNotes(container, echartsOption || {}, spec);
 
     if (Array.isArray(spec.warnings) && spec.warnings.length > 0) {
         const warnings = document.createElement('div');
@@ -564,6 +579,26 @@ function renderECharts(container, echartsOption, spec) {
     renderPerItemLegend(container, echartsOption);
 }
 
+function renderChartPresentationNotes(container, echartsOption, spec) {
+    const presentation = spec.presentation || {};
+    const summary = echartsOption._summary || presentation.summary;
+    const footnote = echartsOption._footnote || presentation.footnote;
+
+    if (summary) {
+        const summaryEl = document.createElement('div');
+        summaryEl.className = 'chart-summary';
+        summaryEl.textContent = summary;
+        container.appendChild(summaryEl);
+    }
+
+    if (footnote) {
+        const footnoteEl = document.createElement('div');
+        footnoteEl.className = 'chart-footnote';
+        footnoteEl.textContent = footnote;
+        container.appendChild(footnoteEl);
+    }
+}
+
 function renderPerItemLegend(container, echartsOption) {
     const legendData = echartsOption._legend;
     if (!Array.isArray(legendData) || legendData.length === 0) return;
@@ -594,7 +629,7 @@ function renderPerItemLegend(container, echartsOption) {
         if (hasMetrics) {
             const metric = document.createElement('span');
             metric.className = 'chart-legend-metric';
-            metric.textContent = formatLegendMetric(legendItem);
+            metric.textContent = formatLegendMetric(legendItem, echartsOption._valueFormat || 'integer');
             item.appendChild(metric);
         }
 
@@ -604,18 +639,45 @@ function renderPerItemLegend(container, echartsOption) {
     container.appendChild(legend);
 }
 
-function formatLegendMetric(item) {
+function formatLegendMetric(item, valueFormat = 'integer') {
     const parts = [];
     if (typeof item.value === 'number' && Number.isFinite(item.value)) {
-        parts.push(item.value.toLocaleString('pt-BR'));
+        parts.push(formatChartValue(item.value, valueFormat));
     }
     if (typeof item.percent === 'number' && Number.isFinite(item.percent)) {
-        parts.push(`${item.percent.toLocaleString('pt-BR', {
-            minimumFractionDigits: item.percent < 10 ? 1 : 0,
-            maximumFractionDigits: 1
-        })}%`);
+        parts.push(formatChartValue(item.percent, 'percent'));
     }
     return parts.join(' / ');
+}
+
+function formatChartValue(value, valueFormat = 'integer') {
+    if (value === null || value === undefined || value === '') return '-';
+    if (typeof value !== 'number' || !Number.isFinite(value)) return String(value);
+
+    if (valueFormat === 'currency_brl') {
+        return value.toLocaleString('pt-BR', {
+            style: 'currency',
+            currency: 'BRL',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
+    if (valueFormat === 'percent') {
+        return `${value.toLocaleString('pt-BR', {
+            minimumFractionDigits: value < 10 ? 2 : 1,
+            maximumFractionDigits: 2
+        })}%`;
+    }
+
+    if (valueFormat === 'decimal') {
+        return value.toLocaleString('pt-BR', {
+            minimumFractionDigits: 1,
+            maximumFractionDigits: 2
+        });
+    }
+
+    return value.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
 }
 
 function renderFallbackTable(container, spec) {

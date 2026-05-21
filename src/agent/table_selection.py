@@ -6,6 +6,8 @@ from typing import Any
 
 from ..utils.logging_config import get_nodes_logger
 from .llamaindex_context import (
+    LlamaIndexRetrievedContext,
+    build_llamaindex_schema_documents,
     normalize_llamaindex_mode,
     retrieve_llamaindex_schema_context,
 )
@@ -54,6 +56,73 @@ def _mentions_supported_socioeconomic_indicator(query_lower: str) -> bool:
     )
 
 
+def _mentions_hospitalization_financial_metric(query_lower: str) -> bool:
+    return bool(
+        re.search(
+            r"\b(?:valor\s+total|receita|faturamento|custos?|gastos?|financeir\w*|val_tot)\b",
+            query_lower,
+        )
+    )
+
+
+def _document_content(document: Any) -> str:
+    if hasattr(document, "get_content"):
+        return str(document.get_content())
+    return str(document)
+
+
+def _schema_context_for_validated_tables(
+    selected_tables: list[str],
+    llama_context: Any,
+) -> tuple[list[str], str]:
+    if not selected_tables:
+        return [], ""
+
+    docs_by_table: dict[str, str] = {}
+    for document in build_llamaindex_schema_documents(selected_tables):
+        metadata = getattr(document, "metadata", {}) or {}
+        table_name = str(metadata.get("table_name") or "")
+        content = _document_content(document).strip()
+        if table_name and content:
+            docs_by_table[table_name] = content
+
+    existing_context_by_table: dict[str, str] = {}
+    for text in getattr(llama_context, "table_context", []) or []:
+        content = str(text).strip()
+        match = re.search(r"^TABLE:\s*([A-Za-z_][\w]*)\b", content, re.M)
+        if match:
+            existing_context_by_table[match.group(1)] = content
+
+    table_context = [
+        docs_by_table.get(table) or existing_context_by_table.get(table) or ""
+        for table in selected_tables
+    ]
+    table_context = [content for content in table_context if content]
+    return table_context, "\n\n".join(table_context)
+
+
+def _validated_llama_context(
+    llama_context: Any,
+    selected_tables: list[str],
+    raw_selected_tables: list[str],
+) -> Any:
+    if not selected_tables or selected_tables == raw_selected_tables:
+        return llama_context
+
+    table_context, schema_context = _schema_context_for_validated_tables(
+        selected_tables,
+        llama_context,
+    )
+    return LlamaIndexRetrievedContext(
+        selected_tables=list(selected_tables),
+        table_context=table_context,
+        schema_context=schema_context,
+        retrieval_mode=getattr(llama_context, "retrieval_mode", "llamaindex_schema"),
+        confidence=float(getattr(llama_context, "confidence", 0.0) or 0.0),
+        error=str(getattr(llama_context, "error", "") or ""),
+    )
+
+
 def _validate_table_selection(
     user_query: str,
     selected_tables: list[str],
@@ -79,6 +148,15 @@ def _validate_table_selection(
                     "Added table for supported socioeconomic indicator",
                     extra={"table": table},
                 )
+    elif _mentions_hospitalization_financial_metric(query_lower):
+        if "socioeconomico" in validated_tables:
+            validated_tables.remove("socioeconomico")
+            logger.info(
+                "Removed 'socioeconomico': financial hospitalization metric uses internacoes"
+            )
+        if "internacoes" not in validated_tables and "internacoes" in active_available:
+            validated_tables.append("internacoes")
+            logger.info("Added 'internacoes' for financial hospitalization metric")
     elif "socioeconomico" in validated_tables and any(
         table in validated_tables
         for table in ("internacoes", "cid", "hospital", "procedimentos", "internacao_procedimento")
@@ -303,6 +381,11 @@ def select_tables_with_llamaindex(
         _validate_table_selection(user_query, raw_selected_tables, tables)
         if raw_selected_tables
         else []
+    )
+    llama_context = _validated_llama_context(
+        llama_context,
+        selected_tables,
+        raw_selected_tables,
     )
     return selected_tables, raw_selected_tables, llama_context
 

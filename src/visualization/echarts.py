@@ -48,14 +48,19 @@ def chart_spec_to_echarts_option(spec: ChartSpec | None) -> dict[str, Any] | Non
 
 
 def _base(spec: ChartSpec) -> dict[str, Any]:
+    presentation = spec.presentation
     return {
         "color": ECHARTS_COLORS,
         "backgroundColor": "transparent",
         "animationDuration": 450,
         "textStyle": {"fontFamily": "Inter, system-ui, sans-serif"},
+        "_valueFormat": presentation.value_format,
+        "_summary": presentation.summary,
+        "_footnote": presentation.footnote,
+        "_subtitle": presentation.subtitle,
         "title": {
             "show": False,
-            "text": spec.title or "",
+            "text": presentation.title or spec.title or "",
             "left": 0,
             "top": 0,
             "textStyle": {"fontSize": 14, "fontWeight": 700, "color": "#101828"},
@@ -70,6 +75,8 @@ def _cartesian(spec: ChartSpec, *, chart_type: str, area: bool = False) -> dict[
     x_values = _unique(row.get(spec.x) for row in rows)
     series_values = _unique(row.get(spec.series) for row in rows) if spec.series else [spec.y]
     x_type = spec.encoding.get("x_type")
+    x_label = spec.presentation.x_label or spec.x or ""
+    y_label = spec.presentation.y_label or spec.y or ""
 
     # Color each bar differently when there's no series dimension; avoids uniform blue.
     # Legend is rendered as HTML below the chart (not inside ECharts canvas) for better UX.
@@ -88,7 +95,7 @@ def _cartesian(spec: ChartSpec, *, chart_type: str, area: bool = False) -> dict[
             },
             "xAxis": {
                 "type": "category",
-                "name": spec.x or "",
+                "name": x_label,
                 "nameLocation": "middle",
                 "nameGap": 34,
                 "data": x_values,
@@ -97,7 +104,7 @@ def _cartesian(spec: ChartSpec, *, chart_type: str, area: bool = False) -> dict[
             },
             "yAxis": {
                 "type": "value",
-                "name": spec.y or "",
+                "name": y_label,
                 "nameGap": 42,
                 "axisLabel": {"color": "#667085"},
                 "splitLine": {"lineStyle": {"color": "rgba(102,112,133,0.18)"}},
@@ -109,14 +116,14 @@ def _cartesian(spec: ChartSpec, *, chart_type: str, area: bool = False) -> dict[
         option["grid"] = {"left": 14, "right": 28, "top": 24, "bottom": 22, "containLabel": True}
         option["xAxis"] = {
             "type": "value",
-            "name": spec.y or "",
+            "name": y_label,
             "nameGap": 30,
             "axisLabel": {"color": "#667085"},
             "splitLine": {"lineStyle": {"color": "rgba(102,112,133,0.18)"}},
         }
         option["yAxis"] = {
             "type": "category",
-            "name": spec.x or "",
+            "name": x_label,
             "nameGap": 46,
             "inverse": True,
             "data": x_values,
@@ -174,14 +181,16 @@ def _cartesian(spec: ChartSpec, *, chart_type: str, area: bool = False) -> dict[
 def _scatter(spec: ChartSpec) -> dict[str, Any]:
     option = _base(spec)
     rows = list(spec.data or [])
+    x_label = spec.presentation.x_label or spec.x or ""
+    y_label = spec.presentation.y_label or spec.y or ""
     option.update(
         {
             "grid": {"left": 56, "right": 18, "top": 54, "bottom": 48, "containLabel": True},
             "tooltip": {"trigger": "item", "confine": True},
-            "xAxis": {"type": "value", "name": spec.x or "", "splitLine": {"show": False}},
+            "xAxis": {"type": "value", "name": x_label, "splitLine": {"show": False}},
             "yAxis": {
                 "type": "value",
-                "name": spec.y or "",
+                "name": y_label,
                 "splitLine": {"lineStyle": {"color": "rgba(102,112,133,0.18)"}},
             },
             "series": [

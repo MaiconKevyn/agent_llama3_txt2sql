@@ -239,6 +239,51 @@ def test_chart_plan_pie_folds_excess_categories_into_outros():
     assert spec.data[-1]["especialidade"] == "Outros"
 
 
+def test_planner_enriches_chart_with_presentation_metadata():
+    spec = plan_chart(
+        ChartPlanningInput(
+            user_query="gere um grafico de barras",
+            columns=["municipio", "total_internacoes"],
+            column_types={"municipio": "string", "total_internacoes": "number"},
+            rows=[
+                {"municipio": "Porto Alegre", "total_internacoes": 10},
+                {"municipio": "Canoas", "total_internacoes": 8},
+            ],
+            row_count=2,
+        )
+    )
+
+    assert spec.presentation.title == "Total de internacoes por municipio"
+    assert spec.presentation.subtitle == "Ranking por valor"
+    assert spec.presentation.x_label == "Municipio"
+    assert spec.presentation.y_label == "Total de internacoes"
+    assert spec.presentation.summary == "Porto Alegre lidera com 10."
+
+
+def test_bar_high_cardinality_is_limited_and_warned_for_readability():
+    rows = [
+        {"municipio": f"Municipio {index:02d}", "total_internacoes": 100 - index}
+        for index in range(35)
+    ]
+
+    spec = plan_chart(
+        ChartPlanningInput(
+            user_query="gere um grafico de barras dos municipios",
+            columns=["municipio", "total_internacoes"],
+            column_types={"municipio": "string", "total_internacoes": "number"},
+            rows=rows,
+            row_count=len(rows),
+        )
+    )
+
+    assert spec.chart_type == "bar"
+    assert len(spec.data) == 15
+    assert spec.data[0]["municipio"] == "Municipio 00"
+    assert spec.data[-1]["municipio"] == "Municipio 14"
+    assert any(warning.code == "bar_limited_for_readability" for warning in spec.warnings)
+    assert spec.presentation.footnote == "Exibindo os 15 maiores valores de 35 categorias."
+
+
 def test_pie_chart_excludes_unfilled_clinical_categories_and_warns_user():
     query = "gere um gráfico de pizza com as 6 principais causas de morte"
     plan = build_chart_plan(query, detect_visualization_intent(query))

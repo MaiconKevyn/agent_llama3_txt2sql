@@ -5,12 +5,21 @@ from .data import build_chart_planning_input, infer_column_types, normalize_resu
 from .echarts import chart_spec_to_echarts_option
 from .intent import detect_visualization_intent
 from .planner import plan_chart
-from .schema import ChartPlan, ChartPlanningInput, ChartSpec, ChartWarning, VisualizationIntent
+from .presentation import enrich_chart_presentation, format_chart_value
+from .schema import (
+    ChartPlan,
+    ChartPlanningInput,
+    ChartPresentation,
+    ChartSpec,
+    ChartWarning,
+    VisualizationIntent,
+)
 from .validator import validate_chart_spec
 
 __all__ = [
     "ChartPlan",
     "ChartPlanningInput",
+    "ChartPresentation",
     "ChartSpec",
     "ChartWarning",
     "VisualizationIntent",
@@ -18,6 +27,8 @@ __all__ = [
     "build_chart_planning_input",
     "chart_spec_to_echarts_option",
     "detect_visualization_intent",
+    "enrich_chart_presentation",
+    "format_chart_value",
     "infer_column_types",
     "normalize_result_rows",
     "plan_chart",
