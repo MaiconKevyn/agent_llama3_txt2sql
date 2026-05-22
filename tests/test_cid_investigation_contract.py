@@ -1,4 +1,9 @@
+import json
 from pathlib import Path
+
+
+def _load_jsonl(path: str):
+    return [json.loads(line) for line in Path(path).read_text().splitlines() if line.strip()]
 
 
 def test_cid_investigation_files_exist():
@@ -15,3 +20,35 @@ def test_cid_baseline_script_documents_required_sql_contracts():
     assert "DS_GRUPO" in source
     assert "DS_CATEGORIA" in source
     assert "DIAG_PRINC = c.CID" in source
+
+
+def test_cid_probe_cases_have_required_coverage():
+    cases = _load_jsonl("evaluation/cid_investigation/cid_probe_cases.jsonl")
+    assert len(cases) >= 80
+    focuses = {case["focus"] for case in cases}
+    assert "cid_structure" in focuses
+    assert "cid_lookup" in focuses
+    assert "disease_resolution" in focuses
+    assert "cid_join_aggregation" in focuses
+    assert "cid_join_disease_family" in focuses
+    assert "ambiguity" in focuses
+
+
+def test_cid_probe_cases_never_target_dbt_audit_tables():
+    cases = _load_jsonl("evaluation/cid_investigation/cid_probe_cases.jsonl")
+    for case in cases:
+        required = case.get("required_tables", [])
+        forbidden = case.get("forbidden_tables", [])
+        assert all("dbt" not in table for table in required)
+        assert "main_dbt_test__audit" in forbidden or case["focus"] != "cid_structure"
+
+
+def test_cid_gold_sql_uses_only_allowed_cid_join_for_business_questions():
+    gold = _load_jsonl("evaluation/cid_investigation/cid_gold_sql.jsonl")
+    business_join_cases = [item for item in gold if "internacoes" in item.get("required_tables", [])]
+    assert business_join_cases
+    for item in business_join_cases:
+        sql = item["sql"]
+        assert "DIAG_PRINC" in sql
+        assert "DIAG_SECUN" not in sql
+        assert "CID_MORTE" not in sql
