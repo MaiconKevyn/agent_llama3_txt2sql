@@ -1,0 +1,2049 @@
+{
+  "created_at": "2026-05-22T00:03:46.447459",
+  "items": [
+    {
+      "anti_overfit_family": "target_exact",
+      "expected_concepts": [
+        "child_age_policy",
+        "respiratory_cid",
+        "death_outcome",
+        "last_n_available_years"
+      ],
+      "expected_intent": {
+        "presentation": "chart",
+        "task": "trend"
+      },
+      "expected_tables": [
+        "internacoes"
+      ],
+      "family": "respiratory_child_deaths_last_n_years",
+      "id": "resp_child_deaths_chart_001",
+      "judge": "sql_result_equivalence_and_chart_contract",
+      "judgement": {
+        "chart_sql_message": null,
+        "chart_sql_valid": true,
+        "family": "respiratory_child_deaths_last_n_years",
+        "judge": "sql_result_equivalence_and_chart_contract",
+        "missing": [],
+        "passed": true,
+        "resolved_concepts": [
+          "child_age_policy",
+          "death_outcome",
+          "diagnosis_lookup",
+          "last_n_available_years",
+          "respiratory_cid",
+          "year"
+        ]
+      },
+      "persona": "common_user",
+      "question": "gere um grafico mostrando o numero de mortes de crianca por causas respiratorias nos ultimos 5 anos",
+      "status": "passed",
+      "trace": {
+        "chart_plan": {
+          "chart_type": "line",
+          "expected_result_shape": "time_metric",
+          "filters": [
+            {
+              "field": "MORTE",
+              "operator": "=",
+              "semantic": "death outcome",
+              "values": [
+                true
+              ]
+            }
+          ],
+          "grain": "ano",
+          "metric": "total_mortes",
+          "metric_expression": "COUNT rows where \"MORTE\" = true",
+          "reason": "structured chart parameters extracted before SQL generation",
+          "requested": true,
+          "required_columns": [
+            "ano",
+            "total_mortes"
+          ],
+          "sql_shape_guidance": "Return one row per ano with columns: ano, total_mortes. For the time window: take the last 5 available years anchored on MAX(EXTRACT(YEAR FROM DT_INTER)) from internacoes, then keep all years where EXTRACT(YEAR FROM DT_INTER) >= MAX_YEAR - 4. Do not collapse to a single year and do not use CURRENT_DATE/NOW().",
+          "time_window": {
+            "date_column": "DT_INTER",
+            "n": 5,
+            "type": "last_n_available_years"
+          },
+          "x_dimension": "ano",
+          "y_column": "total_mortes"
+        },
+        "chart_sql_message": null,
+        "chart_sql_valid": true,
+        "generated_chart_sql": "SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_mortes FROM internacoes i  WHERE i.\"DT_INTER\" IS NOT NULL AND (i.\"DIAG_PRINC\" LIKE 'J%') AND i.\"IDADE\" < 18 AND i.\"MORTE\" = true AND EXTRACT(YEAR FROM i.\"DT_INTER\") >= (SELECT MAX(EXTRACT(YEAR FROM \"DT_INTER\")) FROM internacoes) - 4 GROUP BY EXTRACT(YEAR FROM i.\"DT_INTER\") ORDER BY ano ASC;",
+        "intent_plan": {
+          "cohort_slots": [
+            {
+              "caveat": "semantic population policy applied",
+              "filters": [
+                {
+                  "field": "idade",
+                  "operator": "<",
+                  "values": [
+                    "18"
+                  ]
+                }
+              ],
+              "name": "population_group"
+            }
+          ],
+          "concept_slots": [
+            {
+              "concept_type": "clinical",
+              "filters": [
+                {
+                  "field": "diagnostico_principal_prefix",
+                  "operator": "LIKE",
+                  "values": [
+                    "J%"
+                  ]
+                },
+                {
+                  "field": "diagnostico_conceito_label",
+                  "operator": "metadata",
+                  "values": [
+                    "CID J00-J99 - Doencas do aparelho respiratorio"
+                  ]
+                }
+              ],
+              "name": "clinical_concept"
+            }
+          ],
+          "grouping_slots": [
+            {
+              "name": "ano"
+            }
+          ],
+          "metric_slots": [
+            {
+              "expression_type": "count",
+              "name": "total_mortes",
+              "required_filters": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "persona_hint": "common_user",
+          "presentation": "chart",
+          "primary_task": "trend",
+          "requested_tools": [],
+          "requires_clarification": false,
+          "temporal_scope": {
+            "date_column": "DT_INTER",
+            "n": 5,
+            "type": "last_n_available_years"
+          },
+          "uncertainty": [],
+          "user_question": "gere um grafico mostrando o numero de mortes de crianca por causas respiratorias nos ultimos 5 anos"
+        },
+        "plan_audit": {
+          "errors": [],
+          "passed": true,
+          "resolved_concepts": [
+            "child_age_policy",
+            "respiratory_cid",
+            "death_outcome",
+            "last_n_available_years"
+          ]
+        },
+        "resolved_concepts": [
+          "child_age_policy",
+          "death_outcome",
+          "diagnosis_lookup",
+          "last_n_available_years",
+          "respiratory_cid",
+          "year"
+        ],
+        "semantic_plan": {
+          "ambiguities": [],
+          "answer_shape": {
+            "answer_kind": "time_series",
+            "expected_row_count": "one_per_group",
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": [],
+            "include_unknown_bucket": false,
+            "output_dimensions": [
+              "ano"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "required_dimensions": [
+              "ano"
+            ],
+            "requires_group_by": true,
+            "row_grain": "time_series",
+            "top_n_scope": "none"
+          },
+          "base_grain": "internacao",
+          "constraints": [
+            "relative_recent_years_use_available_data_max_year"
+          ],
+          "dimensions": [
+            {
+              "name": "ano",
+              "role": "group",
+              "source": "EXTRACT(YEAR FROM internacoes.DT_INTER)"
+            }
+          ],
+          "filters": [
+            {
+              "field": "recent_years_available",
+              "operator": "last_n_available",
+              "values": [
+                "5"
+              ]
+            },
+            {
+              "field": "diagnostico_principal_prefix",
+              "operator": "LIKE",
+              "values": [
+                "J%"
+              ]
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "operator": "metadata",
+              "values": [
+                "CID J00-J99 - Doencas do aparelho respiratorio"
+              ]
+            },
+            {
+              "field": "idade",
+              "operator": "<",
+              "values": [
+                "18"
+              ]
+            },
+            {
+              "field": "desfecho",
+              "operator": "semantic",
+              "values": [
+                "MORTE = true"
+              ]
+            },
+            {
+              "field": "diagnostico_conceito_termo_expandido",
+              "operator": "metadata",
+              "values": [
+                "doenca respiratoria",
+                "doenca pulmonar",
+                "cid j"
+              ]
+            }
+          ],
+          "intent": "trend",
+          "metrics": [
+            {
+              "expression_type": "count",
+              "name": "total",
+              "required_filters": []
+            }
+          ],
+          "null_policy": []
+        }
+      }
+    },
+    {
+      "anti_overfit_family": "paraphrase_a",
+      "expected_concepts": [
+        "child_age_policy",
+        "respiratory_cid",
+        "death_outcome",
+        "last_n_available_years"
+      ],
+      "expected_intent": {
+        "presentation": "chart",
+        "task": "trend"
+      },
+      "expected_tables": [
+        "internacoes"
+      ],
+      "family": "respiratory_child_deaths_last_n_years",
+      "id": "resp_child_deaths_chart_002",
+      "judge": "sql_result_equivalence_and_chart_contract",
+      "judgement": {
+        "chart_sql_message": null,
+        "chart_sql_valid": true,
+        "family": "respiratory_child_deaths_last_n_years",
+        "judge": "sql_result_equivalence_and_chart_contract",
+        "missing": [],
+        "passed": true,
+        "resolved_concepts": [
+          "child_age_policy",
+          "death_outcome",
+          "diagnosis_lookup",
+          "last_n_available_years",
+          "respiratory_cid",
+          "year"
+        ]
+      },
+      "persona": "clinician",
+      "question": "Grafico com obitos pediatricos por doencas respiratorias nos 5 anos mais recentes.",
+      "status": "passed",
+      "trace": {
+        "chart_plan": {
+          "chart_type": "line",
+          "expected_result_shape": "time_metric",
+          "filters": [
+            {
+              "field": "MORTE",
+              "operator": "=",
+              "semantic": "death outcome",
+              "values": [
+                true
+              ]
+            }
+          ],
+          "grain": "ano",
+          "metric": "total_mortes",
+          "metric_expression": "COUNT rows where \"MORTE\" = true",
+          "reason": "structured chart parameters extracted before SQL generation",
+          "requested": true,
+          "required_columns": [
+            "ano",
+            "total_mortes"
+          ],
+          "sql_shape_guidance": "Return one row per ano with columns: ano, total_mortes. For the time window: take the last 5 available years anchored on MAX(EXTRACT(YEAR FROM DT_INTER)) from internacoes, then keep all years where EXTRACT(YEAR FROM DT_INTER) >= MAX_YEAR - 4. Do not collapse to a single year and do not use CURRENT_DATE/NOW().",
+          "time_window": {
+            "date_column": "DT_INTER",
+            "n": 5,
+            "type": "last_n_available_years"
+          },
+          "x_dimension": "ano",
+          "y_column": "total_mortes"
+        },
+        "chart_sql_message": null,
+        "chart_sql_valid": true,
+        "generated_chart_sql": "SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, c.\"DESCRICAO\" AS diagnostico, COUNT(*) AS total_mortes FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"DT_INTER\" IS NOT NULL AND c.\"DESCRICAO\" IS NOT NULL AND TRIM(c.\"DESCRICAO\") <> '' AND c.\"DESCRICAO\" NOT IN ('Nao preenchido', 'Nao informado') AND (i.\"DIAG_PRINC\" LIKE 'J%') AND i.\"IDADE\" < 18 AND i.\"MORTE\" = true AND EXTRACT(YEAR FROM i.\"DT_INTER\") >= (SELECT MAX(EXTRACT(YEAR FROM \"DT_INTER\")) FROM internacoes) - 4 GROUP BY EXTRACT(YEAR FROM i.\"DT_INTER\"), c.\"DESCRICAO\" ORDER BY ano ASC;",
+        "intent_plan": {
+          "cohort_slots": [
+            {
+              "caveat": "semantic population policy applied",
+              "filters": [
+                {
+                  "field": "idade",
+                  "operator": "<",
+                  "values": [
+                    "18"
+                  ]
+                }
+              ],
+              "name": "population_group"
+            }
+          ],
+          "concept_slots": [
+            {
+              "concept_type": "clinical",
+              "filters": [
+                {
+                  "field": "diagnostico_principal_prefix",
+                  "operator": "LIKE",
+                  "values": [
+                    "J%"
+                  ]
+                },
+                {
+                  "field": "diagnostico_conceito_label",
+                  "operator": "metadata",
+                  "values": [
+                    "CID J00-J99 - Doencas do aparelho respiratorio"
+                  ]
+                }
+              ],
+              "name": "clinical_concept"
+            }
+          ],
+          "grouping_slots": [
+            {
+              "name": "ano"
+            }
+          ],
+          "metric_slots": [
+            {
+              "expression_type": "count",
+              "name": "total_mortes",
+              "required_filters": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "persona_hint": "common_user",
+          "presentation": "chart",
+          "primary_task": "trend",
+          "requested_tools": [],
+          "requires_clarification": false,
+          "temporal_scope": {
+            "date_column": "DT_INTER",
+            "n": 5,
+            "type": "last_n_available_years"
+          },
+          "uncertainty": [],
+          "user_question": "Grafico com obitos pediatricos por doencas respiratorias nos 5 anos mais recentes."
+        },
+        "plan_audit": {
+          "errors": [],
+          "passed": true,
+          "resolved_concepts": [
+            "child_age_policy",
+            "respiratory_cid",
+            "death_outcome",
+            "last_n_available_years"
+          ]
+        },
+        "resolved_concepts": [
+          "child_age_policy",
+          "death_outcome",
+          "diagnosis_lookup",
+          "last_n_available_years",
+          "respiratory_cid",
+          "year"
+        ],
+        "semantic_plan": {
+          "ambiguities": [],
+          "answer_shape": {
+            "answer_kind": "time_series",
+            "expected_row_count": "one_per_group",
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": [],
+            "include_unknown_bucket": false,
+            "output_dimensions": [
+              "diagnostico",
+              "ano"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "required_dimensions": [
+              "diagnostico",
+              "ano"
+            ],
+            "requires_group_by": true,
+            "row_grain": "time_series",
+            "top_n_scope": "none"
+          },
+          "base_grain": "internacao",
+          "constraints": [
+            "relative_recent_years_use_available_data_max_year"
+          ],
+          "dimensions": [
+            {
+              "name": "diagnostico",
+              "role": "group",
+              "source": "cid.DESCRICAO"
+            },
+            {
+              "name": "ano",
+              "role": "group",
+              "source": "EXTRACT(YEAR FROM internacoes.DT_INTER)"
+            }
+          ],
+          "filters": [
+            {
+              "field": "recent_years_available",
+              "operator": "last_n_available",
+              "values": [
+                "5"
+              ]
+            },
+            {
+              "field": "diagnostico_principal_prefix",
+              "operator": "LIKE",
+              "values": [
+                "J%"
+              ]
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "operator": "metadata",
+              "values": [
+                "CID J00-J99 - Doencas do aparelho respiratorio"
+              ]
+            },
+            {
+              "field": "idade",
+              "operator": "<",
+              "values": [
+                "18"
+              ]
+            },
+            {
+              "field": "desfecho",
+              "operator": "semantic",
+              "values": [
+                "MORTE = true"
+              ]
+            },
+            {
+              "field": "diagnostico_conceito_termo_expandido",
+              "operator": "metadata",
+              "values": [
+                "doenca respiratoria",
+                "doenca pulmonar",
+                "cid j"
+              ]
+            }
+          ],
+          "intent": "trend",
+          "metrics": [
+            {
+              "expression_type": "count",
+              "name": "total_mortes",
+              "required_filters": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "null_policy": []
+        }
+      }
+    },
+    {
+      "anti_overfit_family": "paraphrase_b",
+      "expected_concepts": [
+        "child_age_policy",
+        "respiratory_cid",
+        "death_outcome"
+      ],
+      "expected_intent": {
+        "presentation": "text",
+        "task": "trend"
+      },
+      "expected_tables": [
+        "internacoes"
+      ],
+      "family": "respiratory_child_deaths_last_n_years",
+      "id": "resp_child_deaths_chart_003",
+      "judge": "sql_result_equivalence",
+      "judgement": {
+        "chart_sql_message": null,
+        "chart_sql_valid": true,
+        "family": "respiratory_child_deaths_last_n_years",
+        "judge": "sql_result_equivalence",
+        "missing": [
+          "task:ranking!=trend",
+          "plan_audit:missing_respiratory_cid_resolution"
+        ],
+        "passed": false,
+        "resolved_concepts": [
+          "child_age_policy",
+          "death_outcome",
+          "diagnosis_lookup",
+          "respiratory_cid",
+          "year"
+        ]
+      },
+      "persona": "researcher",
+      "question": "Mostre a serie anual de mortes de menores de 18 anos por CID respiratorio.",
+      "status": "failed",
+      "trace": {
+        "chart_plan": {
+          "chart_type": "auto",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "grain": "unknown",
+          "reason": "visualization not requested",
+          "requested": false,
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "time_window": {
+            "date_column": "DT_INTER",
+            "type": "none"
+          }
+        },
+        "chart_sql_message": null,
+        "chart_sql_valid": true,
+        "generated_chart_sql": null,
+        "intent_plan": {
+          "cohort_slots": [
+            {
+              "caveat": "semantic population policy applied",
+              "filters": [
+                {
+                  "field": "idade",
+                  "operator": "<",
+                  "values": [
+                    "18"
+                  ]
+                }
+              ],
+              "name": "population_group"
+            }
+          ],
+          "concept_slots": [],
+          "grouping_slots": [
+            {
+              "name": "ano"
+            }
+          ],
+          "metric_slots": [
+            {
+              "expression_type": "count",
+              "name": "total_mortes",
+              "required_filters": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "persona_hint": "common_user",
+          "presentation": "text",
+          "primary_task": "ranking",
+          "requested_tools": [],
+          "requires_clarification": false,
+          "temporal_scope": {
+            "date_column": "DT_INTER",
+            "type": "none"
+          },
+          "uncertainty": [],
+          "user_question": "Mostre a serie anual de mortes de menores de 18 anos por CID respiratorio."
+        },
+        "plan_audit": {
+          "errors": [
+            {
+              "code": "missing_respiratory_cid_resolution",
+              "layer": "semantic_resolution",
+              "message": "Respiratory query must resolve to a diagnosis prefix such as J%."
+            }
+          ],
+          "passed": false,
+          "resolved_concepts": [
+            "death_outcome"
+          ]
+        },
+        "resolved_concepts": [
+          "child_age_policy",
+          "death_outcome",
+          "diagnosis_lookup",
+          "respiratory_cid",
+          "year"
+        ],
+        "semantic_plan": {
+          "ambiguities": [],
+          "answer_shape": {
+            "answer_kind": "time_series",
+            "expected_row_count": "one_per_group",
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": [],
+            "include_unknown_bucket": false,
+            "output_dimensions": [
+              "diagnostico",
+              "ano"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "required_dimensions": [
+              "diagnostico",
+              "ano"
+            ],
+            "requires_group_by": true,
+            "row_grain": "time_series",
+            "top_n_scope": "none"
+          },
+          "base_grain": "internacao",
+          "constraints": [
+            "diagnosis_description_lookup_required",
+            "death_cause_description_requires_diag_princ_with_morte"
+          ],
+          "dimensions": [
+            {
+              "name": "diagnostico",
+              "role": "group",
+              "source": "cid.DESCRICAO"
+            },
+            {
+              "name": "ano",
+              "role": "group",
+              "source": "EXTRACT(YEAR FROM internacoes.DT_INTER)"
+            }
+          ],
+          "filters": [
+            {
+              "field": "idade",
+              "operator": "<",
+              "values": [
+                "18"
+              ]
+            },
+            {
+              "field": "diagnostico_principal_descricao",
+              "operator": "ILIKE",
+              "values": [
+                "menores de 18 anos por cid respiratorio"
+              ]
+            },
+            {
+              "field": "desfecho",
+              "operator": "semantic",
+              "values": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "intent": "trend",
+          "metrics": [
+            {
+              "expression_type": "count",
+              "name": "total_mortes",
+              "required_filters": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "null_policy": []
+        }
+      }
+    },
+    {
+      "anti_overfit_family": "near_miss",
+      "expected_concepts": [
+        "child_age_policy",
+        "death_outcome",
+        "last_n_available_years"
+      ],
+      "expected_intent": {
+        "presentation": "text",
+        "task": "trend"
+      },
+      "expected_tables": [
+        "internacoes"
+      ],
+      "family": "near_miss_not_respiratory",
+      "id": "near_miss_external_causes_001",
+      "judge": "no_respiratory_overtrigger",
+      "judgement": {
+        "chart_sql_message": null,
+        "chart_sql_valid": true,
+        "family": "near_miss_not_respiratory",
+        "judge": "no_respiratory_overtrigger",
+        "missing": [],
+        "passed": true,
+        "resolved_concepts": [
+          "child_age_policy",
+          "death_outcome",
+          "diagnosis_lookup",
+          "last_n_available_years",
+          "year"
+        ]
+      },
+      "persona": "clinician",
+      "question": "Mortes por causas externas em criancas nos ultimos 5 anos",
+      "status": "passed",
+      "trace": {
+        "chart_plan": {
+          "chart_type": "auto",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "grain": "unknown",
+          "reason": "visualization not requested",
+          "requested": false,
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "time_window": {
+            "date_column": "DT_INTER",
+            "type": "none"
+          }
+        },
+        "chart_sql_message": null,
+        "chart_sql_valid": true,
+        "generated_chart_sql": null,
+        "intent_plan": {
+          "cohort_slots": [
+            {
+              "caveat": "semantic population policy applied",
+              "filters": [
+                {
+                  "field": "idade",
+                  "operator": "<",
+                  "values": [
+                    "18"
+                  ]
+                }
+              ],
+              "name": "population_group"
+            }
+          ],
+          "concept_slots": [],
+          "grouping_slots": [
+            {
+              "name": "ano"
+            }
+          ],
+          "metric_slots": [
+            {
+              "expression_type": "count",
+              "name": "total_mortes",
+              "required_filters": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "persona_hint": "common_user",
+          "presentation": "text",
+          "primary_task": "trend",
+          "requested_tools": [],
+          "requires_clarification": false,
+          "temporal_scope": {
+            "date_column": "DT_INTER",
+            "n": 5,
+            "type": "last_n_available_years"
+          },
+          "uncertainty": [],
+          "user_question": "Mortes por causas externas em criancas nos ultimos 5 anos"
+        },
+        "plan_audit": {
+          "errors": [],
+          "passed": true,
+          "resolved_concepts": [
+            "child_age_policy",
+            "death_outcome",
+            "last_n_available_years"
+          ]
+        },
+        "resolved_concepts": [
+          "child_age_policy",
+          "death_outcome",
+          "diagnosis_lookup",
+          "last_n_available_years",
+          "year"
+        ],
+        "semantic_plan": {
+          "ambiguities": [],
+          "answer_shape": {
+            "answer_kind": "time_series",
+            "expected_row_count": "one_per_group",
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": [],
+            "include_unknown_bucket": false,
+            "output_dimensions": [
+              "ano"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "required_dimensions": [
+              "ano"
+            ],
+            "requires_group_by": true,
+            "row_grain": "time_series",
+            "top_n_scope": "none"
+          },
+          "base_grain": "internacao",
+          "constraints": [
+            "relative_recent_years_use_available_data_max_year",
+            "diagnosis_description_lookup_required",
+            "death_cause_description_requires_diag_princ_with_morte"
+          ],
+          "dimensions": [
+            {
+              "name": "ano",
+              "role": "group",
+              "source": "EXTRACT(YEAR FROM internacoes.DT_INTER)"
+            }
+          ],
+          "filters": [
+            {
+              "field": "recent_years_available",
+              "operator": "last_n_available",
+              "values": [
+                "5"
+              ]
+            },
+            {
+              "field": "idade",
+              "operator": "<",
+              "values": [
+                "18"
+              ]
+            },
+            {
+              "field": "diagnostico_principal_descricao",
+              "operator": "ILIKE",
+              "values": [
+                "causas externas criancas nos ultimos 5 anos"
+              ]
+            },
+            {
+              "field": "desfecho",
+              "operator": "semantic",
+              "values": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "intent": "trend",
+          "metrics": [
+            {
+              "expression_type": "count",
+              "name": "total_mortes",
+              "required_filters": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "null_policy": []
+        }
+      }
+    },
+    {
+      "anti_overfit_family": "near_miss",
+      "expected_concepts": [
+        "child_age_policy",
+        "respiratory_cid",
+        "last_n_available_years"
+      ],
+      "expected_intent": {
+        "presentation": "text",
+        "task": "trend"
+      },
+      "expected_tables": [
+        "internacoes"
+      ],
+      "family": "near_miss_not_death",
+      "id": "near_miss_admissions_not_deaths_001",
+      "judge": "no_death_overtrigger",
+      "judgement": {
+        "chart_sql_message": null,
+        "chart_sql_valid": true,
+        "family": "near_miss_not_death",
+        "judge": "no_death_overtrigger",
+        "missing": [],
+        "passed": true,
+        "resolved_concepts": [
+          "child_age_policy",
+          "diagnosis_lookup",
+          "last_n_available_years",
+          "respiratory_cid",
+          "year"
+        ]
+      },
+      "persona": "common_user",
+      "question": "Internacoes de criancas por causas respiratorias nos ultimos 5 anos",
+      "status": "passed",
+      "trace": {
+        "chart_plan": {
+          "chart_type": "auto",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "grain": "unknown",
+          "reason": "visualization not requested",
+          "requested": false,
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "time_window": {
+            "date_column": "DT_INTER",
+            "type": "none"
+          }
+        },
+        "chart_sql_message": null,
+        "chart_sql_valid": true,
+        "generated_chart_sql": null,
+        "intent_plan": {
+          "cohort_slots": [
+            {
+              "caveat": "semantic population policy applied",
+              "filters": [
+                {
+                  "field": "idade",
+                  "operator": "<",
+                  "values": [
+                    "18"
+                  ]
+                }
+              ],
+              "name": "population_group"
+            }
+          ],
+          "concept_slots": [
+            {
+              "concept_type": "clinical",
+              "filters": [
+                {
+                  "field": "diagnostico_principal_prefix",
+                  "operator": "LIKE",
+                  "values": [
+                    "J%"
+                  ]
+                },
+                {
+                  "field": "diagnostico_conceito_label",
+                  "operator": "metadata",
+                  "values": [
+                    "CID J00-J99 - Doencas do aparelho respiratorio"
+                  ]
+                }
+              ],
+              "name": "clinical_concept"
+            }
+          ],
+          "grouping_slots": [
+            {
+              "name": "ano"
+            }
+          ],
+          "metric_slots": [
+            {
+              "expression_type": "count",
+              "name": "total_internacoes",
+              "required_filters": []
+            }
+          ],
+          "persona_hint": "common_user",
+          "presentation": "text",
+          "primary_task": "trend",
+          "requested_tools": [],
+          "requires_clarification": false,
+          "temporal_scope": {
+            "date_column": "DT_INTER",
+            "n": 5,
+            "type": "last_n_available_years"
+          },
+          "uncertainty": [],
+          "user_question": "Internacoes de criancas por causas respiratorias nos ultimos 5 anos"
+        },
+        "plan_audit": {
+          "errors": [],
+          "passed": true,
+          "resolved_concepts": [
+            "child_age_policy",
+            "respiratory_cid",
+            "last_n_available_years"
+          ]
+        },
+        "resolved_concepts": [
+          "child_age_policy",
+          "diagnosis_lookup",
+          "last_n_available_years",
+          "respiratory_cid",
+          "year"
+        ],
+        "semantic_plan": {
+          "ambiguities": [],
+          "answer_shape": {
+            "answer_kind": "time_series",
+            "expected_row_count": "one_per_group",
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": [],
+            "include_unknown_bucket": false,
+            "output_dimensions": [
+              "ano"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "required_dimensions": [
+              "ano"
+            ],
+            "requires_group_by": true,
+            "row_grain": "time_series",
+            "top_n_scope": "none"
+          },
+          "base_grain": "internacao",
+          "constraints": [
+            "relative_recent_years_use_available_data_max_year"
+          ],
+          "dimensions": [
+            {
+              "name": "ano",
+              "role": "group",
+              "source": "EXTRACT(YEAR FROM internacoes.DT_INTER)"
+            }
+          ],
+          "filters": [
+            {
+              "field": "recent_years_available",
+              "operator": "last_n_available",
+              "values": [
+                "5"
+              ]
+            },
+            {
+              "field": "diagnostico_principal_prefix",
+              "operator": "LIKE",
+              "values": [
+                "J%"
+              ]
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "operator": "metadata",
+              "values": [
+                "CID J00-J99 - Doencas do aparelho respiratorio"
+              ]
+            },
+            {
+              "field": "idade",
+              "operator": "<",
+              "values": [
+                "18"
+              ]
+            },
+            {
+              "field": "diagnostico_conceito_termo_expandido",
+              "operator": "metadata",
+              "values": [
+                "doenca respiratoria",
+                "doenca pulmonar",
+                "cid j"
+              ]
+            }
+          ],
+          "intent": "trend",
+          "metrics": [
+            {
+              "expression_type": "count",
+              "name": "total",
+              "required_filters": []
+            }
+          ],
+          "null_policy": []
+        }
+      }
+    },
+    {
+      "anti_overfit_family": "direct",
+      "expected_concepts": [
+        "death_outcome",
+        "diagnosis_lookup",
+        "year"
+      ],
+      "expected_intent": {
+        "presentation": "text",
+        "task": "direct_metric"
+      },
+      "expected_tables": [
+        "internacoes",
+        "cid"
+      ],
+      "family": "direct_mortality_metric",
+      "id": "direct_mortality_001",
+      "judge": "sql_result_equivalence",
+      "judgement": {
+        "chart_sql_message": null,
+        "chart_sql_valid": true,
+        "family": "direct_mortality_metric",
+        "judge": "sql_result_equivalence",
+        "missing": [
+          "concept:diagnosis_lookup"
+        ],
+        "passed": false,
+        "resolved_concepts": [
+          "death_outcome",
+          "year"
+        ]
+      },
+      "persona": "common_user",
+      "question": "Quantas mortes hospitalares por pneumonia ocorreram em 2021?",
+      "status": "failed",
+      "trace": {
+        "chart_plan": {
+          "chart_type": "auto",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "grain": "unknown",
+          "reason": "visualization not requested",
+          "requested": false,
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "time_window": {
+            "date_column": "DT_INTER",
+            "type": "none"
+          }
+        },
+        "chart_sql_message": null,
+        "chart_sql_valid": true,
+        "generated_chart_sql": null,
+        "intent_plan": {
+          "cohort_slots": [],
+          "concept_slots": [],
+          "grouping_slots": [],
+          "metric_slots": [
+            {
+              "expression_type": "count",
+              "name": "total_mortes",
+              "required_filters": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "persona_hint": "manager",
+          "presentation": "text",
+          "primary_task": "direct_metric",
+          "requested_tools": [],
+          "requires_clarification": false,
+          "temporal_scope": {
+            "date_column": "DT_INTER",
+            "end_year": 2021,
+            "start_year": 2021,
+            "type": "year"
+          },
+          "uncertainty": [],
+          "user_question": "Quantas mortes hospitalares por pneumonia ocorreram em 2021?"
+        },
+        "plan_audit": {
+          "errors": [],
+          "passed": true,
+          "resolved_concepts": [
+            "death_outcome"
+          ]
+        },
+        "resolved_concepts": [
+          "death_outcome",
+          "year"
+        ],
+        "semantic_plan": {
+          "ambiguities": [],
+          "answer_shape": {
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": [],
+            "include_unknown_bucket": false,
+            "output_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "required_dimensions": [],
+            "requires_group_by": false,
+            "row_grain": "single_scalar",
+            "top_n_scope": "none"
+          },
+          "base_grain": "internacao",
+          "constraints": [],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "operator": "=",
+              "values": [
+                "2021"
+              ]
+            },
+            {
+              "field": "desfecho",
+              "operator": "semantic",
+              "values": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "intent": "count",
+          "metrics": [
+            {
+              "expression_type": "count",
+              "name": "total",
+              "required_filters": []
+            }
+          ],
+          "null_policy": []
+        }
+      }
+    },
+    {
+      "anti_overfit_family": "chart",
+      "expected_concepts": [
+        "age_band"
+      ],
+      "expected_intent": {
+        "presentation": "chart",
+        "task": "breakdown"
+      },
+      "expected_tables": [
+        "internacoes"
+      ],
+      "family": "demographic_breakdown",
+      "id": "chart_age_breakdown_001",
+      "judge": "chart_contract",
+      "judgement": {
+        "chart_sql_message": null,
+        "chart_sql_valid": true,
+        "family": "demographic_breakdown",
+        "judge": "chart_contract",
+        "missing": [],
+        "passed": true,
+        "resolved_concepts": [
+          "age_band"
+        ]
+      },
+      "persona": "manager",
+      "question": "Mostre em barras o numero de internacoes por faixa etaria.",
+      "status": "passed",
+      "trace": {
+        "chart_plan": {
+          "chart_type": "bar",
+          "expected_result_shape": "category_metric",
+          "filters": [],
+          "grain": "faixa_etaria",
+          "metric": "total_internacoes",
+          "metric_expression": "COUNT rows",
+          "reason": "structured chart parameters extracted before SQL generation",
+          "requested": true,
+          "required_columns": [
+            "faixa_etaria",
+            "total_internacoes"
+          ],
+          "sql_shape_guidance": "Return one row per faixa_etaria with columns: faixa_etaria, total_internacoes.",
+          "time_window": {
+            "date_column": "DT_INTER",
+            "type": "none"
+          },
+          "x_dimension": "faixa_etaria",
+          "y_column": "total_internacoes"
+        },
+        "chart_sql_message": null,
+        "chart_sql_valid": true,
+        "generated_chart_sql": "SELECT CASE WHEN i.\"IDADE\" < 1 THEN 'Menor de 1 ano' WHEN i.\"IDADE\" BETWEEN 1 AND 4 THEN '1 a 4 anos' WHEN i.\"IDADE\" BETWEEN 5 AND 14 THEN '5 a 14 anos' WHEN i.\"IDADE\" BETWEEN 15 AND 29 THEN '15 a 29 anos' WHEN i.\"IDADE\" BETWEEN 30 AND 59 THEN '30 a 59 anos' WHEN i.\"IDADE\" >= 60 THEN '60 anos ou mais' ELSE 'Nao informado' END AS faixa_etaria, COUNT(*) AS total_internacoes FROM internacoes i  WHERE i.\"IDADE\" IS NOT NULL GROUP BY CASE WHEN i.\"IDADE\" < 1 THEN 'Menor de 1 ano' WHEN i.\"IDADE\" BETWEEN 1 AND 4 THEN '1 a 4 anos' WHEN i.\"IDADE\" BETWEEN 5 AND 14 THEN '5 a 14 anos' WHEN i.\"IDADE\" BETWEEN 15 AND 29 THEN '15 a 29 anos' WHEN i.\"IDADE\" BETWEEN 30 AND 59 THEN '30 a 59 anos' WHEN i.\"IDADE\" >= 60 THEN '60 anos ou mais' ELSE 'Nao informado' END ORDER BY total_internacoes DESC;",
+        "intent_plan": {
+          "cohort_slots": [],
+          "concept_slots": [],
+          "grouping_slots": [
+            {
+              "name": "faixa_etaria"
+            }
+          ],
+          "metric_slots": [
+            {
+              "expression_type": "count",
+              "name": "total_internacoes",
+              "required_filters": []
+            }
+          ],
+          "persona_hint": "common_user",
+          "presentation": "chart",
+          "primary_task": "chart",
+          "requested_tools": [],
+          "requires_clarification": false,
+          "uncertainty": [],
+          "user_question": "Mostre em barras o numero de internacoes por faixa etaria."
+        },
+        "plan_audit": {
+          "errors": [],
+          "passed": true,
+          "resolved_concepts": []
+        },
+        "resolved_concepts": [
+          "age_band"
+        ],
+        "semantic_plan": {
+          "ambiguities": [],
+          "answer_shape": {
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": [],
+            "include_unknown_bucket": false,
+            "output_dimensions": [
+              "faixa_etaria"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "required_dimensions": [
+              "faixa_etaria"
+            ],
+            "requires_group_by": true,
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none"
+          },
+          "base_grain": "internacao",
+          "constraints": [],
+          "dimensions": [
+            {
+              "name": "faixa_etaria",
+              "role": "group",
+              "source": "internacoes.IDADE"
+            }
+          ],
+          "filters": [],
+          "intent": "count",
+          "metrics": [
+            {
+              "expression_type": "count",
+              "name": "total",
+              "required_filters": []
+            }
+          ],
+          "null_policy": []
+        }
+      }
+    },
+    {
+      "anti_overfit_family": "ranking",
+      "expected_concepts": [
+        "diagnosis_lookup",
+        "municipality"
+      ],
+      "expected_intent": {
+        "presentation": "text",
+        "task": "ranking"
+      },
+      "expected_tables": [
+        "internacoes",
+        "cid",
+        "municipios"
+      ],
+      "family": "geographic_ranking",
+      "id": "geo_ranking_001",
+      "judge": "sql_contract",
+      "judgement": {
+        "chart_sql_message": null,
+        "chart_sql_valid": true,
+        "family": "geographic_ranking",
+        "judge": "sql_contract",
+        "missing": [
+          "task:direct_metric!=ranking"
+        ],
+        "passed": false,
+        "resolved_concepts": [
+          "diagnosis_lookup",
+          "municipality"
+        ]
+      },
+      "persona": "manager",
+      "question": "Quais municipios tiveram mais internacoes por asma?",
+      "status": "failed",
+      "trace": {
+        "chart_plan": {
+          "chart_type": "auto",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "grain": "unknown",
+          "reason": "visualization not requested",
+          "requested": false,
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "time_window": {
+            "date_column": "DT_INTER",
+            "type": "none"
+          }
+        },
+        "chart_sql_message": null,
+        "chart_sql_valid": true,
+        "generated_chart_sql": null,
+        "intent_plan": {
+          "cohort_slots": [],
+          "concept_slots": [],
+          "grouping_slots": [],
+          "metric_slots": [
+            {
+              "expression_type": "count",
+              "name": "total_internacoes",
+              "required_filters": []
+            }
+          ],
+          "persona_hint": "common_user",
+          "presentation": "text",
+          "primary_task": "direct_metric",
+          "requested_tools": [],
+          "requires_clarification": false,
+          "uncertainty": [],
+          "user_question": "Quais municipios tiveram mais internacoes por asma?"
+        },
+        "plan_audit": {
+          "errors": [],
+          "passed": true,
+          "resolved_concepts": []
+        },
+        "resolved_concepts": [
+          "diagnosis_lookup",
+          "municipality"
+        ],
+        "semantic_plan": {
+          "ambiguities": [],
+          "answer_shape": {
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": [],
+            "include_unknown_bucket": false,
+            "output_dimensions": [
+              "municipio"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "required_dimensions": [
+              "municipio"
+            ],
+            "requires_group_by": true,
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global"
+          },
+          "base_grain": "internacao",
+          "constraints": [
+            "diagnosis_filter_dimension_not_output",
+            "diagnosis_description_lookup_required"
+          ],
+          "dimensions": [
+            {
+              "name": "municipio",
+              "role": "group",
+              "source": "municipios.NO_MUNICIPIO"
+            }
+          ],
+          "filters": [
+            {
+              "field": "diagnostico_principal_descricao",
+              "operator": "ILIKE",
+              "values": [
+                "asma"
+              ]
+            }
+          ],
+          "intent": "ranking",
+          "metrics": [
+            {
+              "expression_type": "count",
+              "name": "total",
+              "required_filters": []
+            }
+          ],
+          "null_policy": []
+        }
+      }
+    },
+    {
+      "anti_overfit_family": "quality",
+      "expected_concepts": [
+        "missing_lookup"
+      ],
+      "expected_intent": {
+        "presentation": "text",
+        "task": "data_quality"
+      },
+      "expected_tables": [
+        "internacoes",
+        "municipios"
+      ],
+      "family": "data_quality",
+      "id": "data_quality_001",
+      "judge": "sql_contract",
+      "judgement": {
+        "chart_sql_message": null,
+        "chart_sql_valid": true,
+        "family": "data_quality",
+        "judge": "sql_contract",
+        "missing": [
+          "concept:missing_lookup"
+        ],
+        "passed": false,
+        "resolved_concepts": []
+      },
+      "persona": "auditor",
+      "question": "Quantos registros nao tem municipio de residencia mapeado?",
+      "status": "failed",
+      "trace": {
+        "chart_plan": {
+          "chart_type": "auto",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "grain": "unknown",
+          "reason": "visualization not requested",
+          "requested": false,
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "time_window": {
+            "date_column": "DT_INTER",
+            "type": "none"
+          }
+        },
+        "chart_sql_message": null,
+        "chart_sql_valid": true,
+        "generated_chart_sql": null,
+        "intent_plan": {
+          "cohort_slots": [],
+          "concept_slots": [],
+          "grouping_slots": [],
+          "metric_slots": [
+            {
+              "expression_type": "count",
+              "name": "total_internacoes",
+              "required_filters": []
+            }
+          ],
+          "persona_hint": "common_user",
+          "presentation": "text",
+          "primary_task": "direct_metric",
+          "requested_tools": [],
+          "requires_clarification": false,
+          "uncertainty": [],
+          "user_question": "Quantos registros nao tem municipio de residencia mapeado?"
+        },
+        "plan_audit": {
+          "errors": [],
+          "passed": true,
+          "resolved_concepts": []
+        },
+        "resolved_concepts": [],
+        "semantic_plan": {
+          "ambiguities": [],
+          "answer_shape": {
+            "answer_kind": "scalar",
+            "counted_entity": "municipio",
+            "expected_row_count": "one",
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": [
+              "municipio"
+            ],
+            "include_unknown_bucket": false,
+            "output_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "required_dimensions": [],
+            "requires_group_by": false,
+            "row_grain": "single_scalar",
+            "top_n_scope": "none"
+          },
+          "base_grain": "internacao",
+          "constraints": [],
+          "dimensions": [],
+          "filters": [],
+          "intent": "count",
+          "metrics": [
+            {
+              "expression_type": "count",
+              "name": "total",
+              "required_filters": []
+            }
+          ],
+          "null_policy": []
+        }
+      }
+    },
+    {
+      "anti_overfit_family": "science",
+      "expected_concepts": [
+        "elderly_policy",
+        "diagnosis_lookup",
+        "mortality_rate"
+      ],
+      "expected_intent": {
+        "presentation": "text",
+        "task": "association"
+      },
+      "expected_tables": [
+        "internacoes",
+        "cid"
+      ],
+      "family": "scientific_association",
+      "id": "scientific_assoc_001",
+      "judge": "observational_caveat",
+      "judgement": {
+        "chart_sql_message": null,
+        "chart_sql_valid": true,
+        "family": "scientific_association",
+        "judge": "observational_caveat",
+        "missing": [
+          "concept:diagnosis_lookup"
+        ],
+        "passed": false,
+        "resolved_concepts": [
+          "death_outcome",
+          "elderly_policy",
+          "mortality_rate"
+        ]
+      },
+      "persona": "researcher",
+      "question": "Pacientes idosos com pneumonia tiveram maior mortalidade hospitalar?",
+      "status": "failed",
+      "trace": {
+        "chart_plan": {
+          "chart_type": "auto",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "grain": "unknown",
+          "reason": "visualization not requested",
+          "requested": false,
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "time_window": {
+            "date_column": "DT_INTER",
+            "type": "none"
+          }
+        },
+        "chart_sql_message": null,
+        "chart_sql_valid": true,
+        "generated_chart_sql": null,
+        "intent_plan": {
+          "cohort_slots": [],
+          "concept_slots": [],
+          "grouping_slots": [],
+          "metric_slots": [
+            {
+              "expression_type": "count",
+              "name": "total_internacoes",
+              "required_filters": []
+            }
+          ],
+          "persona_hint": "clinician",
+          "presentation": "text",
+          "primary_task": "association",
+          "requested_tools": [],
+          "requires_clarification": false,
+          "uncertainty": [],
+          "user_question": "Pacientes idosos com pneumonia tiveram maior mortalidade hospitalar?"
+        },
+        "plan_audit": {
+          "errors": [],
+          "passed": true,
+          "resolved_concepts": []
+        },
+        "resolved_concepts": [
+          "death_outcome",
+          "elderly_policy",
+          "mortality_rate"
+        ],
+        "semantic_plan": {
+          "ambiguities": [],
+          "answer_shape": {
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": [],
+            "include_unknown_bucket": false,
+            "output_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "required_dimensions": [],
+            "requires_group_by": false,
+            "row_grain": "top_n_global",
+            "top_n": 1,
+            "top_n_scope": "global"
+          },
+          "base_grain": "internacao",
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "dimensions": [],
+          "filters": [],
+          "intent": "ranking",
+          "metrics": [
+            {
+              "denominator_scope": "all_rows_matching_non_outcome_filters",
+              "expression_type": "rate",
+              "name": "taxa_mortalidade",
+              "numerator_condition": "MORTE = true",
+              "required_filters": []
+            }
+          ],
+          "null_policy": []
+        }
+      }
+    },
+    {
+      "anti_overfit_family": "out_scope",
+      "expected_concepts": [
+        "unsupported_medication"
+      ],
+      "expected_intent": {
+        "presentation": "text",
+        "task": "out_of_scope"
+      },
+      "expected_tables": [],
+      "family": "out_of_scope_refusal",
+      "id": "out_scope_antibiotic_001",
+      "judge": "safe_refusal",
+      "judgement": {
+        "chart_sql_message": null,
+        "chart_sql_valid": true,
+        "family": "out_of_scope_refusal",
+        "judge": "safe_refusal",
+        "missing": [],
+        "passed": true,
+        "resolved_concepts": [
+          "diagnosis_lookup",
+          "unsupported_medication"
+        ]
+      },
+      "persona": "clinician",
+      "question": "Qual antibiotico foi usado nos pacientes com pneumonia?",
+      "status": "passed",
+      "trace": {
+        "chart_plan": {
+          "chart_type": "auto",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "grain": "unknown",
+          "reason": "visualization not requested",
+          "requested": false,
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "time_window": {
+            "date_column": "DT_INTER",
+            "type": "none"
+          }
+        },
+        "chart_sql_message": null,
+        "chart_sql_valid": true,
+        "generated_chart_sql": null,
+        "intent_plan": {
+          "cohort_slots": [],
+          "concept_slots": [],
+          "grouping_slots": [],
+          "metric_slots": [
+            {
+              "expression_type": "count",
+              "name": "total_internacoes",
+              "required_filters": []
+            }
+          ],
+          "persona_hint": "clinician",
+          "presentation": "text",
+          "primary_task": "out_of_scope",
+          "requested_tools": [],
+          "requires_clarification": true,
+          "uncertainty": [
+            "schema_may_not_support_requested_variable"
+          ],
+          "user_question": "Qual antibiotico foi usado nos pacientes com pneumonia?"
+        },
+        "plan_audit": {
+          "errors": [],
+          "passed": true,
+          "resolved_concepts": []
+        },
+        "resolved_concepts": [
+          "diagnosis_lookup",
+          "unsupported_medication"
+        ],
+        "semantic_plan": {
+          "ambiguities": [
+            "unsupported_metric:medicacao"
+          ],
+          "answer_shape": {
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": [],
+            "include_unknown_bucket": false,
+            "output_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "required_dimensions": [],
+            "requires_group_by": false,
+            "row_grain": "single_scalar",
+            "top_n_scope": "none"
+          },
+          "base_grain": "internacao",
+          "constraints": [
+            "diagnosis_filter_dimension_not_output",
+            "diagnosis_description_lookup_required"
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "diagnostico_principal_descricao",
+              "operator": "ILIKE",
+              "values": [
+                "pneumonia"
+              ]
+            }
+          ],
+          "intent": "count",
+          "metrics": [
+            {
+              "expression_type": "count",
+              "name": "total",
+              "required_filters": []
+            }
+          ],
+          "null_policy": []
+        }
+      }
+    },
+    {
+      "anti_overfit_family": "out_scope",
+      "expected_concepts": [
+        "unsupported_followup"
+      ],
+      "expected_intent": {
+        "presentation": "text",
+        "task": "out_of_scope"
+      },
+      "expected_tables": [],
+      "family": "out_of_scope_refusal",
+      "id": "out_scope_survival_001",
+      "judge": "safe_refusal",
+      "judgement": {
+        "chart_sql_message": null,
+        "chart_sql_valid": true,
+        "family": "out_of_scope_refusal",
+        "judge": "safe_refusal",
+        "missing": [
+          "task:direct_metric!=out_of_scope",
+          "safe_refusal:not_out_of_scope"
+        ],
+        "passed": false,
+        "resolved_concepts": [
+          "diagnosis_lookup"
+        ]
+      },
+      "persona": "researcher",
+      "question": "Qual foi a sobrevida um ano apos alta por cancer?",
+      "status": "failed",
+      "trace": {
+        "chart_plan": {
+          "chart_type": "auto",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "grain": "unknown",
+          "reason": "visualization not requested",
+          "requested": false,
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "time_window": {
+            "date_column": "DT_INTER",
+            "type": "none"
+          }
+        },
+        "chart_sql_message": null,
+        "chart_sql_valid": true,
+        "generated_chart_sql": null,
+        "intent_plan": {
+          "cohort_slots": [],
+          "concept_slots": [
+            {
+              "concept_type": "clinical",
+              "filters": [
+                {
+                  "field": "diagnostico_principal_prefix",
+                  "operator": "LIKE",
+                  "values": [
+                    "C%"
+                  ]
+                },
+                {
+                  "field": "diagnostico_conceito_label",
+                  "operator": "metadata",
+                  "values": [
+                    "CID C00-C99 - Neoplasias malignas"
+                  ]
+                }
+              ],
+              "name": "clinical_concept"
+            }
+          ],
+          "grouping_slots": [
+            {
+              "name": "ano"
+            }
+          ],
+          "metric_slots": [
+            {
+              "expression_type": "count",
+              "name": "total_internacoes",
+              "required_filters": []
+            }
+          ],
+          "persona_hint": "common_user",
+          "presentation": "text",
+          "primary_task": "direct_metric",
+          "requested_tools": [],
+          "requires_clarification": false,
+          "temporal_scope": {
+            "date_column": "DT_INTER",
+            "type": "none"
+          },
+          "uncertainty": [],
+          "user_question": "Qual foi a sobrevida um ano apos alta por cancer?"
+        },
+        "plan_audit": {
+          "errors": [],
+          "passed": true,
+          "resolved_concepts": []
+        },
+        "resolved_concepts": [
+          "diagnosis_lookup"
+        ],
+        "semantic_plan": {
+          "ambiguities": [
+            "unsupported_metric:sobrevida_pos_alta"
+          ],
+          "answer_shape": {
+            "answer_kind": "unknown",
+            "expected_row_count": "unknown",
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": [],
+            "include_unknown_bucket": false,
+            "output_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "required_dimensions": [],
+            "requires_group_by": false,
+            "row_grain": "unknown",
+            "top_n_scope": "none"
+          },
+          "base_grain": "internacao",
+          "constraints": [],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "diagnostico_principal_prefix",
+              "operator": "LIKE",
+              "values": [
+                "C%"
+              ]
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "operator": "metadata",
+              "values": [
+                "CID C00-C99 - Neoplasias malignas"
+              ]
+            },
+            {
+              "field": "diagnostico_conceito_termo_expandido",
+              "operator": "metadata",
+              "values": [
+                "cid c",
+                "neoplasia maligna"
+              ]
+            }
+          ],
+          "intent": "unknown",
+          "metrics": [
+            {
+              "expression_type": "unknown",
+              "name": "requested_metric",
+              "required_filters": []
+            }
+          ],
+          "null_policy": []
+        }
+      }
+    }
+  ],
+  "run_id": "intent_smoke_20260522T000346",
+  "summary": {
+    "failure_missing_counts": {
+      "concept:diagnosis_lookup": 2,
+      "concept:missing_lookup": 1,
+      "plan_audit:missing_respiratory_cid_resolution": 1,
+      "safe_refusal:not_out_of_scope": 1,
+      "task:direct_metric!=out_of_scope": 1,
+      "task:direct_metric!=ranking": 1,
+      "task:ranking!=trend": 1
+    },
+    "family_counts": {
+      "data_quality": 1,
+      "demographic_breakdown": 1,
+      "direct_mortality_metric": 1,
+      "geographic_ranking": 1,
+      "near_miss_not_death": 1,
+      "near_miss_not_respiratory": 1,
+      "out_of_scope_refusal": 2,
+      "respiratory_child_deaths_last_n_years": 3,
+      "scientific_association": 1
+    },
+    "judge_counts": {
+      "chart_contract": 1,
+      "no_death_overtrigger": 1,
+      "no_respiratory_overtrigger": 1,
+      "observational_caveat": 1,
+      "safe_refusal": 2,
+      "sql_contract": 2,
+      "sql_result_equivalence": 2,
+      "sql_result_equivalence_and_chart_contract": 2
+    },
+    "status_counts": {
+      "failed": 6,
+      "passed": 6
+    },
+    "total": 12
+  }
+}

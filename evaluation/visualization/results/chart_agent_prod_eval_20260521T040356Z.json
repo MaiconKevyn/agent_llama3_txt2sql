@@ -1,0 +1,1155 @@
+{
+  "metrics": {
+    "success_rate": 1.0,
+    "no_raw_internal_error": 1.0,
+    "chart_contract_validity": 1.0,
+    "sql_invariant_validity": 1.0,
+    "semantic_dimension_validity": 1.0
+  },
+  "counts": {
+    "success": 1,
+    "no_raw_internal_error": 1,
+    "chart_contract_valid": 1,
+    "sql_invariant_valid": 1,
+    "semantic_dimension_valid": 1
+  },
+  "failures": [],
+  "details": [
+    {
+      "id": "PROD_SOCIO_004",
+      "query": "Compare PIB per capita e mortalidade infantil em scatter.",
+      "tags": [
+        "socioeconomic",
+        "infant_mortality",
+        "scatter"
+      ],
+      "checks": {
+        "no_raw_internal_error": true,
+        "chart_contract_validity": true,
+        "sql_invariant_validity": true,
+        "semantic_dimension_validity": true
+      },
+      "success": true,
+      "failure_reasons": [],
+      "semantic": {
+        "intent": "association",
+        "metrics": [
+          "mortalidade_infantil_1ano",
+          "pib_per_capita"
+        ],
+        "dimensions": [
+          "municipio"
+        ],
+        "required_dimensions": [
+          "municipio"
+        ],
+        "output_dimensions": [
+          "municipio"
+        ],
+        "partition_dimensions": [],
+        "ranked_dimensions": [],
+        "constraints": [
+          "socioeconomico_column_metric_required",
+          "socioeconomico_multi_column_metrics_required"
+        ],
+        "filters": []
+      },
+      "chart": {
+        "intent_requested": true,
+        "intent_source": "explicit_current_query",
+        "chart_hint": "scatter",
+        "chart_plan": {
+          "requested": true,
+          "chart_type": "scatter",
+          "metric": "mortalidade_infantil",
+          "metric_expression": "AVG(\"VL_MORT_INFANTIL\")",
+          "x_dimension": "pib_per_capita",
+          "series_dimension": null,
+          "y_column": "mortalidade_infantil",
+          "grain": "pib_per_capita",
+          "expected_result_shape": "category_metric",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [
+            "pib_per_capita",
+            "mortalidade_infantil"
+          ],
+          "sql_shape_guidance": "Return one row per pib_per_capita with columns: pib_per_capita, mortalidade_infantil.",
+          "reason": "structured chart parameters extracted before SQL generation"
+        },
+        "synthetic_spec": {
+          "chartable": true,
+          "chart_type": "scatter",
+          "title": "mortalidade infantil por pib per capita",
+          "x": "pib_per_capita",
+          "y": "mortalidade_infantil",
+          "series": null,
+          "encoding": {
+            "x_type": "quantitative",
+            "y_type": "quantitative"
+          },
+          "data": [
+            {
+              "pib_per_capita": 1.0,
+              "mortalidade_infantil": 10.0
+            },
+            {
+              "pib_per_capita": 2.0,
+              "mortalidade_infantil": 18.0
+            },
+            {
+              "pib_per_capita": 3.0,
+              "mortalidade_infantil": 25.0
+            }
+          ],
+          "reason": "Grafico de dispersao planejado a partir de ChartPlan pre-SQL estruturado.",
+          "warnings": [],
+          "presentation": {
+            "title": "Mortalidade infantil por pib per capita",
+            "subtitle": "Comparacao entre metricas",
+            "x_label": "Pib per capita",
+            "y_label": "Mortalidade infantil",
+            "series_label": null,
+            "value_format": "decimal",
+            "sort_order": "as_returned",
+            "footnote": null,
+            "summary": "3.0 lidera com 25,00."
+          }
+        },
+        "echarts_valid": true
+      },
+      "agent": {
+        "success": true,
+        "error": null,
+        "response": "A amostra parcial apresenta os seguintes dados de municípios com suas respectivas taxas de mortalidade infantil e PIB per capita:\n\n1. Nova Nazaré: 68,09 mortes/1.000 nascidos, PIB per capita R$ 58.819,62\n2. Campinápolis: 53,97 mortes/1.000 nascidos, PIB per capita R$ 223.794,92\n3. Bertópolis: 50,88 mortes/1.000 nascidos, PIB per capita R$ 33.799,00\n4. Santa Rosa do Purus: 48,99 mortes/1.000 nascidos, PIB per capita R$ 58.921,23\n5. Caracaraí: 41,54 mortes/1.000 nascidos, PIB per capita R$ 295.080,46\n6. Bela Vista do Piauí: 40,72 mortes/1.000 nascidos, PIB per capita R$ 28.039,08\n7. Barcelos: 39,44 mortes/1.000 nascidos, PIB per capita R$ 149.793,31\n8. Amajari: 38,71 mortes/1.000 nascidos, PIB per capita R$ 135.182,69\n9. Santana do Garambéu: 38,14 mortes/1.000 nascidos, PIB per capita R$ 24.908,15\n10. Mimoso de Goiás: 36,14 mortes/1.000 nascidos, PIB per capita R$ 75.046,92\n\n... (saída truncada para evitar resposta excessivamente longa)",
+        "answer": null,
+        "sql_query": "SELECT mu.\"NO_MUNICIPIO\" AS municipio, AVG(s.\"VL_MORT_INFANTIL\") AS mortalidade_infantil, AVG(s.\"VL_PIB_PERCAPITA\") AS pib_per_capita FROM socioeconomico s JOIN municipios mu ON s.\"CO_MUNICIPIO_6D\" = mu.\"CO_MUNICIPIO_6D\" WHERE s.\"VL_MORT_INFANTIL\" IS NOT NULL AND s.\"VL_PIB_PERCAPITA\" IS NOT NULL GROUP BY mu.\"NO_MUNICIPIO\" ORDER BY mortalidade_infantil DESC LIMIT 100;",
+        "row_count": 100,
+        "chart": {
+          "requested": true,
+          "source": "explicit_current_query",
+          "uses_last_result": false,
+          "chart_hint": "scatter",
+          "spec": {
+            "chartable": true,
+            "chart_type": "scatter",
+            "title": "mortalidade infantil por pib per capita",
+            "x": "pib_per_capita",
+            "y": "mortalidade_infantil",
+            "series": null,
+            "encoding": {
+              "x_type": "quantitative",
+              "y_type": "quantitative"
+            },
+            "data": [
+              {
+                "municipio": "Nova Nazaré",
+                "mortalidade_infantil": 68.08923076923077,
+                "pib_per_capita": 58819.61538461538
+              },
+              {
+                "municipio": "Campinápolis",
+                "mortalidade_infantil": 53.96615384615385,
+                "pib_per_capita": 223794.92307692306
+              },
+              {
+                "municipio": "Bertópolis",
+                "mortalidade_infantil": 50.879230769230766,
+                "pib_per_capita": 33799.0
+              },
+              {
+                "municipio": "Santa Rosa do Purus",
+                "mortalidade_infantil": 48.98846153846155,
+                "pib_per_capita": 58921.230769230766
+              },
+              {
+                "municipio": "Caracaraí",
+                "mortalidade_infantil": 41.542307692307695,
+                "pib_per_capita": 295080.46153846156
+              },
+              {
+                "municipio": "Bela Vista do Piauí",
+                "mortalidade_infantil": 40.716153846153844,
+                "pib_per_capita": 28039.076923076922
+              },
+              {
+                "municipio": "Barcelos",
+                "mortalidade_infantil": 39.44461538461538,
+                "pib_per_capita": 149793.3076923077
+              },
+              {
+                "municipio": "Amajari",
+                "mortalidade_infantil": 38.71,
+                "pib_per_capita": 135182.6923076923
+              },
+              {
+                "municipio": "Santana do Garambéu",
+                "mortalidade_infantil": 38.13923076923077,
+                "pib_per_capita": 24908.153846153848
+              },
+              {
+                "municipio": "Mimoso de Goiás",
+                "mortalidade_infantil": 36.142307692307696,
+                "pib_per_capita": 75046.92307692308
+              },
+              {
+                "municipio": "Santana da Ponte Pensa",
+                "mortalidade_infantil": 35.076153846153844,
+                "pib_per_capita": 29205.53846153846
+              },
+              {
+                "municipio": "Fernando Falcão",
+                "mortalidade_infantil": 33.75230769230769,
+                "pib_per_capita": 52702.846153846156
+              },
+              {
+                "municipio": "Balbinos",
+                "mortalidade_infantil": 33.027692307692305,
+                "pib_per_capita": 41161.846153846156
+              },
+              {
+                "municipio": "São Gabriel da Cachoeira",
+                "mortalidade_infantil": 32.97,
+                "pib_per_capita": 268968.0
+              },
+              {
+                "municipio": "Santo Antônio do Leste",
+                "mortalidade_infantil": 32.79615384615384,
+                "pib_per_capita": 396854.1538461539
+              },
+              {
+                "municipio": "Bom Jesus do Araguaia",
+                "mortalidade_infantil": 32.706153846153846,
+                "pib_per_capita": 266489.1538461539
+              },
+              {
+                "municipio": "Cumaru do Norte",
+                "mortalidade_infantil": 32.576153846153844,
+                "pib_per_capita": 230452.07692307694
+              },
+              {
+                "municipio": "Eirunepé",
+                "mortalidade_infantil": 32.35076923076924,
+                "pib_per_capita": 364285.92307692306
+              },
+              {
+                "municipio": "Caranaíba",
+                "mortalidade_infantil": 32.215384615384615,
+                "pib_per_capita": 27519.846153846152
+              },
+              {
+                "municipio": "Atalaia do Norte",
+                "mortalidade_infantil": 31.32307692307692,
+                "pib_per_capita": 121466.38461538461
+              },
+              {
+                "municipio": "Japorã",
+                "mortalidade_infantil": 31.179230769230767,
+                "pib_per_capita": 92524.84615384616
+              },
+              {
+                "municipio": "Cruzália",
+                "mortalidade_infantil": 31.146153846153844,
+                "pib_per_capita": 82052.30769230769
+              },
+              {
+                "municipio": "Uiramutã",
+                "mortalidade_infantil": 31.000000000000004,
+                "pib_per_capita": 93356.53846153847
+              },
+              {
+                "municipio": "Envira",
+                "mortalidade_infantil": 30.57923076923077,
+                "pib_per_capita": 130865.84615384616
+              },
+              {
+                "municipio": "São Francisco de Assis do Piauí",
+                "mortalidade_infantil": 30.577692307692306,
+                "pib_per_capita": 33969.692307692305
+              },
+              {
+                "municipio": "Jordão",
+                "mortalidade_infantil": 30.34538461538462,
+                "pib_per_capita": 67889.92307692308
+              },
+              {
+                "municipio": "Porteirão",
+                "mortalidade_infantil": 29.895384615384614,
+                "pib_per_capita": 186887.07692307694
+              },
+              {
+                "municipio": "Itacajá",
+                "mortalidade_infantil": 29.863076923076925,
+                "pib_per_capita": 85583.76923076923
+              },
+              {
+                "municipio": "Coqueiro Baixo",
+                "mortalidade_infantil": 29.669999999999998,
+                "pib_per_capita": 31180.923076923078
+              },
+              {
+                "municipio": "Santo Antônio do Paraíso",
+                "mortalidade_infantil": 29.430000000000003,
+                "pib_per_capita": 64644.846153846156
+              },
+              {
+                "municipio": "Salto da Divisa",
+                "mortalidade_infantil": 29.34384615384616,
+                "pib_per_capita": 82572.84615384616
+              },
+              {
+                "municipio": "Lagoinha do Piauí",
+                "mortalidade_infantil": 29.31,
+                "pib_per_capita": 19139.46153846154
+              },
+              {
+                "municipio": "Castelândia",
+                "mortalidade_infantil": 28.794615384615383,
+                "pib_per_capita": 80650.15384615384
+              },
+              {
+                "municipio": "Santa Isabel do Rio Negro",
+                "mortalidade_infantil": 28.774615384615384,
+                "pib_per_capita": 118008.30769230769
+              },
+              {
+                "municipio": "Douradoquara",
+                "mortalidade_infantil": 28.64076923076923,
+                "pib_per_capita": 46219.0
+              },
+              {
+                "municipio": "Miguel Leão",
+                "mortalidade_infantil": 28.59,
+                "pib_per_capita": 13038.76923076923
+              },
+              {
+                "municipio": "Barro Preto",
+                "mortalidade_infantil": 28.43153846153846,
+                "pib_per_capita": 53569.61538461538
+              },
+              {
+                "municipio": "Varjão",
+                "mortalidade_infantil": 28.362307692307695,
+                "pib_per_capita": 56830.46153846154
+              },
+              {
+                "municipio": "São João da Mata",
+                "mortalidade_infantil": 28.316153846153846,
+                "pib_per_capita": 36622.769230769234
+              },
+              {
+                "municipio": "Patos do Piauí",
+                "mortalidade_infantil": 28.289230769230773,
+                "pib_per_capita": 38522.92307692308
+              },
+              {
+                "municipio": "Senador Cortes",
+                "mortalidade_infantil": 28.029999999999998,
+                "pib_per_capita": 22591.615384615383
+              },
+              {
+                "municipio": "Montadas",
+                "mortalidade_infantil": 27.990000000000002,
+                "pib_per_capita": 42901.46153846154
+              },
+              {
+                "municipio": "Acauã",
+                "mortalidade_infantil": 27.846153846153847,
+                "pib_per_capita": 41516.846153846156
+              },
+              {
+                "municipio": "Ereré",
+                "mortalidade_infantil": 27.80307692307692,
+                "pib_per_capita": 45822.153846153844
+              },
+              {
+                "municipio": "São Bentinho",
+                "mortalidade_infantil": 27.685384615384617,
+                "pib_per_capita": 36159.692307692305
+              },
+              {
+                "municipio": "Feijó",
+                "mortalidade_infantil": 27.65384615384615,
+                "pib_per_capita": 309619.6923076923
+              },
+              {
+                "municipio": "Oliveira Fortes",
+                "mortalidade_infantil": 27.292307692307695,
+                "pib_per_capita": 26128.76923076923
+              },
+              {
+                "municipio": "Flores do Piauí",
+                "mortalidade_infantil": 27.225384615384616,
+                "pib_per_capita": 29705.0
+              },
+              {
+                "municipio": "São Sebastião do Rio Preto",
+                "mortalidade_infantil": 27.108461538461537,
+                "pib_per_capita": 17054.69230769231
+              },
+              {
+                "municipio": "Gouvelândia",
+                "mortalidade_infantil": 27.003846153846155,
+                "pib_per_capita": 150709.15384615384
+              },
+              {
+                "municipio": "Barão do Monte Alto",
+                "mortalidade_infantil": 26.949230769230773,
+                "pib_per_capita": 41867.230769230766
+              },
+              {
+                "municipio": "Itapé",
+                "mortalidade_infantil": 26.873846153846156,
+                "pib_per_capita": 75725.92307692308
+              },
+              {
+                "municipio": "Capitão Gervásio Oliveira",
+                "mortalidade_infantil": 26.825384615384614,
+                "pib_per_capita": 25983.615384615383
+              },
+              {
+                "municipio": "Campo Largo do Piauí",
+                "mortalidade_infantil": 26.817692307692308,
+                "pib_per_capita": 36191.230769230766
+              },
+              {
+                "municipio": "Bandeira",
+                "mortalidade_infantil": 26.78846153846154,
+                "pib_per_capita": 39232.53846153846
+              },
+              {
+                "municipio": "Érico Cardoso",
+                "mortalidade_infantil": 26.74923076923077,
+                "pib_per_capita": 52033.769230769234
+              },
+              {
+                "municipio": "Santo Afonso",
+                "mortalidade_infantil": 26.575384615384618,
+                "pib_per_capita": 64453.846153846156
+              },
+              {
+                "municipio": "Erval Velho",
+                "mortalidade_infantil": 26.53461538461539,
+                "pib_per_capita": 115845.0
+              },
+              {
+                "municipio": "Tacuru",
+                "mortalidade_infantil": 26.51923076923077,
+                "pib_per_capita": 177764.92307692306
+              },
+              {
+                "municipio": "Ingaí",
+                "mortalidade_infantil": 26.467692307692307,
+                "pib_per_capita": 56492.07692307692
+              },
+              {
+                "municipio": "Porto Vera Cruz",
+                "mortalidade_infantil": 26.426153846153845,
+                "pib_per_capita": 28713.615384615383
+              },
+              {
+                "municipio": "Glaucilândia",
+                "mortalidade_infantil": 26.37076923076923,
+                "pib_per_capita": 27594.615384615383
+              },
+              {
+                "municipio": "Bocaina do Sul",
+                "mortalidade_infantil": 26.336153846153845,
+                "pib_per_capita": 68834.0
+              },
+              {
+                "municipio": "Jenipapo dos Vieiras",
+                "mortalidade_infantil": 26.333846153846153,
+                "pib_per_capita": 79393.0
+              },
+              {
+                "municipio": "São José da Vitória",
+                "mortalidade_infantil": 26.233846153846155,
+                "pib_per_capita": 41932.07692307692
+              },
+              {
+                "municipio": "Amparo do São Francisco",
+                "mortalidade_infantil": 26.217692307692307,
+                "pib_per_capita": 24954.384615384617
+              },
+              {
+                "municipio": "Lagoa dos Patos",
+                "mortalidade_infantil": 26.215384615384615,
+                "pib_per_capita": 43745.07692307692
+              },
+              {
+                "municipio": "Bernardino Batista",
+                "mortalidade_infantil": 26.088461538461537,
+                "pib_per_capita": 25938.153846153848
+              },
+              {
+                "municipio": "Paranhos",
+                "mortalidade_infantil": 26.05923076923077,
+                "pib_per_capita": 147702.6923076923
+              },
+              {
+                "municipio": "Jacareacanga",
+                "mortalidade_infantil": 25.99769230769231,
+                "pib_per_capita": 284555.8461538461
+              },
+              {
+                "municipio": "Montividiu do Norte",
+                "mortalidade_infantil": 25.946153846153848,
+                "pib_per_capita": 57652.153846153844
+              },
+              {
+                "municipio": "Amaturá",
+                "mortalidade_infantil": 25.941538461538464,
+                "pib_per_capita": 68706.61538461539
+              },
+              {
+                "municipio": "Cachoeira de Pajeú",
+                "mortalidade_infantil": 25.92230769230769,
+                "pib_per_capita": 85830.84615384616
+              },
+              {
+                "municipio": "Santa Rosa do Piauí",
+                "mortalidade_infantil": 25.742307692307694,
+                "pib_per_capita": 31095.69230769231
+              },
+              {
+                "municipio": "Macarani",
+                "mortalidade_infantil": 25.72538461538462,
+                "pib_per_capita": 139574.84615384616
+              },
+              {
+                "municipio": "Rubim",
+                "mortalidade_infantil": 25.70384615384615,
+                "pib_per_capita": 74467.61538461539
+              },
+              {
+                "municipio": "Maetinga",
+                "mortalidade_infantil": 25.69538461538461,
+                "pib_per_capita": 38446.92307692308
+              },
+              {
+                "municipio": "Conceição do Tocantins",
+                "mortalidade_infantil": 25.61461538461539,
+                "pib_per_capita": 42734.769230769234
+              },
+              {
+                "municipio": "Itororó",
+                "mortalidade_infantil": 25.527692307692305,
+                "pib_per_capita": 164708.07692307694
+              },
+              {
+                "municipio": "Rio Vermelho",
+                "mortalidade_infantil": 25.436153846153847,
+                "pib_per_capita": 96103.76923076923
+              },
+              {
+                "municipio": "Domingos Mourão",
+                "mortalidade_infantil": 25.37384615384616,
+                "pib_per_capita": 27043.0
+              },
+              {
+                "municipio": "Padre Marcos",
+                "mortalidade_infantil": 25.158461538461538,
+                "pib_per_capita": 47574.153846153844
+              },
+              {
+                "municipio": "Montauri",
+                "mortalidade_infantil": 25.083076923076923,
+                "pib_per_capita": 50546.230769230766
+              },
+              {
+                "municipio": "Barreiras do Piauí",
+                "mortalidade_infantil": 25.03923076923077,
+                "pib_per_capita": 38540.230769230766
+              },
+              {
+                "municipio": "Vespasiano Corrêa",
+                "mortalidade_infantil": 25.031538461538464,
+                "pib_per_capita": 59790.846153846156
+              },
+              {
+                "municipio": "Curralinhos",
+                "mortalidade_infantil": 25.00846153846154,
+                "pib_per_capita": 22772.076923076922
+              },
+              {
+                "municipio": "Jussari",
+                "mortalidade_infantil": 24.946923076923078,
+                "pib_per_capita": 50103.46153846154
+              },
+              {
+                "municipio": "Boa Vista do Cadeado",
+                "mortalidade_infantil": 24.939999999999998,
+                "pib_per_capita": 198538.76923076922
+              },
+              {
+                "municipio": "Pinheiro Machado",
+                "mortalidade_infantil": 24.919999999999998,
+                "pib_per_capita": 248477.07692307694
+              },
+              {
+                "municipio": "Vale de São Domingos",
+                "mortalidade_infantil": 24.876153846153844,
+                "pib_per_capita": 47673.846153846156
+              },
+              {
+                "municipio": "Tumiritinga",
+                "mortalidade_infantil": 24.856153846153845,
+                "pib_per_capita": 49741.92307692308
+              },
+              {
+                "municipio": "Piraí do Norte",
+                "mortalidade_infantil": 24.788461538461533,
+                "pib_per_capita": 65542.0
+              },
+              {
+                "municipio": "Ibicoara",
+                "mortalidade_infantil": 24.772307692307695,
+                "pib_per_capita": 283314.23076923075
+              },
+              {
+                "municipio": "Oscar Bressane",
+                "mortalidade_infantil": 24.743076923076924,
+                "pib_per_capita": 70329.07692307692
+              },
+              {
+                "municipio": "Santa Helena de Minas",
+                "mortalidade_infantil": 24.72153846153846,
+                "pib_per_capita": 38279.61538461538
+              },
+              {
+                "municipio": "Belmiro Braga",
+                "mortalidade_infantil": 24.687692307692302,
+                "pib_per_capita": 43547.46153846154
+              },
+              {
+                "municipio": "Amambai",
+                "mortalidade_infantil": 24.66923076923077,
+                "pib_per_capita": 843639.5384615385
+              },
+              {
+                "municipio": "Caridade do Piauí",
+                "mortalidade_infantil": 24.64153846153846,
+                "pib_per_capita": 30809.23076923077
+              },
+              {
+                "municipio": "Anhanguera",
+                "mortalidade_infantil": 24.598461538461542,
+                "pib_per_capita": 15751.538461538461
+              },
+              {
+                "municipio": "Goiandira",
+                "mortalidade_infantil": 24.591538461538462,
+                "pib_per_capita": 104117.76923076923
+              }
+            ],
+            "reason": "Grafico de dispersao planejado a partir de ChartPlan pre-SQL estruturado.",
+            "warnings": [],
+            "presentation": {
+              "title": "Mortalidade infantil por pib per capita",
+              "subtitle": "Comparacao entre metricas",
+              "x_label": "Pib per capita",
+              "y_label": "Mortalidade infantil",
+              "series_label": null,
+              "value_format": "decimal",
+              "sort_order": "as_returned",
+              "footnote": null,
+              "summary": "58819.61538461538 lidera com 68,09."
+            }
+          },
+          "echarts": {
+            "color": [
+              "#2563eb",
+              "#0f766e",
+              "#c2410c",
+              "#7c3aed",
+              "#be123c",
+              "#a16207",
+              "#0891b2",
+              "#4d7c0f",
+              "#9333ea",
+              "#0284c7",
+              "#b45309",
+              "#047857"
+            ],
+            "backgroundColor": "transparent",
+            "animationDuration": 450,
+            "textStyle": {
+              "fontFamily": "Inter, system-ui, sans-serif"
+            },
+            "_valueFormat": "decimal",
+            "_summary": "58819.61538461538 lidera com 68,09.",
+            "_footnote": null,
+            "_subtitle": "Comparacao entre metricas",
+            "title": {
+              "show": false,
+              "text": "Mortalidade infantil por pib per capita",
+              "left": 0,
+              "top": 0,
+              "textStyle": {
+                "fontSize": 14,
+                "fontWeight": 700,
+                "color": "#101828"
+              }
+            },
+            "tooltip": {
+              "trigger": "item",
+              "confine": true
+            },
+            "grid": {
+              "left": 56,
+              "right": 18,
+              "top": 54,
+              "bottom": 48,
+              "containLabel": true
+            },
+            "xAxis": {
+              "type": "value",
+              "name": "Pib per capita",
+              "splitLine": {
+                "show": false
+              }
+            },
+            "yAxis": {
+              "type": "value",
+              "name": "Mortalidade infantil",
+              "splitLine": {
+                "lineStyle": {
+                  "color": "rgba(102,112,133,0.18)"
+                }
+              }
+            },
+            "series": [
+              {
+                "type": "scatter",
+                "name": "mortalidade_infantil",
+                "symbolSize": 9,
+                "data": [
+                  [
+                    58819.61538461538,
+                    68.08923076923077
+                  ],
+                  [
+                    223794.92307692306,
+                    53.96615384615385
+                  ],
+                  [
+                    33799.0,
+                    50.879230769230766
+                  ],
+                  [
+                    58921.230769230766,
+                    48.98846153846155
+                  ],
+                  [
+                    295080.46153846156,
+                    41.542307692307695
+                  ],
+                  [
+                    28039.076923076922,
+                    40.716153846153844
+                  ],
+                  [
+                    149793.3076923077,
+                    39.44461538461538
+                  ],
+                  [
+                    135182.6923076923,
+                    38.71
+                  ],
+                  [
+                    24908.153846153848,
+                    38.13923076923077
+                  ],
+                  [
+                    75046.92307692308,
+                    36.142307692307696
+                  ],
+                  [
+                    29205.53846153846,
+                    35.076153846153844
+                  ],
+                  [
+                    52702.846153846156,
+                    33.75230769230769
+                  ],
+                  [
+                    41161.846153846156,
+                    33.027692307692305
+                  ],
+                  [
+                    268968.0,
+                    32.97
+                  ],
+                  [
+                    396854.1538461539,
+                    32.79615384615384
+                  ],
+                  [
+                    266489.1538461539,
+                    32.706153846153846
+                  ],
+                  [
+                    230452.07692307694,
+                    32.576153846153844
+                  ],
+                  [
+                    364285.92307692306,
+                    32.35076923076924
+                  ],
+                  [
+                    27519.846153846152,
+                    32.215384615384615
+                  ],
+                  [
+                    121466.38461538461,
+                    31.32307692307692
+                  ],
+                  [
+                    92524.84615384616,
+                    31.179230769230767
+                  ],
+                  [
+                    82052.30769230769,
+                    31.146153846153844
+                  ],
+                  [
+                    93356.53846153847,
+                    31.000000000000004
+                  ],
+                  [
+                    130865.84615384616,
+                    30.57923076923077
+                  ],
+                  [
+                    33969.692307692305,
+                    30.577692307692306
+                  ],
+                  [
+                    67889.92307692308,
+                    30.34538461538462
+                  ],
+                  [
+                    186887.07692307694,
+                    29.895384615384614
+                  ],
+                  [
+                    85583.76923076923,
+                    29.863076923076925
+                  ],
+                  [
+                    31180.923076923078,
+                    29.669999999999998
+                  ],
+                  [
+                    64644.846153846156,
+                    29.430000000000003
+                  ],
+                  [
+                    82572.84615384616,
+                    29.34384615384616
+                  ],
+                  [
+                    19139.46153846154,
+                    29.31
+                  ],
+                  [
+                    80650.15384615384,
+                    28.794615384615383
+                  ],
+                  [
+                    118008.30769230769,
+                    28.774615384615384
+                  ],
+                  [
+                    46219.0,
+                    28.64076923076923
+                  ],
+                  [
+                    13038.76923076923,
+                    28.59
+                  ],
+                  [
+                    53569.61538461538,
+                    28.43153846153846
+                  ],
+                  [
+                    56830.46153846154,
+                    28.362307692307695
+                  ],
+                  [
+                    36622.769230769234,
+                    28.316153846153846
+                  ],
+                  [
+                    38522.92307692308,
+                    28.289230769230773
+                  ],
+                  [
+                    22591.615384615383,
+                    28.029999999999998
+                  ],
+                  [
+                    42901.46153846154,
+                    27.990000000000002
+                  ],
+                  [
+                    41516.846153846156,
+                    27.846153846153847
+                  ],
+                  [
+                    45822.153846153844,
+                    27.80307692307692
+                  ],
+                  [
+                    36159.692307692305,
+                    27.685384615384617
+                  ],
+                  [
+                    309619.6923076923,
+                    27.65384615384615
+                  ],
+                  [
+                    26128.76923076923,
+                    27.292307692307695
+                  ],
+                  [
+                    29705.0,
+                    27.225384615384616
+                  ],
+                  [
+                    17054.69230769231,
+                    27.108461538461537
+                  ],
+                  [
+                    150709.15384615384,
+                    27.003846153846155
+                  ],
+                  [
+                    41867.230769230766,
+                    26.949230769230773
+                  ],
+                  [
+                    75725.92307692308,
+                    26.873846153846156
+                  ],
+                  [
+                    25983.615384615383,
+                    26.825384615384614
+                  ],
+                  [
+                    36191.230769230766,
+                    26.817692307692308
+                  ],
+                  [
+                    39232.53846153846,
+                    26.78846153846154
+                  ],
+                  [
+                    52033.769230769234,
+                    26.74923076923077
+                  ],
+                  [
+                    64453.846153846156,
+                    26.575384615384618
+                  ],
+                  [
+                    115845.0,
+                    26.53461538461539
+                  ],
+                  [
+                    177764.92307692306,
+                    26.51923076923077
+                  ],
+                  [
+                    56492.07692307692,
+                    26.467692307692307
+                  ],
+                  [
+                    28713.615384615383,
+                    26.426153846153845
+                  ],
+                  [
+                    27594.615384615383,
+                    26.37076923076923
+                  ],
+                  [
+                    68834.0,
+                    26.336153846153845
+                  ],
+                  [
+                    79393.0,
+                    26.333846153846153
+                  ],
+                  [
+                    41932.07692307692,
+                    26.233846153846155
+                  ],
+                  [
+                    24954.384615384617,
+                    26.217692307692307
+                  ],
+                  [
+                    43745.07692307692,
+                    26.215384615384615
+                  ],
+                  [
+                    25938.153846153848,
+                    26.088461538461537
+                  ],
+                  [
+                    147702.6923076923,
+                    26.05923076923077
+                  ],
+                  [
+                    284555.8461538461,
+                    25.99769230769231
+                  ],
+                  [
+                    57652.153846153844,
+                    25.946153846153848
+                  ],
+                  [
+                    68706.61538461539,
+                    25.941538461538464
+                  ],
+                  [
+                    85830.84615384616,
+                    25.92230769230769
+                  ],
+                  [
+                    31095.69230769231,
+                    25.742307692307694
+                  ],
+                  [
+                    139574.84615384616,
+                    25.72538461538462
+                  ],
+                  [
+                    74467.61538461539,
+                    25.70384615384615
+                  ],
+                  [
+                    38446.92307692308,
+                    25.69538461538461
+                  ],
+                  [
+                    42734.769230769234,
+                    25.61461538461539
+                  ],
+                  [
+                    164708.07692307694,
+                    25.527692307692305
+                  ],
+                  [
+                    96103.76923076923,
+                    25.436153846153847
+                  ],
+                  [
+                    27043.0,
+                    25.37384615384616
+                  ],
+                  [
+                    47574.153846153844,
+                    25.158461538461538
+                  ],
+                  [
+                    50546.230769230766,
+                    25.083076923076923
+                  ],
+                  [
+                    38540.230769230766,
+                    25.03923076923077
+                  ],
+                  [
+                    59790.846153846156,
+                    25.031538461538464
+                  ],
+                  [
+                    22772.076923076922,
+                    25.00846153846154
+                  ],
+                  [
+                    50103.46153846154,
+                    24.946923076923078
+                  ],
+                  [
+                    198538.76923076922,
+                    24.939999999999998
+                  ],
+                  [
+                    248477.07692307694,
+                    24.919999999999998
+                  ],
+                  [
+                    47673.846153846156,
+                    24.876153846153844
+                  ],
+                  [
+                    49741.92307692308,
+                    24.856153846153845
+                  ],
+                  [
+                    65542.0,
+                    24.788461538461533
+                  ],
+                  [
+                    283314.23076923075,
+                    24.772307692307695
+                  ],
+                  [
+                    70329.07692307692,
+                    24.743076923076924
+                  ],
+                  [
+                    38279.61538461538,
+                    24.72153846153846
+                  ],
+                  [
+                    43547.46153846154,
+                    24.687692307692302
+                  ],
+                  [
+                    843639.5384615385,
+                    24.66923076923077
+                  ],
+                  [
+                    30809.23076923077,
+                    24.64153846153846
+                  ],
+                  [
+                    15751.538461538461,
+                    24.598461538461542
+                  ],
+                  [
+                    104117.76923076923,
+                    24.591538461538462
+                  ]
+                ]
+              }
+            ]
+          },
+          "reason": "Usuario pediu explicitamente grafico do tipo scatter"
+        },
+        "setup": [],
+        "elapsed_seconds": 24.651195
+      }
+    }
+  ],
+  "run": {
+    "timestamp": "2026-05-21T04:03:56.437152Z",
+    "cases": "evaluation/visualization/chart_agent_prod_cases.jsonl",
+    "total": 1,
+    "run_agent": true,
+    "only": "PROD_SOCIO_004",
+    "limit": null,
+    "shuffle": false,
+    "seed": 20260521
+  }
+}

@@ -1,0 +1,600 @@
+{
+  "metrics": {
+    "success_rate": 1.0,
+    "no_raw_internal_error": 1.0,
+    "chart_contract_validity": 1.0,
+    "sql_invariant_validity": 1.0,
+    "semantic_dimension_validity": 1.0
+  },
+  "counts": {
+    "success": 1,
+    "no_raw_internal_error": 1,
+    "chart_contract_valid": 1,
+    "sql_invariant_valid": 1,
+    "semantic_dimension_valid": 1
+  },
+  "failures": [],
+  "details": [
+    {
+      "id": "PROD_MORT_LOC_005",
+      "query": "Mostre a taxa de mortalidade por regiao de saude em grafico de barras.",
+      "tags": [
+        "mortality_rate",
+        "health_region",
+        "bar"
+      ],
+      "checks": {
+        "no_raw_internal_error": true,
+        "chart_contract_validity": true,
+        "sql_invariant_validity": true,
+        "semantic_dimension_validity": true
+      },
+      "success": true,
+      "failure_reasons": [],
+      "semantic": {
+        "intent": "rate",
+        "metrics": [
+          "taxa_mortalidade"
+        ],
+        "dimensions": [
+          "regiao_saude"
+        ],
+        "required_dimensions": [
+          "regiao_saude"
+        ],
+        "output_dimensions": [
+          "regiao_saude"
+        ],
+        "partition_dimensions": [],
+        "ranked_dimensions": [],
+        "constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "filters": []
+      },
+      "chart": {
+        "intent_requested": true,
+        "intent_source": "explicit_current_query",
+        "chart_hint": "bar",
+        "chart_plan": {
+          "requested": true,
+          "chart_type": "bar",
+          "metric": "taxa_mortalidade",
+          "metric_expression": "SUM(MORTE=true) * 100.0 / COUNT(*)",
+          "x_dimension": "regiao_saude",
+          "series_dimension": null,
+          "y_column": "taxa_mortalidade",
+          "grain": "regiao_saude",
+          "expected_result_shape": "category_metric",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [
+            "regiao_saude",
+            "taxa_mortalidade"
+          ],
+          "sql_shape_guidance": "Return one row per regiao_saude with columns: regiao_saude, taxa_mortalidade.",
+          "reason": "structured chart parameters extracted before SQL generation"
+        },
+        "synthetic_spec": {
+          "chartable": true,
+          "chart_type": "bar",
+          "title": "taxa mortalidade por regiao saude",
+          "x": "regiao_saude",
+          "y": "taxa_mortalidade",
+          "series": null,
+          "encoding": {
+            "x_type": "nominal",
+            "y_type": "quantitative"
+          },
+          "data": [
+            {
+              "regiao_saude": "Grupo A",
+              "taxa_mortalidade": 10
+            },
+            {
+              "regiao_saude": "Grupo B",
+              "taxa_mortalidade": 15
+            },
+            {
+              "regiao_saude": "Grupo C",
+              "taxa_mortalidade": 8
+            }
+          ],
+          "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+          "warnings": [],
+          "presentation": {
+            "title": "Taxa de mortalidade (%) por regiao saude",
+            "subtitle": "Ranking por valor",
+            "x_label": "Regiao saude",
+            "y_label": "Taxa de mortalidade (%)",
+            "series_label": null,
+            "value_format": "percent",
+            "sort_order": "as_returned",
+            "footnote": null,
+            "summary": "Grupo B lidera com 15,00%."
+          }
+        },
+        "echarts_valid": true
+      },
+      "agent": {
+        "success": true,
+        "error": null,
+        "response": "Encontrados 425 resultados:\n1. {'regiao_saude': '10ª RS Cascavel', 'taxa_mortalidade': 4.09}\n2. {'regiao_saude': '10ª Região', 'taxa_mortalidade': 4.35}\n3. {'regiao_saude': '10ª Região de Saúde', 'taxa_mortalidade': 2.81}\n4. {'regiao_saude': '11ª RS Campo Mourão', 'taxa_mortalidade': 4.35}\n5. {'regiao_saude': '11ª Região', 'taxa_mortalidade': 2.44}\n6. {'regiao_saude': '12ª RS Umuarama', 'taxa_mortalidade': 5.09}\n7. {'regiao_saude': '12ª Região', 'taxa_mortalidade': 3.83}\n8. {'regiao_saude': '13ª RS Cianorte', 'taxa_mortalidade': 4.14}\n9. {'regiao_saude': '13ª Região', 'taxa_mortalidade': 4.47}\n10. {'regiao_saude': '14ª RS Paranavaí', 'taxa_mortalidade': 4.01}\n11. {'regiao_saude': '14ª Região', 'taxa_mortalidade': 4.8}\n12. {'regiao_saude': '15ª RS Maringá', 'taxa_mortalidade': 4.17}\n13. {'regiao_saude': '15ª Região', 'taxa_mortalidade': 4.68}\n14. {'regiao_saude': '16ª RS Apucarana', 'taxa_mortalidade': 5.28}\n15. {'regiao_saude': '16ª Região', 'taxa_mortalidade': 4.57}\n16. {'regiao_saude': '17ª RS Londrina', 'taxa_... (resposta truncada)",
+        "answer": null,
+        "sql_query": "SELECT mu.\"NO_REGIAO_SAUDE\" AS regiao_saude, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" GROUP BY mu.\"NO_REGIAO_SAUDE\" ORDER BY mu.\"NO_REGIAO_SAUDE\";",
+        "row_count": 425,
+        "chart": {
+          "requested": true,
+          "source": "explicit_current_query",
+          "uses_last_result": false,
+          "chart_hint": "bar",
+          "spec": {
+            "chartable": true,
+            "chart_type": "bar",
+            "title": "taxa mortalidade por regiao saude",
+            "x": "regiao_saude",
+            "y": "taxa_mortalidade",
+            "series": null,
+            "encoding": {
+              "x_type": "nominal",
+              "y_type": "quantitative"
+            },
+            "data": [
+              {
+                "regiao_saude": "Central do DRS II",
+                "taxa_mortalidade": 6.84
+              },
+              {
+                "regiao_saude": "Região 22 - Pampa",
+                "taxa_mortalidade": 6.72
+              },
+              {
+                "regiao_saude": "Santos Dumont",
+                "taxa_mortalidade": 6.62
+              },
+              {
+                "regiao_saude": "Centro-Sul",
+                "taxa_mortalidade": 6.52
+              },
+              {
+                "regiao_saude": "Serrana",
+                "taxa_mortalidade": 6.48
+              },
+              {
+                "regiao_saude": "Região 03 - Fronteira Oeste",
+                "taxa_mortalidade": 6.4
+              },
+              {
+                "regiao_saude": "Leopoldina/Cataguases",
+                "taxa_mortalidade": 6.34
+              },
+              {
+                "regiao_saude": "Além Paraíba",
+                "taxa_mortalidade": 6.32
+              },
+              {
+                "regiao_saude": "Catanduva",
+                "taxa_mortalidade": 6.31
+              },
+              {
+                "regiao_saude": "Médio Paraíba",
+                "taxa_mortalidade": 6.31
+              },
+              {
+                "regiao_saude": "Sorocaba",
+                "taxa_mortalidade": 6.26
+              },
+              {
+                "regiao_saude": "Norte - Barretos",
+                "taxa_mortalidade": 6.2
+              },
+              {
+                "regiao_saude": "Ituiutaba",
+                "taxa_mortalidade": 6.18
+              },
+              {
+                "regiao_saude": "Região 05 - Bons Ventos",
+                "taxa_mortalidade": 6.14
+              },
+              {
+                "regiao_saude": "Coronel Fabriciano/Timóteo",
+                "taxa_mortalidade": 6.13
+              }
+            ],
+            "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+            "warnings": [
+              {
+                "code": "bar_limited_for_readability",
+                "message": "Exibindo os 15 maiores valores de 425 categorias.",
+                "severity": "info"
+              }
+            ],
+            "presentation": {
+              "title": "Taxa de mortalidade (%) por regiao saude",
+              "subtitle": "Ranking por valor",
+              "x_label": "Regiao saude",
+              "y_label": "Taxa de mortalidade (%)",
+              "series_label": null,
+              "value_format": "percent",
+              "sort_order": "as_returned",
+              "footnote": "Exibindo os 15 maiores valores de 425 categorias.",
+              "summary": "Central do DRS II lidera com 6,84%."
+            }
+          },
+          "echarts": {
+            "color": [
+              "#2563eb",
+              "#0f766e",
+              "#c2410c",
+              "#7c3aed",
+              "#be123c",
+              "#a16207",
+              "#0891b2",
+              "#4d7c0f",
+              "#9333ea",
+              "#0284c7",
+              "#b45309",
+              "#047857"
+            ],
+            "backgroundColor": "transparent",
+            "animationDuration": 450,
+            "textStyle": {
+              "fontFamily": "Inter, system-ui, sans-serif"
+            },
+            "_valueFormat": "percent",
+            "_summary": "Central do DRS II lidera com 6,84%.",
+            "_footnote": "Exibindo os 15 maiores valores de 425 categorias.",
+            "_subtitle": "Ranking por valor",
+            "title": {
+              "show": false,
+              "text": "Taxa de mortalidade (%) por regiao saude",
+              "left": 0,
+              "top": 0,
+              "textStyle": {
+                "fontSize": 14,
+                "fontWeight": 700,
+                "color": "#101828"
+              }
+            },
+            "tooltip": {
+              "trigger": "axis",
+              "confine": true
+            },
+            "grid": {
+              "left": 14,
+              "right": 28,
+              "top": 24,
+              "bottom": 22,
+              "containLabel": true
+            },
+            "legend": {
+              "show": false,
+              "top": 26,
+              "right": 0,
+              "type": "scroll"
+            },
+            "xAxis": {
+              "type": "value",
+              "name": "Taxa de mortalidade (%)",
+              "nameGap": 30,
+              "axisLabel": {
+                "color": "#667085"
+              },
+              "splitLine": {
+                "lineStyle": {
+                  "color": "rgba(102,112,133,0.18)"
+                }
+              }
+            },
+            "yAxis": {
+              "type": "category",
+              "name": "Regiao saude",
+              "nameGap": 46,
+              "inverse": true,
+              "data": [
+                "Central do DRS II",
+                "Região 22 - Pampa",
+                "Santos Dumont",
+                "Centro-Sul",
+                "Serrana",
+                "Região 03 - Fronteira Oeste",
+                "Leopoldina/Cataguases",
+                "Além Paraíba",
+                "Catanduva",
+                "Médio Paraíba",
+                "Sorocaba",
+                "Norte - Barretos",
+                "Ituiutaba",
+                "Região 05 - Bons Ventos",
+                "Coronel Fabriciano/Timóteo"
+              ],
+              "axisLabel": {
+                "color": "#667085",
+                "width": 142,
+                "overflow": "truncate"
+              },
+              "axisLine": {
+                "lineStyle": {
+                  "color": "#98a2b3"
+                }
+              }
+            },
+            "series": [
+              {
+                "type": "bar",
+                "name": "taxa_mortalidade",
+                "emphasis": {
+                  "focus": "series"
+                },
+                "data": [
+                  {
+                    "value": 6.84,
+                    "itemStyle": {
+                      "color": "#2563eb",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 6.72,
+                    "itemStyle": {
+                      "color": "#0f766e",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 6.62,
+                    "itemStyle": {
+                      "color": "#c2410c",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 6.52,
+                    "itemStyle": {
+                      "color": "#7c3aed",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 6.48,
+                    "itemStyle": {
+                      "color": "#be123c",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 6.4,
+                    "itemStyle": {
+                      "color": "#a16207",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 6.34,
+                    "itemStyle": {
+                      "color": "#0891b2",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 6.32,
+                    "itemStyle": {
+                      "color": "#4d7c0f",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 6.31,
+                    "itemStyle": {
+                      "color": "#9333ea",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 6.31,
+                    "itemStyle": {
+                      "color": "#0284c7",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 6.26,
+                    "itemStyle": {
+                      "color": "#b45309",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 6.2,
+                    "itemStyle": {
+                      "color": "#047857",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 6.18,
+                    "itemStyle": {
+                      "color": "#2563eb",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 6.14,
+                    "itemStyle": {
+                      "color": "#0f766e",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 6.13,
+                    "itemStyle": {
+                      "color": "#c2410c",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  }
+                ],
+                "barMaxWidth": 26
+              }
+            ],
+            "_legend": [
+              {
+                "name": "Central do DRS II",
+                "color": "#2563eb"
+              },
+              {
+                "name": "Região 22 - Pampa",
+                "color": "#0f766e"
+              },
+              {
+                "name": "Santos Dumont",
+                "color": "#c2410c"
+              },
+              {
+                "name": "Centro-Sul",
+                "color": "#7c3aed"
+              },
+              {
+                "name": "Serrana",
+                "color": "#be123c"
+              },
+              {
+                "name": "Região 03 - Fronteira Oeste",
+                "color": "#a16207"
+              },
+              {
+                "name": "Leopoldina/Cataguases",
+                "color": "#0891b2"
+              },
+              {
+                "name": "Além Paraíba",
+                "color": "#4d7c0f"
+              },
+              {
+                "name": "Catanduva",
+                "color": "#9333ea"
+              },
+              {
+                "name": "Médio Paraíba",
+                "color": "#0284c7"
+              },
+              {
+                "name": "Sorocaba",
+                "color": "#b45309"
+              },
+              {
+                "name": "Norte - Barretos",
+                "color": "#047857"
+              },
+              {
+                "name": "Ituiutaba",
+                "color": "#2563eb"
+              },
+              {
+                "name": "Região 05 - Bons Ventos",
+                "color": "#0f766e"
+              },
+              {
+                "name": "Coronel Fabriciano/Timóteo",
+                "color": "#c2410c"
+              }
+            ]
+          },
+          "reason": "Usuario pediu explicitamente grafico do tipo bar"
+        },
+        "setup": [],
+        "elapsed_seconds": 34.568558
+      }
+    }
+  ],
+  "run": {
+    "timestamp": "2026-05-21T04:19:31.185919Z",
+    "cases": "evaluation/visualization/chart_agent_prod_cases.jsonl",
+    "total": 1,
+    "run_agent": true,
+    "only": "PROD_MORT_LOC_005",
+    "limit": null,
+    "shuffle": false,
+    "seed": 20260521
+  }
+}

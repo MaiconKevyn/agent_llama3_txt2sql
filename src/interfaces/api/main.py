@@ -9,24 +9,30 @@ import time
 from contextlib import asynccontextmanager
 from dataclasses import asdict, is_dataclass
 from datetime import datetime
+from decimal import Decimal
 from enum import Enum
 from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field
+from sqlalchemy import create_engine, text
 
 # Allow running both as `python -m ...` and `python src/interfaces/api/main.py`
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+load_dotenv(PROJECT_ROOT / ".env")
+
 
 # ---------------------------------------------------------------------------
 # Lifespan: initialise the orchestrator once at startup
 # ---------------------------------------------------------------------------
 _orchestrator = None
+_database_engine = None
 
 
 @asynccontextmanager
@@ -61,6 +67,12 @@ class QueryRequest(BaseModel):
     include_sql: bool = True
     session_id: str | None = None
     debug: bool = False
+    table_context: "TableContext | None" = None
+
+
+class TableContext(BaseModel):
+    table_schema: str
+    table_name: str
 
 
 class QueryResponse(BaseModel):
@@ -88,6 +100,53 @@ class SchemaResponse(BaseModel):
 class ModelsResponse(BaseModel):
     available_models: dict[str, list[str]]
     current_model: dict[str, Any]
+    timestamp: str
+
+
+class DatabaseTableSummary(BaseModel):
+    table_schema: str
+    table_name: str
+    table_type: str
+    row_count: int | None = None
+    classification: str | None = None
+
+
+class DatabaseOverviewResponse(BaseModel):
+    database_url: str
+    tables: list[DatabaseTableSummary]
+    generated_docs: list[str]
+    timestamp: str
+
+
+class DatabaseColumn(BaseModel):
+    ordinal_position: int
+    column_name: str
+    data_type: str
+    is_nullable: str | None = None
+
+
+class DatabaseTableDetailResponse(BaseModel):
+    table_schema: str
+    table_name: str
+    columns: list[DatabaseColumn]
+    sample_columns: list[str]
+    sample_rows: list[dict[str, Any]]
+    sample_limit: int
+    timestamp: str
+
+
+class DatabaseQueryRequest(BaseModel):
+    sql: str
+    limit: int = Field(default=100, ge=1, le=500)
+
+
+class DatabaseQueryResponse(BaseModel):
+    columns: list[str]
+    rows: list[dict[str, Any]]
+    row_count: int
+    limit: int
+    sql: str
+    execution_time: float
     timestamp: str
 
 
@@ -460,6 +519,264 @@ def _build_models_response() -> ModelsResponse:
     )
 
 
+def _redact_database_url(database_url: str) -> str:
+    if "://" not in database_url or "@" not in database_url:
+        return database_url
+    scheme, rest = database_url.split("://", 1)
+    return f"{scheme}://****@{rest.split('@', 1)[1]}"
+
+
+def _get_database_engine():
+    global _database_engine
+    if _database_engine is None:
+        from src.agent.orchestrator_support import resolve_database_url
+
+        _database_engine = create_engine(resolve_database_url(None))
+    return _database_engine
+
+
+def _docs_generated_files() -> list[str]:
+    docs_dir = PROJECT_ROOT / "docs" / "generated"
+    if not docs_dir.exists():
+        return []
+    return sorted(path.name for path in docs_dir.iterdir() if path.is_file())
+
+
+def _read_table_inventory() -> dict[tuple[str, str], dict[str, Any]]:
+    import csv
+
+    inventory_path = PROJECT_ROOT / "docs" / "generated" / "table_inventory.csv"
+    if not inventory_path.exists():
+        return {}
+
+    inventory: dict[tuple[str, str], dict[str, Any]] = {}
+    with inventory_path.open(newline="", encoding="utf-8") as file:
+        for row in csv.DictReader(file):
+            key = (row.get("table_schema") or "main", row.get("table_name") or "")
+            if not key[1]:
+                continue
+            row_count = row.get("row_count")
+            inventory[key] = {
+                "row_count": int(row_count) if row_count and row_count.isdigit() else None,
+                "classification": row.get("classificacao") or None,
+            }
+    return inventory
+
+
+def _json_result_value(value: Any) -> Any:
+    if isinstance(value, Decimal):
+        return float(value)
+    return _json_safe(value)
+
+
+def _quote_identifier(identifier: str) -> str:
+    if not identifier or "\x00" in identifier:
+        raise HTTPException(status_code=400, detail="Identificador de banco invalido")
+    return '"' + identifier.replace('"', '""') + '"'
+
+
+def _table_exists(connection: Any, schema_name: str, table_name: str) -> bool:
+    result = connection.execute(
+        text(
+            """
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = :schema_name
+              AND table_name = :table_name
+            LIMIT 1
+            """
+        ),
+        {"schema_name": schema_name, "table_name": table_name},
+    )
+    return result.first() is not None
+
+
+def _is_explorable_database_table(table_schema: str, table_name: str) -> bool:
+    """Return whether a table is part of the user-facing database explorer."""
+
+    if table_schema != "main":
+        return False
+    lowered = (table_name or "").lower()
+    blocked_patterns = (
+        "dbt",
+        "_dbt_",
+        "test",
+        "_test_",
+        "tmp",
+        "temp",
+        "staging",
+        "fixture",
+    )
+    return not any(pattern in lowered for pattern in blocked_patterns)
+
+
+def _ensure_explorable_database_table(table_schema: str, table_name: str) -> None:
+    if not _is_explorable_database_table(table_schema, table_name):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Tabela nao disponivel no explorador: {table_schema}.{table_name}",
+        )
+
+
+def _normalize_query_limit(limit: int) -> int:
+    return max(1, min(int(limit or 100), 500))
+
+
+def _prepare_database_query(sql: str, limit: int) -> str:
+    from src.utils.sql_safety import is_select_only, sanitize_sql_for_execution
+
+    ok, reason = is_select_only(sql)
+    if not ok:
+        raise HTTPException(status_code=400, detail=reason)
+
+    cleaned = sanitize_sql_for_execution(sql).rstrip(";").strip()
+    normalized_limit = _normalize_query_limit(limit)
+    return f"SELECT * FROM ({cleaned}) AS ui_query LIMIT {normalized_limit}"
+
+
+def _build_database_overview() -> DatabaseOverviewResponse:
+    from src.agent.orchestrator_support import resolve_database_url
+
+    engine = _get_database_engine()
+    inventory = _read_table_inventory()
+    with engine.connect() as connection:
+        result = connection.execute(
+            text(
+                """
+                SELECT table_schema, table_name, table_type
+                FROM information_schema.tables
+                WHERE table_schema NOT IN ('information_schema', 'pg_catalog')
+                ORDER BY table_schema, table_name
+                """
+            )
+        )
+        tables = []
+        for row in result.mappings().all():
+            if not _is_explorable_database_table(row["table_schema"], row["table_name"]):
+                continue
+            key = (row["table_schema"], row["table_name"])
+            metadata = inventory.get(key, {})
+            tables.append(
+                DatabaseTableSummary(
+                    table_schema=row["table_schema"],
+                    table_name=row["table_name"],
+                    table_type=row["table_type"],
+                    row_count=metadata.get("row_count"),
+                    classification=metadata.get("classification"),
+                )
+            )
+
+    return DatabaseOverviewResponse(
+        database_url=_redact_database_url(resolve_database_url(None)),
+        tables=tables,
+        generated_docs=_docs_generated_files(),
+        timestamp=datetime.now().isoformat(),
+    )
+
+
+def _build_database_table_detail(
+    schema_name: str, table_name: str, sample_limit: int = 25
+) -> DatabaseTableDetailResponse:
+    _ensure_explorable_database_table(schema_name, table_name)
+    engine = _get_database_engine()
+    normalized_limit = _normalize_query_limit(sample_limit)
+    with engine.connect() as connection:
+        if not _table_exists(connection, schema_name, table_name):
+            raise HTTPException(status_code=404, detail=f"Tabela nao encontrada: {schema_name}.{table_name}")
+
+        column_result = connection.execute(
+            text(
+                """
+                SELECT ordinal_position, column_name, data_type, is_nullable
+                FROM information_schema.columns
+                WHERE table_schema = :schema_name
+                  AND table_name = :table_name
+                ORDER BY ordinal_position
+                """
+            ),
+            {"schema_name": schema_name, "table_name": table_name},
+        )
+        columns = [DatabaseColumn(**dict(row)) for row in column_result.mappings().all()]
+
+        qualified_table = f"{_quote_identifier(schema_name)}.{_quote_identifier(table_name)}"
+        sample_result = connection.execute(
+            text(f"SELECT * FROM {qualified_table} LIMIT {normalized_limit}")
+        )
+        sample_columns = list(sample_result.keys())
+        sample_rows = [
+            {key: _json_result_value(value) for key, value in row.items()}
+            for row in sample_result.mappings().all()
+        ]
+
+    return DatabaseTableDetailResponse(
+        table_schema=schema_name,
+        table_name=table_name,
+        columns=columns,
+        sample_columns=sample_columns,
+        sample_rows=sample_rows,
+        sample_limit=normalized_limit,
+        timestamp=datetime.now().isoformat(),
+    )
+
+
+def _run_database_query(request: DatabaseQueryRequest) -> DatabaseQueryResponse:
+    started_at = time.time()
+    prepared_sql = _prepare_database_query(request.sql, request.limit)
+    engine = _get_database_engine()
+    with engine.connect() as connection:
+        result = connection.execute(text(prepared_sql))
+        columns = list(result.keys())
+        rows = [
+            {key: _json_result_value(value) for key, value in row.items()}
+            for row in result.mappings().all()
+        ]
+
+    return DatabaseQueryResponse(
+        columns=columns,
+        rows=rows,
+        row_count=len(rows),
+        limit=_normalize_query_limit(request.limit),
+        sql=prepared_sql,
+        execution_time=round(time.time() - started_at, 3),
+        timestamp=datetime.now().isoformat(),
+    )
+
+
+def _load_table_context_detail(table_context: TableContext) -> DatabaseTableDetailResponse:
+    return _build_database_table_detail(
+        table_context.table_schema,
+        table_context.table_name,
+        sample_limit=0,
+    )
+
+
+def _apply_table_context_to_query(
+    query: str,
+    table_context: TableContext,
+    detail: DatabaseTableDetailResponse,
+) -> tuple[str, dict[str, Any]]:
+    selected_columns = detail.columns[:12]
+    column_summary = ", ".join(
+        f"{column.column_name} {column.data_type}" for column in selected_columns
+    )
+    table_ref = f"{detail.table_schema}.{detail.table_name}"
+    context_block = (
+        f"Contexto ativo de tabela: {table_ref}\n"
+        f"Colunas conhecidas: {column_summary or 'sem catalogo de colunas disponivel'}\n"
+        "Use esta tabela como foco principal da resposta. "
+        "Se a pergunta exigir outras tabelas, explique a necessidade antes de ampliar o escopo.\n\n"
+        f"Pergunta do usuario: {query}"
+    )
+    return context_block, {
+        "table_context_applied": True,
+        "table_context": {
+            "table_schema": detail.table_schema,
+            "table_name": detail.table_name,
+            "columns": [column.column_name for column in selected_columns],
+        },
+    }
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -471,26 +788,42 @@ async def process_query(request: QueryRequest):
 
     start_time = time.time()
     try:
+        effective_query = request.query
+        table_context_metadata: dict[str, Any] = {}
+        if request.table_context is not None:
+            table_detail = _load_table_context_detail(request.table_context)
+            effective_query, table_context_metadata = _apply_table_context_to_query(
+                request.query,
+                request.table_context,
+                table_detail,
+            )
+
         if request.debug:
             updates = _orchestrator.process_query(
-                request.query,
+                effective_query,
                 session_id=request.session_id,
                 streaming=True,
             )
-            result = _build_debug_result_from_updates(request.query, updates)
+            result = _build_debug_result_from_updates(effective_query, updates)
             result = _attach_visualization_to_debug_result(
                 _orchestrator,
                 result=result,
-                user_query=request.query,
+                user_query=effective_query,
             )
         else:
             result = _orchestrator.process_query(
-                request.query,
+                effective_query,
                 session_id=request.session_id,
             )
+        if table_context_metadata:
+            metadata = result.get("metadata", {}) or {}
+            metadata.update(table_context_metadata)
+            result["metadata"] = metadata
         if not request.include_sql:
             result["sql_query"] = None
         return _build_query_response(result, start_time, request.session_id)
+    except HTTPException:
+        raise
     except Exception as e:
         answer = SAFE_INTERNAL_AGENT_ERROR
         return QueryResponse(
@@ -518,6 +851,42 @@ async def schema(table: str | None = None):
 @app.get("/models", response_model=ModelsResponse)
 async def models():
     return _build_models_response()
+
+
+@app.get("/api/v1/database/overview", response_model=DatabaseOverviewResponse)
+@app.get("/database/overview", response_model=DatabaseOverviewResponse)
+async def database_overview():
+    try:
+        return _build_database_overview()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Erro ao inspecionar banco: {exc}") from exc
+
+
+@app.get(
+    "/api/v1/database/table/{schema_name}/{table_name}",
+    response_model=DatabaseTableDetailResponse,
+)
+@app.get("/database/table/{schema_name}/{table_name}", response_model=DatabaseTableDetailResponse)
+async def database_table(schema_name: str, table_name: str, limit: int = 25):
+    try:
+        return _build_database_table_detail(schema_name, table_name, limit)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Erro ao carregar tabela: {exc}") from exc
+
+
+@app.post("/api/v1/database/query", response_model=DatabaseQueryResponse)
+@app.post("/database/query", response_model=DatabaseQueryResponse)
+async def database_query(request: DatabaseQueryRequest):
+    try:
+        return _run_database_query(request)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Erro ao executar SQL: {exc}") from exc
 
 
 @app.get("/api/v1/health")

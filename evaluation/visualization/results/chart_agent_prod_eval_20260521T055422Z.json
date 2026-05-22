@@ -1,0 +1,400 @@
+{
+  "metrics": {
+    "success_rate": 1.0,
+    "no_raw_internal_error": 1.0,
+    "chart_contract_validity": 1.0,
+    "sql_invariant_validity": 1.0,
+    "semantic_dimension_validity": 1.0
+  },
+  "counts": {
+    "success": 1,
+    "no_raw_internal_error": 1,
+    "chart_contract_valid": 1,
+    "sql_invariant_valid": 1,
+    "semantic_dimension_valid": 1
+  },
+  "failures": [],
+  "details": [
+    {
+      "id": "PROD_DEMO_007",
+      "query": "Grafico de mortes por faixa etaria.",
+      "tags": [
+        "demographic",
+        "age_band",
+        "deaths",
+        "bar"
+      ],
+      "checks": {
+        "no_raw_internal_error": true,
+        "chart_contract_validity": true,
+        "sql_invariant_validity": true,
+        "semantic_dimension_validity": true
+      },
+      "success": true,
+      "failure_reasons": [],
+      "semantic": {
+        "intent": "unknown",
+        "metrics": [
+          "total_mortes"
+        ],
+        "dimensions": [
+          "faixa_etaria"
+        ],
+        "required_dimensions": [
+          "faixa_etaria"
+        ],
+        "output_dimensions": [
+          "faixa_etaria"
+        ],
+        "partition_dimensions": [],
+        "ranked_dimensions": [],
+        "constraints": [],
+        "filters": [
+          {
+            "field": "desfecho",
+            "values": [
+              "MORTE = true"
+            ],
+            "operator": "semantic"
+          }
+        ]
+      },
+      "chart": {
+        "intent_requested": true,
+        "intent_source": "explicit_current_query",
+        "chart_hint": "auto",
+        "chart_plan": {
+          "requested": true,
+          "chart_type": "bar",
+          "metric": "total_mortes",
+          "metric_expression": "COUNT rows where \"MORTE\" = true",
+          "x_dimension": "faixa_etaria",
+          "series_dimension": null,
+          "y_column": "total_mortes",
+          "grain": "faixa_etaria",
+          "expected_result_shape": "category_metric",
+          "filters": [
+            {
+              "field": "MORTE",
+              "operator": "=",
+              "values": [
+                true
+              ],
+              "semantic": "death outcome"
+            }
+          ],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [
+            "faixa_etaria",
+            "total_mortes"
+          ],
+          "sql_shape_guidance": "Return one row per faixa_etaria with columns: faixa_etaria, total_mortes.",
+          "reason": "structured chart parameters extracted before SQL generation"
+        },
+        "synthetic_spec": {
+          "chartable": true,
+          "chart_type": "bar",
+          "title": "mortes por faixa etaria",
+          "x": "faixa_etaria",
+          "y": "mortes",
+          "series": null,
+          "encoding": {
+            "x_type": "nominal",
+            "y_type": "quantitative"
+          },
+          "data": [
+            {
+              "faixa_etaria": "Grupo A",
+              "mortes": 10
+            },
+            {
+              "faixa_etaria": "Grupo B",
+              "mortes": 15
+            },
+            {
+              "faixa_etaria": "Grupo C",
+              "mortes": 8
+            }
+          ],
+          "reason": "Resultado categorico com metrica numerica.",
+          "warnings": [],
+          "presentation": {
+            "title": "Mortes por faixa etaria",
+            "subtitle": "Ranking por valor",
+            "x_label": "Faixa etaria",
+            "y_label": "Mortes",
+            "series_label": null,
+            "value_format": "integer",
+            "sort_order": "as_returned",
+            "footnote": null,
+            "summary": "Grupo B lidera com 15."
+          }
+        },
+        "echarts_valid": true
+      },
+      "agent": {
+        "success": true,
+        "error": null,
+        "response": "As mortes por faixa etária são as seguintes:\n\n1. 60 anos ou mais: 5.207.105 mortes\n2. 30 a 59 anos: 2.015.622 mortes\n3. Menor de 1 ano: 362.745 mortes\n4. 15 a 29 anos: 284.114 mortes\n5. 5 a 14 anos: 38.202 mortes",
+        "answer": null,
+        "sql_query": "SELECT CASE WHEN i.\"IDADE\" < 1 THEN 'Menor de 1 ano' WHEN i.\"IDADE\" BETWEEN 1 AND 4 THEN '1 a 4 anos' WHEN i.\"IDADE\" BETWEEN 5 AND 14 THEN '5 a 14 anos' WHEN i.\"IDADE\" BETWEEN 15 AND 29 THEN '15 a 29 anos' WHEN i.\"IDADE\" BETWEEN 30 AND 59 THEN '30 a 59 anos' WHEN i.\"IDADE\" >= 60 THEN '60 anos ou mais' ELSE 'Nao informado' END AS faixa_etaria, COUNT(*) AS total_mortes FROM internacoes i  WHERE i.\"IDADE\" IS NOT NULL AND i.\"MORTE\" = true GROUP BY CASE WHEN i.\"IDADE\" < 1 THEN 'Menor de 1 ano' WHEN i.\"IDADE\" BETWEEN 1 AND 4 THEN '1 a 4 anos' WHEN i.\"IDADE\" BETWEEN 5 AND 14 THEN '5 a 14 anos' WHEN i.\"IDADE\" BETWEEN 15 AND 29 THEN '15 a 29 anos' WHEN i.\"IDADE\" BETWEEN 30 AND 59 THEN '30 a 59 anos' WHEN i.\"IDADE\" >= 60 THEN '60 anos ou mais' ELSE 'Nao informado' END ORDER BY total_mortes DESC;",
+        "row_count": 5,
+        "chart": {
+          "requested": true,
+          "source": "explicit_current_query",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "spec": {
+            "chartable": true,
+            "chart_type": "bar",
+            "title": "total mortes por faixa etaria",
+            "x": "faixa_etaria",
+            "y": "total_mortes",
+            "series": null,
+            "encoding": {
+              "x_type": "nominal",
+              "y_type": "quantitative"
+            },
+            "data": [
+              {
+                "faixa_etaria": "60 anos ou mais",
+                "total_mortes": 5207105
+              },
+              {
+                "faixa_etaria": "30 a 59 anos",
+                "total_mortes": 2015622
+              },
+              {
+                "faixa_etaria": "Menor de 1 ano",
+                "total_mortes": 362745
+              },
+              {
+                "faixa_etaria": "15 a 29 anos",
+                "total_mortes": 284114
+              },
+              {
+                "faixa_etaria": "5 a 14 anos",
+                "total_mortes": 38202
+              }
+            ],
+            "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+            "warnings": [],
+            "presentation": {
+              "title": "Total de mortes por faixa etaria",
+              "subtitle": "Ranking por valor",
+              "x_label": "Faixa etaria",
+              "y_label": "Total de mortes",
+              "series_label": null,
+              "value_format": "integer",
+              "sort_order": "as_returned",
+              "footnote": null,
+              "summary": "60 anos ou mais lidera com 5.207.105."
+            }
+          },
+          "echarts": {
+            "color": [
+              "#2563eb",
+              "#0f766e",
+              "#c2410c",
+              "#7c3aed",
+              "#be123c",
+              "#a16207",
+              "#0891b2",
+              "#4d7c0f",
+              "#9333ea",
+              "#0284c7",
+              "#b45309",
+              "#047857"
+            ],
+            "backgroundColor": "transparent",
+            "animationDuration": 450,
+            "textStyle": {
+              "fontFamily": "Inter, system-ui, sans-serif"
+            },
+            "_valueFormat": "integer",
+            "_summary": "60 anos ou mais lidera com 5.207.105.",
+            "_footnote": null,
+            "_subtitle": "Ranking por valor",
+            "title": {
+              "show": false,
+              "text": "Total de mortes por faixa etaria",
+              "left": 0,
+              "top": 0,
+              "textStyle": {
+                "fontSize": 14,
+                "fontWeight": 700,
+                "color": "#101828"
+              }
+            },
+            "tooltip": {
+              "trigger": "axis",
+              "confine": true
+            },
+            "grid": {
+              "left": 14,
+              "right": 28,
+              "top": 24,
+              "bottom": 22,
+              "containLabel": true
+            },
+            "legend": {
+              "show": false,
+              "top": 26,
+              "right": 0,
+              "type": "scroll"
+            },
+            "xAxis": {
+              "type": "value",
+              "name": "Total de mortes",
+              "nameGap": 30,
+              "axisLabel": {
+                "color": "#667085"
+              },
+              "splitLine": {
+                "lineStyle": {
+                  "color": "rgba(102,112,133,0.18)"
+                }
+              }
+            },
+            "yAxis": {
+              "type": "category",
+              "name": "Faixa etaria",
+              "nameGap": 46,
+              "inverse": true,
+              "data": [
+                "60 anos ou mais",
+                "30 a 59 anos",
+                "Menor de 1 ano",
+                "15 a 29 anos",
+                "5 a 14 anos"
+              ],
+              "axisLabel": {
+                "color": "#667085",
+                "width": 142,
+                "overflow": "truncate"
+              },
+              "axisLine": {
+                "lineStyle": {
+                  "color": "#98a2b3"
+                }
+              }
+            },
+            "series": [
+              {
+                "type": "bar",
+                "name": "total_mortes",
+                "emphasis": {
+                  "focus": "series"
+                },
+                "data": [
+                  {
+                    "value": 5207105,
+                    "itemStyle": {
+                      "color": "#2563eb",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 2015622,
+                    "itemStyle": {
+                      "color": "#0f766e",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 362745,
+                    "itemStyle": {
+                      "color": "#c2410c",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 284114,
+                    "itemStyle": {
+                      "color": "#7c3aed",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 38202,
+                    "itemStyle": {
+                      "color": "#be123c",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  }
+                ],
+                "barMaxWidth": 26
+              }
+            ],
+            "_legend": [
+              {
+                "name": "60 anos ou mais",
+                "color": "#2563eb"
+              },
+              {
+                "name": "30 a 59 anos",
+                "color": "#0f766e"
+              },
+              {
+                "name": "Menor de 1 ano",
+                "color": "#c2410c"
+              },
+              {
+                "name": "15 a 29 anos",
+                "color": "#7c3aed"
+              },
+              {
+                "name": "5 a 14 anos",
+                "color": "#be123c"
+              }
+            ]
+          },
+          "reason": "Usuario pediu explicitamente visualizacao em grafico"
+        },
+        "setup": [],
+        "elapsed_seconds": 12.880596
+      }
+    }
+  ],
+  "run": {
+    "timestamp": "2026-05-21T05:54:22.910274Z",
+    "cases": "evaluation/visualization/chart_agent_prod_cases.jsonl",
+    "total": 1,
+    "run_agent": true,
+    "only": "PROD_DEMO_007",
+    "limit": null,
+    "shuffle": false,
+    "seed": 20260521
+  }
+}

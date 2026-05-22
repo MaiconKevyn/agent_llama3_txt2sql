@@ -1,0 +1,489 @@
+{
+  "metrics": {
+    "success_rate": 1.0,
+    "no_raw_internal_error": 1.0,
+    "chart_contract_validity": 1.0,
+    "sql_invariant_validity": 1.0,
+    "semantic_dimension_validity": 1.0
+  },
+  "counts": {
+    "success": 1,
+    "no_raw_internal_error": 1,
+    "chart_contract_valid": 1,
+    "sql_invariant_valid": 1,
+    "semantic_dimension_valid": 1
+  },
+  "failures": [],
+  "details": [
+    {
+      "id": "PROD_PROC_003",
+      "query": "Quais procedimentos tiveram maior taxa de mortalidade? Gere um grafico.",
+      "tags": [
+        "procedure",
+        "mortality_rate",
+        "bar"
+      ],
+      "checks": {
+        "no_raw_internal_error": true,
+        "chart_contract_validity": true,
+        "sql_invariant_validity": true,
+        "semantic_dimension_validity": true
+      },
+      "success": true,
+      "failure_reasons": [],
+      "semantic": {
+        "intent": "ranking",
+        "metrics": [
+          "taxa_mortalidade"
+        ],
+        "dimensions": [
+          "procedimento"
+        ],
+        "required_dimensions": [
+          "procedimento"
+        ],
+        "output_dimensions": [
+          "procedimento"
+        ],
+        "partition_dimensions": [],
+        "ranked_dimensions": [],
+        "constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "filters": []
+      },
+      "chart": {
+        "intent_requested": true,
+        "intent_source": "explicit_current_query",
+        "chart_hint": "auto",
+        "chart_plan": {
+          "requested": true,
+          "chart_type": "bar",
+          "metric": "taxa_mortalidade",
+          "metric_expression": "SUM(MORTE=true) * 100.0 / COUNT(*)",
+          "x_dimension": "procedimento",
+          "series_dimension": null,
+          "y_column": "taxa_mortalidade",
+          "grain": "procedimento",
+          "expected_result_shape": "category_metric",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [
+            "procedimento",
+            "taxa_mortalidade"
+          ],
+          "sql_shape_guidance": "Return one row per procedimento with columns: procedimento, taxa_mortalidade.",
+          "reason": "structured chart parameters extracted before SQL generation"
+        },
+        "synthetic_spec": {
+          "chartable": true,
+          "chart_type": "bar",
+          "title": "taxa mortalidade por procedimento",
+          "x": "procedimento",
+          "y": "taxa_mortalidade",
+          "series": null,
+          "encoding": {
+            "x_type": "nominal",
+            "y_type": "quantitative"
+          },
+          "data": [
+            {
+              "procedimento": "Grupo A",
+              "taxa_mortalidade": 10
+            },
+            {
+              "procedimento": "Grupo B",
+              "taxa_mortalidade": 15
+            },
+            {
+              "procedimento": "Grupo C",
+              "taxa_mortalidade": 8
+            }
+          ],
+          "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+          "warnings": [],
+          "presentation": {
+            "title": "Taxa de mortalidade (%) por procedimento",
+            "subtitle": "Ranking por valor",
+            "x_label": "Procedimento",
+            "y_label": "Taxa de mortalidade (%)",
+            "series_label": null,
+            "value_format": "percent",
+            "sort_order": "as_returned",
+            "footnote": null,
+            "summary": "Grupo B lidera com 15,00%."
+          }
+        },
+        "echarts_valid": true
+      },
+      "agent": {
+        "success": true,
+        "error": null,
+        "response": "Os procedimentos com maior taxa de mortalidade são:\n\n1. Tratamento de Parada Cardíaca c/ Ressuscitação: 75,27%\n2. Tratamento de Choque Cardiogênico: 71,51%\n3. Correção de Hipoplasia de Ventrículo Esquerdo: 60,72%\n4. Tratamento de Choque Hipovolêmico: 54,58%\n5. Manutenção de Assistência Circulatória: 50,00%\n6. Tratamento de Paciente sob Cuidados Prolongados por Enfermedades Oncológicas: 45,14%\n7. Aneurismectomia Toraco-Abdominal: 41,22%\n8. Troca de Aorta Descendente (Inclui Abdominal): 41,15%\n9. Correção de Dupla Via de Saída do Ventrículo Esquerdo: 37,50%\n10. Correção de Tronco Arterioso Persistente: 35,09%\n\nUm gráfico pode ser gerado com esses dados.",
+        "answer": null,
+        "sql_query": "SELECT p.\"NOME_PROC\" AS procedimento, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade FROM internacoes i JOIN internacao_procedimento ip ON i.\"N_AIH\" = ip.\"N_AIH\" JOIN procedimentos p ON ip.\"PROC_REA\" = p.\"PROC_REA\" WHERE p.\"NOME_PROC\" IS NOT NULL AND TRIM(p.\"NOME_PROC\") <> '' AND p.\"NOME_PROC\" NOT IN ('Nao preenchido', 'Nao informado') GROUP BY p.\"NOME_PROC\" ORDER BY taxa_mortalidade DESC LIMIT 10;",
+        "row_count": 10,
+        "chart": {
+          "requested": true,
+          "source": "explicit_current_query",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "spec": {
+            "chartable": true,
+            "chart_type": "bar",
+            "title": "taxa mortalidade por procedimento",
+            "x": "procedimento",
+            "y": "taxa_mortalidade",
+            "series": null,
+            "encoding": {
+              "x_type": "nominal",
+              "y_type": "quantitative"
+            },
+            "data": [
+              {
+                "procedimento": "TRATAMENTO DE PARADA CARDIACA C/ RESSUSCITACAO",
+                "taxa_mortalidade": 75.27
+              },
+              {
+                "procedimento": "TRATAMENTO DE CHOQUE CARDIOGENICO",
+                "taxa_mortalidade": 71.51
+              },
+              {
+                "procedimento": "CORRECAO DE HIPOPLASIA DE VENTRICULO ESQUERDO",
+                "taxa_mortalidade": 60.72
+              },
+              {
+                "procedimento": "TRATAMENTO DE CHOQUE HIPOVOLEMICO",
+                "taxa_mortalidade": 54.58
+              },
+              {
+                "procedimento": "MANUTENCAO DE ASSISTENCIA CIRCULATORIA",
+                "taxa_mortalidade": 50.0
+              },
+              {
+                "procedimento": "TRATAMENTO DE PACIENTE SOB CUIDADOS PROLONGADOS POR ENFERMIDADES ONCOLOGICAS",
+                "taxa_mortalidade": 45.14
+              },
+              {
+                "procedimento": "ANEURISMECTOMIA TORACO-ABDOMINAL",
+                "taxa_mortalidade": 41.22
+              },
+              {
+                "procedimento": "TROCA DE AORTA DESCENDENTE (INCLUI ABDOMINAL)",
+                "taxa_mortalidade": 41.15
+              },
+              {
+                "procedimento": "CORRECAO DE DUPLA VIA DE SAIDA DO VENTRICULO ESQUERDO",
+                "taxa_mortalidade": 37.5
+              },
+              {
+                "procedimento": "CORRECAO DE TRONCO ARTERIOSO PERSISTENTE",
+                "taxa_mortalidade": 35.09
+              }
+            ],
+            "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+            "warnings": [],
+            "presentation": {
+              "title": "Taxa de mortalidade (%) por procedimento",
+              "subtitle": "Ranking por valor",
+              "x_label": "Procedimento",
+              "y_label": "Taxa de mortalidade (%)",
+              "series_label": null,
+              "value_format": "percent",
+              "sort_order": "as_returned",
+              "footnote": null,
+              "summary": "TRATAMENTO DE PARADA CARDIACA C/ RESSUSCITACAO lidera com 75,27%."
+            }
+          },
+          "echarts": {
+            "color": [
+              "#2563eb",
+              "#0f766e",
+              "#c2410c",
+              "#7c3aed",
+              "#be123c",
+              "#a16207",
+              "#0891b2",
+              "#4d7c0f",
+              "#9333ea",
+              "#0284c7",
+              "#b45309",
+              "#047857"
+            ],
+            "backgroundColor": "transparent",
+            "animationDuration": 450,
+            "textStyle": {
+              "fontFamily": "Inter, system-ui, sans-serif"
+            },
+            "_valueFormat": "percent",
+            "_summary": "TRATAMENTO DE PARADA CARDIACA C/ RESSUSCITACAO lidera com 75,27%.",
+            "_footnote": null,
+            "_subtitle": "Ranking por valor",
+            "title": {
+              "show": false,
+              "text": "Taxa de mortalidade (%) por procedimento",
+              "left": 0,
+              "top": 0,
+              "textStyle": {
+                "fontSize": 14,
+                "fontWeight": 700,
+                "color": "#101828"
+              }
+            },
+            "tooltip": {
+              "trigger": "axis",
+              "confine": true
+            },
+            "grid": {
+              "left": 14,
+              "right": 28,
+              "top": 24,
+              "bottom": 22,
+              "containLabel": true
+            },
+            "legend": {
+              "show": false,
+              "top": 26,
+              "right": 0,
+              "type": "scroll"
+            },
+            "xAxis": {
+              "type": "value",
+              "name": "Taxa de mortalidade (%)",
+              "nameGap": 30,
+              "axisLabel": {
+                "color": "#667085"
+              },
+              "splitLine": {
+                "lineStyle": {
+                  "color": "rgba(102,112,133,0.18)"
+                }
+              }
+            },
+            "yAxis": {
+              "type": "category",
+              "name": "Procedimento",
+              "nameGap": 46,
+              "inverse": true,
+              "data": [
+                "TRATAMENTO DE PARADA CARDIACA C/ RESSUSCITACAO",
+                "TRATAMENTO DE CHOQUE CARDIOGENICO",
+                "CORRECAO DE HIPOPLASIA DE VENTRICULO ESQUERDO",
+                "TRATAMENTO DE CHOQUE HIPOVOLEMICO",
+                "MANUTENCAO DE ASSISTENCIA CIRCULATORIA",
+                "TRATAMENTO DE PACIENTE SOB CUIDADOS PROLONGADOS POR ENFERMIDADES ONCOLOGICAS",
+                "ANEURISMECTOMIA TORACO-ABDOMINAL",
+                "TROCA DE AORTA DESCENDENTE (INCLUI ABDOMINAL)",
+                "CORRECAO DE DUPLA VIA DE SAIDA DO VENTRICULO ESQUERDO",
+                "CORRECAO DE TRONCO ARTERIOSO PERSISTENTE"
+              ],
+              "axisLabel": {
+                "color": "#667085",
+                "width": 142,
+                "overflow": "truncate"
+              },
+              "axisLine": {
+                "lineStyle": {
+                  "color": "#98a2b3"
+                }
+              }
+            },
+            "series": [
+              {
+                "type": "bar",
+                "name": "taxa_mortalidade",
+                "emphasis": {
+                  "focus": "series"
+                },
+                "data": [
+                  {
+                    "value": 75.27,
+                    "itemStyle": {
+                      "color": "#2563eb",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 71.51,
+                    "itemStyle": {
+                      "color": "#0f766e",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 60.72,
+                    "itemStyle": {
+                      "color": "#c2410c",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 54.58,
+                    "itemStyle": {
+                      "color": "#7c3aed",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 50.0,
+                    "itemStyle": {
+                      "color": "#be123c",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 45.14,
+                    "itemStyle": {
+                      "color": "#a16207",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 41.22,
+                    "itemStyle": {
+                      "color": "#0891b2",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 41.15,
+                    "itemStyle": {
+                      "color": "#4d7c0f",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 37.5,
+                    "itemStyle": {
+                      "color": "#9333ea",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 35.09,
+                    "itemStyle": {
+                      "color": "#0284c7",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  }
+                ],
+                "barMaxWidth": 26
+              }
+            ],
+            "_legend": [
+              {
+                "name": "TRATAMENTO DE PARADA CARDIACA C/ RESSUSCITACAO",
+                "color": "#2563eb"
+              },
+              {
+                "name": "TRATAMENTO DE CHOQUE CARDIOGENICO",
+                "color": "#0f766e"
+              },
+              {
+                "name": "CORRECAO DE HIPOPLASIA DE VENTRICULO ESQUERDO",
+                "color": "#c2410c"
+              },
+              {
+                "name": "TRATAMENTO DE CHOQUE HIPOVOLEMICO",
+                "color": "#7c3aed"
+              },
+              {
+                "name": "MANUTENCAO DE ASSISTENCIA CIRCULATORIA",
+                "color": "#be123c"
+              },
+              {
+                "name": "TRATAMENTO DE PACIENTE SOB CUIDADOS PROLONGADOS POR ENFERMIDADES ONCOLOGICAS",
+                "color": "#a16207"
+              },
+              {
+                "name": "ANEURISMECTOMIA TORACO-ABDOMINAL",
+                "color": "#0891b2"
+              },
+              {
+                "name": "TROCA DE AORTA DESCENDENTE (INCLUI ABDOMINAL)",
+                "color": "#4d7c0f"
+              },
+              {
+                "name": "CORRECAO DE DUPLA VIA DE SAIDA DO VENTRICULO ESQUERDO",
+                "color": "#9333ea"
+              },
+              {
+                "name": "CORRECAO DE TRONCO ARTERIOSO PERSISTENTE",
+                "color": "#0284c7"
+              }
+            ]
+          },
+          "reason": "Usuario pediu explicitamente visualizacao em grafico"
+        },
+        "setup": [],
+        "elapsed_seconds": 36.573246
+      }
+    }
+  ],
+  "run": {
+    "timestamp": "2026-05-21T05:53:26.583352Z",
+    "cases": "evaluation/visualization/chart_agent_prod_cases.jsonl",
+    "total": 1,
+    "run_agent": true,
+    "only": "PROD_PROC_003",
+    "limit": null,
+    "shuffle": false,
+    "seed": 20260521
+  }
+}

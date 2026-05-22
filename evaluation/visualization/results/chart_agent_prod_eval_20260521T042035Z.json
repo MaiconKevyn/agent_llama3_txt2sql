@@ -1,0 +1,610 @@
+{
+  "metrics": {
+    "success_rate": 1.0,
+    "no_raw_internal_error": 1.0,
+    "chart_contract_validity": 1.0,
+    "sql_invariant_validity": 1.0,
+    "semantic_dimension_validity": 1.0
+  },
+  "counts": {
+    "success": 1,
+    "no_raw_internal_error": 1,
+    "chart_contract_valid": 1,
+    "sql_invariant_valid": 1,
+    "semantic_dimension_valid": 1
+  },
+  "failures": [],
+  "details": [
+    {
+      "id": "PROD_MORT_LOC_010",
+      "query": "Visualize a mortalidade hospitalar por municipio no periodo mais recente disponivel.",
+      "tags": [
+        "mortality_rate",
+        "municipality",
+        "recent_period",
+        "bar"
+      ],
+      "checks": {
+        "no_raw_internal_error": true,
+        "chart_contract_validity": true,
+        "sql_invariant_validity": true,
+        "semantic_dimension_validity": true
+      },
+      "success": true,
+      "failure_reasons": [],
+      "semantic": {
+        "intent": "rate",
+        "metrics": [
+          "taxa_mortalidade"
+        ],
+        "dimensions": [
+          "municipio"
+        ],
+        "required_dimensions": [
+          "municipio"
+        ],
+        "output_dimensions": [
+          "municipio"
+        ],
+        "partition_dimensions": [],
+        "ranked_dimensions": [],
+        "constraints": [
+          "relative_recent_years_use_available_data_max_year",
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "filters": [
+          {
+            "field": "recent_years_available",
+            "values": [
+              "1"
+            ],
+            "operator": "last_n_available"
+          }
+        ]
+      },
+      "chart": {
+        "intent_requested": true,
+        "intent_source": "explicit_current_query",
+        "chart_hint": "auto",
+        "chart_plan": {
+          "requested": true,
+          "chart_type": "bar",
+          "metric": "taxa_mortalidade",
+          "metric_expression": "SUM(MORTE=true) * 100.0 / COUNT(*)",
+          "x_dimension": "municipio",
+          "series_dimension": null,
+          "y_column": "taxa_mortalidade",
+          "grain": "municipio",
+          "expected_result_shape": "category_metric",
+          "filters": [],
+          "time_window": {
+            "type": "last_n_available_years",
+            "n": 1,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [
+            "municipio",
+            "taxa_mortalidade"
+          ],
+          "sql_shape_guidance": "Return one row per municipio with columns: municipio, taxa_mortalidade.",
+          "reason": "structured chart parameters extracted before SQL generation"
+        },
+        "synthetic_spec": {
+          "chartable": true,
+          "chart_type": "bar",
+          "title": "taxa mortalidade por municipio",
+          "x": "municipio",
+          "y": "taxa_mortalidade",
+          "series": null,
+          "encoding": {
+            "x_type": "nominal",
+            "y_type": "quantitative"
+          },
+          "data": [
+            {
+              "municipio": "Grupo A",
+              "taxa_mortalidade": 10
+            },
+            {
+              "municipio": "Grupo B",
+              "taxa_mortalidade": 15
+            },
+            {
+              "municipio": "Grupo C",
+              "taxa_mortalidade": 8
+            }
+          ],
+          "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+          "warnings": [],
+          "presentation": {
+            "title": "Taxa de mortalidade (%) por municipio",
+            "subtitle": "Ranking por valor",
+            "x_label": "Municipio",
+            "y_label": "Taxa de mortalidade (%)",
+            "series_label": null,
+            "value_format": "percent",
+            "sort_order": "as_returned",
+            "footnote": null,
+            "summary": "Grupo B lidera com 15,00%."
+          }
+        },
+        "echarts_valid": true
+      },
+      "agent": {
+        "success": true,
+        "error": null,
+        "response": "Encontrados 5297 resultados:\n1. {'municipio': 'Juruá', 'taxa_mortalidade': 15.15}\n2. {'municipio': 'Montauri', 'taxa_mortalidade': 12.5}\n3. {'municipio': 'São José de Ubá', 'taxa_mortalidade': 11.05}\n4. {'municipio': 'Araçatuba', 'taxa_mortalidade': 11.04}\n5. {'municipio': 'Rio Espera', 'taxa_mortalidade': 10.53}\n6. {'municipio': 'Arambaré', 'taxa_mortalidade': 10.51}\n7. {'municipio': 'São José do Goiabal', 'taxa_mortalidade': 10.47}\n8. {'municipio': 'Cardoso Moreira', 'taxa_mortalidade': 10.33}\n9. {'municipio': 'Água Comprida', 'taxa_mortalidade': 10.28}\n10. {'municipio': 'Desterro do Melo', 'taxa_mortalidade': 10.24}\n11. {'municipio': 'Consolação', 'taxa_mortalidade': 10.2}\n12. {'municipio': 'Silveira Martins', 'taxa_mortalidade': 10.19}\n13. {'municipio': 'Cascalho Rico', 'taxa_mortalidade': 10.0}\n14. {'municipio': 'Italva', 'taxa_mortalidade': 9.96}\n15. {'municipio': 'Arapuá', 'taxa_mortalidade': 9.9}\n16. {'municipio': 'Carvalhópolis', 'taxa_mortalidade': 9.75}\n17. {'municipio': 'Guarani', 'taxa_mortalidade': 9... (resposta truncada)",
+        "answer": null,
+        "sql_query": "SELECT mu.\"NO_MUNICIPIO\" AS municipio, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = (SELECT MAX(EXTRACT(YEAR FROM \"DT_INTER\")) FROM internacoes) GROUP BY mu.\"NO_MUNICIPIO\" ORDER BY taxa_mortalidade DESC;",
+        "row_count": 5297,
+        "chart": {
+          "requested": true,
+          "source": "explicit_current_query",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "spec": {
+            "chartable": true,
+            "chart_type": "bar",
+            "title": "taxa mortalidade por municipio",
+            "x": "municipio",
+            "y": "taxa_mortalidade",
+            "series": null,
+            "encoding": {
+              "x_type": "nominal",
+              "y_type": "quantitative"
+            },
+            "data": [
+              {
+                "municipio": "Juruá",
+                "taxa_mortalidade": 15.15
+              },
+              {
+                "municipio": "Montauri",
+                "taxa_mortalidade": 12.5
+              },
+              {
+                "municipio": "São José de Ubá",
+                "taxa_mortalidade": 11.05
+              },
+              {
+                "municipio": "Araçatuba",
+                "taxa_mortalidade": 11.04
+              },
+              {
+                "municipio": "Rio Espera",
+                "taxa_mortalidade": 10.53
+              },
+              {
+                "municipio": "Arambaré",
+                "taxa_mortalidade": 10.51
+              },
+              {
+                "municipio": "São José do Goiabal",
+                "taxa_mortalidade": 10.47
+              },
+              {
+                "municipio": "Cardoso Moreira",
+                "taxa_mortalidade": 10.33
+              },
+              {
+                "municipio": "Água Comprida",
+                "taxa_mortalidade": 10.28
+              },
+              {
+                "municipio": "Desterro do Melo",
+                "taxa_mortalidade": 10.24
+              },
+              {
+                "municipio": "Consolação",
+                "taxa_mortalidade": 10.2
+              },
+              {
+                "municipio": "Silveira Martins",
+                "taxa_mortalidade": 10.19
+              },
+              {
+                "municipio": "Cascalho Rico",
+                "taxa_mortalidade": 10.0
+              },
+              {
+                "municipio": "Italva",
+                "taxa_mortalidade": 9.96
+              },
+              {
+                "municipio": "Arapuá",
+                "taxa_mortalidade": 9.9
+              }
+            ],
+            "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+            "warnings": [
+              {
+                "code": "bar_limited_for_readability",
+                "message": "Exibindo os 15 maiores valores de 5297 categorias.",
+                "severity": "info"
+              }
+            ],
+            "presentation": {
+              "title": "Taxa de mortalidade (%) por municipio",
+              "subtitle": "Ranking por valor",
+              "x_label": "Municipio",
+              "y_label": "Taxa de mortalidade (%)",
+              "series_label": null,
+              "value_format": "percent",
+              "sort_order": "as_returned",
+              "footnote": "Exibindo os 15 maiores valores de 5297 categorias.",
+              "summary": "Juruá lidera com 15,15%."
+            }
+          },
+          "echarts": {
+            "color": [
+              "#2563eb",
+              "#0f766e",
+              "#c2410c",
+              "#7c3aed",
+              "#be123c",
+              "#a16207",
+              "#0891b2",
+              "#4d7c0f",
+              "#9333ea",
+              "#0284c7",
+              "#b45309",
+              "#047857"
+            ],
+            "backgroundColor": "transparent",
+            "animationDuration": 450,
+            "textStyle": {
+              "fontFamily": "Inter, system-ui, sans-serif"
+            },
+            "_valueFormat": "percent",
+            "_summary": "Juruá lidera com 15,15%.",
+            "_footnote": "Exibindo os 15 maiores valores de 5297 categorias.",
+            "_subtitle": "Ranking por valor",
+            "title": {
+              "show": false,
+              "text": "Taxa de mortalidade (%) por municipio",
+              "left": 0,
+              "top": 0,
+              "textStyle": {
+                "fontSize": 14,
+                "fontWeight": 700,
+                "color": "#101828"
+              }
+            },
+            "tooltip": {
+              "trigger": "axis",
+              "confine": true
+            },
+            "grid": {
+              "left": 14,
+              "right": 28,
+              "top": 24,
+              "bottom": 22,
+              "containLabel": true
+            },
+            "legend": {
+              "show": false,
+              "top": 26,
+              "right": 0,
+              "type": "scroll"
+            },
+            "xAxis": {
+              "type": "value",
+              "name": "Taxa de mortalidade (%)",
+              "nameGap": 30,
+              "axisLabel": {
+                "color": "#667085"
+              },
+              "splitLine": {
+                "lineStyle": {
+                  "color": "rgba(102,112,133,0.18)"
+                }
+              }
+            },
+            "yAxis": {
+              "type": "category",
+              "name": "Municipio",
+              "nameGap": 46,
+              "inverse": true,
+              "data": [
+                "Juruá",
+                "Montauri",
+                "São José de Ubá",
+                "Araçatuba",
+                "Rio Espera",
+                "Arambaré",
+                "São José do Goiabal",
+                "Cardoso Moreira",
+                "Água Comprida",
+                "Desterro do Melo",
+                "Consolação",
+                "Silveira Martins",
+                "Cascalho Rico",
+                "Italva",
+                "Arapuá"
+              ],
+              "axisLabel": {
+                "color": "#667085",
+                "width": 142,
+                "overflow": "truncate"
+              },
+              "axisLine": {
+                "lineStyle": {
+                  "color": "#98a2b3"
+                }
+              }
+            },
+            "series": [
+              {
+                "type": "bar",
+                "name": "taxa_mortalidade",
+                "emphasis": {
+                  "focus": "series"
+                },
+                "data": [
+                  {
+                    "value": 15.15,
+                    "itemStyle": {
+                      "color": "#2563eb",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 12.5,
+                    "itemStyle": {
+                      "color": "#0f766e",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 11.05,
+                    "itemStyle": {
+                      "color": "#c2410c",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 11.04,
+                    "itemStyle": {
+                      "color": "#7c3aed",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 10.53,
+                    "itemStyle": {
+                      "color": "#be123c",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 10.51,
+                    "itemStyle": {
+                      "color": "#a16207",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 10.47,
+                    "itemStyle": {
+                      "color": "#0891b2",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 10.33,
+                    "itemStyle": {
+                      "color": "#4d7c0f",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 10.28,
+                    "itemStyle": {
+                      "color": "#9333ea",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 10.24,
+                    "itemStyle": {
+                      "color": "#0284c7",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 10.2,
+                    "itemStyle": {
+                      "color": "#b45309",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 10.19,
+                    "itemStyle": {
+                      "color": "#047857",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 10.0,
+                    "itemStyle": {
+                      "color": "#2563eb",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 9.96,
+                    "itemStyle": {
+                      "color": "#0f766e",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 9.9,
+                    "itemStyle": {
+                      "color": "#c2410c",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  }
+                ],
+                "barMaxWidth": 26
+              }
+            ],
+            "_legend": [
+              {
+                "name": "Juruá",
+                "color": "#2563eb"
+              },
+              {
+                "name": "Montauri",
+                "color": "#0f766e"
+              },
+              {
+                "name": "São José de Ubá",
+                "color": "#c2410c"
+              },
+              {
+                "name": "Araçatuba",
+                "color": "#7c3aed"
+              },
+              {
+                "name": "Rio Espera",
+                "color": "#be123c"
+              },
+              {
+                "name": "Arambaré",
+                "color": "#a16207"
+              },
+              {
+                "name": "São José do Goiabal",
+                "color": "#0891b2"
+              },
+              {
+                "name": "Cardoso Moreira",
+                "color": "#4d7c0f"
+              },
+              {
+                "name": "Água Comprida",
+                "color": "#9333ea"
+              },
+              {
+                "name": "Desterro do Melo",
+                "color": "#0284c7"
+              },
+              {
+                "name": "Consolação",
+                "color": "#b45309"
+              },
+              {
+                "name": "Silveira Martins",
+                "color": "#047857"
+              },
+              {
+                "name": "Cascalho Rico",
+                "color": "#2563eb"
+              },
+              {
+                "name": "Italva",
+                "color": "#0f766e"
+              },
+              {
+                "name": "Arapuá",
+                "color": "#c2410c"
+              }
+            ]
+          },
+          "reason": "Usuario pediu explicitamente visualizacao em grafico"
+        },
+        "setup": [],
+        "elapsed_seconds": 16.545469
+      }
+    }
+  ],
+  "run": {
+    "timestamp": "2026-05-21T04:20:35.446348Z",
+    "cases": "evaluation/visualization/chart_agent_prod_cases.jsonl",
+    "total": 1,
+    "run_agent": true,
+    "only": "PROD_MORT_LOC_010",
+    "limit": null,
+    "shuffle": false,
+    "seed": 20260521
+  }
+}

@@ -160,7 +160,7 @@ app.post('/api/query', async (req, res) => {
     const startTime = Date.now();
 
     try {
-        const { question, session_id, debug } = req.body;
+        const { question, session_id, debug, table_context } = req.body;
         const debugEnabled = Boolean(debug);
 
         if (!question || typeof question !== 'string' || question.trim().length === 0) {
@@ -192,7 +192,8 @@ app.post('/api/query', async (req, res) => {
                 query: question,
                 session_id: session_id || null,
                 include_sql: debugEnabled,
-                debug: debugEnabled
+                debug: debugEnabled,
+                table_context: table_context || null
             })
         });
 
@@ -279,6 +280,82 @@ app.get('/api/models', async (req, res) => {
 
         res.status(500).json({
             error: error.message || 'Failed to load models',
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// Local database overview endpoint - proxy to Agent API
+app.get('/api/database/overview', async (req, res) => {
+    try {
+        const response = await forwardToAgentAPI(API_CONFIG.ENDPOINTS.DATABASE_OVERVIEW, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+
+        res.json(response);
+
+    } catch (error) {
+        console.error(`[${new Date().toISOString()}] Database overview error:`, error);
+
+        res.status(500).json({
+            error: error.message || 'Failed to load database overview',
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// Local database table endpoint - proxy to Agent API
+app.get('/api/database/table/:schema/:table', async (req, res) => {
+    try {
+        const schemaName = encodeURIComponent(req.params.schema);
+        const tableName = encodeURIComponent(req.params.table);
+        const limit = req.query.limit ? `?limit=${encodeURIComponent(req.query.limit)}` : '';
+        const endpoint = `${API_CONFIG.ENDPOINTS.DATABASE_TABLE}/${schemaName}/${tableName}${limit}`;
+
+        const response = await forwardToAgentAPI(endpoint, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+
+        res.json(response);
+
+    } catch (error) {
+        console.error(`[${new Date().toISOString()}] Database table error:`, error);
+
+        res.status(500).json({
+            error: error.message || 'Failed to load database table',
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// Local database read-only query endpoint - proxy to Agent API
+app.post('/api/database/query', queryLimiter, async (req, res) => {
+    try {
+        const response = await forwardToAgentAPI(API_CONFIG.ENDPOINTS.DATABASE_QUERY, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                sql: req.body.sql,
+                limit: req.body.limit
+            })
+        });
+
+        res.json(response);
+
+    } catch (error) {
+        console.error(`[${new Date().toISOString()}] Database query error:`, error);
+
+        res.status(500).json({
+            error: sanitizeAgentError(error.message || 'Failed to execute database query'),
             timestamp: new Date().toISOString()
         });
     }
