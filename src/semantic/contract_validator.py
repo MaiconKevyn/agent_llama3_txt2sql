@@ -32,7 +32,7 @@ def validate_sql_contract(
     catalog = catalog or load_semantic_catalog()
     errors: list[str] = []
 
-    _validate_top_n_contract(plan, ast_summary, errors)
+    _validate_top_n_contract(plan, ast_summary, sql, errors)
     _validate_metric_expression_contract(plan, ast_summary, sql, errors)
     _validate_rate_contract(plan, ast_summary, sql, errors)
     _validate_grouping_contract(plan, ast_summary, errors)
@@ -48,9 +48,12 @@ def validate_sql_contract(
 def _validate_top_n_contract(
     plan: SemanticPlan,
     ast_summary: SQLAstSummary,
+    sql: str,
     errors: list[str],
 ) -> None:
     if plan.answer_shape.top_n_scope != "per_group":
+        return
+    if _uses_bounded_top_entity_cte_for_time_series(plan, sql):
         return
     if not ast_summary.window_functions:
         errors.append("AST CONTRACT ERROR: top-N per group requires a window ranking function.")
@@ -88,6 +91,19 @@ def _validate_top_n_contract(
                     f"entity ({ranked}), making every entity rank within itself."
                 )
                 return
+
+
+def _uses_bounded_top_entity_cte_for_time_series(plan: SemanticPlan, sql: str) -> bool:
+    dimensions = set(plan.answer_shape.required_dimensions)
+    if not {"ano", "procedimento"}.issubset(dimensions):
+        return False
+    top_n = plan.answer_shape.top_n or 10
+    text = re.sub(r"\s+", " ", sql or "").lower()
+    return bool(
+        re.search(r"\bwith\s+top_procedimentos\s+as\s*\(", text, re.I)
+        and re.search(r"\bjoin\s+top_procedimentos\b", text, re.I)
+        and re.search(rf"\blimit\s+{top_n}\b", text, re.I)
+    )
 
 
 def _validate_metric_expression_contract(

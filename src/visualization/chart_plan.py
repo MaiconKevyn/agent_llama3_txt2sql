@@ -255,10 +255,10 @@ def _infer_metric(normalized_query: str) -> str:
 
 
 def _infer_x_dimension(normalized_query: str) -> str | None:
-    if _is_temporal_query(normalized_query):
-        return "ano"
     if any(token in normalized_query for token in ["por mes", "mensal", "mensais", "monthly"]):
         return "mes"
+    if _is_temporal_query(normalized_query):
+        return "ano"
     if any(token in normalized_query for token in ["por nacionalidade", "nacionalidade"]):
         return "nacionalidade"
     if "perfil" in normalized_query:
@@ -627,7 +627,16 @@ def _infer_grain(x_dimension: str | None, series_dimension: str | None) -> str:
 def _recent_year_window(normalized_query: str) -> int | None:
     if _is_recent_period_filter_only(normalized_query):
         return 1
-    match = re.search(r"\b(?:ultimos|ultimas)\s+(\d+)\s+anos\b", normalized_query)
+    match = re.search(
+        r"\b(?:ultimos|ultimas)\s+(\d+)\s+anos\b"
+        r"|\b(?:nos\s+)?(\d+)\s+anos\s+mais\s+recentes\b",
+        normalized_query,
+    )
+    if match:
+        return int(match.group(1) or match.group(2))
+    match = re.search(r"\banos\s+recentes\b", normalized_query)
+    if match:
+        return 5
     return int(match.group(1)) if match else None
 
 

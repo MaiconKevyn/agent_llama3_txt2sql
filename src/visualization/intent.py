@@ -32,6 +32,7 @@ _EXPLICIT_CHART_TERMS = (
     "plot",
     "plotar",
     "plote",
+    "ranking visual",
     "visualizar em grafico",
     "visualize em grafico",
     "mostre em grafico",
@@ -139,7 +140,7 @@ def detect_visualization_intent(user_query: str) -> VisualizationIntent:
     if any(meta in normalized_query for meta in _META_CHART_PHRASES):
         return VisualizationIntent(requested=False)
 
-    requested = any(term in normalized_query for term in _EXPLICIT_CHART_TERMS)
+    requested = any(_contains_chart_term(normalized_query, term) for term in _EXPLICIT_CHART_TERMS)
     if not requested:
         return VisualizationIntent(requested=False)
 
@@ -157,3 +158,9 @@ def detect_visualization_intent(user_query: str) -> VisualizationIntent:
         chart_hint=chart_hint,
         reason=reason,
     )
+
+
+def _contains_chart_term(normalized_query: str, term: str) -> bool:
+    if re.fullmatch(r"[\w-]+", term):
+        return bool(re.search(rf"(?<!\w){re.escape(term)}(?!\w)", normalized_query))
+    return term in normalized_query

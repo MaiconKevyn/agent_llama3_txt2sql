@@ -8,6 +8,7 @@ from .nodes import (
     generate_response_node,
     generate_sql_node,
     get_schema_node,
+    intent_planning_node,
     list_tables_node,
     query_classification_node,
     reasoning_node,
@@ -53,6 +54,7 @@ def create_langgraph_sql_workflow(config=None):
 
     # ── Core nodes (always present) ──────────────────────────────────────────
     workflow.add_node("classify_query", query_classification_node)
+    workflow.add_node("intent_planning", intent_planning_node)
     workflow.add_node("list_tables", list_tables_node)
     workflow.add_node("get_schema", get_schema_node)
     workflow.add_node("plan_gate", plan_gate_node)
@@ -82,14 +84,15 @@ def create_langgraph_sql_workflow(config=None):
         "classify_query",
         route_after_classification,
         {
-            "database": "list_tables",
+            "database": "intent_planning",
             "conversational": "generate_response",
-            "schema": "list_tables",
+            "schema": "intent_planning",
             "clarification": "clarification",
             "error": "generate_response",
         },
     )
 
+    workflow.add_edge("intent_planning", "list_tables")
     workflow.add_edge("list_tables", "get_schema")
     workflow.add_conditional_edges(
         "get_schema",

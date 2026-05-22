@@ -13,6 +13,7 @@ from ..utils.logging_config import get_nodes_logger
 from ..utils.sql_safety import is_select_only
 from .analytic_sql import build_analytic_sql_package as _build_analytic_sql_package
 from .llm_manager import get_llm_manager
+from .plan_auditor import audit_result_contract
 from .schema_node import _refresh_schema_context, _should_refresh_schema
 from .schema_utils import _check_columns_against_schema
 from .semantic_repair import build_semantic_repair_context
@@ -1726,6 +1727,32 @@ def execute_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             metadata["post_execution_contract_error"] = post_execution_message
             state["response_metadata"] = metadata
             state = add_ai_message(state, post_execution_message or "Post-execution contract failed")
+            execution_time = time.time() - start_time
+            state = update_phase(state, ExecutionPhase.SQL_EXECUTION, execution_time)
+            return state
+
+        result_audit = audit_result_contract(
+            chart_plan=state.get("chart_plan"),
+            rows=results,
+        )
+        state["result_audit"] = result_audit
+        if not result_audit["passed"]:
+            state["structured_error"] = {
+                "layer": "result_contract",
+                "code": "result_audit_failed",
+                "errors": result_audit["errors"],
+            }
+            sql_execution_result.success = False
+            sql_execution_result.validation_passed = False
+            sql_execution_result.error_message = "Result contract audit failed"
+            state["sql_execution_result"] = sql_execution_result
+            state = add_error(
+                state,
+                "Result contract audit failed",
+                "sql_execution_error",
+                ExecutionPhase.SQL_EXECUTION,
+                taxonomy=TX.WRONG_AGGREGATION,
+            )
             execution_time = time.time() - start_time
             state = update_phase(state, ExecutionPhase.SQL_EXECUTION, execution_time)
             return state
