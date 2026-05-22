@@ -61,3 +61,30 @@ def test_cid_agent_eval_runner_has_required_outputs():
     assert "generated_sql" in source
     assert "response_text" in source
     assert "failure_category" in source
+
+
+def test_cid_failure_taxonomy_contains_required_categories():
+    taxonomy = Path("evaluation/cid_investigation/failure_taxonomy.yml").read_text()
+    for category in [
+        "wrong_table_selection",
+        "wrong_column_selection",
+        "disease_resolution_error",
+        "under_aggregation",
+        "over_aggregation",
+        "unsafe_join",
+        "missing_join",
+        "wrong_metric_grain",
+        "lexical_normalization_gap",
+        "sql_runtime_error",
+        "response_grounding_gap",
+    ]:
+        assert category in taxonomy
+
+
+def test_cid_scorer_checks_join_and_table_requirements():
+    source = Path("evaluation/cid_investigation/score_cid_agent_eval.py").read_text()
+    assert "required_tables" in source
+    assert "required_join" in source
+    assert "DIAG_PRINC" in source
+    assert "DIAG_SECUN" in source
+    assert "CID_MORTE" in source
