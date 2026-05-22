@@ -1687,7 +1687,7 @@ function setServerStatus(status) {
 
     const labels = {
         checking: 'Verificando...',
-        online: 'Online',
+        online: 'Agent conectado',
         offline: 'Agent offline'
     };
     elements.statusText.textContent = labels[status] || labels.offline;

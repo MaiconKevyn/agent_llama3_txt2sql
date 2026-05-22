@@ -545,11 +545,11 @@ def test_deterministic_scalar_sql_counts_description_condition_with_trimmed_term
     sql = _build_deterministic_scalar_sql(plan)
 
     assert sql is not None
-    assert '"DIAG_PRINC" IN (SELECT c."CID" FROM cid c' in sql
+    assert 'JOIN cid c ON i."DIAG_PRINC" = c."CID"' in sql
     assert 'c."DESCRICAO" ILIKE' in sql
     assert "%hipertens%" in sql
     assert "ocorreram" not in sql
-    assert 'EXTRACT(YEAR FROM "DT_INTER") = 2021' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
 
     valid, message = validate_sql_against_semantic_plan(plan, sql)
     assert valid is True, message

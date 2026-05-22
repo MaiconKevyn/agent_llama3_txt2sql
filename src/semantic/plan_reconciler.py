@@ -22,6 +22,11 @@ _ALLOWED_DIMENSION_NAMES = {
     "hospital",
     "especialidade",
     "cid_capitulo",
+    "cid_categoria",
+    "cid_grupo",
+    "cid_restrsexo",
+    "cid_codigo",
+    "cid_descricao",
     "diagnostico",
     "procedimento",
     "marca_uti",
@@ -167,6 +172,11 @@ def _merge_metrics(
             "media",
             "requested_metric",
             "delta_temporal",
+            "cid_catalog_count",
+            "cid_group_catalog_count",
+            "cid_category_catalog_count",
+            "cid_chapter_catalog_count",
+            "cid_restrsexo_catalog_count",
         }:
             merged[metric.name] = metric
         else:
