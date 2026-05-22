@@ -52,3 +52,12 @@ def test_cid_gold_sql_uses_only_allowed_cid_join_for_business_questions():
         assert "DIAG_PRINC" in sql
         assert "DIAG_SECUN" not in sql
         assert "CID_MORTE" not in sql
+
+
+def test_cid_agent_eval_runner_has_required_outputs():
+    source = Path("evaluation/cid_investigation/run_cid_agent_eval.py").read_text()
+    assert "cid_probe_cases.jsonl" in source
+    assert "selected_tables" in source
+    assert "generated_sql" in source
+    assert "response_text" in source
+    assert "failure_category" in source
