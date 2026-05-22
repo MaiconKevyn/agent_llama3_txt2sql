@@ -34,8 +34,35 @@ def _socioeconomic_expected_columns(plan: SemanticPlan) -> list[str]:
     )
 
 
+def _socioeconomic_metric_is_satisfied(metric, sql_lower: str) -> bool:
+    expected_columns = _SOCIOECONOMIC_WIDE_METRIC_COLUMNS.get(metric.name, ())
+    if any(_sql_mentions_column(sql_lower, column) for column in expected_columns):
+        return True
+
+    required_columns = {
+        column.lower()
+        for required_filter in metric.required_filters
+        for column in re.findall(r'"([A-Z][A-Z0-9_]*)"', required_filter)
+    }
+    return bool(required_columns) and all(
+        _sql_mentions_column(sql_lower, column) for column in required_columns
+    )
+
+
 def _sql_mentions_column(sql_lower: str, column: str) -> bool:
     return bool(re.search(rf'(?<!\w)"?{re.escape(column)}"?\b', sql_lower, re.I))
+
+
+def _uses_bounded_top_entity_cte_for_time_series(plan: SemanticPlan, sql_lower: str) -> bool:
+    dimensions = set(plan.answer_shape.required_dimensions)
+    if not {"ano", "procedimento"}.issubset(dimensions):
+        return False
+    top_n = plan.answer_shape.top_n or 10
+    return bool(
+        re.search(r"\bwith\s+top_procedimentos\s+as\s*\(", sql_lower, re.I)
+        and re.search(r"\bjoin\s+top_procedimentos\b", sql_lower, re.I)
+        and re.search(rf"\blimit\s+{top_n}\b", sql_lower, re.I)
+    )
 
 
 def _has_group_by_dimension(inspector: SQLInspector, dimension: str) -> bool:
@@ -149,7 +176,9 @@ def validate_sql_against_semantic_plan(
             "SEMANTIC PLAN ERROR: The state mention is a filter, not an output grouping dimension."
         )
 
-    if answer_shape.top_n_scope == "per_group":
+    if answer_shape.top_n_scope == "per_group" and not _uses_bounded_top_entity_cte_for_time_series(
+        plan, sql_lower
+    ):
         if not re.search(
             r"\b(?:row_number|rank|dense_rank)\s*\(\s*\)\s+over\s*\(", sql_lower, re.I
         ):
@@ -887,11 +916,14 @@ def _validate_additional_semantic_constraints(
             return False, (
                 "SEMANTIC PLAN ERROR: The requested metric belongs to socioeconomico, but SQL does not use socioeconomico."
             )
-        for expected_column in expected_columns:
-            if not _sql_mentions_column(text, expected_column):
+        for metric in plan.metrics:
+            if (
+                metric.name in _SOCIOECONOMIC_WIDE_METRIC_COLUMNS
+                and not _socioeconomic_metric_is_satisfied(metric, text)
+            ):
                 return False, (
                     "SEMANTIC PLAN ERROR: SQL does not use the current socioeconomico "
-                    f"column {expected_column.upper()} for the requested metric."
+                    f"columns or required formula for the requested metric {metric.name}."
                 )
         if expected_columns and re.search(r'\b(?:metrica|"valor"|\.valor)\b', text, re.I):
             return False, (
@@ -906,11 +938,14 @@ def _validate_additional_semantic_constraints(
                 "SEMANTIC PLAN ERROR: Multi-metric socioeconomic questions must join "
                 "socioeconomico to municipios."
             )
-        for expected_column in expected_columns:
-            if not _sql_mentions_column(text, expected_column):
+        for metric in plan.metrics:
+            if (
+                metric.name in _SOCIOECONOMIC_WIDE_METRIC_COLUMNS
+                and not _socioeconomic_metric_is_satisfied(metric, text)
+            ):
                 return False, (
                     "SEMANTIC PLAN ERROR: Multi-metric socioeconomic SQL must select or aggregate "
-                    f"the current column {expected_column.upper()}."
+                    f"the current columns or required formula for {metric.name}."
                 )
 
     if "socioeconomico_multi_metric_requires_conditional_pivot" in plan.constraints:

@@ -25,6 +25,9 @@ let isLoading = false;
 let isDebugEnabled = false;
 let messageHistory = [];
 let schemaTriggerElement = null;
+let databaseOverview = null;
+let selectedDatabaseTable = null;
+let activeTableContext = null;
 
 const elements = {
     messageInput: document.getElementById('messageInput'),
@@ -42,7 +45,19 @@ const elements = {
     questionButtons: document.querySelectorAll('[data-question]'),
     themeToggle: document.getElementById('themeToggle'),
     debugToggle: document.getElementById('debugToggle'),
-    charCounter: document.getElementById('charCounter')
+    charCounter: document.getElementById('charCounter'),
+    databaseSource: document.getElementById('databaseSource'),
+    databaseTableCards: document.getElementById('databaseTableCards'),
+    refreshDatabaseBtn: document.getElementById('refreshDatabaseBtn'),
+    databaseTabs: document.querySelectorAll('[data-database-tab]'),
+    databasePanels: document.querySelectorAll('[data-database-panel]'),
+    databaseQueryInput: document.getElementById('databaseQueryInput'),
+    queryLimitInput: document.getElementById('queryLimitInput'),
+    runDatabaseQueryBtn: document.getElementById('runDatabaseQueryBtn'),
+    databaseQueryResult: document.getElementById('databaseQueryResult'),
+    tableContextBar: document.getElementById('tableContextBar'),
+    tableContextLabel: document.getElementById('tableContextLabel'),
+    clearTableContextBtn: document.getElementById('clearTableContextBtn')
 };
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -82,6 +97,29 @@ function setupEventListeners() {
     if (loadSchemaBtn) {
         loadSchemaBtn.addEventListener('click', loadSelectedSchema);
     }
+    if (elements.refreshDatabaseBtn) {
+        elements.refreshDatabaseBtn.addEventListener('click', loadDatabaseOverview);
+    }
+    if (elements.runDatabaseQueryBtn) {
+        elements.runDatabaseQueryBtn.addEventListener('click', runDatabaseQuery);
+    }
+    if (elements.clearTableContextBtn) {
+        elements.clearTableContextBtn.addEventListener('click', clearActiveTableContext);
+    }
+    const tableSelect = document.getElementById('tableSelect');
+    if (tableSelect) {
+        tableSelect.addEventListener('change', function() {
+            const [schemaName, tableName] = parseTableKey(this.value);
+            if (schemaName && tableName) {
+                loadDatabaseTable(schemaName, tableName);
+            }
+        });
+    }
+    elements.databaseTabs.forEach((tab) => {
+        tab.addEventListener('click', function() {
+            activateDatabaseTab(this.getAttribute('data-database-tab'));
+        });
+    });
 
     elements.questionButtons.forEach((button) => {
         button.addEventListener('click', function() {
@@ -169,7 +207,8 @@ async function sendMessage() {
             body: JSON.stringify({
                 question: message,
                 session_id: getSessionId(),
-                debug: isDebugEnabled
+                debug: isDebugEnabled,
+                table_context: activeTableContext ? createTableContextPayload(activeTableContext) : null
             })
         });
 
@@ -189,6 +228,8 @@ async function sendMessage() {
                 executionTime: data.execution_time,
                 sql: data.sql || data.sql_query || null,
                 chart: data.chart || null,
+                sourceQuestion: message,
+                chartGenerationState: 'idle',
                 debug: isDebugEnabled ? data.debug || null : null,
                 agentMetadata: isDebugEnabled ? data.metadata || {} : null
             });
@@ -327,6 +368,10 @@ function createMessageElement(messageData) {
     }
 
     contentWrap.appendChild(text);
+    const actionBar = createMessageActionBar(messageData);
+    if (actionBar) {
+        contentWrap.appendChild(actionBar);
+    }
     if (metadata && metadata.chart) {
         const chartElement = createChartElement(metadata.chart);
         if (chartElement) {
@@ -345,6 +390,168 @@ function createMessageElement(messageData) {
     message.appendChild(avatar);
     message.appendChild(contentWrap);
     return message;
+}
+
+function canGenerateChartFromMessage(messageData) {
+    const metadata = messageData && messageData.metadata ? messageData.metadata : {};
+    return messageData.type === 'assistant'
+        && Boolean(metadata.sourceQuestion)
+        && !metadata.chart
+        && metadata.chartGenerationState !== 'loading'
+        && metadata.chartGenerationState !== 'done';
+}
+
+function buildChartFollowupQuestion(sourceQuestion) {
+    const trimmed = String(sourceQuestion || '').trim();
+    return [
+        'Gere um grafico adequado para responder a consulta abaixo.',
+        'Mantenha exatamente o mesmo recorte, filtros, periodo e populacao da consulta original.',
+        '',
+        `Consulta original: ${trimmed}`
+    ].join('\n');
+}
+
+function createMessageActionBar(messageData) {
+    if (!canGenerateChartFromMessage(messageData)) return null;
+
+    const bar = document.createElement('div');
+    bar.className = 'message-action-bar';
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'message-action generate-chart-btn';
+    button.innerHTML = '<i class="fas fa-chart-line" aria-hidden="true"></i><span>Gerar grafico</span>';
+    button.setAttribute('aria-label', 'Gerar grafico para esta resposta');
+    button.addEventListener('click', () => requestChartForMessage(messageData.id, button));
+
+    bar.appendChild(button);
+    return bar;
+}
+
+function findMessageDataById(messageId) {
+    return messageHistory.find((message) => message.id === messageId) || null;
+}
+
+function findMessageElementById(messageId) {
+    return Array.from(elements.chatMessages.querySelectorAll('.message'))
+        .find((message) => message.dataset.messageId === messageId) || null;
+}
+
+function setChartButtonLoading(button, isLoadingChart) {
+    if (!button) return;
+    button.disabled = isLoadingChart;
+    button.classList.toggle('is-loading', isLoadingChart);
+    button.innerHTML = isLoadingChart
+        ? '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i><span>Gerando...</span>'
+        : '<i class="fas fa-chart-line" aria-hidden="true"></i><span>Gerar grafico</span>';
+}
+
+async function requestChartForMessage(messageId, button) {
+    const messageData = findMessageDataById(messageId);
+    if (!messageData || !messageData.metadata || !messageData.metadata.sourceQuestion) return;
+
+    const chartQuestion = buildChartFollowupQuestion(messageData.metadata.sourceQuestion);
+    messageData.metadata.chartGenerationState = 'loading';
+    saveMessageHistory();
+    setChartButtonLoading(button, true);
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/query`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'include',
+            mode: 'cors',
+            cache: 'no-cache',
+            body: JSON.stringify({
+                question: chartQuestion,
+                session_id: getSessionId(),
+                debug: false,
+                table_context: activeTableContext ? createTableContextPayload(activeTableContext) : null
+            })
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data.success || !data.chart) {
+            throw new Error(data.error_message || data.answer || data.response || 'Grafico indisponivel.');
+        }
+
+        appendChartToExistingMessage(messageId, data.chart);
+        setServerStatus('online');
+    } catch (error) {
+        console.error('Error generating chart:', error);
+        messageData.metadata.chartGenerationState = 'failed';
+        saveMessageHistory();
+        renderChartInlineError(messageId, 'Nao foi possivel gerar um grafico validado para esta resposta.');
+        showErrorToast('Nao foi possivel gerar o grafico para esta resposta.');
+    } finally {
+        setChartButtonLoading(button, false);
+    }
+}
+
+function appendChartToExistingMessage(messageId, chartPayload) {
+    const messageData = findMessageDataById(messageId);
+    if (!messageData) return;
+
+    messageData.metadata = messageData.metadata || {};
+    messageData.metadata.chart = chartPayload;
+    messageData.metadata.chartGenerationState = 'done';
+    saveMessageHistory();
+
+    const messageElement = findMessageElementById(messageId);
+    if (!messageElement) return;
+
+    const contentWrap = messageElement.querySelector('.message-content');
+    if (!contentWrap) return;
+
+    messageElement.classList.add('message-has-chart');
+    const existingActionBar = contentWrap.querySelector('.message-action-bar');
+    if (existingActionBar) existingActionBar.remove();
+
+    const existingError = contentWrap.querySelector('.chart-inline-error');
+    if (existingError) existingError.remove();
+
+    const chartElement = createChartElement(chartPayload);
+    if (!chartElement) {
+        renderChartInlineError(messageId, 'O agent retornou dados, mas eles nao formam um grafico validado.');
+        return;
+    }
+
+    const meta = contentWrap.querySelector('.message-meta');
+    if (meta) {
+        contentWrap.insertBefore(chartElement, meta);
+    } else {
+        contentWrap.appendChild(chartElement);
+    }
+    scrollToBottom();
+}
+
+function renderChartInlineError(messageId, text) {
+    const messageElement = findMessageElementById(messageId);
+    if (!messageElement) return;
+
+    const contentWrap = messageElement.querySelector('.message-content');
+    if (!contentWrap) return;
+
+    const existing = contentWrap.querySelector('.chart-inline-error');
+    if (existing) {
+        existing.textContent = text;
+        return;
+    }
+
+    const error = document.createElement('div');
+    error.className = 'chart-inline-error';
+    error.textContent = text;
+
+    const meta = contentWrap.querySelector('.message-meta');
+    if (meta) {
+        contentWrap.insertBefore(error, meta);
+    } else {
+        contentWrap.appendChild(error);
+    }
 }
 
 function initializeDebugMode() {
@@ -1036,8 +1243,10 @@ async function showSchemaModal() {
     elements.schemaModal.classList.add('show');
     document.body.classList.add('modal-open');
     elements.closeSchemaModal.focus();
-    setSchemaState('empty', 'Selecione uma tabela e clique em "Carregar schema".');
-    await loadSchemaTables();
+    activateDatabaseTab('explore');
+    if (!databaseOverview) {
+        await loadDatabaseOverview();
+    }
 }
 
 function hideSchemaModal() {
@@ -1050,20 +1259,27 @@ function hideSchemaModal() {
 
 async function loadSelectedSchema() {
     const tableSelect = document.getElementById('tableSelect');
-    const loadSchemaBtn = document.getElementById('loadSchemaBtn');
-    const selectedTable = tableSelect.value;
+    if (!tableSelect || !tableSelect.value) {
+        await loadDatabaseOverview();
+        return;
+    }
+    const [schemaName, tableName] = parseTableKey(tableSelect.value);
+    if (schemaName && tableName) {
+        await loadDatabaseTable(schemaName, tableName);
+    }
+}
+
+async function loadDatabaseOverview() {
+    const refreshBtn = elements.refreshDatabaseBtn;
 
     try {
-        loadSchemaBtn.disabled = true;
-        loadSchemaBtn.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i><span>Carregando...</span>';
-        setSchemaState('loading', 'Carregando schema da tabela selecionada...');
-
-        let url = `${API_BASE_URL}/schema`;
-        if (selectedTable) {
-            url += `?table=${encodeURIComponent(selectedTable)}`;
+        if (refreshBtn) {
+            refreshBtn.disabled = true;
+            refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i><span>Atualizando...</span>';
         }
+        setSchemaState('loading', 'Carregando tabelas do banco local...');
 
-        const response = await fetch(url, {
+        const response = await fetch(`${API_BASE_URL}/database/overview`, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
@@ -1078,15 +1294,139 @@ async function loadSelectedSchema() {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
-        const data = await response.json();
-        renderSchema(data.schema || 'Schema indisponivel para esta selecao.');
+        databaseOverview = await response.json();
+        renderDatabaseOverview(databaseOverview);
+
+        const firstTable = Array.isArray(databaseOverview.tables) ? databaseOverview.tables[0] : null;
+        if (firstTable) {
+            await loadDatabaseTable(firstTable.table_schema, firstTable.table_name);
+        } else {
+            setSchemaState('empty', 'Nenhuma tabela foi encontrada no banco configurado.');
+        }
     } catch (error) {
-        console.error('Error loading schema:', error);
-        setSchemaState('error', `Erro ao carregar schema: ${error.message}`);
-        showErrorToast('Erro ao carregar o schema do banco de dados.');
+        console.error('Error loading database overview:', error);
+        setSchemaState('error', `Erro ao carregar banco: ${error.message}`);
+        showErrorToast('Erro ao carregar o explorador do banco.');
     } finally {
-        loadSchemaBtn.disabled = false;
-        loadSchemaBtn.innerHTML = '<i class="fas fa-sync-alt" aria-hidden="true"></i><span>Carregar schema</span>';
+        if (refreshBtn) {
+            refreshBtn.disabled = false;
+            refreshBtn.innerHTML = '<i class="fas fa-sync-alt" aria-hidden="true"></i><span>Atualizar</span>';
+        }
+    }
+}
+
+function renderDatabaseOverview(overview) {
+    if (elements.databaseSource) {
+        const tableCount = Array.isArray(overview.tables) ? overview.tables.length : 0;
+        elements.databaseSource.textContent = `${tableCount} tabelas em ${overview.database_url || 'banco configurado'}`;
+    }
+
+    const tableSelect = document.getElementById('tableSelect');
+    if (tableSelect) {
+        tableSelect.innerHTML = '';
+        (overview.tables || []).forEach((table) => {
+            const option = document.createElement('option');
+            option.value = tableKey(table.table_schema, table.table_name);
+            option.textContent = `${table.table_schema}.${table.table_name}`;
+            tableSelect.appendChild(option);
+        });
+    }
+
+    if (!elements.databaseTableCards) return;
+    elements.databaseTableCards.innerHTML = '';
+    (overview.tables || []).forEach((table) => {
+        const card = document.createElement('article');
+        card.className = 'database-table-card';
+        card.dataset.tableKey = tableKey(table.table_schema, table.table_name);
+        card.innerHTML = `
+            <button class="database-table-main" type="button">
+                <span class="database-table-name">${escapeHtml(table.table_name)}</span>
+                <span class="database-table-meta">${escapeHtml(table.classification || table.table_type || 'Tabela')}</span>
+                <span class="database-table-count">${formatRowCount(table.row_count)}</span>
+            </button>
+            <button class="table-context-button" type="button" aria-label="Usar ${escapeHtml(table.table_schema)}.${escapeHtml(table.table_name)} como contexto no chat" title="Perguntar sobre esta tabela">
+                <i class="fas fa-circle-question" aria-hidden="true"></i>
+            </button>
+        `;
+        card.querySelector('.database-table-main').addEventListener('click', () => {
+            loadDatabaseTable(table.table_schema, table.table_name);
+        });
+        card.querySelector('.table-context-button').addEventListener('click', () => {
+            activateTableContext(table);
+        });
+        elements.databaseTableCards.appendChild(card);
+    });
+}
+
+async function loadDatabaseTable(schemaName, tableName) {
+    selectedDatabaseTable = { schemaName, tableName };
+    setSelectedTableControl(schemaName, tableName);
+    setSchemaState('loading', `Carregando ${schemaName}.${tableName}...`);
+
+    try {
+        const response = await fetch(
+            `${API_BASE_URL}/database/table/${encodeURIComponent(schemaName)}/${encodeURIComponent(tableName)}?limit=25`,
+            {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'include',
+                mode: 'cors',
+                cache: 'no-cache'
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const detail = await response.json();
+        renderDatabaseTableDetail(detail);
+    } catch (error) {
+        console.error('Error loading database table:', error);
+        setSchemaState('error', `Erro ao carregar tabela: ${error.message}`);
+        showErrorToast('Erro ao carregar detalhes da tabela.');
+    }
+}
+
+function renderDatabaseTableDetail(detail) {
+    elements.schemaContent.className = 'schema-content loaded-state database-detail';
+    elements.schemaContent.innerHTML = `
+        <div class="database-detail-header">
+            <div>
+                <p class="eyebrow">Tabela selecionada</p>
+                <h3>${escapeHtml(detail.table_schema)}.${escapeHtml(detail.table_name)}</h3>
+            </div>
+            <div class="database-detail-actions">
+                <span>${(detail.columns || []).length} colunas</span>
+                <button class="table-context-button detail-context-button" type="button" id="askSelectedTableBtn">
+                    <i class="fas fa-circle-question" aria-hidden="true"></i>
+                    <span>Perguntar no chat</span>
+                </button>
+            </div>
+        </div>
+        <section class="database-section">
+            <h4>Colunas</h4>
+            ${buildDatabaseTableHtml(
+                ['#', 'Coluna', 'Tipo', 'Nulo'],
+                (detail.columns || []).map(column => [
+                    column.ordinal_position,
+                    column.column_name,
+                    column.data_type,
+                    column.is_nullable || '-'
+                ])
+            )}
+        </section>
+        <section class="database-section">
+            <h4>Amostra (${(detail.sample_rows || []).length} linhas)</h4>
+            ${buildRowsTableHtml(detail.sample_columns || [], detail.sample_rows || [])}
+        </section>
+    `;
+    const askButton = document.getElementById('askSelectedTableBtn');
+    if (askButton) {
+        askButton.addEventListener('click', () => activateTableContext(detail));
     }
 }
 
@@ -1104,6 +1444,185 @@ function renderSchema(schema) {
         elements.schemaContent.classList.add('text-content');
         elements.schemaContent.textContent = schema;
     }
+}
+
+function activateDatabaseTab(tabName) {
+    const activeTab = tabName || 'explore';
+    elements.databaseTabs.forEach((tab) => {
+        const isActive = tab.getAttribute('data-database-tab') === activeTab;
+        tab.classList.toggle('active', isActive);
+        tab.setAttribute('aria-selected', String(isActive));
+    });
+
+    elements.databasePanels.forEach((panel) => {
+        const isActive = panel.getAttribute('data-database-panel') === activeTab;
+        panel.classList.toggle('active', isActive);
+        panel.hidden = !isActive;
+    });
+}
+
+async function runDatabaseQuery() {
+    const sql = elements.databaseQueryInput ? elements.databaseQueryInput.value.trim() : '';
+    const limit = normalizeQueryLimit(elements.queryLimitInput ? elements.queryLimitInput.value : 100);
+    if (!sql) {
+        setQueryResultState('error', 'Informe uma consulta SELECT ou WITH.');
+        return;
+    }
+
+    try {
+        elements.runDatabaseQueryBtn.disabled = true;
+        elements.runDatabaseQueryBtn.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i><span>Executando...</span>';
+        setQueryResultState('loading', 'Executando consulta de leitura...');
+
+        const response = await fetch(`${API_BASE_URL}/database/query`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'include',
+            mode: 'cors',
+            cache: 'no-cache',
+            body: JSON.stringify({ sql, limit })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.detail || data.error || `HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        renderDatabaseQueryResult(data);
+    } catch (error) {
+        console.error('Error running database query:', error);
+        setQueryResultState('error', `Erro na consulta: ${error.message}`);
+        showErrorToast('A consulta SQL nao pode ser executada.');
+    } finally {
+        elements.runDatabaseQueryBtn.disabled = false;
+        elements.runDatabaseQueryBtn.innerHTML = '<i class="fas fa-play" aria-hidden="true"></i><span>Executar SELECT</span>';
+    }
+}
+
+function setQueryResultState(state, message) {
+    if (!elements.databaseQueryResult) return;
+    elements.databaseQueryResult.className = `schema-content ${state}-state`;
+    elements.databaseQueryResult.textContent = message;
+}
+
+function renderDatabaseQueryResult(result) {
+    elements.databaseQueryResult.className = 'schema-content loaded-state database-query-result';
+    elements.databaseQueryResult.innerHTML = `
+        <div class="database-detail-header">
+            <div>
+                <p class="eyebrow">Resultado</p>
+                <h3>${result.row_count} linhas retornadas</h3>
+            </div>
+            <span>${Number(result.execution_time || 0).toFixed(3)}s</span>
+        </div>
+        ${buildRowsTableHtml(result.columns || [], result.rows || [])}
+        <pre class="executed-sql"><code>${escapeHtml(result.sql || '')}</code></pre>
+    `;
+}
+
+function buildRowsTableHtml(columns, rows) {
+    if (!Array.isArray(rows) || rows.length === 0) {
+        return '<div class="database-empty-table">Nenhuma linha retornada.</div>';
+    }
+    const safeColumns = columns && columns.length ? columns : Object.keys(rows[0]);
+    return buildDatabaseTableHtml(
+        safeColumns.map(formatFieldLabel),
+        rows.map(row => safeColumns.map(column => formatDatabaseCell(row[column])))
+    );
+}
+
+function buildDatabaseTableHtml(headers, rows) {
+    const headerHtml = headers
+        .map(header => `<th>${escapeHtml(header)}</th>`)
+        .join('');
+    const bodyHtml = rows
+        .map(row => `<tr>${row
+            .map(cell => `<td>${escapeHtml(cell)}</td>`)
+            .join('')}</tr>`)
+        .join('');
+
+    return `<div class="database-table-scroll"><table class="database-data-table"><thead><tr>${headerHtml}</tr></thead><tbody>${bodyHtml}</tbody></table></div>`;
+}
+
+function formatDatabaseCell(value) {
+    if (value === null || value === undefined) return '-';
+    if (typeof value === 'number' && Number.isFinite(value)) return value.toLocaleString('pt-BR');
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+}
+
+function normalizeQueryLimit(value) {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed)) return 100;
+    return Math.min(Math.max(parsed, 1), 500);
+}
+
+function tableKey(schemaName, tableName) {
+    return `${schemaName}.${tableName}`;
+}
+
+function parseTableKey(value) {
+    const parts = String(value || '').split('.');
+    if (parts.length < 2) return ['', ''];
+    const schemaName = parts.shift();
+    return [schemaName, parts.join('.')];
+}
+
+function setSelectedTableControl(schemaName, tableName) {
+    const key = tableKey(schemaName, tableName);
+    const tableSelect = document.getElementById('tableSelect');
+    if (tableSelect) tableSelect.value = key;
+    if (elements.databaseTableCards) {
+        elements.databaseTableCards.querySelectorAll('.database-table-card').forEach((card) => {
+            card.classList.toggle('active', card.dataset.tableKey === key);
+        });
+    }
+}
+
+function activateTableContext(table) {
+    activeTableContext = createTableContextPayload(table);
+    updateTableContextBar();
+    hideSchemaModal();
+    fillQuestion(buildTableContextQuestion(activeTableContext));
+}
+
+function clearActiveTableContext() {
+    activeTableContext = null;
+    updateTableContextBar();
+    elements.messageInput.focus();
+}
+
+function updateTableContextBar() {
+    if (!elements.tableContextBar || !elements.tableContextLabel) return;
+    const hasContext = Boolean(activeTableContext);
+    elements.tableContextBar.hidden = !hasContext;
+    if (hasContext) {
+        elements.tableContextLabel.textContent = `Contexto: ${activeTableContext.table_schema}.${activeTableContext.table_name}`;
+    }
+}
+
+function buildTableContextQuestion(table) {
+    const schemaName = table && table.table_schema ? table.table_schema : 'main';
+    const tableName = table && table.table_name ? table.table_name : 'tabela';
+    return `Quero tirar uma duvida usando a tabela ${schemaName}.${tableName} como contexto. Que perguntas posso fazer com esta tabela?`;
+}
+
+function createTableContextPayload(table) {
+    return {
+        table_schema: table.table_schema,
+        table_name: table.table_name
+    };
+}
+
+function formatRowCount(value) {
+    if (value === null || value === undefined || value === '') return 'sem contagem';
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return String(value);
+    return `${numeric.toLocaleString('pt-BR')} linhas`;
 }
 
 function clearChat() {

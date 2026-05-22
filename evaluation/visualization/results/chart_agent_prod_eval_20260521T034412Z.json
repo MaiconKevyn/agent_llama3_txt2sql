@@ -1,0 +1,193 @@
+{
+  "metrics": {
+    "success_rate": 0.0,
+    "no_raw_internal_error": 0.0,
+    "chart_contract_validity": 0.0,
+    "sql_invariant_validity": 1.0,
+    "semantic_dimension_validity": 1.0
+  },
+  "counts": {
+    "success": 0,
+    "no_raw_internal_error": 0,
+    "chart_contract_valid": 0,
+    "sql_invariant_valid": 1,
+    "semantic_dimension_valid": 1
+  },
+  "failures": [
+    {
+      "id": "PROD_MORT_LOC_001",
+      "query": "Quais sao os municipios com maior taxa de mortalidade? Mostre em grafico.",
+      "reasons": [
+        "agent_success_failed",
+        "chart_contract_validity_failed",
+        "raw_internal_error_exposed"
+      ],
+      "agent_error": "SEMANTIC PLAN ERROR: The plan requires a global top-N answer, but SQL does not limit the result to top_n=1."
+    }
+  ],
+  "details": [
+    {
+      "id": "PROD_MORT_LOC_001",
+      "query": "Quais sao os municipios com maior taxa de mortalidade? Mostre em grafico.",
+      "tags": [
+        "mortality_rate",
+        "municipality",
+        "incident",
+        "bar"
+      ],
+      "checks": {
+        "no_raw_internal_error": false,
+        "chart_contract_validity": false,
+        "sql_invariant_validity": true,
+        "semantic_dimension_validity": true
+      },
+      "success": false,
+      "failure_reasons": [
+        "agent_success_failed",
+        "chart_contract_validity_failed",
+        "raw_internal_error_exposed"
+      ],
+      "semantic": {
+        "intent": "ranking",
+        "metrics": [
+          "taxa_mortalidade"
+        ],
+        "dimensions": [
+          "municipio"
+        ],
+        "required_dimensions": [
+          "municipio"
+        ],
+        "output_dimensions": [
+          "municipio"
+        ],
+        "partition_dimensions": [],
+        "ranked_dimensions": [],
+        "constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "filters": []
+      },
+      "chart": {
+        "intent_requested": true,
+        "intent_source": "explicit_current_query",
+        "chart_hint": "auto",
+        "chart_plan": {
+          "requested": true,
+          "chart_type": "kpi",
+          "metric": "taxa_mortalidade",
+          "metric_expression": "SUM(MORTE=true) * 100.0 / COUNT(*)",
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": "taxa_mortalidade",
+          "grain": "single_metric",
+          "expected_result_shape": "single_metric",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [
+            "taxa_mortalidade"
+          ],
+          "sql_shape_guidance": "Return a single scalar row with column: taxa_mortalidade.",
+          "reason": "structured chart parameters extracted before SQL generation"
+        },
+        "synthetic_spec": {
+          "chartable": true,
+          "chart_type": "bar",
+          "title": "taxa mortalidade por municipio",
+          "x": "municipio",
+          "y": "taxa_mortalidade",
+          "series": null,
+          "encoding": {
+            "x_type": "nominal",
+            "y_type": "quantitative"
+          },
+          "data": [
+            {
+              "municipio": "Grupo A",
+              "taxa_mortalidade": 10
+            },
+            {
+              "municipio": "Grupo B",
+              "taxa_mortalidade": 15
+            },
+            {
+              "municipio": "Grupo C",
+              "taxa_mortalidade": 8
+            }
+          ],
+          "reason": "Resultado categorico com metrica numerica.",
+          "warnings": [],
+          "presentation": {
+            "title": "Taxa de mortalidade (%) por municipio",
+            "subtitle": "Ranking por valor",
+            "x_label": "Municipio",
+            "y_label": "Taxa de mortalidade (%)",
+            "series_label": null,
+            "value_format": "percent",
+            "sort_order": "as_returned",
+            "footnote": null,
+            "summary": "Grupo B lidera com 15,00%."
+          }
+        },
+        "echarts_valid": true
+      },
+      "agent": {
+        "success": false,
+        "error": "SEMANTIC PLAN ERROR: The plan requires a global top-N answer, but SQL does not limit the result to top_n=1.",
+        "response": "Não foi possível processar sua consulta: SEMANTIC PLAN ERROR: The plan requires a global top-N answer, but SQL does not limit the result to top_n=1.",
+        "answer": null,
+        "sql_query": "WITH municipio_taxa AS ( SELECT mu.\"NO_MUNICIPIO\" AS municipio, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" GROUP BY mu.\"NO_MUNICIPIO\" ), ranked_municipios AS ( SELECT municipio, total_internacoes, total_mortes, taxa_mortalidade, ROW_NUMBER() OVER (ORDER BY taxa_mortalidade DESC) AS rank FROM municipio_taxa ) SELECT municipio, total_internacoes, total_mortes, taxa_mortalidade FROM ranked_municipios WHERE rank <= 10;",
+        "row_count": 0,
+        "chart": {
+          "requested": true,
+          "source": "explicit_current_query",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "spec": {
+            "chartable": false,
+            "chart_type": "table",
+            "title": null,
+            "x": null,
+            "y": null,
+            "series": null,
+            "encoding": {},
+            "data": [],
+            "reason": "Sem resultado tabular validado para gerar grafico.",
+            "warnings": [],
+            "presentation": {
+              "title": null,
+              "subtitle": null,
+              "x_label": null,
+              "y_label": null,
+              "series_label": null,
+              "value_format": "integer",
+              "sort_order": "as_returned",
+              "footnote": null,
+              "summary": null
+            }
+          },
+          "echarts": null,
+          "reason": "Usuario pediu explicitamente visualizacao em grafico"
+        },
+        "setup": [],
+        "elapsed_seconds": 50.296175
+      }
+    }
+  ],
+  "run": {
+    "timestamp": "2026-05-21T03:44:12.176309Z",
+    "cases": "evaluation/visualization/chart_agent_prod_cases.jsonl",
+    "total": 1,
+    "run_agent": true,
+    "only": "PROD_MORT_LOC_001",
+    "limit": null,
+    "shuffle": false,
+    "seed": 20260521
+  }
+}

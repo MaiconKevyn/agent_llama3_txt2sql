@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 
 from .concept_resolver import find_clinical_concepts
+from .domain_resolvers import resolve_clinical_domain, resolve_population_group
 from .plan_schema import (
     AnswerShape,
     SemanticDimension,
@@ -761,7 +762,7 @@ def _lowest_rank_requested(query_lower: str) -> bool:
 def _extract_year_ranges(query_lower: str) -> list[tuple[str, str]]:
     ranges: list[tuple[str, str]] = []
     for match in re.finditer(
-        r"\b((?:19|20)\d{2})\s*(?:-|a|até|ate)\s*((?:19|20)\d{2})\b",
+        r"\b(?:entre\s+)?((?:19|20)\d{2})\s*(?:-|a|até|ate|e)\s*((?:19|20)\d{2})\b",
         query_lower,
         re.I,
     ):
@@ -790,6 +791,7 @@ def _extract_recent_year_window(query_lower: str) -> int | None:
     for pattern in [
         r"\b(?:últimos|ultimos|últimas|ultimas)\s+(\d+)\s+anos\b",
         r"\b(?:nos\s+)?(?:anos\s+)?mais\s+recentes\s*\(?\s*(\d+)\s+anos?\s*\)?",
+        r"\b(?:nos\s+)?(\d+)\s+anos\s+mais\s+recentes\b",
     ]:
         match = re.search(pattern, query_lower, re.I)
         if match:
@@ -864,6 +866,10 @@ def _extract_age_filters(query_lower: str) -> list[SemanticFilter]:
         else:
             filters.append(SemanticFilter(field="idade", values=[str(value)], operator="<"))
         return filters
+
+    population_filters = resolve_population_group(query_lower)
+    if population_filters:
+        return population_filters
 
     min_age_filter = _extract_min_age_filter(query_lower)
     if min_age_filter is not None:
@@ -2523,18 +2529,7 @@ def _infer_filters(query: str, query_lower: str) -> list[SemanticFilter]:
         filters.append(
             SemanticFilter(field="mes_internacao", values=["6", "7", "8"], operator="IN")
         )
-    if _contains_any(
-        query_lower,
-        [
-            "doença respiratória",
-            "doenca respiratoria",
-            "doenças respiratórias",
-            "doencas respiratorias",
-        ],
-    ):
-        filters.append(
-            SemanticFilter(field="diagnostico_principal_prefix", values=["J%"], operator="LIKE")
-        )
+    filters.extend(resolve_clinical_domain(query_lower))
     if (
         _contains_any(query_lower, ["diagnóstico principal", "diagnostico principal"])
         and _contains_any(

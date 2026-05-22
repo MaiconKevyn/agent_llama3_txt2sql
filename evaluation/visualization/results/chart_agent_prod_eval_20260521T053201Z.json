@@ -1,0 +1,3280 @@
+{
+  "metrics": {
+    "success_rate": 1.0,
+    "no_raw_internal_error": 1.0,
+    "chart_contract_validity": 1.0,
+    "sql_invariant_validity": 1.0,
+    "semantic_dimension_validity": 1.0
+  },
+  "counts": {
+    "success": 10,
+    "no_raw_internal_error": 10,
+    "chart_contract_valid": 10,
+    "sql_invariant_valid": 10,
+    "semantic_dimension_valid": 10
+  },
+  "failures": [],
+  "details": [
+    {
+      "id": "PROD_DEMO_001",
+      "query": "Gere um grafico de pizza das mortes por sexo.",
+      "tags": [
+        "demographic",
+        "sex",
+        "deaths",
+        "pie"
+      ],
+      "checks": {
+        "no_raw_internal_error": true,
+        "chart_contract_validity": true,
+        "sql_invariant_validity": true,
+        "semantic_dimension_validity": true
+      },
+      "success": true,
+      "failure_reasons": [],
+      "semantic": {
+        "intent": "unknown",
+        "metrics": [
+          "total_mortes"
+        ],
+        "dimensions": [
+          "sexo"
+        ],
+        "required_dimensions": [
+          "sexo"
+        ],
+        "output_dimensions": [
+          "sexo"
+        ],
+        "partition_dimensions": [],
+        "ranked_dimensions": [],
+        "constraints": [
+          "sex_label_output_required"
+        ],
+        "filters": [
+          {
+            "field": "desfecho",
+            "values": [
+              "MORTE = true"
+            ],
+            "operator": "semantic"
+          }
+        ]
+      },
+      "chart": {
+        "intent_requested": true,
+        "intent_source": "explicit_current_query",
+        "chart_hint": "pie",
+        "chart_plan": {
+          "requested": true,
+          "chart_type": "pie",
+          "metric": "total_mortes",
+          "metric_expression": "COUNT rows where \"MORTE\" = true",
+          "x_dimension": "sexo",
+          "series_dimension": null,
+          "y_column": "total_mortes",
+          "grain": "sexo",
+          "expected_result_shape": "category_metric",
+          "filters": [
+            {
+              "field": "MORTE",
+              "operator": "=",
+              "values": [
+                true
+              ],
+              "semantic": "death outcome"
+            }
+          ],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [
+            "sexo",
+            "total_mortes"
+          ],
+          "sql_shape_guidance": "Return one row per sexo with columns: sexo, total_mortes. For 'sexo', emit human-readable labels via CASE WHEN \"SEXO\"=1 THEN 'Masculino' WHEN \"SEXO\"=3 THEN 'Feminino' END, not raw codes.",
+          "reason": "structured chart parameters extracted before SQL generation"
+        },
+        "synthetic_spec": {
+          "chartable": true,
+          "chart_type": "pie",
+          "title": "mortes por sexo",
+          "x": "sexo",
+          "y": "mortes",
+          "series": null,
+          "encoding": {
+            "x_type": "nominal",
+            "y_type": "quantitative"
+          },
+          "data": [
+            {
+              "sexo": "Grupo A",
+              "mortes": 10
+            },
+            {
+              "sexo": "Grupo B",
+              "mortes": 15
+            },
+            {
+              "sexo": "Grupo C",
+              "mortes": 8
+            }
+          ],
+          "reason": "Pedido explicito de grafico de proporcao.",
+          "warnings": [],
+          "presentation": {
+            "title": "Mortes por sexo",
+            "subtitle": "Distribuicao proporcional",
+            "x_label": "Sexo",
+            "y_label": "Mortes",
+            "series_label": null,
+            "value_format": "integer",
+            "sort_order": "as_returned",
+            "footnote": null,
+            "summary": "Grupo B lidera com 15."
+          }
+        },
+        "echarts_valid": true
+      },
+      "agent": {
+        "success": true,
+        "error": null,
+        "response": "Foram registradas 4.263.759 mortes de sexo masculino e 3.644.029 mortes de sexo feminino.",
+        "answer": null,
+        "sql_query": "SELECT CASE WHEN i.\"SEXO\" = 1 THEN 'Masculino' WHEN i.\"SEXO\" = 3 THEN 'Feminino' ELSE 'Ignorado' END AS sexo, COUNT(*) AS total_mortes FROM internacoes i  WHERE i.\"SEXO\" IN (1, 3) AND i.\"MORTE\" = true GROUP BY CASE WHEN i.\"SEXO\" = 1 THEN 'Masculino' WHEN i.\"SEXO\" = 3 THEN 'Feminino' ELSE 'Ignorado' END ORDER BY total_mortes DESC;",
+        "row_count": 2,
+        "chart": {
+          "requested": true,
+          "source": "explicit_current_query",
+          "uses_last_result": false,
+          "chart_hint": "pie",
+          "spec": {
+            "chartable": true,
+            "chart_type": "pie",
+            "title": "total mortes por sexo",
+            "x": "sexo",
+            "y": "total_mortes",
+            "series": null,
+            "encoding": {
+              "x_type": "nominal",
+              "y_type": "quantitative"
+            },
+            "data": [
+              {
+                "sexo": "Masculino",
+                "total_mortes": 4263759
+              },
+              {
+                "sexo": "Feminino",
+                "total_mortes": 3644029
+              }
+            ],
+            "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+            "warnings": [],
+            "presentation": {
+              "title": "Total de mortes por sexo",
+              "subtitle": "Distribuicao proporcional",
+              "x_label": "Sexo",
+              "y_label": "Total de mortes",
+              "series_label": null,
+              "value_format": "integer",
+              "sort_order": "as_returned",
+              "footnote": null,
+              "summary": "Masculino lidera com 4.263.759."
+            }
+          },
+          "echarts": {
+            "color": [
+              "#2563eb",
+              "#0f766e",
+              "#c2410c",
+              "#7c3aed",
+              "#be123c",
+              "#a16207",
+              "#0891b2",
+              "#4d7c0f",
+              "#9333ea",
+              "#0284c7",
+              "#b45309",
+              "#047857"
+            ],
+            "backgroundColor": "transparent",
+            "animationDuration": 450,
+            "textStyle": {
+              "fontFamily": "Inter, system-ui, sans-serif"
+            },
+            "_valueFormat": "integer",
+            "_summary": "Masculino lidera com 4.263.759.",
+            "_footnote": null,
+            "_subtitle": "Distribuicao proporcional",
+            "title": {
+              "show": false,
+              "text": "Total de mortes por sexo",
+              "left": 0,
+              "top": 0,
+              "textStyle": {
+                "fontSize": 14,
+                "fontWeight": 700,
+                "color": "#101828"
+              }
+            },
+            "tooltip": {
+              "trigger": "item",
+              "confine": true
+            },
+            "legend": {
+              "show": false
+            },
+            "_legend": [
+              {
+                "name": "Masculino",
+                "color": "#2563eb",
+                "value": 4263759,
+                "percent": 53.92
+              },
+              {
+                "name": "Feminino",
+                "color": "#0f766e",
+                "value": 3644029,
+                "percent": 46.08
+              }
+            ],
+            "series": [
+              {
+                "type": "pie",
+                "name": "total_mortes",
+                "radius": [
+                  "0%",
+                  "70%"
+                ],
+                "center": [
+                  "50%",
+                  "48%"
+                ],
+                "avoidLabelOverlap": true,
+                "label": {
+                  "show": false
+                },
+                "labelLine": {
+                  "show": false
+                },
+                "itemStyle": {
+                  "borderColor": "#fff",
+                  "borderWidth": 2
+                },
+                "data": [
+                  {
+                    "name": "Masculino",
+                    "value": 4263759,
+                    "itemStyle": {
+                      "color": "#2563eb"
+                    }
+                  },
+                  {
+                    "name": "Feminino",
+                    "value": 3644029,
+                    "itemStyle": {
+                      "color": "#0f766e"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "reason": "Usuario pediu explicitamente grafico do tipo pie"
+        },
+        "setup": [],
+        "elapsed_seconds": 9.326129
+      }
+    },
+    {
+      "id": "PROD_DEMO_002",
+      "query": "Donut chart das internacoes por sexo.",
+      "tags": [
+        "demographic",
+        "sex",
+        "admissions",
+        "donut"
+      ],
+      "checks": {
+        "no_raw_internal_error": true,
+        "chart_contract_validity": true,
+        "sql_invariant_validity": true,
+        "semantic_dimension_validity": true
+      },
+      "success": true,
+      "failure_reasons": [],
+      "semantic": {
+        "intent": "count",
+        "metrics": [
+          "total"
+        ],
+        "dimensions": [
+          "sexo"
+        ],
+        "required_dimensions": [
+          "sexo"
+        ],
+        "output_dimensions": [
+          "sexo"
+        ],
+        "partition_dimensions": [],
+        "ranked_dimensions": [],
+        "constraints": [
+          "sex_label_output_required"
+        ],
+        "filters": []
+      },
+      "chart": {
+        "intent_requested": true,
+        "intent_source": "explicit_current_query",
+        "chart_hint": "donut",
+        "chart_plan": {
+          "requested": true,
+          "chart_type": "donut",
+          "metric": "total_internacoes",
+          "metric_expression": "COUNT rows",
+          "x_dimension": "sexo",
+          "series_dimension": null,
+          "y_column": "total_internacoes",
+          "grain": "sexo",
+          "expected_result_shape": "category_metric",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [
+            "sexo",
+            "total_internacoes"
+          ],
+          "sql_shape_guidance": "Return one row per sexo with columns: sexo, total_internacoes. For 'sexo', emit human-readable labels via CASE WHEN \"SEXO\"=1 THEN 'Masculino' WHEN \"SEXO\"=3 THEN 'Feminino' END, not raw codes.",
+          "reason": "structured chart parameters extracted before SQL generation"
+        },
+        "synthetic_spec": {
+          "chartable": true,
+          "chart_type": "donut",
+          "title": "internacoes por sexo",
+          "x": "sexo",
+          "y": "internacoes",
+          "series": null,
+          "encoding": {
+            "x_type": "nominal",
+            "y_type": "quantitative"
+          },
+          "data": [
+            {
+              "sexo": "Grupo A",
+              "internacoes": 10
+            },
+            {
+              "sexo": "Grupo B",
+              "internacoes": 15
+            },
+            {
+              "sexo": "Grupo C",
+              "internacoes": 8
+            }
+          ],
+          "reason": "Pedido explicito de grafico de proporcao.",
+          "warnings": [],
+          "presentation": {
+            "title": "Internacoes por sexo",
+            "subtitle": "Distribuicao proporcional",
+            "x_label": "Sexo",
+            "y_label": "Internacoes",
+            "series_label": null,
+            "value_format": "integer",
+            "sort_order": "as_returned",
+            "footnote": null,
+            "summary": "Grupo B lidera com 15."
+          }
+        },
+        "echarts_valid": true
+      },
+      "agent": {
+        "success": true,
+        "error": null,
+        "response": "O gráfico de donut das internações por sexo mostra que houve 107.928.385 internações femininas e 75.948.834 internações masculinas.",
+        "answer": null,
+        "sql_query": "SELECT CASE WHEN i.\"SEXO\" = 1 THEN 'Masculino' WHEN i.\"SEXO\" = 3 THEN 'Feminino' ELSE 'Ignorado' END AS sexo, COUNT(*) AS total_internacoes FROM internacoes i  WHERE i.\"SEXO\" IN (1, 3) GROUP BY CASE WHEN i.\"SEXO\" = 1 THEN 'Masculino' WHEN i.\"SEXO\" = 3 THEN 'Feminino' ELSE 'Ignorado' END ORDER BY total_internacoes DESC;",
+        "row_count": 2,
+        "chart": {
+          "requested": true,
+          "source": "explicit_current_query",
+          "uses_last_result": false,
+          "chart_hint": "donut",
+          "spec": {
+            "chartable": true,
+            "chart_type": "donut",
+            "title": "total internacoes por sexo",
+            "x": "sexo",
+            "y": "total_internacoes",
+            "series": null,
+            "encoding": {
+              "x_type": "nominal",
+              "y_type": "quantitative"
+            },
+            "data": [
+              {
+                "sexo": "Feminino",
+                "total_internacoes": 107928385
+              },
+              {
+                "sexo": "Masculino",
+                "total_internacoes": 75948834
+              }
+            ],
+            "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+            "warnings": [],
+            "presentation": {
+              "title": "Total de internacoes por sexo",
+              "subtitle": "Distribuicao proporcional",
+              "x_label": "Sexo",
+              "y_label": "Total de internacoes",
+              "series_label": null,
+              "value_format": "integer",
+              "sort_order": "as_returned",
+              "footnote": null,
+              "summary": "Feminino lidera com 107.928.385."
+            }
+          },
+          "echarts": {
+            "color": [
+              "#2563eb",
+              "#0f766e",
+              "#c2410c",
+              "#7c3aed",
+              "#be123c",
+              "#a16207",
+              "#0891b2",
+              "#4d7c0f",
+              "#9333ea",
+              "#0284c7",
+              "#b45309",
+              "#047857"
+            ],
+            "backgroundColor": "transparent",
+            "animationDuration": 450,
+            "textStyle": {
+              "fontFamily": "Inter, system-ui, sans-serif"
+            },
+            "_valueFormat": "integer",
+            "_summary": "Feminino lidera com 107.928.385.",
+            "_footnote": null,
+            "_subtitle": "Distribuicao proporcional",
+            "title": {
+              "show": false,
+              "text": "Total de internacoes por sexo",
+              "left": 0,
+              "top": 0,
+              "textStyle": {
+                "fontSize": 14,
+                "fontWeight": 700,
+                "color": "#101828"
+              }
+            },
+            "tooltip": {
+              "trigger": "item",
+              "confine": true
+            },
+            "legend": {
+              "show": false
+            },
+            "_legend": [
+              {
+                "name": "Feminino",
+                "color": "#2563eb",
+                "value": 107928385,
+                "percent": 58.7
+              },
+              {
+                "name": "Masculino",
+                "color": "#0f766e",
+                "value": 75948834,
+                "percent": 41.3
+              }
+            ],
+            "series": [
+              {
+                "type": "pie",
+                "name": "total_internacoes",
+                "radius": [
+                  "44%",
+                  "70%"
+                ],
+                "center": [
+                  "50%",
+                  "48%"
+                ],
+                "avoidLabelOverlap": true,
+                "label": {
+                  "show": false
+                },
+                "labelLine": {
+                  "show": false
+                },
+                "itemStyle": {
+                  "borderColor": "#fff",
+                  "borderWidth": 2
+                },
+                "data": [
+                  {
+                    "name": "Feminino",
+                    "value": 107928385,
+                    "itemStyle": {
+                      "color": "#2563eb"
+                    }
+                  },
+                  {
+                    "name": "Masculino",
+                    "value": 75948834,
+                    "itemStyle": {
+                      "color": "#0f766e"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "reason": "Usuario pediu explicitamente grafico do tipo donut"
+        },
+        "setup": [],
+        "elapsed_seconds": 9.14946
+      }
+    },
+    {
+      "id": "PROD_DEMO_003",
+      "query": "Mostre mortes entre homens e mulheres em barras.",
+      "tags": [
+        "demographic",
+        "sex",
+        "deaths",
+        "bar"
+      ],
+      "checks": {
+        "no_raw_internal_error": true,
+        "chart_contract_validity": true,
+        "sql_invariant_validity": true,
+        "semantic_dimension_validity": true
+      },
+      "success": true,
+      "failure_reasons": [],
+      "semantic": {
+        "intent": "distribution",
+        "metrics": [
+          "total_mortes"
+        ],
+        "dimensions": [
+          "sexo"
+        ],
+        "required_dimensions": [
+          "sexo"
+        ],
+        "output_dimensions": [
+          "sexo"
+        ],
+        "partition_dimensions": [],
+        "ranked_dimensions": [],
+        "constraints": [
+          "sex_label_output_required"
+        ],
+        "filters": [
+          {
+            "field": "sexo",
+            "values": [
+              "1",
+              "3"
+            ],
+            "operator": "IN"
+          },
+          {
+            "field": "desfecho",
+            "values": [
+              "MORTE = true"
+            ],
+            "operator": "semantic"
+          }
+        ]
+      },
+      "chart": {
+        "intent_requested": true,
+        "intent_source": "explicit_current_query",
+        "chart_hint": "bar",
+        "chart_plan": {
+          "requested": true,
+          "chart_type": "bar",
+          "metric": "total_mortes",
+          "metric_expression": "COUNT rows where \"MORTE\" = true",
+          "x_dimension": "sexo",
+          "series_dimension": null,
+          "y_column": "total_mortes",
+          "grain": "sexo",
+          "expected_result_shape": "category_metric",
+          "filters": [
+            {
+              "field": "MORTE",
+              "operator": "=",
+              "values": [
+                true
+              ],
+              "semantic": "death outcome"
+            },
+            {
+              "field": "SEXO",
+              "operator": "IN",
+              "values": [
+                1,
+                3
+              ],
+              "semantic": "1=homens, 3=mulheres"
+            }
+          ],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [
+            "sexo",
+            "total_mortes"
+          ],
+          "sql_shape_guidance": "Return one row per sexo with columns: sexo, total_mortes. For 'sexo', emit human-readable labels via CASE WHEN \"SEXO\"=1 THEN 'Masculino' WHEN \"SEXO\"=3 THEN 'Feminino' END, not raw codes.",
+          "reason": "structured chart parameters extracted before SQL generation"
+        },
+        "synthetic_spec": {
+          "chartable": true,
+          "chart_type": "bar",
+          "title": "mortes por sexo",
+          "x": "sexo",
+          "y": "mortes",
+          "series": null,
+          "encoding": {
+            "x_type": "nominal",
+            "y_type": "quantitative"
+          },
+          "data": [
+            {
+              "sexo": "Grupo A",
+              "mortes": 10
+            },
+            {
+              "sexo": "Grupo B",
+              "mortes": 15
+            },
+            {
+              "sexo": "Grupo C",
+              "mortes": 8
+            }
+          ],
+          "reason": "Resultado categorico com metrica numerica.",
+          "warnings": [],
+          "presentation": {
+            "title": "Mortes por sexo",
+            "subtitle": "Ranking por valor",
+            "x_label": "Sexo",
+            "y_label": "Mortes",
+            "series_label": null,
+            "value_format": "integer",
+            "sort_order": "as_returned",
+            "footnote": null,
+            "summary": "Grupo B lidera com 15."
+          }
+        },
+        "echarts_valid": true
+      },
+      "agent": {
+        "success": true,
+        "error": null,
+        "response": "Foram registradas 4.263.759 mortes entre homens e 3.644.029 mortes entre mulheres.",
+        "answer": null,
+        "sql_query": "SELECT CASE WHEN i.\"SEXO\" = 1 THEN 'Masculino' WHEN i.\"SEXO\" = 3 THEN 'Feminino' ELSE 'Ignorado' END AS sexo, COUNT(*) AS total_mortes FROM internacoes i  WHERE i.\"SEXO\" IN (1, 3) AND i.\"MORTE\" = true GROUP BY CASE WHEN i.\"SEXO\" = 1 THEN 'Masculino' WHEN i.\"SEXO\" = 3 THEN 'Feminino' ELSE 'Ignorado' END ORDER BY total_mortes DESC;",
+        "row_count": 2,
+        "chart": {
+          "requested": true,
+          "source": "explicit_current_query",
+          "uses_last_result": false,
+          "chart_hint": "bar",
+          "spec": {
+            "chartable": true,
+            "chart_type": "bar",
+            "title": "total mortes por sexo",
+            "x": "sexo",
+            "y": "total_mortes",
+            "series": null,
+            "encoding": {
+              "x_type": "nominal",
+              "y_type": "quantitative"
+            },
+            "data": [
+              {
+                "sexo": "Masculino",
+                "total_mortes": 4263759
+              },
+              {
+                "sexo": "Feminino",
+                "total_mortes": 3644029
+              }
+            ],
+            "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+            "warnings": [],
+            "presentation": {
+              "title": "Total de mortes por sexo",
+              "subtitle": "Ranking por valor",
+              "x_label": "Sexo",
+              "y_label": "Total de mortes",
+              "series_label": null,
+              "value_format": "integer",
+              "sort_order": "as_returned",
+              "footnote": null,
+              "summary": "Masculino lidera com 4.263.759."
+            }
+          },
+          "echarts": {
+            "color": [
+              "#2563eb",
+              "#0f766e",
+              "#c2410c",
+              "#7c3aed",
+              "#be123c",
+              "#a16207",
+              "#0891b2",
+              "#4d7c0f",
+              "#9333ea",
+              "#0284c7",
+              "#b45309",
+              "#047857"
+            ],
+            "backgroundColor": "transparent",
+            "animationDuration": 450,
+            "textStyle": {
+              "fontFamily": "Inter, system-ui, sans-serif"
+            },
+            "_valueFormat": "integer",
+            "_summary": "Masculino lidera com 4.263.759.",
+            "_footnote": null,
+            "_subtitle": "Ranking por valor",
+            "title": {
+              "show": false,
+              "text": "Total de mortes por sexo",
+              "left": 0,
+              "top": 0,
+              "textStyle": {
+                "fontSize": 14,
+                "fontWeight": 700,
+                "color": "#101828"
+              }
+            },
+            "tooltip": {
+              "trigger": "axis",
+              "confine": true
+            },
+            "grid": {
+              "left": 14,
+              "right": 28,
+              "top": 24,
+              "bottom": 22,
+              "containLabel": true
+            },
+            "legend": {
+              "show": false,
+              "top": 26,
+              "right": 0,
+              "type": "scroll"
+            },
+            "xAxis": {
+              "type": "value",
+              "name": "Total de mortes",
+              "nameGap": 30,
+              "axisLabel": {
+                "color": "#667085"
+              },
+              "splitLine": {
+                "lineStyle": {
+                  "color": "rgba(102,112,133,0.18)"
+                }
+              }
+            },
+            "yAxis": {
+              "type": "category",
+              "name": "Sexo",
+              "nameGap": 46,
+              "inverse": true,
+              "data": [
+                "Masculino",
+                "Feminino"
+              ],
+              "axisLabel": {
+                "color": "#667085",
+                "width": 142,
+                "overflow": "truncate"
+              },
+              "axisLine": {
+                "lineStyle": {
+                  "color": "#98a2b3"
+                }
+              }
+            },
+            "series": [
+              {
+                "type": "bar",
+                "name": "total_mortes",
+                "emphasis": {
+                  "focus": "series"
+                },
+                "data": [
+                  {
+                    "value": 4263759,
+                    "itemStyle": {
+                      "color": "#2563eb",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 3644029,
+                    "itemStyle": {
+                      "color": "#0f766e",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  }
+                ],
+                "barMaxWidth": 26
+              }
+            ],
+            "_legend": [
+              {
+                "name": "Masculino",
+                "color": "#2563eb"
+              },
+              {
+                "name": "Feminino",
+                "color": "#0f766e"
+              }
+            ]
+          },
+          "reason": "Usuario pediu explicitamente grafico do tipo bar"
+        },
+        "setup": [],
+        "elapsed_seconds": 7.26598
+      }
+    },
+    {
+      "id": "PROD_DEMO_004",
+      "query": "Gere um grafico de pizza das internacoes por raca/cor.",
+      "tags": [
+        "demographic",
+        "race_color",
+        "admissions",
+        "pie"
+      ],
+      "checks": {
+        "no_raw_internal_error": true,
+        "chart_contract_validity": true,
+        "sql_invariant_validity": true,
+        "semantic_dimension_validity": true
+      },
+      "success": true,
+      "failure_reasons": [],
+      "semantic": {
+        "intent": "count",
+        "metrics": [
+          "total"
+        ],
+        "dimensions": [
+          "raca_cor"
+        ],
+        "required_dimensions": [
+          "raca_cor"
+        ],
+        "output_dimensions": [
+          "raca_cor"
+        ],
+        "partition_dimensions": [],
+        "ranked_dimensions": [],
+        "constraints": [
+          "categorical_lookup_label_required"
+        ],
+        "filters": []
+      },
+      "chart": {
+        "intent_requested": true,
+        "intent_source": "explicit_current_query",
+        "chart_hint": "pie",
+        "chart_plan": {
+          "requested": true,
+          "chart_type": "pie",
+          "metric": "total_internacoes",
+          "metric_expression": "COUNT rows",
+          "x_dimension": "raca_cor",
+          "series_dimension": null,
+          "y_column": "total_internacoes",
+          "grain": "raca_cor",
+          "expected_result_shape": "category_metric",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [
+            "raca_cor",
+            "total_internacoes"
+          ],
+          "sql_shape_guidance": "Return one row per raca_cor with columns: raca_cor, total_internacoes.",
+          "reason": "structured chart parameters extracted before SQL generation"
+        },
+        "synthetic_spec": {
+          "chartable": true,
+          "chart_type": "pie",
+          "title": "internacoes por raca cor",
+          "x": "raca_cor",
+          "y": "internacoes",
+          "series": null,
+          "encoding": {
+            "x_type": "nominal",
+            "y_type": "quantitative"
+          },
+          "data": [
+            {
+              "raca_cor": "Grupo A",
+              "internacoes": 10
+            },
+            {
+              "raca_cor": "Grupo B",
+              "internacoes": 15
+            },
+            {
+              "raca_cor": "Grupo C",
+              "internacoes": 8
+            }
+          ],
+          "reason": "Pedido explicito de grafico de proporcao.",
+          "warnings": [],
+          "presentation": {
+            "title": "Internacoes por raca/cor",
+            "subtitle": "Distribuicao proporcional",
+            "x_label": "Raca/cor",
+            "y_label": "Internacoes",
+            "series_label": null,
+            "value_format": "integer",
+            "sort_order": "as_returned",
+            "footnote": null,
+            "summary": "Grupo B lidera com 15."
+          }
+        },
+        "echarts_valid": true
+      },
+      "agent": {
+        "success": true,
+        "error": null,
+        "response": "As internações por raça/cor são as seguintes: \n\n- Amarela: 2.252.044\n- Preta: 6.541.484\n- Branca: 60.081.825\n- Indígena: 491.304\n- Parda: 65.749.749",
+        "answer": null,
+        "sql_query": "SELECT r.\"DESCRICAO\" AS raca_cor, COUNT(*) AS total_internacoes FROM internacoes i JOIN raca_cor r ON i.\"RACA_COR\" = r.\"RACA_COR\" GROUP BY r.\"DESCRICAO\";",
+        "row_count": 5,
+        "chart": {
+          "requested": true,
+          "source": "explicit_current_query",
+          "uses_last_result": false,
+          "chart_hint": "pie",
+          "spec": {
+            "chartable": true,
+            "chart_type": "pie",
+            "title": "total internacoes por raca cor",
+            "x": "raca_cor",
+            "y": "total_internacoes",
+            "series": null,
+            "encoding": {
+              "x_type": "nominal",
+              "y_type": "quantitative"
+            },
+            "data": [
+              {
+                "raca_cor": "Amarela",
+                "total_internacoes": 2252044
+              },
+              {
+                "raca_cor": "Preta",
+                "total_internacoes": 6541484
+              },
+              {
+                "raca_cor": "Branca",
+                "total_internacoes": 60081825
+              },
+              {
+                "raca_cor": "Indígena",
+                "total_internacoes": 491304
+              },
+              {
+                "raca_cor": "Parda",
+                "total_internacoes": 65749749
+              }
+            ],
+            "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+            "warnings": [],
+            "presentation": {
+              "title": "Total de internacoes por raca/cor",
+              "subtitle": "Distribuicao proporcional",
+              "x_label": "Raca/cor",
+              "y_label": "Total de internacoes",
+              "series_label": null,
+              "value_format": "integer",
+              "sort_order": "as_returned",
+              "footnote": null,
+              "summary": "Parda lidera com 65.749.749."
+            }
+          },
+          "echarts": {
+            "color": [
+              "#2563eb",
+              "#0f766e",
+              "#c2410c",
+              "#7c3aed",
+              "#be123c",
+              "#a16207",
+              "#0891b2",
+              "#4d7c0f",
+              "#9333ea",
+              "#0284c7",
+              "#b45309",
+              "#047857"
+            ],
+            "backgroundColor": "transparent",
+            "animationDuration": 450,
+            "textStyle": {
+              "fontFamily": "Inter, system-ui, sans-serif"
+            },
+            "_valueFormat": "integer",
+            "_summary": "Parda lidera com 65.749.749.",
+            "_footnote": null,
+            "_subtitle": "Distribuicao proporcional",
+            "title": {
+              "show": false,
+              "text": "Total de internacoes por raca/cor",
+              "left": 0,
+              "top": 0,
+              "textStyle": {
+                "fontSize": 14,
+                "fontWeight": 700,
+                "color": "#101828"
+              }
+            },
+            "tooltip": {
+              "trigger": "item",
+              "confine": true
+            },
+            "legend": {
+              "show": false
+            },
+            "_legend": [
+              {
+                "name": "Amarela",
+                "color": "#2563eb",
+                "value": 2252044,
+                "percent": 1.67
+              },
+              {
+                "name": "Preta",
+                "color": "#0f766e",
+                "value": 6541484,
+                "percent": 4.84
+              },
+              {
+                "name": "Branca",
+                "color": "#c2410c",
+                "value": 60081825,
+                "percent": 44.47
+              },
+              {
+                "name": "Indígena",
+                "color": "#7c3aed",
+                "value": 491304,
+                "percent": 0.36
+              },
+              {
+                "name": "Parda",
+                "color": "#be123c",
+                "value": 65749749,
+                "percent": 48.66
+              }
+            ],
+            "series": [
+              {
+                "type": "pie",
+                "name": "total_internacoes",
+                "radius": [
+                  "0%",
+                  "70%"
+                ],
+                "center": [
+                  "50%",
+                  "48%"
+                ],
+                "avoidLabelOverlap": true,
+                "label": {
+                  "show": false
+                },
+                "labelLine": {
+                  "show": false
+                },
+                "itemStyle": {
+                  "borderColor": "#fff",
+                  "borderWidth": 2
+                },
+                "data": [
+                  {
+                    "name": "Amarela",
+                    "value": 2252044,
+                    "itemStyle": {
+                      "color": "#2563eb"
+                    }
+                  },
+                  {
+                    "name": "Preta",
+                    "value": 6541484,
+                    "itemStyle": {
+                      "color": "#0f766e"
+                    }
+                  },
+                  {
+                    "name": "Branca",
+                    "value": 60081825,
+                    "itemStyle": {
+                      "color": "#c2410c"
+                    }
+                  },
+                  {
+                    "name": "Indígena",
+                    "value": 491304,
+                    "itemStyle": {
+                      "color": "#7c3aed"
+                    }
+                  },
+                  {
+                    "name": "Parda",
+                    "value": 65749749,
+                    "itemStyle": {
+                      "color": "#be123c"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "reason": "Usuario pediu explicitamente grafico do tipo pie"
+        },
+        "setup": [],
+        "elapsed_seconds": 10.957509
+      }
+    },
+    {
+      "id": "PROD_DEMO_005",
+      "query": "Mostre taxa de mortalidade por raca/cor em barras.",
+      "tags": [
+        "demographic",
+        "race_color",
+        "mortality_rate",
+        "bar"
+      ],
+      "checks": {
+        "no_raw_internal_error": true,
+        "chart_contract_validity": true,
+        "sql_invariant_validity": true,
+        "semantic_dimension_validity": true
+      },
+      "success": true,
+      "failure_reasons": [],
+      "semantic": {
+        "intent": "rate",
+        "metrics": [
+          "taxa_mortalidade"
+        ],
+        "dimensions": [
+          "raca_cor"
+        ],
+        "required_dimensions": [
+          "raca_cor"
+        ],
+        "output_dimensions": [
+          "raca_cor"
+        ],
+        "partition_dimensions": [],
+        "ranked_dimensions": [],
+        "constraints": [
+          "rate_denominator_must_preserve_full_scope",
+          "categorical_lookup_label_required"
+        ],
+        "filters": []
+      },
+      "chart": {
+        "intent_requested": true,
+        "intent_source": "explicit_current_query",
+        "chart_hint": "bar",
+        "chart_plan": {
+          "requested": true,
+          "chart_type": "bar",
+          "metric": "taxa_mortalidade",
+          "metric_expression": "SUM(MORTE=true) * 100.0 / COUNT(*)",
+          "x_dimension": "raca_cor",
+          "series_dimension": null,
+          "y_column": "taxa_mortalidade",
+          "grain": "raca_cor",
+          "expected_result_shape": "category_metric",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [
+            "raca_cor",
+            "taxa_mortalidade"
+          ],
+          "sql_shape_guidance": "Return one row per raca_cor with columns: raca_cor, taxa_mortalidade.",
+          "reason": "structured chart parameters extracted before SQL generation"
+        },
+        "synthetic_spec": {
+          "chartable": true,
+          "chart_type": "bar",
+          "title": "taxa mortalidade por raca cor",
+          "x": "raca_cor",
+          "y": "taxa_mortalidade",
+          "series": null,
+          "encoding": {
+            "x_type": "nominal",
+            "y_type": "quantitative"
+          },
+          "data": [
+            {
+              "raca_cor": "Grupo A",
+              "taxa_mortalidade": 10
+            },
+            {
+              "raca_cor": "Grupo B",
+              "taxa_mortalidade": 15
+            },
+            {
+              "raca_cor": "Grupo C",
+              "taxa_mortalidade": 8
+            }
+          ],
+          "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+          "warnings": [],
+          "presentation": {
+            "title": "Taxa de mortalidade (%) por raca/cor",
+            "subtitle": "Ranking por valor",
+            "x_label": "Raca/cor",
+            "y_label": "Taxa de mortalidade (%)",
+            "series_label": null,
+            "value_format": "percent",
+            "sort_order": "as_returned",
+            "footnote": null,
+            "summary": "Grupo B lidera com 15,00%."
+          }
+        },
+        "echarts_valid": true
+      },
+      "agent": {
+        "success": true,
+        "error": null,
+        "response": "A taxa de mortalidade por raça/cor é a seguinte:\n\n1. Preta: 5,25%\n2. Branca: 4,94%\n3. Amarela: 4,34%\n4. Parda: 3,63%\n5. Indígena: 2,06%",
+        "answer": null,
+        "sql_query": "SELECT r.\"DESCRICAO\" AS raca_cor, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = TRUE THEN 1 ELSE 0 END) AS total_mortes, (SUM(CASE WHEN i.\"MORTE\" = TRUE THEN 1 ELSE 0 END) * 1.0 / COUNT(*)) * 100 AS taxa_mortalidade FROM internacoes i JOIN raca_cor r ON i.\"RACA_COR\" = r.\"RACA_COR\" GROUP BY r.\"DESCRICAO\" ORDER BY taxa_mortalidade DESC;",
+        "row_count": 5,
+        "chart": {
+          "requested": true,
+          "source": "explicit_current_query",
+          "uses_last_result": false,
+          "chart_hint": "bar",
+          "spec": {
+            "chartable": true,
+            "chart_type": "bar",
+            "title": "taxa mortalidade por raca cor",
+            "x": "raca_cor",
+            "y": "taxa_mortalidade",
+            "series": null,
+            "encoding": {
+              "x_type": "nominal",
+              "y_type": "quantitative"
+            },
+            "data": [
+              {
+                "raca_cor": "Preta",
+                "total_internacoes": 6541484,
+                "total_mortes": 343290,
+                "taxa_mortalidade": 5.247891762786548
+              },
+              {
+                "raca_cor": "Branca",
+                "total_internacoes": 60081825,
+                "total_mortes": 2966781,
+                "taxa_mortalidade": 4.937900937596353
+              },
+              {
+                "raca_cor": "Amarela",
+                "total_internacoes": 2252044,
+                "total_mortes": 97704,
+                "taxa_mortalidade": 4.338458751249975
+              },
+              {
+                "raca_cor": "Parda",
+                "total_internacoes": 65749749,
+                "total_mortes": 2385594,
+                "taxa_mortalidade": 3.6282936988854515
+              },
+              {
+                "raca_cor": "Indígena",
+                "total_internacoes": 491304,
+                "total_mortes": 10125,
+                "taxa_mortalidade": 2.060842166967906
+              }
+            ],
+            "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+            "warnings": [],
+            "presentation": {
+              "title": "Taxa de mortalidade (%) por raca/cor",
+              "subtitle": "Ranking por valor",
+              "x_label": "Raca/cor",
+              "y_label": "Taxa de mortalidade (%)",
+              "series_label": null,
+              "value_format": "percent",
+              "sort_order": "as_returned",
+              "footnote": null,
+              "summary": "Preta lidera com 5,25%."
+            }
+          },
+          "echarts": {
+            "color": [
+              "#2563eb",
+              "#0f766e",
+              "#c2410c",
+              "#7c3aed",
+              "#be123c",
+              "#a16207",
+              "#0891b2",
+              "#4d7c0f",
+              "#9333ea",
+              "#0284c7",
+              "#b45309",
+              "#047857"
+            ],
+            "backgroundColor": "transparent",
+            "animationDuration": 450,
+            "textStyle": {
+              "fontFamily": "Inter, system-ui, sans-serif"
+            },
+            "_valueFormat": "percent",
+            "_summary": "Preta lidera com 5,25%.",
+            "_footnote": null,
+            "_subtitle": "Ranking por valor",
+            "title": {
+              "show": false,
+              "text": "Taxa de mortalidade (%) por raca/cor",
+              "left": 0,
+              "top": 0,
+              "textStyle": {
+                "fontSize": 14,
+                "fontWeight": 700,
+                "color": "#101828"
+              }
+            },
+            "tooltip": {
+              "trigger": "axis",
+              "confine": true
+            },
+            "grid": {
+              "left": 14,
+              "right": 28,
+              "top": 24,
+              "bottom": 22,
+              "containLabel": true
+            },
+            "legend": {
+              "show": false,
+              "top": 26,
+              "right": 0,
+              "type": "scroll"
+            },
+            "xAxis": {
+              "type": "value",
+              "name": "Taxa de mortalidade (%)",
+              "nameGap": 30,
+              "axisLabel": {
+                "color": "#667085"
+              },
+              "splitLine": {
+                "lineStyle": {
+                  "color": "rgba(102,112,133,0.18)"
+                }
+              }
+            },
+            "yAxis": {
+              "type": "category",
+              "name": "Raca/cor",
+              "nameGap": 46,
+              "inverse": true,
+              "data": [
+                "Preta",
+                "Branca",
+                "Amarela",
+                "Parda",
+                "Indígena"
+              ],
+              "axisLabel": {
+                "color": "#667085",
+                "width": 142,
+                "overflow": "truncate"
+              },
+              "axisLine": {
+                "lineStyle": {
+                  "color": "#98a2b3"
+                }
+              }
+            },
+            "series": [
+              {
+                "type": "bar",
+                "name": "taxa_mortalidade",
+                "emphasis": {
+                  "focus": "series"
+                },
+                "data": [
+                  {
+                    "value": 5.247891762786548,
+                    "itemStyle": {
+                      "color": "#2563eb",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 4.937900937596353,
+                    "itemStyle": {
+                      "color": "#0f766e",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 4.338458751249975,
+                    "itemStyle": {
+                      "color": "#c2410c",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 3.6282936988854515,
+                    "itemStyle": {
+                      "color": "#7c3aed",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 2.060842166967906,
+                    "itemStyle": {
+                      "color": "#be123c",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  }
+                ],
+                "barMaxWidth": 26
+              }
+            ],
+            "_legend": [
+              {
+                "name": "Preta",
+                "color": "#2563eb"
+              },
+              {
+                "name": "Branca",
+                "color": "#0f766e"
+              },
+              {
+                "name": "Amarela",
+                "color": "#c2410c"
+              },
+              {
+                "name": "Parda",
+                "color": "#7c3aed"
+              },
+              {
+                "name": "Indígena",
+                "color": "#be123c"
+              }
+            ]
+          },
+          "reason": "Usuario pediu explicitamente grafico do tipo bar"
+        },
+        "setup": [],
+        "elapsed_seconds": 18.395742
+      }
+    },
+    {
+      "id": "PROD_DEMO_006",
+      "query": "Mostre internacoes por faixa etaria em grafico.",
+      "tags": [
+        "demographic",
+        "age_band",
+        "admissions",
+        "bar"
+      ],
+      "checks": {
+        "no_raw_internal_error": true,
+        "chart_contract_validity": true,
+        "sql_invariant_validity": true,
+        "semantic_dimension_validity": true
+      },
+      "success": true,
+      "failure_reasons": [],
+      "semantic": {
+        "intent": "count",
+        "metrics": [
+          "total"
+        ],
+        "dimensions": [
+          "faixa_etaria"
+        ],
+        "required_dimensions": [
+          "faixa_etaria"
+        ],
+        "output_dimensions": [
+          "faixa_etaria"
+        ],
+        "partition_dimensions": [],
+        "ranked_dimensions": [],
+        "constraints": [],
+        "filters": []
+      },
+      "chart": {
+        "intent_requested": true,
+        "intent_source": "explicit_current_query",
+        "chart_hint": "auto",
+        "chart_plan": {
+          "requested": true,
+          "chart_type": "bar",
+          "metric": "total_internacoes",
+          "metric_expression": "COUNT rows",
+          "x_dimension": "faixa_etaria",
+          "series_dimension": null,
+          "y_column": "total_internacoes",
+          "grain": "faixa_etaria",
+          "expected_result_shape": "category_metric",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [
+            "faixa_etaria",
+            "total_internacoes"
+          ],
+          "sql_shape_guidance": "Return one row per faixa_etaria with columns: faixa_etaria, total_internacoes.",
+          "reason": "structured chart parameters extracted before SQL generation"
+        },
+        "synthetic_spec": {
+          "chartable": true,
+          "chart_type": "bar",
+          "title": "internacoes por faixa etaria",
+          "x": "faixa_etaria",
+          "y": "internacoes",
+          "series": null,
+          "encoding": {
+            "x_type": "nominal",
+            "y_type": "quantitative"
+          },
+          "data": [
+            {
+              "faixa_etaria": "Grupo A",
+              "internacoes": 10
+            },
+            {
+              "faixa_etaria": "Grupo B",
+              "internacoes": 15
+            },
+            {
+              "faixa_etaria": "Grupo C",
+              "internacoes": 8
+            }
+          ],
+          "reason": "Resultado categorico com metrica numerica.",
+          "warnings": [],
+          "presentation": {
+            "title": "Internacoes por faixa etaria",
+            "subtitle": "Ranking por valor",
+            "x_label": "Faixa etaria",
+            "y_label": "Internacoes",
+            "series_label": null,
+            "value_format": "integer",
+            "sort_order": "as_returned",
+            "footnote": null,
+            "summary": "Grupo B lidera com 15."
+          }
+        },
+        "echarts_valid": true
+      },
+      "agent": {
+        "success": true,
+        "error": null,
+        "response": "Foram registradas 1 internação na faixa etária de Adulto, 1 internação na faixa etária de Idoso e 1 internação na faixa etária de Menor.",
+        "answer": null,
+        "sql_query": "SELECT faixa_etaria, COUNT(*) AS total_internacoes FROM ( SELECT CASE WHEN \"IDADE\" < 18 THEN 'Menor' WHEN \"IDADE\" < 60 THEN 'Adulto' ELSE 'Idoso' END AS faixa_etaria, ROW_NUMBER() OVER (PARTITION BY CASE WHEN \"IDADE\" < 18 THEN 'Menor' WHEN \"IDADE\" < 60 THEN 'Adulto' ELSE 'Idoso' END ORDER BY \"IDADE\") AS rn FROM internacoes ) sub WHERE rn = 1 GROUP BY faixa_etaria ORDER BY faixa_etaria;",
+        "row_count": 3,
+        "chart": {
+          "requested": true,
+          "source": "explicit_current_query",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "spec": {
+            "chartable": true,
+            "chart_type": "bar",
+            "title": "total internacoes por faixa etaria",
+            "x": "faixa_etaria",
+            "y": "total_internacoes",
+            "series": null,
+            "encoding": {
+              "x_type": "nominal",
+              "y_type": "quantitative"
+            },
+            "data": [
+              {
+                "faixa_etaria": "Adulto",
+                "total_internacoes": 1
+              },
+              {
+                "faixa_etaria": "Idoso",
+                "total_internacoes": 1
+              },
+              {
+                "faixa_etaria": "Menor",
+                "total_internacoes": 1
+              }
+            ],
+            "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+            "warnings": [],
+            "presentation": {
+              "title": "Total de internacoes por faixa etaria",
+              "subtitle": "Ranking por valor",
+              "x_label": "Faixa etaria",
+              "y_label": "Total de internacoes",
+              "series_label": null,
+              "value_format": "integer",
+              "sort_order": "as_returned",
+              "footnote": null,
+              "summary": "Adulto lidera com 1."
+            }
+          },
+          "echarts": {
+            "color": [
+              "#2563eb",
+              "#0f766e",
+              "#c2410c",
+              "#7c3aed",
+              "#be123c",
+              "#a16207",
+              "#0891b2",
+              "#4d7c0f",
+              "#9333ea",
+              "#0284c7",
+              "#b45309",
+              "#047857"
+            ],
+            "backgroundColor": "transparent",
+            "animationDuration": 450,
+            "textStyle": {
+              "fontFamily": "Inter, system-ui, sans-serif"
+            },
+            "_valueFormat": "integer",
+            "_summary": "Adulto lidera com 1.",
+            "_footnote": null,
+            "_subtitle": "Ranking por valor",
+            "title": {
+              "show": false,
+              "text": "Total de internacoes por faixa etaria",
+              "left": 0,
+              "top": 0,
+              "textStyle": {
+                "fontSize": 14,
+                "fontWeight": 700,
+                "color": "#101828"
+              }
+            },
+            "tooltip": {
+              "trigger": "axis",
+              "confine": true
+            },
+            "grid": {
+              "left": 14,
+              "right": 28,
+              "top": 24,
+              "bottom": 22,
+              "containLabel": true
+            },
+            "legend": {
+              "show": false,
+              "top": 26,
+              "right": 0,
+              "type": "scroll"
+            },
+            "xAxis": {
+              "type": "value",
+              "name": "Total de internacoes",
+              "nameGap": 30,
+              "axisLabel": {
+                "color": "#667085"
+              },
+              "splitLine": {
+                "lineStyle": {
+                  "color": "rgba(102,112,133,0.18)"
+                }
+              }
+            },
+            "yAxis": {
+              "type": "category",
+              "name": "Faixa etaria",
+              "nameGap": 46,
+              "inverse": true,
+              "data": [
+                "Adulto",
+                "Idoso",
+                "Menor"
+              ],
+              "axisLabel": {
+                "color": "#667085",
+                "width": 142,
+                "overflow": "truncate"
+              },
+              "axisLine": {
+                "lineStyle": {
+                  "color": "#98a2b3"
+                }
+              }
+            },
+            "series": [
+              {
+                "type": "bar",
+                "name": "total_internacoes",
+                "emphasis": {
+                  "focus": "series"
+                },
+                "data": [
+                  {
+                    "value": 1,
+                    "itemStyle": {
+                      "color": "#2563eb",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 1,
+                    "itemStyle": {
+                      "color": "#0f766e",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 1,
+                    "itemStyle": {
+                      "color": "#c2410c",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  }
+                ],
+                "barMaxWidth": 26
+              }
+            ],
+            "_legend": [
+              {
+                "name": "Adulto",
+                "color": "#2563eb"
+              },
+              {
+                "name": "Idoso",
+                "color": "#0f766e"
+              },
+              {
+                "name": "Menor",
+                "color": "#c2410c"
+              }
+            ]
+          },
+          "reason": "Usuario pediu explicitamente visualizacao em grafico"
+        },
+        "setup": [],
+        "elapsed_seconds": 29.662417
+      }
+    },
+    {
+      "id": "PROD_DEMO_007",
+      "query": "Grafico de mortes por faixa etaria.",
+      "tags": [
+        "demographic",
+        "age_band",
+        "deaths",
+        "bar"
+      ],
+      "checks": {
+        "no_raw_internal_error": true,
+        "chart_contract_validity": true,
+        "sql_invariant_validity": true,
+        "semantic_dimension_validity": true
+      },
+      "success": true,
+      "failure_reasons": [],
+      "semantic": {
+        "intent": "unknown",
+        "metrics": [
+          "total_mortes"
+        ],
+        "dimensions": [
+          "faixa_etaria"
+        ],
+        "required_dimensions": [
+          "faixa_etaria"
+        ],
+        "output_dimensions": [
+          "faixa_etaria"
+        ],
+        "partition_dimensions": [],
+        "ranked_dimensions": [],
+        "constraints": [],
+        "filters": [
+          {
+            "field": "desfecho",
+            "values": [
+              "MORTE = true"
+            ],
+            "operator": "semantic"
+          }
+        ]
+      },
+      "chart": {
+        "intent_requested": true,
+        "intent_source": "explicit_current_query",
+        "chart_hint": "auto",
+        "chart_plan": {
+          "requested": true,
+          "chart_type": "bar",
+          "metric": "total_mortes",
+          "metric_expression": "COUNT rows where \"MORTE\" = true",
+          "x_dimension": "faixa_etaria",
+          "series_dimension": null,
+          "y_column": "total_mortes",
+          "grain": "faixa_etaria",
+          "expected_result_shape": "category_metric",
+          "filters": [
+            {
+              "field": "MORTE",
+              "operator": "=",
+              "values": [
+                true
+              ],
+              "semantic": "death outcome"
+            }
+          ],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [
+            "faixa_etaria",
+            "total_mortes"
+          ],
+          "sql_shape_guidance": "Return one row per faixa_etaria with columns: faixa_etaria, total_mortes.",
+          "reason": "structured chart parameters extracted before SQL generation"
+        },
+        "synthetic_spec": {
+          "chartable": true,
+          "chart_type": "bar",
+          "title": "mortes por faixa etaria",
+          "x": "faixa_etaria",
+          "y": "mortes",
+          "series": null,
+          "encoding": {
+            "x_type": "nominal",
+            "y_type": "quantitative"
+          },
+          "data": [
+            {
+              "faixa_etaria": "Grupo A",
+              "mortes": 10
+            },
+            {
+              "faixa_etaria": "Grupo B",
+              "mortes": 15
+            },
+            {
+              "faixa_etaria": "Grupo C",
+              "mortes": 8
+            }
+          ],
+          "reason": "Resultado categorico com metrica numerica.",
+          "warnings": [],
+          "presentation": {
+            "title": "Mortes por faixa etaria",
+            "subtitle": "Ranking por valor",
+            "x_label": "Faixa etaria",
+            "y_label": "Mortes",
+            "series_label": null,
+            "value_format": "integer",
+            "sort_order": "as_returned",
+            "footnote": null,
+            "summary": "Grupo B lidera com 15."
+          }
+        },
+        "echarts_valid": true
+      },
+      "agent": {
+        "success": true,
+        "error": null,
+        "response": "Em 2007, foram registradas 1.882 mortes na faixa etária de 0 anos, e o número de mortes varia conforme a faixa etária, com 387 mortes na faixa de 49 anos e 453 na faixa de 57 anos. Este é um resultado parcial, mostrando 50 de 1.547 registros.",
+        "answer": null,
+        "sql_query": "SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, i.\"IDADE\" AS faixa_etaria, COUNT(*) AS total_mortes FROM internacoes i WHERE i.\"MORTE\" = true AND i.\"DT_INTER\" IS NOT NULL GROUP BY EXTRACT(YEAR FROM i.\"DT_INTER\"), i.\"IDADE\" ORDER BY ano ASC;",
+        "row_count": 1547,
+        "chart": {
+          "requested": true,
+          "source": "explicit_current_query",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "spec": {
+            "chartable": true,
+            "chart_type": "bar",
+            "title": "total mortes por faixa etaria",
+            "x": "faixa_etaria",
+            "y": "total_mortes",
+            "series": null,
+            "encoding": {
+              "x_type": "nominal",
+              "y_type": "quantitative"
+            },
+            "data": [
+              {
+                "ano": 2009,
+                "faixa_etaria": 0,
+                "total_mortes": 23326
+              },
+              {
+                "ano": 2017,
+                "faixa_etaria": 0,
+                "total_mortes": 23260
+              },
+              {
+                "ano": 2018,
+                "faixa_etaria": 0,
+                "total_mortes": 23246
+              },
+              {
+                "ano": 2010,
+                "faixa_etaria": 0,
+                "total_mortes": 23037
+              },
+              {
+                "ano": 2011,
+                "faixa_etaria": 0,
+                "total_mortes": 22961
+              },
+              {
+                "ano": 2016,
+                "faixa_etaria": 0,
+                "total_mortes": 22842
+              },
+              {
+                "ano": 2019,
+                "faixa_etaria": 0,
+                "total_mortes": 22806
+              },
+              {
+                "ano": 2013,
+                "faixa_etaria": 0,
+                "total_mortes": 22779
+              },
+              {
+                "ano": 2014,
+                "faixa_etaria": 0,
+                "total_mortes": 22737
+              },
+              {
+                "ano": 2022,
+                "faixa_etaria": 0,
+                "total_mortes": 22718
+              },
+              {
+                "ano": 2015,
+                "faixa_etaria": 0,
+                "total_mortes": 22703
+              },
+              {
+                "ano": 2012,
+                "faixa_etaria": 0,
+                "total_mortes": 22574
+              },
+              {
+                "ano": 2008,
+                "faixa_etaria": 0,
+                "total_mortes": 22435
+              },
+              {
+                "ano": 2021,
+                "faixa_etaria": 0,
+                "total_mortes": 21743
+              },
+              {
+                "ano": 2020,
+                "faixa_etaria": 0,
+                "total_mortes": 20881
+              }
+            ],
+            "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+            "warnings": [
+              {
+                "code": "bar_limited_for_readability",
+                "message": "Exibindo os 15 maiores valores de 91 categorias.",
+                "severity": "info"
+              }
+            ],
+            "presentation": {
+              "title": "Total de mortes por faixa etaria",
+              "subtitle": "Ranking por valor",
+              "x_label": "Faixa etaria",
+              "y_label": "Total de mortes",
+              "series_label": null,
+              "value_format": "integer",
+              "sort_order": "as_returned",
+              "footnote": "Exibindo os 15 maiores valores de 91 categorias.",
+              "summary": "0 lidera com 23.326."
+            }
+          },
+          "echarts": {
+            "color": [
+              "#2563eb",
+              "#0f766e",
+              "#c2410c",
+              "#7c3aed",
+              "#be123c",
+              "#a16207",
+              "#0891b2",
+              "#4d7c0f",
+              "#9333ea",
+              "#0284c7",
+              "#b45309",
+              "#047857"
+            ],
+            "backgroundColor": "transparent",
+            "animationDuration": 450,
+            "textStyle": {
+              "fontFamily": "Inter, system-ui, sans-serif"
+            },
+            "_valueFormat": "integer",
+            "_summary": "0 lidera com 23.326.",
+            "_footnote": "Exibindo os 15 maiores valores de 91 categorias.",
+            "_subtitle": "Ranking por valor",
+            "title": {
+              "show": false,
+              "text": "Total de mortes por faixa etaria",
+              "left": 0,
+              "top": 0,
+              "textStyle": {
+                "fontSize": 14,
+                "fontWeight": 700,
+                "color": "#101828"
+              }
+            },
+            "tooltip": {
+              "trigger": "axis",
+              "confine": true
+            },
+            "grid": {
+              "left": 14,
+              "right": 28,
+              "top": 24,
+              "bottom": 22,
+              "containLabel": true
+            },
+            "legend": {
+              "show": false,
+              "top": 26,
+              "right": 0,
+              "type": "scroll"
+            },
+            "xAxis": {
+              "type": "value",
+              "name": "Total de mortes",
+              "nameGap": 30,
+              "axisLabel": {
+                "color": "#667085"
+              },
+              "splitLine": {
+                "lineStyle": {
+                  "color": "rgba(102,112,133,0.18)"
+                }
+              }
+            },
+            "yAxis": {
+              "type": "category",
+              "name": "Faixa etaria",
+              "nameGap": 46,
+              "inverse": true,
+              "data": [
+                0
+              ],
+              "axisLabel": {
+                "color": "#667085",
+                "width": 142,
+                "overflow": "truncate"
+              },
+              "axisLine": {
+                "lineStyle": {
+                  "color": "#98a2b3"
+                }
+              }
+            },
+            "series": [
+              {
+                "type": "bar",
+                "name": "total_mortes",
+                "emphasis": {
+                  "focus": "series"
+                },
+                "data": [
+                  20881
+                ],
+                "barMaxWidth": 26,
+                "itemStyle": {
+                  "borderRadius": [
+                    0,
+                    5,
+                    5,
+                    0
+                  ]
+                }
+              }
+            ]
+          },
+          "reason": "Usuario pediu explicitamente visualizacao em grafico"
+        },
+        "setup": [],
+        "elapsed_seconds": 12.505451
+      }
+    },
+    {
+      "id": "PROD_DEMO_008",
+      "query": "Compare idade media por sexo em grafico.",
+      "tags": [
+        "demographic",
+        "sex",
+        "age",
+        "bar"
+      ],
+      "checks": {
+        "no_raw_internal_error": true,
+        "chart_contract_validity": true,
+        "sql_invariant_validity": true,
+        "semantic_dimension_validity": true
+      },
+      "success": true,
+      "failure_reasons": [],
+      "semantic": {
+        "intent": "unknown",
+        "metrics": [
+          "media"
+        ],
+        "dimensions": [
+          "sexo"
+        ],
+        "required_dimensions": [
+          "sexo"
+        ],
+        "output_dimensions": [
+          "sexo"
+        ],
+        "partition_dimensions": [],
+        "ranked_dimensions": [],
+        "constraints": [
+          "sex_label_output_required"
+        ],
+        "filters": []
+      },
+      "chart": {
+        "intent_requested": true,
+        "intent_source": "explicit_current_query",
+        "chart_hint": "auto",
+        "chart_plan": {
+          "requested": true,
+          "chart_type": "bar",
+          "metric": "idade_media",
+          "metric_expression": "AVG(\"IDADE\")",
+          "x_dimension": "sexo",
+          "series_dimension": null,
+          "y_column": "idade_media",
+          "grain": "sexo",
+          "expected_result_shape": "category_metric",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [
+            "sexo",
+            "idade_media"
+          ],
+          "sql_shape_guidance": "Return one row per sexo with columns: sexo, idade_media. For 'sexo', emit human-readable labels via CASE WHEN \"SEXO\"=1 THEN 'Masculino' WHEN \"SEXO\"=3 THEN 'Feminino' END, not raw codes.",
+          "reason": "structured chart parameters extracted before SQL generation"
+        },
+        "synthetic_spec": {
+          "chartable": true,
+          "chart_type": "bar",
+          "title": "idade media por sexo",
+          "x": "sexo",
+          "y": "idade_media",
+          "series": null,
+          "encoding": {
+            "x_type": "nominal",
+            "y_type": "quantitative"
+          },
+          "data": [
+            {
+              "sexo": "Grupo A",
+              "idade_media": 10
+            },
+            {
+              "sexo": "Grupo B",
+              "idade_media": 15
+            },
+            {
+              "sexo": "Grupo C",
+              "idade_media": 8
+            }
+          ],
+          "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+          "warnings": [],
+          "presentation": {
+            "title": "Idade media por sexo",
+            "subtitle": "Ranking por valor",
+            "x_label": "Sexo",
+            "y_label": "Idade media",
+            "series_label": null,
+            "value_format": "decimal",
+            "sort_order": "as_returned",
+            "footnote": null,
+            "summary": "Grupo B lidera com 15,00."
+          }
+        },
+        "echarts_valid": true
+      },
+      "agent": {
+        "success": true,
+        "error": null,
+        "response": "A idade média dos homens é de 41,35 anos e das mulheres é de 37,4 anos.",
+        "answer": null,
+        "sql_query": "SELECT CASE WHEN i.\"SEXO\" = 1 THEN 'Masculino' WHEN i.\"SEXO\" = 3 THEN 'Feminino' ELSE 'Ignorado' END AS sexo, ROUND(AVG(i.\"IDADE\"), 2) AS idade_media FROM internacoes i WHERE i.\"SEXO\" IN (1, 3) AND i.\"IDADE\" IS NOT NULL GROUP BY CASE WHEN i.\"SEXO\" = 1 THEN 'Masculino' WHEN i.\"SEXO\" = 3 THEN 'Feminino' ELSE 'Ignorado' END ORDER BY idade_media DESC;",
+        "row_count": 2,
+        "chart": {
+          "requested": true,
+          "source": "explicit_current_query",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "spec": {
+            "chartable": true,
+            "chart_type": "bar",
+            "title": "idade media por sexo",
+            "x": "sexo",
+            "y": "idade_media",
+            "series": null,
+            "encoding": {
+              "x_type": "nominal",
+              "y_type": "quantitative"
+            },
+            "data": [
+              {
+                "sexo": "Masculino",
+                "idade_media": 41.35
+              },
+              {
+                "sexo": "Feminino",
+                "idade_media": 37.4
+              }
+            ],
+            "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+            "warnings": [],
+            "presentation": {
+              "title": "Idade media por sexo",
+              "subtitle": "Ranking por valor",
+              "x_label": "Sexo",
+              "y_label": "Idade media",
+              "series_label": null,
+              "value_format": "decimal",
+              "sort_order": "as_returned",
+              "footnote": null,
+              "summary": "Masculino lidera com 41,35."
+            }
+          },
+          "echarts": {
+            "color": [
+              "#2563eb",
+              "#0f766e",
+              "#c2410c",
+              "#7c3aed",
+              "#be123c",
+              "#a16207",
+              "#0891b2",
+              "#4d7c0f",
+              "#9333ea",
+              "#0284c7",
+              "#b45309",
+              "#047857"
+            ],
+            "backgroundColor": "transparent",
+            "animationDuration": 450,
+            "textStyle": {
+              "fontFamily": "Inter, system-ui, sans-serif"
+            },
+            "_valueFormat": "decimal",
+            "_summary": "Masculino lidera com 41,35.",
+            "_footnote": null,
+            "_subtitle": "Ranking por valor",
+            "title": {
+              "show": false,
+              "text": "Idade media por sexo",
+              "left": 0,
+              "top": 0,
+              "textStyle": {
+                "fontSize": 14,
+                "fontWeight": 700,
+                "color": "#101828"
+              }
+            },
+            "tooltip": {
+              "trigger": "axis",
+              "confine": true
+            },
+            "grid": {
+              "left": 14,
+              "right": 28,
+              "top": 24,
+              "bottom": 22,
+              "containLabel": true
+            },
+            "legend": {
+              "show": false,
+              "top": 26,
+              "right": 0,
+              "type": "scroll"
+            },
+            "xAxis": {
+              "type": "value",
+              "name": "Idade media",
+              "nameGap": 30,
+              "axisLabel": {
+                "color": "#667085"
+              },
+              "splitLine": {
+                "lineStyle": {
+                  "color": "rgba(102,112,133,0.18)"
+                }
+              }
+            },
+            "yAxis": {
+              "type": "category",
+              "name": "Sexo",
+              "nameGap": 46,
+              "inverse": true,
+              "data": [
+                "Masculino",
+                "Feminino"
+              ],
+              "axisLabel": {
+                "color": "#667085",
+                "width": 142,
+                "overflow": "truncate"
+              },
+              "axisLine": {
+                "lineStyle": {
+                  "color": "#98a2b3"
+                }
+              }
+            },
+            "series": [
+              {
+                "type": "bar",
+                "name": "idade_media",
+                "emphasis": {
+                  "focus": "series"
+                },
+                "data": [
+                  {
+                    "value": 41.35,
+                    "itemStyle": {
+                      "color": "#2563eb",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 37.4,
+                    "itemStyle": {
+                      "color": "#0f766e",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  }
+                ],
+                "barMaxWidth": 26
+              }
+            ],
+            "_legend": [
+              {
+                "name": "Masculino",
+                "color": "#2563eb"
+              },
+              {
+                "name": "Feminino",
+                "color": "#0f766e"
+              }
+            ]
+          },
+          "reason": "Usuario pediu explicitamente visualizacao em grafico"
+        },
+        "setup": [],
+        "elapsed_seconds": 14.075688
+      }
+    },
+    {
+      "id": "PROD_DEMO_009",
+      "query": "Mostre taxa de mortalidade por sexo em grafico.",
+      "tags": [
+        "demographic",
+        "sex",
+        "mortality_rate",
+        "bar"
+      ],
+      "checks": {
+        "no_raw_internal_error": true,
+        "chart_contract_validity": true,
+        "sql_invariant_validity": true,
+        "semantic_dimension_validity": true
+      },
+      "success": true,
+      "failure_reasons": [],
+      "semantic": {
+        "intent": "rate",
+        "metrics": [
+          "taxa_mortalidade"
+        ],
+        "dimensions": [
+          "sexo"
+        ],
+        "required_dimensions": [
+          "sexo"
+        ],
+        "output_dimensions": [
+          "sexo"
+        ],
+        "partition_dimensions": [],
+        "ranked_dimensions": [],
+        "constraints": [
+          "rate_denominator_must_preserve_full_scope",
+          "sex_label_output_required"
+        ],
+        "filters": []
+      },
+      "chart": {
+        "intent_requested": true,
+        "intent_source": "explicit_current_query",
+        "chart_hint": "auto",
+        "chart_plan": {
+          "requested": true,
+          "chart_type": "bar",
+          "metric": "taxa_mortalidade",
+          "metric_expression": "SUM(MORTE=true) * 100.0 / COUNT(*)",
+          "x_dimension": "sexo",
+          "series_dimension": null,
+          "y_column": "taxa_mortalidade",
+          "grain": "sexo",
+          "expected_result_shape": "category_metric",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [
+            "sexo",
+            "taxa_mortalidade"
+          ],
+          "sql_shape_guidance": "Return one row per sexo with columns: sexo, taxa_mortalidade. For 'sexo', emit human-readable labels via CASE WHEN \"SEXO\"=1 THEN 'Masculino' WHEN \"SEXO\"=3 THEN 'Feminino' END, not raw codes.",
+          "reason": "structured chart parameters extracted before SQL generation"
+        },
+        "synthetic_spec": {
+          "chartable": true,
+          "chart_type": "bar",
+          "title": "taxa mortalidade por sexo",
+          "x": "sexo",
+          "y": "taxa_mortalidade",
+          "series": null,
+          "encoding": {
+            "x_type": "nominal",
+            "y_type": "quantitative"
+          },
+          "data": [
+            {
+              "sexo": "Grupo A",
+              "taxa_mortalidade": 10
+            },
+            {
+              "sexo": "Grupo B",
+              "taxa_mortalidade": 15
+            },
+            {
+              "sexo": "Grupo C",
+              "taxa_mortalidade": 8
+            }
+          ],
+          "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+          "warnings": [],
+          "presentation": {
+            "title": "Taxa de mortalidade (%) por sexo",
+            "subtitle": "Ranking por valor",
+            "x_label": "Sexo",
+            "y_label": "Taxa de mortalidade (%)",
+            "series_label": null,
+            "value_format": "percent",
+            "sort_order": "as_returned",
+            "footnote": null,
+            "summary": "Grupo B lidera com 15,00%."
+          }
+        },
+        "echarts_valid": true
+      },
+      "agent": {
+        "success": true,
+        "error": null,
+        "response": "A taxa de mortalidade por sexo é a seguinte: Masculino 5,61 e Feminino 3,38.",
+        "answer": null,
+        "sql_query": "SELECT CASE WHEN i.\"SEXO\" = 1 THEN 'Masculino' WHEN i.\"SEXO\" = 3 THEN 'Feminino' ELSE 'Ignorado' END AS sexo, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade FROM internacoes i  WHERE i.\"SEXO\" IN (1, 3) GROUP BY CASE WHEN i.\"SEXO\" = 1 THEN 'Masculino' WHEN i.\"SEXO\" = 3 THEN 'Feminino' ELSE 'Ignorado' END ORDER BY taxa_mortalidade DESC;",
+        "row_count": 2,
+        "chart": {
+          "requested": true,
+          "source": "explicit_current_query",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "spec": {
+            "chartable": true,
+            "chart_type": "bar",
+            "title": "taxa mortalidade por sexo",
+            "x": "sexo",
+            "y": "taxa_mortalidade",
+            "series": null,
+            "encoding": {
+              "x_type": "nominal",
+              "y_type": "quantitative"
+            },
+            "data": [
+              {
+                "sexo": "Masculino",
+                "taxa_mortalidade": 5.61
+              },
+              {
+                "sexo": "Feminino",
+                "taxa_mortalidade": 3.38
+              }
+            ],
+            "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+            "warnings": [],
+            "presentation": {
+              "title": "Taxa de mortalidade (%) por sexo",
+              "subtitle": "Ranking por valor",
+              "x_label": "Sexo",
+              "y_label": "Taxa de mortalidade (%)",
+              "series_label": null,
+              "value_format": "percent",
+              "sort_order": "as_returned",
+              "footnote": null,
+              "summary": "Masculino lidera com 5,61%."
+            }
+          },
+          "echarts": {
+            "color": [
+              "#2563eb",
+              "#0f766e",
+              "#c2410c",
+              "#7c3aed",
+              "#be123c",
+              "#a16207",
+              "#0891b2",
+              "#4d7c0f",
+              "#9333ea",
+              "#0284c7",
+              "#b45309",
+              "#047857"
+            ],
+            "backgroundColor": "transparent",
+            "animationDuration": 450,
+            "textStyle": {
+              "fontFamily": "Inter, system-ui, sans-serif"
+            },
+            "_valueFormat": "percent",
+            "_summary": "Masculino lidera com 5,61%.",
+            "_footnote": null,
+            "_subtitle": "Ranking por valor",
+            "title": {
+              "show": false,
+              "text": "Taxa de mortalidade (%) por sexo",
+              "left": 0,
+              "top": 0,
+              "textStyle": {
+                "fontSize": 14,
+                "fontWeight": 700,
+                "color": "#101828"
+              }
+            },
+            "tooltip": {
+              "trigger": "axis",
+              "confine": true
+            },
+            "grid": {
+              "left": 14,
+              "right": 28,
+              "top": 24,
+              "bottom": 22,
+              "containLabel": true
+            },
+            "legend": {
+              "show": false,
+              "top": 26,
+              "right": 0,
+              "type": "scroll"
+            },
+            "xAxis": {
+              "type": "value",
+              "name": "Taxa de mortalidade (%)",
+              "nameGap": 30,
+              "axisLabel": {
+                "color": "#667085"
+              },
+              "splitLine": {
+                "lineStyle": {
+                  "color": "rgba(102,112,133,0.18)"
+                }
+              }
+            },
+            "yAxis": {
+              "type": "category",
+              "name": "Sexo",
+              "nameGap": 46,
+              "inverse": true,
+              "data": [
+                "Masculino",
+                "Feminino"
+              ],
+              "axisLabel": {
+                "color": "#667085",
+                "width": 142,
+                "overflow": "truncate"
+              },
+              "axisLine": {
+                "lineStyle": {
+                  "color": "#98a2b3"
+                }
+              }
+            },
+            "series": [
+              {
+                "type": "bar",
+                "name": "taxa_mortalidade",
+                "emphasis": {
+                  "focus": "series"
+                },
+                "data": [
+                  {
+                    "value": 5.61,
+                    "itemStyle": {
+                      "color": "#2563eb",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 3.38,
+                    "itemStyle": {
+                      "color": "#0f766e",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  }
+                ],
+                "barMaxWidth": 26
+              }
+            ],
+            "_legend": [
+              {
+                "name": "Masculino",
+                "color": "#2563eb"
+              },
+              {
+                "name": "Feminino",
+                "color": "#0f766e"
+              }
+            ]
+          },
+          "reason": "Usuario pediu explicitamente visualizacao em grafico"
+        },
+        "setup": [],
+        "elapsed_seconds": 8.20947
+      }
+    },
+    {
+      "id": "PROD_DEMO_010",
+      "query": "Distribuicao de internacoes por nacionalidade em grafico.",
+      "tags": [
+        "demographic",
+        "nationality",
+        "admissions"
+      ],
+      "checks": {
+        "no_raw_internal_error": true,
+        "chart_contract_validity": true,
+        "sql_invariant_validity": true,
+        "semantic_dimension_validity": true
+      },
+      "success": true,
+      "failure_reasons": [],
+      "semantic": {
+        "intent": "distribution",
+        "metrics": [
+          "total"
+        ],
+        "dimensions": [
+          "nacionalidade"
+        ],
+        "required_dimensions": [
+          "nacionalidade"
+        ],
+        "output_dimensions": [
+          "nacionalidade"
+        ],
+        "partition_dimensions": [],
+        "ranked_dimensions": [],
+        "constraints": [],
+        "filters": []
+      },
+      "chart": {
+        "intent_requested": true,
+        "intent_source": "explicit_current_query",
+        "chart_hint": "auto",
+        "chart_plan": {
+          "requested": true,
+          "chart_type": "bar",
+          "metric": "total_internacoes",
+          "metric_expression": "COUNT rows",
+          "x_dimension": "nacionalidade",
+          "series_dimension": null,
+          "y_column": "total_internacoes",
+          "grain": "nacionalidade",
+          "expected_result_shape": "category_metric",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [
+            "nacionalidade",
+            "total_internacoes"
+          ],
+          "sql_shape_guidance": "Return one row per nacionalidade with columns: nacionalidade, total_internacoes.",
+          "reason": "structured chart parameters extracted before SQL generation"
+        },
+        "synthetic_spec": {
+          "chartable": true,
+          "chart_type": "bar",
+          "title": "internacoes por nacionalidade",
+          "x": "nacionalidade",
+          "y": "internacoes",
+          "series": null,
+          "encoding": {
+            "x_type": "nominal",
+            "y_type": "quantitative"
+          },
+          "data": [
+            {
+              "nacionalidade": "Grupo A",
+              "internacoes": 10
+            },
+            {
+              "nacionalidade": "Grupo B",
+              "internacoes": 15
+            },
+            {
+              "nacionalidade": "Grupo C",
+              "internacoes": 8
+            }
+          ],
+          "reason": "Resultado categorico com metrica numerica.",
+          "warnings": [],
+          "presentation": {
+            "title": "Internacoes por nacionalidade",
+            "subtitle": "Ranking por valor",
+            "x_label": "Nacionalidade",
+            "y_label": "Internacoes",
+            "series_label": null,
+            "value_format": "integer",
+            "sort_order": "as_returned",
+            "footnote": null,
+            "summary": "Grupo B lidera com 15."
+          }
+        },
+        "echarts_valid": true
+      },
+      "agent": {
+        "success": true,
+        "error": null,
+        "response": "A distribuição de internações por nacionalidade é a seguinte:\n\n1. Brasil: 183.380.305\n2. República Dominicana: 77.996\n3. Bolívia: 57.842\n4. Venezuela: 56.449\n5. Reservado: 46.508\n6. Portugal: 36.882\n7. Paraguai: 25.349\n8. Chile: 22.192\n9. República do Haiti: 15.393\n10. Argentina: 13.283",
+        "answer": null,
+        "sql_query": "SELECT COALESCE(n.\"DESCRICAO\", 'Nao informado') AS nacionalidade, COUNT(*) AS total_internacoes FROM internacoes i LEFT JOIN nacionalidade n ON i.\"NACIONAL\" = n.\"NACIONAL\" GROUP BY COALESCE(n.\"DESCRICAO\", 'Nao informado') ORDER BY total_internacoes DESC LIMIT 10;",
+        "row_count": 10,
+        "chart": {
+          "requested": true,
+          "source": "explicit_current_query",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "spec": {
+            "chartable": true,
+            "chart_type": "bar",
+            "title": "total internacoes por nacionalidade",
+            "x": "nacionalidade",
+            "y": "total_internacoes",
+            "series": null,
+            "encoding": {
+              "x_type": "nominal",
+              "y_type": "quantitative"
+            },
+            "data": [
+              {
+                "nacionalidade": "Brasil",
+                "total_internacoes": 183380305
+              },
+              {
+                "nacionalidade": "Republica dominicana",
+                "total_internacoes": 77996
+              },
+              {
+                "nacionalidade": "Bolivia",
+                "total_internacoes": 57842
+              },
+              {
+                "nacionalidade": "Venezuela",
+                "total_internacoes": 56449
+              },
+              {
+                "nacionalidade": "Reservado",
+                "total_internacoes": 46508
+              },
+              {
+                "nacionalidade": "Portugal",
+                "total_internacoes": 36882
+              },
+              {
+                "nacionalidade": "Paraguai",
+                "total_internacoes": 25349
+              },
+              {
+                "nacionalidade": "Chile",
+                "total_internacoes": 22192
+              },
+              {
+                "nacionalidade": "Republica do haiti",
+                "total_internacoes": 15393
+              },
+              {
+                "nacionalidade": "Argentina",
+                "total_internacoes": 13283
+              }
+            ],
+            "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+            "warnings": [],
+            "presentation": {
+              "title": "Total de internacoes por nacionalidade",
+              "subtitle": "Ranking por valor",
+              "x_label": "Nacionalidade",
+              "y_label": "Total de internacoes",
+              "series_label": null,
+              "value_format": "integer",
+              "sort_order": "as_returned",
+              "footnote": null,
+              "summary": "Brasil lidera com 183.380.305."
+            }
+          },
+          "echarts": {
+            "color": [
+              "#2563eb",
+              "#0f766e",
+              "#c2410c",
+              "#7c3aed",
+              "#be123c",
+              "#a16207",
+              "#0891b2",
+              "#4d7c0f",
+              "#9333ea",
+              "#0284c7",
+              "#b45309",
+              "#047857"
+            ],
+            "backgroundColor": "transparent",
+            "animationDuration": 450,
+            "textStyle": {
+              "fontFamily": "Inter, system-ui, sans-serif"
+            },
+            "_valueFormat": "integer",
+            "_summary": "Brasil lidera com 183.380.305.",
+            "_footnote": null,
+            "_subtitle": "Ranking por valor",
+            "title": {
+              "show": false,
+              "text": "Total de internacoes por nacionalidade",
+              "left": 0,
+              "top": 0,
+              "textStyle": {
+                "fontSize": 14,
+                "fontWeight": 700,
+                "color": "#101828"
+              }
+            },
+            "tooltip": {
+              "trigger": "axis",
+              "confine": true
+            },
+            "grid": {
+              "left": 14,
+              "right": 28,
+              "top": 24,
+              "bottom": 22,
+              "containLabel": true
+            },
+            "legend": {
+              "show": false,
+              "top": 26,
+              "right": 0,
+              "type": "scroll"
+            },
+            "xAxis": {
+              "type": "value",
+              "name": "Total de internacoes",
+              "nameGap": 30,
+              "axisLabel": {
+                "color": "#667085"
+              },
+              "splitLine": {
+                "lineStyle": {
+                  "color": "rgba(102,112,133,0.18)"
+                }
+              }
+            },
+            "yAxis": {
+              "type": "category",
+              "name": "Nacionalidade",
+              "nameGap": 46,
+              "inverse": true,
+              "data": [
+                "Brasil",
+                "Republica dominicana",
+                "Bolivia",
+                "Venezuela",
+                "Reservado",
+                "Portugal",
+                "Paraguai",
+                "Chile",
+                "Republica do haiti",
+                "Argentina"
+              ],
+              "axisLabel": {
+                "color": "#667085",
+                "width": 142,
+                "overflow": "truncate"
+              },
+              "axisLine": {
+                "lineStyle": {
+                  "color": "#98a2b3"
+                }
+              }
+            },
+            "series": [
+              {
+                "type": "bar",
+                "name": "total_internacoes",
+                "emphasis": {
+                  "focus": "series"
+                },
+                "data": [
+                  {
+                    "value": 183380305,
+                    "itemStyle": {
+                      "color": "#2563eb",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 77996,
+                    "itemStyle": {
+                      "color": "#0f766e",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 57842,
+                    "itemStyle": {
+                      "color": "#c2410c",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 56449,
+                    "itemStyle": {
+                      "color": "#7c3aed",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 46508,
+                    "itemStyle": {
+                      "color": "#be123c",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 36882,
+                    "itemStyle": {
+                      "color": "#a16207",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 25349,
+                    "itemStyle": {
+                      "color": "#0891b2",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 22192,
+                    "itemStyle": {
+                      "color": "#4d7c0f",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 15393,
+                    "itemStyle": {
+                      "color": "#9333ea",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 13283,
+                    "itemStyle": {
+                      "color": "#0284c7",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  }
+                ],
+                "barMaxWidth": 26
+              }
+            ],
+            "_legend": [
+              {
+                "name": "Brasil",
+                "color": "#2563eb"
+              },
+              {
+                "name": "Republica dominicana",
+                "color": "#0f766e"
+              },
+              {
+                "name": "Bolivia",
+                "color": "#c2410c"
+              },
+              {
+                "name": "Venezuela",
+                "color": "#7c3aed"
+              },
+              {
+                "name": "Reservado",
+                "color": "#be123c"
+              },
+              {
+                "name": "Portugal",
+                "color": "#a16207"
+              },
+              {
+                "name": "Paraguai",
+                "color": "#0891b2"
+              },
+              {
+                "name": "Chile",
+                "color": "#4d7c0f"
+              },
+              {
+                "name": "Republica do haiti",
+                "color": "#9333ea"
+              },
+              {
+                "name": "Argentina",
+                "color": "#0284c7"
+              }
+            ]
+          },
+          "reason": "Usuario pediu explicitamente visualizacao em grafico"
+        },
+        "setup": [],
+        "elapsed_seconds": 9.348252
+      }
+    }
+  ],
+  "run": {
+    "timestamp": "2026-05-21T05:32:01.007296Z",
+    "cases": "evaluation/visualization/chart_agent_prod_cases.jsonl",
+    "total": 10,
+    "run_agent": true,
+    "only": "PROD_DEMO",
+    "limit": null,
+    "shuffle": false,
+    "seed": 20260521
+  }
+}

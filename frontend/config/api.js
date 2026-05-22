@@ -12,7 +12,10 @@ const API_CONFIG = {
         QUERY: '/query',
         HEALTH: '/health',
         SCHEMA: '/schema',
-        MODELS: '/models'
+        MODELS: '/models',
+        DATABASE_OVERVIEW: '/database/overview',
+        DATABASE_TABLE: '/database/table',
+        DATABASE_QUERY: '/database/query'
     },
     
     // Configurações de timeout

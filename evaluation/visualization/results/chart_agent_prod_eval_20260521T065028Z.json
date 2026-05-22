@@ -1,0 +1,1500 @@
+{
+  "metrics": {
+    "success_rate": 1.0,
+    "no_raw_internal_error": 1.0,
+    "chart_contract_validity": 1.0,
+    "sql_invariant_validity": 1.0,
+    "semantic_dimension_validity": 1.0
+  },
+  "counts": {
+    "success": 1,
+    "no_raw_internal_error": 1,
+    "chart_contract_valid": 1,
+    "sql_invariant_valid": 1,
+    "semantic_dimension_valid": 1
+  },
+  "failures": [],
+  "details": [
+    {
+      "id": "PROD_PROC_010",
+      "query": "Procedimentos mais frequentes por ano em linha.",
+      "tags": [
+        "procedure",
+        "time_series",
+        "line"
+      ],
+      "checks": {
+        "no_raw_internal_error": true,
+        "chart_contract_validity": true,
+        "sql_invariant_validity": true,
+        "semantic_dimension_validity": true
+      },
+      "success": true,
+      "failure_reasons": [],
+      "semantic": {
+        "intent": "unknown",
+        "metrics": [
+          "requested_metric"
+        ],
+        "dimensions": [
+          "ano"
+        ],
+        "required_dimensions": [
+          "ano"
+        ],
+        "output_dimensions": [
+          "ano"
+        ],
+        "partition_dimensions": [],
+        "ranked_dimensions": [],
+        "constraints": [],
+        "filters": []
+      },
+      "chart": {
+        "intent_requested": true,
+        "intent_source": "explicit_current_query",
+        "chart_hint": "auto",
+        "chart_plan": {
+          "requested": true,
+          "chart_type": "line",
+          "metric": "total_internacoes",
+          "metric_expression": "COUNT rows",
+          "x_dimension": "ano",
+          "series_dimension": "procedimento",
+          "y_column": "total_internacoes",
+          "grain": "ano_procedimento",
+          "expected_result_shape": "time_series_metric",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [
+            "ano",
+            "procedimento",
+            "total_internacoes"
+          ],
+          "sql_shape_guidance": "Return tidy long rows with columns: ano, procedimento, total_internacoes. Group by ano and procedimento.",
+          "reason": "structured chart parameters extracted before SQL generation"
+        },
+        "synthetic_spec": {
+          "chartable": true,
+          "chart_type": "line",
+          "title": "internacoes por ano",
+          "x": "ano",
+          "y": "internacoes",
+          "series": "procedimento",
+          "encoding": {
+            "x_type": "temporal",
+            "y_type": "quantitative"
+          },
+          "data": [
+            {
+              "ano": "2021",
+              "procedimento": "A",
+              "internacoes": 10
+            },
+            {
+              "ano": "2021",
+              "procedimento": "B",
+              "internacoes": 12
+            },
+            {
+              "ano": "2022",
+              "procedimento": "A",
+              "internacoes": 14
+            },
+            {
+              "ano": "2022",
+              "procedimento": "B",
+              "internacoes": 17
+            }
+          ],
+          "reason": "Resultado temporal com metrica numerica.",
+          "warnings": [],
+          "presentation": {
+            "title": "Internacoes por ano",
+            "subtitle": "Serie temporal",
+            "x_label": "Ano",
+            "y_label": "Internacoes",
+            "series_label": "Procedimento",
+            "value_format": "integer",
+            "sort_order": "as_returned",
+            "footnote": null,
+            "summary": "2022 lidera com 17."
+          }
+        },
+        "echarts_valid": true
+      },
+      "agent": {
+        "success": true,
+        "error": null,
+        "response": "Os procedimentos mais frequentes por ano são:\n\n1. **2000**: Tratamento em psiquiatria (por dia) - 67 internações\n2. **2001**: Tratamento em psiquiatria (por dia) - 26 internações\n3. **2002**: Tratamento em psiquiatria (por dia) - 14 internações\n4. **2005**: Tratamento em psiquiatria (por dia) - 17 internações\n5. **2006**: Tratamento em psiquiatria (por dia) - 50 internações\n6. **2007**: \n   - Parto normal - 56.254 internações\n   - Tratamento de pneumonias ou influenza (gripe) - 34.365 internações\n   - Parto cesariano - 35.962 internações\n   - Tratamento em psiquiatria (por dia) - 11.066 internações\n7. **2008**: \n   - Parto normal - 1.288.148 internações\n   - Tratamento de pneumonias ou influenza (gripe) - 766.862 internações\n   - Tratamento em psiquiatria (por dia) - 1.088.416 internações\n8. **2009**: \n   - Parto normal - 1.243.903 internações\n   - Tratamento de pneumonias ou influenza (gripe) - 868.623 internações\n   - Tratamento em psiquiatria (por dia) - 413.493 internações\n9. **2010**: \n   - Parto normal - 1.183.110 internações\n   - Tratamento de pneumonias ou influenza (gripe) - 797.625 internações\n   - Tratamento em psiquiatria (por dia) - 428.667 internações\n10. **2011**: \n    - Parto normal - 1.139.317 internações\n    - Tratamento de pneumonias ou influenza (gripe) - 758.901 internações\n\nEste é um resultado parcial, mostrando 50 de 175 registros.",
+        "answer": null,
+        "sql_query": "WITH top_procedimentos AS ( SELECT p.\"NOME_PROC\" AS procedimento, COUNT(*) AS total_geral FROM internacoes i JOIN internacao_procedimento ip ON i.\"N_AIH\" = ip.\"N_AIH\" JOIN procedimentos p ON ip.\"PROC_REA\" = p.\"PROC_REA\" WHERE i.\"DT_INTER\" IS NOT NULL AND p.\"NOME_PROC\" IS NOT NULL AND TRIM(p.\"NOME_PROC\") <> '' AND p.\"NOME_PROC\" NOT IN ('Nao preenchido', 'Nao informado') GROUP BY p.\"NOME_PROC\" ORDER BY total_geral DESC LIMIT 10) SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, p.\"NOME_PROC\" AS procedimento, COUNT(*) AS total_internacoes FROM internacoes i JOIN internacao_procedimento ip ON i.\"N_AIH\" = ip.\"N_AIH\" JOIN procedimentos p ON ip.\"PROC_REA\" = p.\"PROC_REA\" JOIN top_procedimentos tp ON p.\"NOME_PROC\" = tp.procedimento WHERE i.\"DT_INTER\" IS NOT NULL AND p.\"NOME_PROC\" IS NOT NULL AND TRIM(p.\"NOME_PROC\") <> '' AND p.\"NOME_PROC\" NOT IN ('Nao preenchido', 'Nao informado') GROUP BY EXTRACT(YEAR FROM i.\"DT_INTER\"), p.\"NOME_PROC\" ORDER BY ano ASC, MAX(tp.total_geral) DESC;",
+        "row_count": 175,
+        "chart": {
+          "requested": true,
+          "source": "explicit_current_query",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "spec": {
+            "chartable": true,
+            "chart_type": "line",
+            "title": "total internacoes por ano",
+            "x": "ano",
+            "y": "total_internacoes",
+            "series": "procedimento",
+            "encoding": {
+              "x_type": "temporal",
+              "y_type": "quantitative",
+              "series_type": "nominal"
+            },
+            "data": [
+              {
+                "ano": 2000,
+                "procedimento": "TRATAMENTO EM PSIQUIATRIA (POR DIA)",
+                "total_internacoes": 67
+              },
+              {
+                "ano": 2001,
+                "procedimento": "TRATAMENTO EM PSIQUIATRIA (POR DIA)",
+                "total_internacoes": 26
+              },
+              {
+                "ano": 2002,
+                "procedimento": "TRATAMENTO EM PSIQUIATRIA (POR DIA)",
+                "total_internacoes": 14
+              },
+              {
+                "ano": 2005,
+                "procedimento": "TRATAMENTO EM PSIQUIATRIA (POR DIA)",
+                "total_internacoes": 17
+              },
+              {
+                "ano": 2006,
+                "procedimento": "TRATAMENTO EM PSIQUIATRIA (POR DIA)",
+                "total_internacoes": 50
+              },
+              {
+                "ano": 2007,
+                "procedimento": "PARTO NORMAL",
+                "total_internacoes": 56254
+              },
+              {
+                "ano": 2007,
+                "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+                "total_internacoes": 34365
+              },
+              {
+                "ano": 2007,
+                "procedimento": "PARTO CESARIANO",
+                "total_internacoes": 35962
+              },
+              {
+                "ano": 2007,
+                "procedimento": "TRATAMENTO DE DOENCAS INFECCIOSAS INTESTINAIS",
+                "total_internacoes": 28587
+              },
+              {
+                "ano": 2007,
+                "procedimento": "TRATAMENTO EM PSIQUIATRIA (POR DIA)",
+                "total_internacoes": 11066
+              },
+              {
+                "ano": 2007,
+                "procedimento": "TRATAMENTO DAS DOENCAS CRONICAS DAS VIAS AEREAS INFERIORES",
+                "total_internacoes": 17173
+              },
+              {
+                "ano": 2007,
+                "procedimento": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+                "total_internacoes": 7144
+              },
+              {
+                "ano": 2007,
+                "procedimento": "TRATAMENTO DE INSUFICIENCIA CARDIACA",
+                "total_internacoes": 17088
+              },
+              {
+                "ano": 2007,
+                "procedimento": "TRATAMENTO C/ CIRURGIAS MULTIPLAS",
+                "total_internacoes": 3223
+              },
+              {
+                "ano": 2007,
+                "procedimento": "TRATAMENTO DE INTERCORRENCIAS CLINICAS NA GRAVIDEZ",
+                "total_internacoes": 7270
+              },
+              {
+                "ano": 2008,
+                "procedimento": "PARTO NORMAL",
+                "total_internacoes": 1288148
+              },
+              {
+                "ano": 2008,
+                "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+                "total_internacoes": 766862
+              },
+              {
+                "ano": 2008,
+                "procedimento": "PARTO CESARIANO",
+                "total_internacoes": 582449
+              },
+              {
+                "ano": 2008,
+                "procedimento": "TRATAMENTO DE DOENCAS INFECCIOSAS INTESTINAIS",
+                "total_internacoes": 490536
+              },
+              {
+                "ano": 2008,
+                "procedimento": "TRATAMENTO EM PSIQUIATRIA (POR DIA)",
+                "total_internacoes": 1088416
+              },
+              {
+                "ano": 2008,
+                "procedimento": "TRATAMENTO DAS DOENCAS CRONICAS DAS VIAS AEREAS INFERIORES",
+                "total_internacoes": 356597
+              },
+              {
+                "ano": 2008,
+                "procedimento": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+                "total_internacoes": 87556
+              },
+              {
+                "ano": 2008,
+                "procedimento": "TRATAMENTO DE INSUFICIENCIA CARDIACA",
+                "total_internacoes": 282203
+              },
+              {
+                "ano": 2008,
+                "procedimento": "TRATAMENTO C/ CIRURGIAS MULTIPLAS",
+                "total_internacoes": 73211
+              },
+              {
+                "ano": 2008,
+                "procedimento": "TRATAMENTO DE INTERCORRENCIAS CLINICAS NA GRAVIDEZ",
+                "total_internacoes": 143483
+              },
+              {
+                "ano": 2009,
+                "procedimento": "PARTO NORMAL",
+                "total_internacoes": 1243903
+              },
+              {
+                "ano": 2009,
+                "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+                "total_internacoes": 868623
+              },
+              {
+                "ano": 2009,
+                "procedimento": "PARTO CESARIANO",
+                "total_internacoes": 599380
+              },
+              {
+                "ano": 2009,
+                "procedimento": "TRATAMENTO DE DOENCAS INFECCIOSAS INTESTINAIS",
+                "total_internacoes": 458670
+              },
+              {
+                "ano": 2009,
+                "procedimento": "TRATAMENTO EM PSIQUIATRIA (POR DIA)",
+                "total_internacoes": 413493
+              },
+              {
+                "ano": 2009,
+                "procedimento": "TRATAMENTO DAS DOENCAS CRONICAS DAS VIAS AEREAS INFERIORES",
+                "total_internacoes": 348236
+              },
+              {
+                "ano": 2009,
+                "procedimento": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+                "total_internacoes": 105798
+              },
+              {
+                "ano": 2009,
+                "procedimento": "TRATAMENTO DE INSUFICIENCIA CARDIACA",
+                "total_internacoes": 278338
+              },
+              {
+                "ano": 2009,
+                "procedimento": "TRATAMENTO C/ CIRURGIAS MULTIPLAS",
+                "total_internacoes": 102465
+              },
+              {
+                "ano": 2009,
+                "procedimento": "TRATAMENTO DE INTERCORRENCIAS CLINICAS NA GRAVIDEZ",
+                "total_internacoes": 158685
+              },
+              {
+                "ano": 2010,
+                "procedimento": "PARTO NORMAL",
+                "total_internacoes": 1183110
+              },
+              {
+                "ano": 2010,
+                "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+                "total_internacoes": 797625
+              },
+              {
+                "ano": 2010,
+                "procedimento": "PARTO CESARIANO",
+                "total_internacoes": 618017
+              },
+              {
+                "ano": 2010,
+                "procedimento": "TRATAMENTO DE DOENCAS INFECCIOSAS INTESTINAIS",
+                "total_internacoes": 487534
+              },
+              {
+                "ano": 2010,
+                "procedimento": "TRATAMENTO EM PSIQUIATRIA (POR DIA)",
+                "total_internacoes": 428667
+              },
+              {
+                "ano": 2010,
+                "procedimento": "TRATAMENTO DAS DOENCAS CRONICAS DAS VIAS AEREAS INFERIORES",
+                "total_internacoes": 331456
+              },
+              {
+                "ano": 2010,
+                "procedimento": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+                "total_internacoes": 130144
+              },
+              {
+                "ano": 2010,
+                "procedimento": "TRATAMENTO DE INSUFICIENCIA CARDIACA",
+                "total_internacoes": 272350
+              },
+              {
+                "ano": 2010,
+                "procedimento": "TRATAMENTO C/ CIRURGIAS MULTIPLAS",
+                "total_internacoes": 127228
+              },
+              {
+                "ano": 2010,
+                "procedimento": "TRATAMENTO DE INTERCORRENCIAS CLINICAS NA GRAVIDEZ",
+                "total_internacoes": 170761
+              },
+              {
+                "ano": 2011,
+                "procedimento": "PARTO NORMAL",
+                "total_internacoes": 1139317
+              },
+              {
+                "ano": 2011,
+                "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+                "total_internacoes": 758901
+              },
+              {
+                "ano": 2011,
+                "procedimento": "PARTO CESARIANO",
+                "total_internacoes": 636798
+              },
+              {
+                "ano": 2011,
+                "procedimento": "TRATAMENTO DE DOENCAS INFECCIOSAS INTESTINAIS",
+                "total_internacoes": 380460
+              },
+              {
+                "ano": 2011,
+                "procedimento": "TRATAMENTO EM PSIQUIATRIA (POR DIA)",
+                "total_internacoes": 385993
+              },
+              {
+                "ano": 2011,
+                "procedimento": "TRATAMENTO DAS DOENCAS CRONICAS DAS VIAS AEREAS INFERIORES",
+                "total_internacoes": 312087
+              },
+              {
+                "ano": 2011,
+                "procedimento": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+                "total_internacoes": 156128
+              },
+              {
+                "ano": 2011,
+                "procedimento": "TRATAMENTO DE INSUFICIENCIA CARDIACA",
+                "total_internacoes": 266371
+              },
+              {
+                "ano": 2011,
+                "procedimento": "TRATAMENTO C/ CIRURGIAS MULTIPLAS",
+                "total_internacoes": 151634
+              },
+              {
+                "ano": 2011,
+                "procedimento": "TRATAMENTO DE INTERCORRENCIAS CLINICAS NA GRAVIDEZ",
+                "total_internacoes": 177575
+              },
+              {
+                "ano": 2012,
+                "procedimento": "PARTO NORMAL",
+                "total_internacoes": 1070167
+              },
+              {
+                "ano": 2012,
+                "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+                "total_internacoes": 709285
+              },
+              {
+                "ano": 2012,
+                "procedimento": "PARTO CESARIANO",
+                "total_internacoes": 641645
+              },
+              {
+                "ano": 2012,
+                "procedimento": "TRATAMENTO DE DOENCAS INFECCIOSAS INTESTINAIS",
+                "total_internacoes": 361234
+              },
+              {
+                "ano": 2012,
+                "procedimento": "TRATAMENTO EM PSIQUIATRIA (POR DIA)",
+                "total_internacoes": 342493
+              },
+              {
+                "ano": 2012,
+                "procedimento": "TRATAMENTO DAS DOENCAS CRONICAS DAS VIAS AEREAS INFERIORES",
+                "total_internacoes": 269265
+              },
+              {
+                "ano": 2012,
+                "procedimento": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+                "total_internacoes": 168528
+              },
+              {
+                "ano": 2012,
+                "procedimento": "TRATAMENTO DE INSUFICIENCIA CARDIACA",
+                "total_internacoes": 246900
+              },
+              {
+                "ano": 2012,
+                "procedimento": "TRATAMENTO C/ CIRURGIAS MULTIPLAS",
+                "total_internacoes": 164753
+              },
+              {
+                "ano": 2012,
+                "procedimento": "TRATAMENTO DE INTERCORRENCIAS CLINICAS NA GRAVIDEZ",
+                "total_internacoes": 185277
+              },
+              {
+                "ano": 2013,
+                "procedimento": "PARTO NORMAL",
+                "total_internacoes": 1046250
+              },
+              {
+                "ano": 2013,
+                "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+                "total_internacoes": 721049
+              },
+              {
+                "ano": 2013,
+                "procedimento": "PARTO CESARIANO",
+                "total_internacoes": 646624
+              },
+              {
+                "ano": 2013,
+                "procedimento": "TRATAMENTO DE DOENCAS INFECCIOSAS INTESTINAIS",
+                "total_internacoes": 341823
+              },
+              {
+                "ano": 2013,
+                "procedimento": "TRATAMENTO EM PSIQUIATRIA (POR DIA)",
+                "total_internacoes": 326101
+              },
+              {
+                "ano": 2013,
+                "procedimento": "TRATAMENTO DAS DOENCAS CRONICAS DAS VIAS AEREAS INFERIORES",
+                "total_internacoes": 259196
+              },
+              {
+                "ano": 2013,
+                "procedimento": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+                "total_internacoes": 186919
+              },
+              {
+                "ano": 2013,
+                "procedimento": "TRATAMENTO DE INSUFICIENCIA CARDIACA",
+                "total_internacoes": 242438
+              },
+              {
+                "ano": 2013,
+                "procedimento": "TRATAMENTO C/ CIRURGIAS MULTIPLAS",
+                "total_internacoes": 157907
+              },
+              {
+                "ano": 2013,
+                "procedimento": "TRATAMENTO DE INTERCORRENCIAS CLINICAS NA GRAVIDEZ",
+                "total_internacoes": 193509
+              },
+              {
+                "ano": 2014,
+                "procedimento": "PARTO NORMAL",
+                "total_internacoes": 1058282
+              },
+              {
+                "ano": 2014,
+                "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+                "total_internacoes": 674300
+              },
+              {
+                "ano": 2014,
+                "procedimento": "PARTO CESARIANO",
+                "total_internacoes": 666086
+              },
+              {
+                "ano": 2014,
+                "procedimento": "TRATAMENTO DE DOENCAS INFECCIOSAS INTESTINAIS",
+                "total_internacoes": 316623
+              },
+              {
+                "ano": 2014,
+                "procedimento": "TRATAMENTO EM PSIQUIATRIA (POR DIA)",
+                "total_internacoes": 296181
+              },
+              {
+                "ano": 2014,
+                "procedimento": "TRATAMENTO DAS DOENCAS CRONICAS DAS VIAS AEREAS INFERIORES",
+                "total_internacoes": 233160
+              },
+              {
+                "ano": 2014,
+                "procedimento": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+                "total_internacoes": 213296
+              },
+              {
+                "ano": 2014,
+                "procedimento": "TRATAMENTO DE INSUFICIENCIA CARDIACA",
+                "total_internacoes": 227346
+              },
+              {
+                "ano": 2014,
+                "procedimento": "TRATAMENTO C/ CIRURGIAS MULTIPLAS",
+                "total_internacoes": 173003
+              },
+              {
+                "ano": 2014,
+                "procedimento": "TRATAMENTO DE INTERCORRENCIAS CLINICAS NA GRAVIDEZ",
+                "total_internacoes": 200228
+              },
+              {
+                "ano": 2015,
+                "procedimento": "PARTO NORMAL",
+                "total_internacoes": 1087044
+              },
+              {
+                "ano": 2015,
+                "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+                "total_internacoes": 640033
+              },
+              {
+                "ano": 2015,
+                "procedimento": "PARTO CESARIANO",
+                "total_internacoes": 645067
+              },
+              {
+                "ano": 2015,
+                "procedimento": "TRATAMENTO DE DOENCAS INFECCIOSAS INTESTINAIS",
+                "total_internacoes": 254897
+              },
+              {
+                "ano": 2015,
+                "procedimento": "TRATAMENTO EM PSIQUIATRIA (POR DIA)",
+                "total_internacoes": 233775
+              },
+              {
+                "ano": 2015,
+                "procedimento": "TRATAMENTO DAS DOENCAS CRONICAS DAS VIAS AEREAS INFERIORES",
+                "total_internacoes": 229572
+              },
+              {
+                "ano": 2015,
+                "procedimento": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+                "total_internacoes": 236349
+              },
+              {
+                "ano": 2015,
+                "procedimento": "TRATAMENTO DE INSUFICIENCIA CARDIACA",
+                "total_internacoes": 221717
+              },
+              {
+                "ano": 2015,
+                "procedimento": "TRATAMENTO C/ CIRURGIAS MULTIPLAS",
+                "total_internacoes": 190285
+              },
+              {
+                "ano": 2015,
+                "procedimento": "TRATAMENTO DE INTERCORRENCIAS CLINICAS NA GRAVIDEZ",
+                "total_internacoes": 201566
+              },
+              {
+                "ano": 2016,
+                "procedimento": "PARTO NORMAL",
+                "total_internacoes": 1016921
+              },
+              {
+                "ano": 2016,
+                "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+                "total_internacoes": 620927
+              },
+              {
+                "ano": 2016,
+                "procedimento": "PARTO CESARIANO",
+                "total_internacoes": 621433
+              },
+              {
+                "ano": 2016,
+                "procedimento": "TRATAMENTO DE DOENCAS INFECCIOSAS INTESTINAIS",
+                "total_internacoes": 260611
+              },
+              {
+                "ano": 2016,
+                "procedimento": "TRATAMENTO EM PSIQUIATRIA (POR DIA)",
+                "total_internacoes": 209315
+              },
+              {
+                "ano": 2016,
+                "procedimento": "TRATAMENTO DAS DOENCAS CRONICAS DAS VIAS AEREAS INFERIORES",
+                "total_internacoes": 205184
+              },
+              {
+                "ano": 2016,
+                "procedimento": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+                "total_internacoes": 260569
+              },
+              {
+                "ano": 2016,
+                "procedimento": "TRATAMENTO DE INSUFICIENCIA CARDIACA",
+                "total_internacoes": 218558
+              },
+              {
+                "ano": 2016,
+                "procedimento": "TRATAMENTO C/ CIRURGIAS MULTIPLAS",
+                "total_internacoes": 202618
+              },
+              {
+                "ano": 2016,
+                "procedimento": "TRATAMENTO DE INTERCORRENCIAS CLINICAS NA GRAVIDEZ",
+                "total_internacoes": 199213
+              },
+              {
+                "ano": 2017,
+                "procedimento": "PARTO NORMAL",
+                "total_internacoes": 1020794
+              },
+              {
+                "ano": 2017,
+                "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+                "total_internacoes": 636945
+              },
+              {
+                "ano": 2017,
+                "procedimento": "PARTO CESARIANO",
+                "total_internacoes": 657101
+              },
+              {
+                "ano": 2017,
+                "procedimento": "TRATAMENTO DE DOENCAS INFECCIOSAS INTESTINAIS",
+                "total_internacoes": 222270
+              },
+              {
+                "ano": 2017,
+                "procedimento": "TRATAMENTO EM PSIQUIATRIA (POR DIA)",
+                "total_internacoes": 186866
+              },
+              {
+                "ano": 2017,
+                "procedimento": "TRATAMENTO DAS DOENCAS CRONICAS DAS VIAS AEREAS INFERIORES",
+                "total_internacoes": 207101
+              },
+              {
+                "ano": 2017,
+                "procedimento": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+                "total_internacoes": 275220
+              },
+              {
+                "ano": 2017,
+                "procedimento": "TRATAMENTO DE INSUFICIENCIA CARDIACA",
+                "total_internacoes": 212294
+              },
+              {
+                "ano": 2017,
+                "procedimento": "TRATAMENTO C/ CIRURGIAS MULTIPLAS",
+                "total_internacoes": 214800
+              },
+              {
+                "ano": 2017,
+                "procedimento": "TRATAMENTO DE INTERCORRENCIAS CLINICAS NA GRAVIDEZ",
+                "total_internacoes": 210647
+              },
+              {
+                "ano": 2018,
+                "procedimento": "PARTO NORMAL",
+                "total_internacoes": 1006664
+              },
+              {
+                "ano": 2018,
+                "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+                "total_internacoes": 635491
+              },
+              {
+                "ano": 2018,
+                "procedimento": "PARTO CESARIANO",
+                "total_internacoes": 683078
+              },
+              {
+                "ano": 2018,
+                "procedimento": "TRATAMENTO DE DOENCAS INFECCIOSAS INTESTINAIS",
+                "total_internacoes": 208662
+              },
+              {
+                "ano": 2018,
+                "procedimento": "TRATAMENTO EM PSIQUIATRIA (POR DIA)",
+                "total_internacoes": 84911
+              },
+              {
+                "ano": 2018,
+                "procedimento": "TRATAMENTO DAS DOENCAS CRONICAS DAS VIAS AEREAS INFERIORES",
+                "total_internacoes": 195113
+              },
+              {
+                "ano": 2018,
+                "procedimento": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+                "total_internacoes": 294444
+              },
+              {
+                "ano": 2018,
+                "procedimento": "TRATAMENTO DE INSUFICIENCIA CARDIACA",
+                "total_internacoes": 204836
+              },
+              {
+                "ano": 2018,
+                "procedimento": "TRATAMENTO C/ CIRURGIAS MULTIPLAS",
+                "total_internacoes": 249120
+              },
+              {
+                "ano": 2018,
+                "procedimento": "TRATAMENTO DE INTERCORRENCIAS CLINICAS NA GRAVIDEZ",
+                "total_internacoes": 216501
+              },
+              {
+                "ano": 2019,
+                "procedimento": "PARTO NORMAL",
+                "total_internacoes": 969931
+              },
+              {
+                "ano": 2019,
+                "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+                "total_internacoes": 644659
+              },
+              {
+                "ano": 2019,
+                "procedimento": "PARTO CESARIANO",
+                "total_internacoes": 694927
+              },
+              {
+                "ano": 2019,
+                "procedimento": "TRATAMENTO DE DOENCAS INFECCIOSAS INTESTINAIS",
+                "total_internacoes": 201482
+              },
+              {
+                "ano": 2019,
+                "procedimento": "TRATAMENTO EM PSIQUIATRIA (POR DIA)",
+                "total_internacoes": 52274
+              },
+              {
+                "ano": 2019,
+                "procedimento": "TRATAMENTO DAS DOENCAS CRONICAS DAS VIAS AEREAS INFERIORES",
+                "total_internacoes": 185135
+              },
+              {
+                "ano": 2019,
+                "procedimento": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+                "total_internacoes": 321392
+              },
+              {
+                "ano": 2019,
+                "procedimento": "TRATAMENTO DE INSUFICIENCIA CARDIACA",
+                "total_internacoes": 204523
+              },
+              {
+                "ano": 2019,
+                "procedimento": "TRATAMENTO C/ CIRURGIAS MULTIPLAS",
+                "total_internacoes": 280651
+              },
+              {
+                "ano": 2019,
+                "procedimento": "TRATAMENTO DE INTERCORRENCIAS CLINICAS NA GRAVIDEZ",
+                "total_internacoes": 222974
+              },
+              {
+                "ano": 2020,
+                "procedimento": "PARTO NORMAL",
+                "total_internacoes": 888489
+              },
+              {
+                "ano": 2020,
+                "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+                "total_internacoes": 386516
+              },
+              {
+                "ano": 2020,
+                "procedimento": "PARTO CESARIANO",
+                "total_internacoes": 680507
+              },
+              {
+                "ano": 2020,
+                "procedimento": "TRATAMENTO DE DOENCAS INFECCIOSAS INTESTINAIS",
+                "total_internacoes": 122690
+              },
+              {
+                "ano": 2020,
+                "procedimento": "TRATAMENTO EM PSIQUIATRIA (POR DIA)",
+                "total_internacoes": 40344
+              },
+              {
+                "ano": 2020,
+                "procedimento": "TRATAMENTO DAS DOENCAS CRONICAS DAS VIAS AEREAS INFERIORES",
+                "total_internacoes": 108664
+              },
+              {
+                "ano": 2020,
+                "procedimento": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+                "total_internacoes": 273593
+              },
+              {
+                "ano": 2020,
+                "procedimento": "TRATAMENTO DE INSUFICIENCIA CARDIACA",
+                "total_internacoes": 170159
+              },
+              {
+                "ano": 2020,
+                "procedimento": "TRATAMENTO C/ CIRURGIAS MULTIPLAS",
+                "total_internacoes": 244969
+              },
+              {
+                "ano": 2020,
+                "procedimento": "TRATAMENTO DE INTERCORRENCIAS CLINICAS NA GRAVIDEZ",
+                "total_internacoes": 198284
+              },
+              {
+                "ano": 2021,
+                "procedimento": "PARTO NORMAL",
+                "total_internacoes": 858790
+              },
+              {
+                "ano": 2021,
+                "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+                "total_internacoes": 387979
+              },
+              {
+                "ano": 2021,
+                "procedimento": "PARTO CESARIANO",
+                "total_internacoes": 667261
+              },
+              {
+                "ano": 2021,
+                "procedimento": "TRATAMENTO DE DOENCAS INFECCIOSAS INTESTINAIS",
+                "total_internacoes": 114646
+              },
+              {
+                "ano": 2021,
+                "procedimento": "TRATAMENTO EM PSIQUIATRIA (POR DIA)",
+                "total_internacoes": 39183
+              },
+              {
+                "ano": 2021,
+                "procedimento": "TRATAMENTO DAS DOENCAS CRONICAS DAS VIAS AEREAS INFERIORES",
+                "total_internacoes": 117708
+              },
+              {
+                "ano": 2021,
+                "procedimento": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+                "total_internacoes": 282674
+              },
+              {
+                "ano": 2021,
+                "procedimento": "TRATAMENTO DE INSUFICIENCIA CARDIACA",
+                "total_internacoes": 171220
+              },
+              {
+                "ano": 2021,
+                "procedimento": "TRATAMENTO C/ CIRURGIAS MULTIPLAS",
+                "total_internacoes": 287604
+              },
+              {
+                "ano": 2021,
+                "procedimento": "TRATAMENTO DE INTERCORRENCIAS CLINICAS NA GRAVIDEZ",
+                "total_internacoes": 205353
+              },
+              {
+                "ano": 2022,
+                "procedimento": "PARTO NORMAL",
+                "total_internacoes": 788933
+              },
+              {
+                "ano": 2022,
+                "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+                "total_internacoes": 652735
+              },
+              {
+                "ano": 2022,
+                "procedimento": "PARTO CESARIANO",
+                "total_internacoes": 640868
+              },
+              {
+                "ano": 2022,
+                "procedimento": "TRATAMENTO DE DOENCAS INFECCIOSAS INTESTINAIS",
+                "total_internacoes": 129985
+              },
+              {
+                "ano": 2022,
+                "procedimento": "TRATAMENTO EM PSIQUIATRIA (POR DIA)",
+                "total_internacoes": 38996
+              },
+              {
+                "ano": 2022,
+                "procedimento": "TRATAMENTO DAS DOENCAS CRONICAS DAS VIAS AEREAS INFERIORES",
+                "total_internacoes": 182005
+              },
+              {
+                "ano": 2022,
+                "procedimento": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+                "total_internacoes": 356951
+              },
+              {
+                "ano": 2022,
+                "procedimento": "TRATAMENTO DE INSUFICIENCIA CARDIACA",
+                "total_internacoes": 205319
+              },
+              {
+                "ano": 2022,
+                "procedimento": "TRATAMENTO C/ CIRURGIAS MULTIPLAS",
+                "total_internacoes": 348669
+              },
+              {
+                "ano": 2022,
+                "procedimento": "TRATAMENTO DE INTERCORRENCIAS CLINICAS NA GRAVIDEZ",
+                "total_internacoes": 221136
+              },
+              {
+                "ano": 2023,
+                "procedimento": "PARTO NORMAL",
+                "total_internacoes": 712259
+              },
+              {
+                "ano": 2023,
+                "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+                "total_internacoes": 640616
+              },
+              {
+                "ano": 2023,
+                "procedimento": "PARTO CESARIANO",
+                "total_internacoes": 592765
+              },
+              {
+                "ano": 2023,
+                "procedimento": "TRATAMENTO DE DOENCAS INFECCIOSAS INTESTINAIS",
+                "total_internacoes": 126938
+              },
+              {
+                "ano": 2023,
+                "procedimento": "TRATAMENTO EM PSIQUIATRIA (POR DIA)",
+                "total_internacoes": 36607
+              },
+              {
+                "ano": 2023,
+                "procedimento": "TRATAMENTO DAS DOENCAS CRONICAS DAS VIAS AEREAS INFERIORES",
+                "total_internacoes": 177878
+              },
+              {
+                "ano": 2023,
+                "procedimento": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+                "total_internacoes": 366847
+              },
+              {
+                "ano": 2023,
+                "procedimento": "TRATAMENTO DE INSUFICIENCIA CARDIACA",
+                "total_internacoes": 195166
+              },
+              {
+                "ano": 2023,
+                "procedimento": "TRATAMENTO C/ CIRURGIAS MULTIPLAS",
+                "total_internacoes": 381615
+              },
+              {
+                "ano": 2023,
+                "procedimento": "TRATAMENTO DE INTERCORRENCIAS CLINICAS NA GRAVIDEZ",
+                "total_internacoes": 226697
+              }
+            ],
+            "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+            "warnings": [],
+            "presentation": {
+              "title": "Total de internacoes por ano",
+              "subtitle": "Serie temporal",
+              "x_label": "Ano",
+              "y_label": "Total de internacoes",
+              "series_label": "Procedimento",
+              "value_format": "integer",
+              "sort_order": "as_returned",
+              "footnote": null,
+              "summary": "2008 lidera com 1.288.148."
+            }
+          },
+          "echarts": {
+            "color": [
+              "#2563eb",
+              "#0f766e",
+              "#c2410c",
+              "#7c3aed",
+              "#be123c",
+              "#a16207",
+              "#0891b2",
+              "#4d7c0f",
+              "#9333ea",
+              "#0284c7",
+              "#b45309",
+              "#047857"
+            ],
+            "backgroundColor": "transparent",
+            "animationDuration": 450,
+            "textStyle": {
+              "fontFamily": "Inter, system-ui, sans-serif"
+            },
+            "_valueFormat": "integer",
+            "_summary": "2008 lidera com 1.288.148.",
+            "_footnote": null,
+            "_subtitle": "Serie temporal",
+            "title": {
+              "show": false,
+              "text": "Total de internacoes por ano",
+              "left": 0,
+              "top": 0,
+              "textStyle": {
+                "fontSize": 14,
+                "fontWeight": 700,
+                "color": "#101828"
+              }
+            },
+            "tooltip": {
+              "trigger": "axis",
+              "confine": true
+            },
+            "grid": {
+              "left": 56,
+              "right": 18,
+              "top": 54,
+              "bottom": 48,
+              "containLabel": true
+            },
+            "legend": {
+              "show": true,
+              "top": 26,
+              "right": 0,
+              "type": "scroll"
+            },
+            "xAxis": {
+              "type": "category",
+              "name": "Ano",
+              "nameLocation": "middle",
+              "nameGap": 34,
+              "data": [
+                2000,
+                2001,
+                2002,
+                2005,
+                2006,
+                2007,
+                2008,
+                2009,
+                2010,
+                2011,
+                2012,
+                2013,
+                2014,
+                2015,
+                2016,
+                2017,
+                2018,
+                2019,
+                2020,
+                2021,
+                2022,
+                2023
+              ],
+              "axisLabel": {
+                "color": "#667085"
+              },
+              "axisLine": {
+                "lineStyle": {
+                  "color": "#98a2b3"
+                }
+              }
+            },
+            "yAxis": {
+              "type": "value",
+              "name": "Total de internacoes",
+              "nameGap": 42,
+              "axisLabel": {
+                "color": "#667085"
+              },
+              "splitLine": {
+                "lineStyle": {
+                  "color": "rgba(102,112,133,0.18)"
+                }
+              }
+            },
+            "series": [
+              {
+                "type": "line",
+                "name": "TRATAMENTO EM PSIQUIATRIA (POR DIA)",
+                "emphasis": {
+                  "focus": "series"
+                },
+                "data": [
+                  67,
+                  26,
+                  14,
+                  17,
+                  50,
+                  11066,
+                  1088416,
+                  413493,
+                  428667,
+                  385993,
+                  342493,
+                  326101,
+                  296181,
+                  233775,
+                  209315,
+                  186866,
+                  84911,
+                  52274,
+                  40344,
+                  39183,
+                  38996,
+                  36607
+                ],
+                "smooth": true,
+                "symbolSize": 7
+              },
+              {
+                "type": "line",
+                "name": "PARTO NORMAL",
+                "emphasis": {
+                  "focus": "series"
+                },
+                "data": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  56254,
+                  1288148,
+                  1243903,
+                  1183110,
+                  1139317,
+                  1070167,
+                  1046250,
+                  1058282,
+                  1087044,
+                  1016921,
+                  1020794,
+                  1006664,
+                  969931,
+                  888489,
+                  858790,
+                  788933,
+                  712259
+                ],
+                "smooth": true,
+                "symbolSize": 7
+              },
+              {
+                "type": "line",
+                "name": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+                "emphasis": {
+                  "focus": "series"
+                },
+                "data": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  34365,
+                  766862,
+                  868623,
+                  797625,
+                  758901,
+                  709285,
+                  721049,
+                  674300,
+                  640033,
+                  620927,
+                  636945,
+                  635491,
+                  644659,
+                  386516,
+                  387979,
+                  652735,
+                  640616
+                ],
+                "smooth": true,
+                "symbolSize": 7
+              },
+              {
+                "type": "line",
+                "name": "PARTO CESARIANO",
+                "emphasis": {
+                  "focus": "series"
+                },
+                "data": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  35962,
+                  582449,
+                  599380,
+                  618017,
+                  636798,
+                  641645,
+                  646624,
+                  666086,
+                  645067,
+                  621433,
+                  657101,
+                  683078,
+                  694927,
+                  680507,
+                  667261,
+                  640868,
+                  592765
+                ],
+                "smooth": true,
+                "symbolSize": 7
+              },
+              {
+                "type": "line",
+                "name": "TRATAMENTO DE DOENCAS INFECCIOSAS INTESTINAIS",
+                "emphasis": {
+                  "focus": "series"
+                },
+                "data": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  28587,
+                  490536,
+                  458670,
+                  487534,
+                  380460,
+                  361234,
+                  341823,
+                  316623,
+                  254897,
+                  260611,
+                  222270,
+                  208662,
+                  201482,
+                  122690,
+                  114646,
+                  129985,
+                  126938
+                ],
+                "smooth": true,
+                "symbolSize": 7
+              },
+              {
+                "type": "line",
+                "name": "TRATAMENTO DAS DOENCAS CRONICAS DAS VIAS AEREAS INFERIORES",
+                "emphasis": {
+                  "focus": "series"
+                },
+                "data": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  17173,
+                  356597,
+                  348236,
+                  331456,
+                  312087,
+                  269265,
+                  259196,
+                  233160,
+                  229572,
+                  205184,
+                  207101,
+                  195113,
+                  185135,
+                  108664,
+                  117708,
+                  182005,
+                  177878
+                ],
+                "smooth": true,
+                "symbolSize": 7
+              },
+              {
+                "type": "line",
+                "name": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+                "emphasis": {
+                  "focus": "series"
+                },
+                "data": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  7144,
+                  87556,
+                  105798,
+                  130144,
+                  156128,
+                  168528,
+                  186919,
+                  213296,
+                  236349,
+                  260569,
+                  275220,
+                  294444,
+                  321392,
+                  273593,
+                  282674,
+                  356951,
+                  366847
+                ],
+                "smooth": true,
+                "symbolSize": 7
+              },
+              {
+                "type": "line",
+                "name": "TRATAMENTO DE INSUFICIENCIA CARDIACA",
+                "emphasis": {
+                  "focus": "series"
+                },
+                "data": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  17088,
+                  282203,
+                  278338,
+                  272350,
+                  266371,
+                  246900,
+                  242438,
+                  227346,
+                  221717,
+                  218558,
+                  212294,
+                  204836,
+                  204523,
+                  170159,
+                  171220,
+                  205319,
+                  195166
+                ],
+                "smooth": true,
+                "symbolSize": 7
+              },
+              {
+                "type": "line",
+                "name": "TRATAMENTO C/ CIRURGIAS MULTIPLAS",
+                "emphasis": {
+                  "focus": "series"
+                },
+                "data": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  3223,
+                  73211,
+                  102465,
+                  127228,
+                  151634,
+                  164753,
+                  157907,
+                  173003,
+                  190285,
+                  202618,
+                  214800,
+                  249120,
+                  280651,
+                  244969,
+                  287604,
+                  348669,
+                  381615
+                ],
+                "smooth": true,
+                "symbolSize": 7
+              },
+              {
+                "type": "line",
+                "name": "TRATAMENTO DE INTERCORRENCIAS CLINICAS NA GRAVIDEZ",
+                "emphasis": {
+                  "focus": "series"
+                },
+                "data": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  7270,
+                  143483,
+                  158685,
+                  170761,
+                  177575,
+                  185277,
+                  193509,
+                  200228,
+                  201566,
+                  199213,
+                  210647,
+                  216501,
+                  222974,
+                  198284,
+                  205353,
+                  221136,
+                  226697
+                ],
+                "smooth": true,
+                "symbolSize": 7
+              }
+            ]
+          },
+          "reason": "Usuario pediu explicitamente visualizacao em grafico"
+        },
+        "setup": [],
+        "elapsed_seconds": 29.201798
+      }
+    }
+  ],
+  "run": {
+    "timestamp": "2026-05-21T06:50:28.683348Z",
+    "cases": "evaluation/visualization/chart_agent_prod_cases.jsonl",
+    "total": 1,
+    "run_agent": true,
+    "only": "PROD_PROC_010",
+    "limit": null,
+    "shuffle": false,
+    "seed": 20260521
+  }
+}

@@ -1,0 +1,195 @@
+{
+  "metrics": {
+    "success_rate": 0.0,
+    "no_raw_internal_error": 0.0,
+    "chart_contract_validity": 0.0,
+    "sql_invariant_validity": 1.0,
+    "semantic_dimension_validity": 1.0
+  },
+  "counts": {
+    "success": 0,
+    "no_raw_internal_error": 0,
+    "chart_contract_valid": 0,
+    "sql_invariant_valid": 1,
+    "semantic_dimension_valid": 1
+  },
+  "failures": [
+    {
+      "id": "PROD_SOCIO_004",
+      "query": "Compare PIB per capita e mortalidade infantil em scatter.",
+      "reasons": [
+        "agent_success_failed",
+        "chart_contract_validity_failed",
+        "raw_internal_error_exposed"
+      ],
+      "agent_error": "SEMANTIC PLAN ERROR: The plan requires grouping by municipio, but SQL GROUP BY does not include that dimension."
+    }
+  ],
+  "details": [
+    {
+      "id": "PROD_SOCIO_004",
+      "query": "Compare PIB per capita e mortalidade infantil em scatter.",
+      "tags": [
+        "socioeconomic",
+        "infant_mortality",
+        "scatter"
+      ],
+      "checks": {
+        "no_raw_internal_error": false,
+        "chart_contract_validity": false,
+        "sql_invariant_validity": true,
+        "semantic_dimension_validity": true
+      },
+      "success": false,
+      "failure_reasons": [
+        "agent_success_failed",
+        "chart_contract_validity_failed",
+        "raw_internal_error_exposed"
+      ],
+      "semantic": {
+        "intent": "association",
+        "metrics": [
+          "mortalidade_infantil_1ano",
+          "pib_per_capita"
+        ],
+        "dimensions": [
+          "municipio"
+        ],
+        "required_dimensions": [
+          "municipio"
+        ],
+        "output_dimensions": [
+          "municipio"
+        ],
+        "partition_dimensions": [],
+        "ranked_dimensions": [],
+        "constraints": [
+          "socioeconomico_column_metric_required",
+          "socioeconomico_multi_column_metrics_required"
+        ],
+        "filters": []
+      },
+      "chart": {
+        "intent_requested": true,
+        "intent_source": "explicit_current_query",
+        "chart_hint": "scatter",
+        "chart_plan": {
+          "requested": true,
+          "chart_type": "scatter",
+          "metric": "mortalidade_infantil",
+          "metric_expression": "AVG(\"VL_MORT_INFANTIL\")",
+          "x_dimension": "pib_per_capita",
+          "series_dimension": null,
+          "y_column": "mortalidade_infantil",
+          "grain": "pib_per_capita",
+          "expected_result_shape": "category_metric",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [
+            "pib_per_capita",
+            "mortalidade_infantil"
+          ],
+          "sql_shape_guidance": "Return one row per pib_per_capita with columns: pib_per_capita, mortalidade_infantil.",
+          "reason": "structured chart parameters extracted before SQL generation"
+        },
+        "synthetic_spec": {
+          "chartable": true,
+          "chart_type": "scatter",
+          "title": "mortalidade infantil por pib per capita",
+          "x": "pib_per_capita",
+          "y": "mortalidade_infantil",
+          "series": null,
+          "encoding": {
+            "x_type": "quantitative",
+            "y_type": "quantitative"
+          },
+          "data": [
+            {
+              "pib_per_capita": 1.0,
+              "mortalidade_infantil": 10.0
+            },
+            {
+              "pib_per_capita": 2.0,
+              "mortalidade_infantil": 18.0
+            },
+            {
+              "pib_per_capita": 3.0,
+              "mortalidade_infantil": 25.0
+            }
+          ],
+          "reason": "Grafico de dispersao planejado a partir de ChartPlan pre-SQL estruturado.",
+          "warnings": [],
+          "presentation": {
+            "title": "Mortalidade infantil por pib per capita",
+            "subtitle": "Comparacao entre metricas",
+            "x_label": "Pib per capita",
+            "y_label": "Mortalidade infantil",
+            "series_label": null,
+            "value_format": "decimal",
+            "sort_order": "as_returned",
+            "footnote": null,
+            "summary": "3.0 lidera com 25,00."
+          }
+        },
+        "echarts_valid": true
+      },
+      "agent": {
+        "success": false,
+        "error": "SEMANTIC PLAN ERROR: The plan requires grouping by municipio, but SQL GROUP BY does not include that dimension.",
+        "response": "Não foi possível processar sua consulta: SEMANTIC PLAN ERROR: The plan requires grouping by municipio, but SQL GROUP BY does not include that dimension.",
+        "answer": null,
+        "sql_query": "SELECT s.\"CO_MUNICIPIO_6D\", AVG(s.\"VL_PIB_PERCAPITA\") AS pib_per_capita, AVG(s.\"VL_MORT_INFANTIL\") AS mortalidade_infantil FROM socioeconomico s GROUP BY s.\"CO_MUNICIPIO_6D\";",
+        "row_count": 0,
+        "chart": {
+          "requested": true,
+          "source": "explicit_current_query",
+          "uses_last_result": false,
+          "chart_hint": "scatter",
+          "spec": {
+            "chartable": false,
+            "chart_type": "table",
+            "title": null,
+            "x": null,
+            "y": null,
+            "series": null,
+            "encoding": {},
+            "data": [],
+            "reason": "Sem resultado tabular validado para gerar grafico.",
+            "warnings": [],
+            "presentation": {
+              "title": null,
+              "subtitle": null,
+              "x_label": null,
+              "y_label": null,
+              "series_label": null,
+              "value_format": "integer",
+              "sort_order": "as_returned",
+              "footnote": null,
+              "summary": null
+            }
+          },
+          "echarts": null,
+          "reason": "Usuario pediu explicitamente grafico do tipo scatter"
+        },
+        "setup": [],
+        "elapsed_seconds": 25.111725
+      }
+    }
+  ],
+  "run": {
+    "timestamp": "2026-05-21T04:02:57.869416Z",
+    "cases": "evaluation/visualization/chart_agent_prod_cases.jsonl",
+    "total": 1,
+    "run_agent": true,
+    "only": "PROD_SOCIO_004",
+    "limit": null,
+    "shuffle": false,
+    "seed": 20260521
+  }
+}

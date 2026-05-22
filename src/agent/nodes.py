@@ -23,6 +23,7 @@ Shared utilities (not pipeline nodes):
 # Node functions — in pipeline order
 from .classification import query_classification_node  # noqa: F401  # step 1
 from .execution import execute_sql_node, repair_sql_node  # noqa: F401  # step 6
+from .intent_node import intent_planning_node  # noqa: F401
 from .llm_manager import OpenAILLMManager, get_llm_manager, set_global_llm_manager  # noqa: F401
 from .multi_executor import multi_sql_executor_node  # noqa: F401
 from .multi_verifier import multi_verifier_node  # noqa: F401
@@ -67,6 +68,7 @@ from .validation import validate_sql_node  # noqa: F401  # step 5
 
 __all__ = [
     "query_classification_node",
+    "intent_planning_node",
     "list_tables_node",
     "get_schema_node",
     "reasoning_node",

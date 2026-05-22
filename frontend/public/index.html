@@ -39,9 +39,9 @@
                         <i class="fas fa-bug" aria-hidden="true"></i>
                         <span>Debug</span>
                     </button>
-                    <button class="toolbar-btn" id="schemaBtn" type="button" aria-label="Abrir esquema do banco de dados">
+                    <button class="toolbar-btn" id="schemaBtn" type="button" aria-label="Abrir explorador do banco local">
                         <i class="fas fa-database" aria-hidden="true"></i>
-                        <span>Schema</span>
+                        <span>Banco</span>
                     </button>
                     <button class="toolbar-btn danger" id="clearBtn" type="button" aria-label="Limpar conversa">
                         <i class="fas fa-trash-alt" aria-hidden="true"></i>
@@ -157,6 +157,12 @@
                 <div class="chat-messages" id="chatMessages" aria-live="polite" aria-label="Historico da conversa" style="display:none"></div>
 
                 <div class="chat-input-container">
+                    <div class="table-context-bar" id="tableContextBar" hidden>
+                        <span id="tableContextLabel">Contexto: tabela selecionada</span>
+                        <button id="clearTableContextBtn" type="button" aria-label="Remover contexto da tabela">
+                            <i class="fas fa-times" aria-hidden="true"></i>
+                        </button>
+                    </div>
                     <div class="starter-row" aria-label="Atalhos de pergunta">
                         <button class="starter-chip" type="button" data-question="Compare os municipios com maior mortalidade e destaque o lider.">
                             <i class="fas fa-chart-simple" aria-hidden="true"></i>
@@ -190,32 +196,122 @@
             </section>
         </main>
 
-        <div class="modal-overlay" id="schemaModal" role="dialog" aria-modal="true" aria-labelledby="schemaModalTitle" aria-describedby="schemaModalDescription">
-            <div class="modal-content">
+        <div class="modal-overlay database-modal" id="schemaModal" role="dialog" aria-modal="true" aria-labelledby="schemaModalTitle" aria-describedby="schemaModalDescription">
+            <div class="modal-content database-modal-content">
                 <div class="modal-header">
                     <div>
-                        <p class="eyebrow">Banco de dados</p>
-                        <h2 id="schemaModalTitle"><i class="fas fa-database" aria-hidden="true"></i> Esquema do Banco</h2>
-                        <p id="schemaModalDescription">Inspecione tabelas, colunas e amostras disponiveis para formular perguntas mais precisas.</p>
+                        <p class="eyebrow">Banco local</p>
+                        <h2 id="schemaModalTitle"><i class="fas fa-database" aria-hidden="true"></i> Explorador DataVisSUS</h2>
+                        <p id="schemaModalDescription">Explore schema, amostras e consultas SELECT sem misturar controles tecnicos na tela do chatbot.</p>
                     </div>
                     <button class="modal-close" id="closeSchemaModal" type="button" aria-label="Fechar modal de schema">
                         <i class="fas fa-times" aria-hidden="true"></i>
                     </button>
                 </div>
                 <div class="modal-body">
-                    <div class="schema-controls">
-                        <label for="tableSelect">Tabela</label>
-                        <select id="tableSelect" class="table-select">
-                            <option value="">Esquema completo</option>
-                            <option value="sus_data">sus_data - Dados SUS</option>
-                            <option value="cid_detalhado">cid_detalhado - Codigos CID</option>
-                        </select>
-                        <button id="loadSchemaBtn" class="load-schema-btn" type="button">
-                            <i class="fas fa-sync-alt" aria-hidden="true"></i>
-                            <span>Carregar schema</span>
+                    <nav class="database-tabs" aria-label="Secoes do explorador do banco">
+                        <button class="database-tab active" id="databaseTabExplore" type="button" data-database-tab="explore" aria-selected="true">
+                            <i class="fas fa-table-list" aria-hidden="true"></i>
+                            <span>Explorar</span>
                         </button>
+                        <button class="database-tab" id="databaseTabQuery" type="button" data-database-tab="query" aria-selected="false">
+                            <i class="fas fa-terminal" aria-hidden="true"></i>
+                            <span>SQL</span>
+                        </button>
+                        <button class="database-tab" id="databaseTabAbout" type="button" data-database-tab="about" aria-selected="false">
+                            <i class="fas fa-circle-info" aria-hidden="true"></i>
+                            <span>About</span>
+                        </button>
+                        <button class="database-tab" id="databaseTabFaq" type="button" data-database-tab="faq" aria-selected="false">
+                            <i class="fas fa-link" aria-hidden="true"></i>
+                            <span>FAQ</span>
+                        </button>
+                    </nav>
+
+                    <div class="database-panel-stage" aria-live="polite">
+                        <section class="database-panel active" id="databasePanelExplore" data-database-panel="explore" aria-labelledby="databaseTabExplore">
+                            <div class="database-toolbar">
+                                <div>
+                                    <strong>Schema e amostras</strong>
+                                    <span id="databaseSource">Carregando banco configurado...</span>
+                                </div>
+                                <button id="refreshDatabaseBtn" class="load-schema-btn" type="button">
+                                    <i class="fas fa-sync-alt" aria-hidden="true"></i>
+                                    <span>Atualizar</span>
+                                </button>
+                            </div>
+                            <div class="database-browser">
+                                <aside class="database-table-list" aria-label="Tabelas do banco">
+                                    <label for="tableSelect">Tabela</label>
+                                    <select id="tableSelect" class="table-select"></select>
+                                    <div id="databaseTableCards" class="database-table-cards"></div>
+                                </aside>
+                                <div id="schemaContent" class="schema-content empty-state">Abra o explorador para carregar as tabelas do banco local.</div>
+                            </div>
+                        </section>
+
+                        <section class="database-panel" id="databasePanelQuery" data-database-panel="query" aria-labelledby="databaseTabQuery" hidden>
+                            <div class="query-console">
+                                <div class="query-console-head">
+                                    <div>
+                                        <strong>Consulta SQL read-only</strong>
+                                        <span>Somente SELECT/WITH. Resultados limitados para evitar travar a UI.</span>
+                                    </div>
+                                    <label class="query-limit-label" for="queryLimitInput">
+                                        Limite
+                                        <input id="queryLimitInput" type="number" min="1" max="500" value="100">
+                                    </label>
+                                </div>
+                                <label class="sr-only" for="databaseQueryInput">SQL de leitura</label>
+                                <textarea id="databaseQueryInput" class="database-query-input" rows="7" spellcheck="false">SELECT * FROM internacoes LIMIT 20;</textarea>
+                                <div class="query-actions">
+                                    <button id="runDatabaseQueryBtn" class="load-schema-btn" type="button">
+                                        <i class="fas fa-play" aria-hidden="true"></i>
+                                        <span>Executar SELECT</span>
+                                    </button>
+                                    <span class="query-safety-note">Mutacoes, PRAGMA, COPY e multiplas instrucoes sao bloqueadas.</span>
+                                </div>
+                                <div id="databaseQueryResult" class="schema-content empty-state">Execute uma consulta de leitura para ver o resultado.</div>
+                            </div>
+                        </section>
+
+                        <section class="database-panel" id="databasePanelAbout" data-database-panel="about" aria-labelledby="databaseTabAbout" hidden>
+                            <div class="info-grid">
+                                <article class="info-block">
+                                    <p class="eyebrow">Davint Lab</p>
+                                    <h3>Pesquisa aplicada em dados publicos e IA analitica</h3>
+                                    <p>O Davint Lab organiza experimentos de text-to-SQL, validacao semantica e visualizacao para tornar bases publicas de saude mais consultaveis, auditaveis e uteis para analise tecnica.</p>
+                                </article>
+                                <article class="info-block">
+                                    <p class="eyebrow">DataVisSUS</p>
+                                    <h3>Assistente local para perguntas sobre dados SUS</h3>
+                                    <p>A UI principal continua focada em linguagem natural. Este explorador existe para validar schema, consultar amostras e testar SQL de leitura quando a pergunta exigir inspecao tecnica.</p>
+                                </article>
+                            </div>
+                        </section>
+
+                        <section class="database-panel" id="databasePanelFaq" data-database-panel="faq" aria-labelledby="databaseTabFaq" hidden>
+                            <div class="faq-grid">
+                                <article class="faq-card">
+                                    <h3>Quais fontes externas consultar?</h3>
+                                    <a href="https://datasus.saude.gov.br/" target="_blank" rel="noreferrer">Portal DATASUS</a>
+                                    <a href="https://datasus.saude.gov.br/informacoes-de-saude-tabnet/" target="_blank" rel="noreferrer">Informacoes de Saude - TABNET</a>
+                                    <a href="https://datasus.saude.gov.br/sobre-o-datasus/" target="_blank" rel="noreferrer">Sobre o DATASUS</a>
+                                </article>
+                                <article class="faq-card">
+                                    <h3>Quais docs locais revisar?</h3>
+                                    <p><code>docs/generated/table_inventory.csv</code></p>
+                                    <p><code>docs/generated/column_catalog.csv</code></p>
+                                    <p><code>docs/generated/relationship_coverage.csv</code></p>
+                                    <p><code>docs/generated/data_quality_checks.json</code></p>
+                                </article>
+                                <article class="faq-card">
+                                    <h3>Quando usar SQL direto?</h3>
+                                    <p>Use para conferir amostras, contar registros, validar nomes de colunas ou reproduzir uma consulta do agent. Para analise assistida, volte ao chat.</p>
+                                </article>
+                            </div>
+                        </section>
                     </div>
-                    <div id="schemaContent" class="schema-content empty-state">Selecione uma tabela e clique em "Carregar schema".</div>
                 </div>
             </div>
         </div>

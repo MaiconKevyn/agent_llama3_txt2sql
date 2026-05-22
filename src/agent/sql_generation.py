@@ -12,6 +12,7 @@ from ..utils.logging_config import get_nodes_logger
 from .analytic_sql import build_analytic_sql_package
 from .llamaindex_context import should_use_llamaindex_sql_draft
 from .llm_manager import get_llm_manager
+from .plan_auditor import audit_pre_sql_plan
 from .prompt_builder import build_pregeneration_hints, build_sql_generation_messages
 from .state_helpers import add_ai_message, add_error, update_phase
 from .state_models import ExecutionPhase, MessagesStateTXT2SQL
@@ -1379,11 +1380,21 @@ def _latest_year_filter_sql(table: str, column: str, years: int) -> str:
     )
 
 
-def _recent_years(plan: SemanticPlan) -> int | None:
+def _recent_years(plan: SemanticPlan, chart_plan=None) -> int | None:
     values = _semantic_filters(plan, "recent_years_available")
     for value in values:
         if value.isdigit():
             return int(value)
+    time_window = _chart_value(chart_plan, "time_window")
+    if time_window:
+        window_type = (
+            time_window.get("type")
+            if isinstance(time_window, dict)
+            else getattr(time_window, "type", None)
+        )
+        window_n = time_window.get("n") if isinstance(time_window, dict) else getattr(time_window, "n", None)
+        if window_type == "last_n_available_years" and window_n:
+            return int(window_n)
     return None
 
 
@@ -1500,7 +1511,13 @@ def _build_deterministic_chart_sql(semantic_plan, chart_plan) -> str | None:
         "custo_medio",
         "valor_total_uti",
     }:
-        return _build_internacoes_chart_sql(plan, dimensions, y_column=y_column, chart_type=chart_type)
+        return _build_internacoes_chart_sql(
+            plan,
+            dimensions,
+            y_column=y_column,
+            chart_type=chart_type,
+            chart_plan=chart_plan,
+        )
     return None
 
 
@@ -1805,6 +1822,7 @@ def _build_internacoes_chart_sql(
     *,
     y_column: str,
     chart_type: str,
+    chart_plan=None,
 ) -> str | None:
     metric_names = {metric.name for metric in plan.metrics}
     selected_dimensions: list[tuple[str, str]] = []
@@ -1885,7 +1903,7 @@ def _build_internacoes_chart_sql(
 
     where_conditions.extend(_internacoes_semantic_filter_conditions(plan))
 
-    recent_years = _recent_years(plan)
+    recent_years = _recent_years(plan, chart_plan)
     if recent_years is not None:
         where_conditions.append(_latest_year_filter_sql("i", "DT_INTER", recent_years))
 
@@ -1975,6 +1993,34 @@ def _internacoes_semantic_filter_conditions(plan: SemanticPlan) -> list[str]:
                 conditions.append(
                     f'EXTRACT(YEAR FROM i."DT_INTER") BETWEEN {values[0]} AND {values[1]}'
                 )
+        elif field == "idade" and values:
+            numeric_values = [value for value in values if re.fullmatch(r"\d+", value)]
+            if numeric_values:
+                operator = (
+                    semantic_filter.operator
+                    if semantic_filter.operator in {"=", "<", "<=", ">", ">="}
+                    else "="
+                )
+                conditions.append(f'i."IDADE" {operator} {numeric_values[0]}')
+        elif field == "diagnostico_principal_prefix" and values:
+            prefix_conditions = " OR ".join(
+                f'i."DIAG_PRINC" LIKE {_sql_string_literal(value.upper())}'
+                for value in values
+            )
+            conditions.append(f"({prefix_conditions})")
+        elif field == "diagnostico_principal_codigo" and values:
+            quoted = ", ".join(_sql_string_literal(value.upper()) for value in values)
+            conditions.append(f'i."DIAG_PRINC" IN ({quoted})')
+        elif field == "diagnostico_principal_descricao" and values:
+            description_conditions = " OR ".join(
+                f'c."DESCRICAO" ILIKE {_sql_string_literal(f"%{value}%")}'
+                for value in values
+            )
+            conditions.append(
+                f'i."DIAG_PRINC" IN (SELECT c."CID" FROM cid c WHERE {description_conditions})'
+            )
+        elif field == "desfecho" and any("morte" in value.lower() for value in values):
+            conditions.append('i."MORTE" = true')
     return conditions
 
 
@@ -2126,72 +2172,29 @@ def generate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         chart_plan = state.get("chart_plan")
         ablation_flags = state.get("ablation_flags") or {}
 
-        deterministic_sql = _build_deterministic_analytic_sql(semantic_plan, ablation_flags)
-        if deterministic_sql:
-            state["generated_sql"] = deterministic_sql
-            state["current_error"] = None
-            state = add_ai_message(
-                state,
-                f"Generated SQL query (deterministic_analytic): {deterministic_sql}",
-            )
-            meta = state.get("response_metadata", {}) or {}
-            meta["sql_generation_confidence"] = 1.0
-            meta["sql_generation_reasoning"] = (
-                "Deterministic analytic SQL generated from the semantic plan."
-            )
-            meta.update(analytic_metadata_for_plan(semantic_plan))
-            state["response_metadata"] = meta
-            execution_time = time.time() - start_time
-            state = update_phase(state, ExecutionPhase.SQL_GENERATION, execution_time)
-            logger.info(
-                "SQL generated via deterministic analytic macro",
-                extra={"sql": deterministic_sql[:200], "execution_time": execution_time},
-            )
-            return state
+        plan_audit = audit_pre_sql_plan(
+            user_query=user_query,
+            semantic_plan=semantic_plan,
+            chart_plan=chart_plan,
+        )
+        state["plan_audit"] = plan_audit
+        if plan_audit["passed"]:
+            state["structured_error"] = None
+        else:
+            state["structured_error"] = {
+                "layer": "plan_audit",
+                "code": "pre_sql_plan_audit_failed",
+                "errors": plan_audit["errors"],
+            }
 
-        deterministic_sql = _build_deterministic_scalar_sql(semantic_plan)
-        if deterministic_sql:
-            state["generated_sql"] = deterministic_sql
-            state["current_error"] = None
-            state = add_ai_message(
-                state,
-                f"Generated SQL query (deterministic_scalar): {deterministic_sql}",
-            )
-            meta = state.get("response_metadata", {}) or {}
-            meta["sql_generation_confidence"] = 1.0
-            meta["sql_generation_reasoning"] = (
-                "Deterministic scalar SQL generated from the semantic plan."
-            )
-            state["response_metadata"] = meta
-            execution_time = time.time() - start_time
-            state = update_phase(state, ExecutionPhase.SQL_GENERATION, execution_time)
-            logger.info(
-                "SQL generated via deterministic scalar macro",
-                extra={"sql": deterministic_sql[:200], "execution_time": execution_time},
-            )
-            return state
-
-        deterministic_sql = _build_deterministic_grouped_sql(semantic_plan)
-        if deterministic_sql:
-            state["generated_sql"] = deterministic_sql
-            state["current_error"] = None
-            state = add_ai_message(
-                state,
-                f"Generated SQL query (deterministic_grouped): {deterministic_sql}",
-            )
-            meta = state.get("response_metadata", {}) or {}
-            meta["sql_generation_confidence"] = 1.0
-            meta["sql_generation_reasoning"] = (
-                "Deterministic grouped SQL generated from the semantic plan."
-            )
-            state["response_metadata"] = meta
-            execution_time = time.time() - start_time
-            state = update_phase(state, ExecutionPhase.SQL_GENERATION, execution_time)
-            logger.info(
-                "SQL generated via deterministic grouped macro",
-                extra={"sql": deterministic_sql[:200], "execution_time": execution_time},
-            )
-            return state
+        chart_requested = bool(_chart_value(chart_plan, "requested", False))
+        chart_expected_shape = str(_chart_value(chart_plan, "expected_result_shape") or "")
+        chart_requires_tabular_result = chart_requested and chart_expected_shape in {
+            "time_metric",
+            "time_series_metric",
+            "category_metric",
+            "wide_metric_comparison",
+        }
 
         deterministic_sql = _build_deterministic_chart_sql(semantic_plan, chart_plan)
         if deterministic_sql:
@@ -2214,6 +2217,80 @@ def generate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 extra={"sql": deterministic_sql[:200], "execution_time": execution_time},
             )
             return state
+
+        if chart_requires_tabular_result:
+            state["structured_error"] = {
+                "layer": "sql_generation",
+                "code": "chart_sql_compiler_required",
+                "message": "Chart requests with tabular shape must use chart-compatible SQL.",
+            }
+        else:
+            deterministic_sql = _build_deterministic_analytic_sql(semantic_plan, ablation_flags)
+            if deterministic_sql:
+                state["generated_sql"] = deterministic_sql
+                state["current_error"] = None
+                state = add_ai_message(
+                    state,
+                    f"Generated SQL query (deterministic_analytic): {deterministic_sql}",
+                )
+                meta = state.get("response_metadata", {}) or {}
+                meta["sql_generation_confidence"] = 1.0
+                meta["sql_generation_reasoning"] = (
+                    "Deterministic analytic SQL generated from the semantic plan."
+                )
+                meta.update(analytic_metadata_for_plan(semantic_plan))
+                state["response_metadata"] = meta
+                execution_time = time.time() - start_time
+                state = update_phase(state, ExecutionPhase.SQL_GENERATION, execution_time)
+                logger.info(
+                    "SQL generated via deterministic analytic macro",
+                    extra={"sql": deterministic_sql[:200], "execution_time": execution_time},
+                )
+                return state
+
+            deterministic_sql = _build_deterministic_scalar_sql(semantic_plan)
+            if deterministic_sql:
+                state["generated_sql"] = deterministic_sql
+                state["current_error"] = None
+                state = add_ai_message(
+                    state,
+                    f"Generated SQL query (deterministic_scalar): {deterministic_sql}",
+                )
+                meta = state.get("response_metadata", {}) or {}
+                meta["sql_generation_confidence"] = 1.0
+                meta["sql_generation_reasoning"] = (
+                    "Deterministic scalar SQL generated from the semantic plan."
+                )
+                state["response_metadata"] = meta
+                execution_time = time.time() - start_time
+                state = update_phase(state, ExecutionPhase.SQL_GENERATION, execution_time)
+                logger.info(
+                    "SQL generated via deterministic scalar macro",
+                    extra={"sql": deterministic_sql[:200], "execution_time": execution_time},
+                )
+                return state
+
+            deterministic_sql = _build_deterministic_grouped_sql(semantic_plan)
+            if deterministic_sql:
+                state["generated_sql"] = deterministic_sql
+                state["current_error"] = None
+                state = add_ai_message(
+                    state,
+                    f"Generated SQL query (deterministic_grouped): {deterministic_sql}",
+                )
+                meta = state.get("response_metadata", {}) or {}
+                meta["sql_generation_confidence"] = 1.0
+                meta["sql_generation_reasoning"] = (
+                    "Deterministic grouped SQL generated from the semantic plan."
+                )
+                state["response_metadata"] = meta
+                execution_time = time.time() - start_time
+                state = update_phase(state, ExecutionPhase.SQL_GENERATION, execution_time)
+                logger.info(
+                    "SQL generated via deterministic grouped macro",
+                    extra={"sql": deterministic_sql[:200], "execution_time": execution_time},
+                )
+                return state
 
         llm_manager = get_llm_manager()
 

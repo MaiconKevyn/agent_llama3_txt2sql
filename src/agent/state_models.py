@@ -168,6 +168,12 @@ class MessagesStateTXT2SQL(TypedDict):
     final_result_rows: list | None
     ablation_flags: dict[str, Any]
     llamaindex_context: dict[str, Any] | None
+    intent_plan: dict[str, Any] | None
+    tool_plan: list[dict[str, Any]]
+    plan_audit: dict[str, Any] | None
+    result_audit: dict[str, Any] | None
+    structured_error: dict[str, Any] | None
+    domain_caveats: list[str]
     semantic_plan: dict[str, Any] | None
     visualization_intent: dict[str, Any] | None
     chart_plan: dict[str, Any] | None

@@ -1,0 +1,321 @@
+{
+  "metrics": {
+    "success_rate": 1.0,
+    "no_raw_internal_error": 1.0,
+    "chart_contract_validity": 1.0,
+    "sql_invariant_validity": 1.0,
+    "semantic_dimension_validity": 1.0
+  },
+  "counts": {
+    "success": 1,
+    "no_raw_internal_error": 1,
+    "chart_contract_valid": 1,
+    "sql_invariant_valid": 1,
+    "semantic_dimension_valid": 1
+  },
+  "failures": [],
+  "details": [
+    {
+      "id": "PROD_AUTO_002",
+      "query": "Mostre graficamente as principais diferencas por sexo.",
+      "tags": [
+        "auto_chart",
+        "ambiguous_metric",
+        "sex"
+      ],
+      "checks": {
+        "no_raw_internal_error": true,
+        "chart_contract_validity": true,
+        "sql_invariant_validity": true,
+        "semantic_dimension_validity": true
+      },
+      "success": true,
+      "failure_reasons": [],
+      "semantic": {
+        "intent": "unknown",
+        "metrics": [
+          "requested_metric"
+        ],
+        "dimensions": [
+          "sexo"
+        ],
+        "required_dimensions": [
+          "sexo"
+        ],
+        "output_dimensions": [
+          "sexo"
+        ],
+        "partition_dimensions": [],
+        "ranked_dimensions": [],
+        "constraints": [
+          "sex_label_output_required"
+        ],
+        "filters": []
+      },
+      "chart": {
+        "intent_requested": true,
+        "intent_source": "explicit_current_query",
+        "chart_hint": "auto",
+        "chart_plan": {
+          "requested": true,
+          "chart_type": "bar",
+          "metric": "requested_metric",
+          "metric_expression": null,
+          "x_dimension": "sexo",
+          "series_dimension": null,
+          "y_column": "total_internacoes",
+          "grain": "sexo",
+          "expected_result_shape": "category_metric",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [
+            "sexo",
+            "total_internacoes"
+          ],
+          "sql_shape_guidance": "Return one row per sexo with columns: sexo, total_internacoes. For 'sexo', emit human-readable labels via CASE WHEN \"SEXO\"=1 THEN 'Masculino' WHEN \"SEXO\"=3 THEN 'Feminino' END, not raw codes.",
+          "reason": "structured chart parameters extracted before SQL generation"
+        },
+        "synthetic_spec": {
+          "chartable": true,
+          "chart_type": "bar",
+          "title": "internacoes por sexo",
+          "x": "sexo",
+          "y": "internacoes",
+          "series": null,
+          "encoding": {
+            "x_type": "nominal",
+            "y_type": "quantitative"
+          },
+          "data": [
+            {
+              "sexo": "Grupo A",
+              "internacoes": 10
+            },
+            {
+              "sexo": "Grupo B",
+              "internacoes": 15
+            },
+            {
+              "sexo": "Grupo C",
+              "internacoes": 8
+            }
+          ],
+          "reason": "Resultado categorico com metrica numerica.",
+          "warnings": [],
+          "presentation": {
+            "title": "Internacoes por sexo",
+            "subtitle": "Ranking por valor",
+            "x_label": "Sexo",
+            "y_label": "Internacoes",
+            "series_label": null,
+            "value_format": "integer",
+            "sort_order": "as_returned",
+            "footnote": null,
+            "summary": "Grupo B lidera com 15."
+          }
+        },
+        "echarts_valid": true
+      },
+      "agent": {
+        "success": true,
+        "error": null,
+        "response": "As internações por sexo são: 107.928.385 para o sexo feminino e 75.948.834 para o sexo masculino.",
+        "answer": null,
+        "sql_query": "SELECT CASE WHEN i.\"SEXO\" = 1 THEN 'Masculino' WHEN i.\"SEXO\" = 3 THEN 'Feminino' ELSE 'Ignorado' END AS sexo, COUNT(*) AS total_internacoes FROM internacoes i  WHERE i.\"SEXO\" IN (1, 3) GROUP BY CASE WHEN i.\"SEXO\" = 1 THEN 'Masculino' WHEN i.\"SEXO\" = 3 THEN 'Feminino' ELSE 'Ignorado' END ORDER BY total_internacoes DESC;",
+        "row_count": 2,
+        "chart": {
+          "requested": true,
+          "source": "explicit_current_query",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "spec": {
+            "chartable": true,
+            "chart_type": "bar",
+            "title": "requested metric por sexo",
+            "x": "sexo",
+            "y": "total_internacoes",
+            "series": null,
+            "encoding": {
+              "x_type": "nominal",
+              "y_type": "quantitative"
+            },
+            "data": [
+              {
+                "sexo": "Feminino",
+                "total_internacoes": 107928385
+              },
+              {
+                "sexo": "Masculino",
+                "total_internacoes": 75948834
+              }
+            ],
+            "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+            "warnings": [],
+            "presentation": {
+              "title": "Total de internacoes por sexo",
+              "subtitle": "Ranking por valor",
+              "x_label": "Sexo",
+              "y_label": "Total de internacoes",
+              "series_label": null,
+              "value_format": "integer",
+              "sort_order": "as_returned",
+              "footnote": null,
+              "summary": "Feminino lidera com 107.928.385."
+            }
+          },
+          "echarts": {
+            "color": [
+              "#2563eb",
+              "#0f766e",
+              "#c2410c",
+              "#7c3aed",
+              "#be123c",
+              "#a16207",
+              "#0891b2",
+              "#4d7c0f",
+              "#9333ea",
+              "#0284c7",
+              "#b45309",
+              "#047857"
+            ],
+            "backgroundColor": "transparent",
+            "animationDuration": 450,
+            "textStyle": {
+              "fontFamily": "Inter, system-ui, sans-serif"
+            },
+            "_valueFormat": "integer",
+            "_summary": "Feminino lidera com 107.928.385.",
+            "_footnote": null,
+            "_subtitle": "Ranking por valor",
+            "title": {
+              "show": false,
+              "text": "Total de internacoes por sexo",
+              "left": 0,
+              "top": 0,
+              "textStyle": {
+                "fontSize": 14,
+                "fontWeight": 700,
+                "color": "#101828"
+              }
+            },
+            "tooltip": {
+              "trigger": "axis",
+              "confine": true
+            },
+            "grid": {
+              "left": 14,
+              "right": 28,
+              "top": 24,
+              "bottom": 22,
+              "containLabel": true
+            },
+            "legend": {
+              "show": false,
+              "top": 26,
+              "right": 0,
+              "type": "scroll"
+            },
+            "xAxis": {
+              "type": "value",
+              "name": "Total de internacoes",
+              "nameGap": 30,
+              "axisLabel": {
+                "color": "#667085"
+              },
+              "splitLine": {
+                "lineStyle": {
+                  "color": "rgba(102,112,133,0.18)"
+                }
+              }
+            },
+            "yAxis": {
+              "type": "category",
+              "name": "Sexo",
+              "nameGap": 46,
+              "inverse": true,
+              "data": [
+                "Feminino",
+                "Masculino"
+              ],
+              "axisLabel": {
+                "color": "#667085",
+                "width": 142,
+                "overflow": "truncate"
+              },
+              "axisLine": {
+                "lineStyle": {
+                  "color": "#98a2b3"
+                }
+              }
+            },
+            "series": [
+              {
+                "type": "bar",
+                "name": "total_internacoes",
+                "emphasis": {
+                  "focus": "series"
+                },
+                "data": [
+                  {
+                    "value": 107928385,
+                    "itemStyle": {
+                      "color": "#2563eb",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  },
+                  {
+                    "value": 75948834,
+                    "itemStyle": {
+                      "color": "#0f766e",
+                      "borderRadius": [
+                        5,
+                        5,
+                        0,
+                        0
+                      ]
+                    }
+                  }
+                ],
+                "barMaxWidth": 26
+              }
+            ],
+            "_legend": [
+              {
+                "name": "Feminino",
+                "color": "#2563eb"
+              },
+              {
+                "name": "Masculino",
+                "color": "#0f766e"
+              }
+            ]
+          },
+          "reason": "Usuario pediu explicitamente visualizacao em grafico"
+        },
+        "setup": [],
+        "elapsed_seconds": 11.224338
+      }
+    }
+  ],
+  "run": {
+    "timestamp": "2026-05-21T06:03:37.653307Z",
+    "cases": "evaluation/visualization/chart_agent_prod_cases.jsonl",
+    "total": 1,
+    "run_agent": true,
+    "only": "PROD_AUTO_002",
+    "limit": null,
+    "shuffle": false,
+    "seed": 20260521
+  }
+}

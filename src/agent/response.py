@@ -12,6 +12,33 @@ from .state_models import ExecutionPhase, MessagesStateTXT2SQL, QueryRoute
 logger = get_nodes_logger()
 
 
+def build_domain_caveats(*, user_query: str, semantic_plan: dict[str, Any] | None) -> list[str]:
+    """Return user-facing caveats for implicit domain policies."""
+
+    filters = (semantic_plan or {}).get("filters", [])
+    caveats: list[str] = []
+    normalized = (user_query or "").lower()
+    if (
+        any(token in normalized for token in ["crianca", "criança", "criancas", "crianças", "pediatric"])
+        and any(
+            item.get("field") == "idade"
+            and item.get("operator") == "<"
+            and item.get("values") == ["18"]
+            for item in filters
+        )
+    ):
+        caveats.append("Crianca foi operacionalizado como idade menor que 18 anos.")
+    if ("respirat" in normalized or "cid j" in normalized) and any(
+        item.get("field") == "diagnostico_principal_prefix"
+        and item.get("values") == ["J%"]
+        for item in filters
+    ):
+        caveats.append("Causas respiratorias foram operacionalizadas como CID J00-J99.")
+    if any(item.get("field") == "desfecho" for item in filters):
+        caveats.append("Mortes hospitalares foram filtradas com MORTE=true.")
+    return caveats
+
+
 def generate_response_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
     """
     Generate Response Node - Format final response
@@ -51,6 +78,16 @@ def generate_response_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             else:
                 error_message = state.get("current_error", "Erro desconhecido")
                 final_response = f"Não foi possível processar sua consulta: {error_message}"
+
+        domain_caveats = build_domain_caveats(
+            user_query=user_query,
+            semantic_plan=state.get("semantic_plan"),
+        )
+        state["domain_caveats"] = domain_caveats
+        if domain_caveats and not state.get("current_error"):
+            caveat_text = "Observacoes de escopo: " + " ".join(domain_caveats)
+            if caveat_text not in final_response:
+                final_response = f"{final_response}\n\n{caveat_text}"
 
         state["final_response"] = final_response
         state["success"] = not bool(state.get("current_error"))
