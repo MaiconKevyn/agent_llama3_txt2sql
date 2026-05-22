@@ -120,56 +120,146 @@ def _sql_string_literal(value: str) -> str:
     return "'" + str(value).strip().replace("'", "''") + "'"
 
 
+_CID_CATALOG_DIMENSION_COLUMNS = {
+    "cid_codigo": ('"CID"', "cid"),
+    "cid_descricao": ('"DESCRICAO"', "descricao"),
+    "cid_categoria": ('"DS_CATEGORIA"', "categoria_cid"),
+    "cid_grupo": ('"DS_GRUPO"', "grupo_cid"),
+    "cid_capitulo": ('"DS_CAPITULO"', "capitulo_cid"),
+    "cid_restrsexo": ('"RESTRSEXO"', "restricao_sexo"),
+}
+
+
+def _cid_catalog_filter_conditions(plan: SemanticPlan) -> list[str]:
+    conditions: list[str] = []
+    text_columns = ['"DESCRICAO"', '"DS_CATEGORIA"', '"DS_GRUPO"', '"DS_CAPITULO"']
+    has_code_or_prefix = any(
+        semantic_filter.field.lower()
+        in {"diagnostico_principal_codigo", "diagnostico_principal_prefix"}
+        and any(str(value).strip() for value in semantic_filter.values)
+        for semantic_filter in plan.filters
+    )
+    for semantic_filter in plan.filters:
+        field = semantic_filter.field.lower()
+        values = [str(value).strip() for value in semantic_filter.values if str(value).strip()]
+        if not values:
+            continue
+        if field == "diagnostico_principal_codigo":
+            quoted = ", ".join(_sql_string_literal(value.upper()) for value in values)
+            conditions.append(f'"CID" IN ({quoted})')
+        elif field == "diagnostico_principal_prefix":
+            values = [
+                value.upper() if value.endswith("%") else f"{value.upper()}%"
+                for value in values
+            ]
+            prefix_conditions = " OR ".join(
+                f'"CID" LIKE {_sql_string_literal(value.upper())}' for value in values
+            )
+            conditions.append(f"({prefix_conditions})")
+        elif field == "diagnostico_conceito_termo_expandido" and has_code_or_prefix:
+            continue
+        elif field in {"diagnostico_principal_descricao", "diagnostico_conceito_termo_expandido"}:
+            term_conditions = []
+            for value in values:
+                term_conditions.extend(
+                    f"{column} ILIKE {_sql_string_literal(f'%{value}%')}"
+                    for column in text_columns
+                )
+            conditions.append("(" + " OR ".join(dict.fromkeys(term_conditions)) + ")")
+        elif field == "diagnostico_conceito_label":
+            continue
+    return conditions
+
+
+def _build_deterministic_cid_catalog_sql(plan: SemanticPlan) -> str | None:
+    if plan.base_grain != "cid_catalog":
+        return None
+
+    metric_names = {metric.name for metric in plan.metrics}
+    scalar_counts = {
+        "cid_catalog_count": ('COUNT(DISTINCT "CID")', "total_codigos_cid"),
+        "cid_group_catalog_count": ('COUNT(DISTINCT "DS_GRUPO")', "total_grupos_cid"),
+        "cid_category_catalog_count": (
+            'COUNT(DISTINCT "DS_CATEGORIA")',
+            "total_categorias_cid",
+        ),
+        "cid_chapter_catalog_count": (
+            'COUNT(DISTINCT "DS_CAPITULO")',
+            "total_capitulos_cid",
+        ),
+        "cid_restrsexo_catalog_count": (
+            'COUNT(DISTINCT "RESTRSEXO")',
+            "total_restricoes_sexo",
+        ),
+    }
+    where_conditions = _cid_catalog_filter_conditions(plan)
+    where_clause = f" WHERE {' AND '.join(dict.fromkeys(where_conditions))}" if where_conditions else ""
+    if "cid_duplicate_description_lookup_required" in plan.constraints:
+        return (
+            'SELECT "DESCRICAO" AS descricao, COUNT(*) AS total_codigos'
+            " FROM cid"
+            ' WHERE "DESCRICAO" IS NOT NULL AND TRIM("DESCRICAO") <> \'\''
+            ' GROUP BY "DESCRICAO"'
+            " HAVING COUNT(*) > 1"
+            " ORDER BY total_codigos DESC, descricao ASC"
+            " LIMIT 50;"
+        )
+    if plan.answer_shape.row_grain == "single_scalar":
+        for metric_name, (expression, alias) in scalar_counts.items():
+            if metric_name in metric_names:
+                return f"SELECT {expression} AS {alias} FROM cid{where_clause};"
+
+    dimensions = list(plan.answer_shape.required_dimensions)
+    dimension = dimensions[0] if dimensions else "cid_codigo"
+    if dimension in {"cid_codigo", "cid_descricao"}:
+        return (
+            'SELECT "CID" AS cid,'
+            ' "DESCRICAO" AS descricao,'
+            ' "DS_CATEGORIA" AS categoria_cid,'
+            ' "DS_GRUPO" AS grupo_cid,'
+            ' "DS_CAPITULO" AS capitulo_cid'
+            f" FROM cid{where_clause}"
+            ' ORDER BY "CID"'
+            " LIMIT 50;"
+        )
+
+    column_alias = _CID_CATALOG_DIMENSION_COLUMNS.get(dimension)
+    if column_alias is None:
+        return None
+    column, alias = column_alias
+    nonempty = f"{column} IS NOT NULL AND TRIM({column}) <> ''"
+    full_where_conditions = [*where_conditions, nonempty]
+    full_where = " WHERE " + " AND ".join(dict.fromkeys(full_where_conditions))
+    return (
+        f"SELECT {column} AS {alias}, COUNT(*) AS total_codigos"
+        f" FROM cid{full_where}"
+        f" GROUP BY {column}"
+        " ORDER BY total_codigos DESC, "
+        f"{alias} ASC"
+        " LIMIT 50;"
+    )
+
+
 def _build_deterministic_diagnosis_count_sql(plan: SemanticPlan) -> str | None:
     if plan.base_grain != "internacao" or plan.answer_shape.row_grain != "single_scalar":
         return None
     if not any(metric.name in {"total", "total_internacoes"} for metric in plan.metrics):
         return None
 
-    where_conditions: list[str] = []
-    has_diagnosis_target = False
-    for semantic_filter in plan.filters:
-        values = [str(value).strip() for value in semantic_filter.values if str(value).strip()]
-        if semantic_filter.field == "diagnostico_principal_codigo" and values:
-            has_diagnosis_target = True
-            quoted = ", ".join(_sql_string_literal(value.upper()) for value in values)
-            where_conditions.append(f'"DIAG_PRINC" IN ({quoted})')
-        elif semantic_filter.field == "diagnostico_principal_prefix" and values:
-            has_diagnosis_target = True
-            prefix_conditions = " OR ".join(
-                f'"CID" LIKE {_sql_string_literal(value.upper())}'
-                for value in values
-            )
-            where_conditions.append(
-                f'"DIAG_PRINC" IN (SELECT "CID" FROM cid WHERE {prefix_conditions})'
-            )
-        elif semantic_filter.field == "diagnostico_principal_descricao" and values:
-            has_diagnosis_target = True
-            description_conditions = " OR ".join(
-                f'c."DESCRICAO" ILIKE {_sql_string_literal(f"%{value}%")}'
-                for value in values
-            )
-            where_conditions.append(
-                f'"DIAG_PRINC" IN (SELECT c."CID" FROM cid c WHERE {description_conditions})'
-            )
-        elif semantic_filter.field == "ano" and values:
-            if len(values) == 1:
-                where_conditions.append(f'EXTRACT(YEAR FROM "DT_INTER") = {values[0]}')
-            else:
-                where_conditions.append(
-                    f'EXTRACT(YEAR FROM "DT_INTER") IN ({", ".join(values)})'
-                )
-        elif semantic_filter.field == "sexo" and values:
-            where_conditions.append(f'"SEXO" IN ({", ".join(values)})')
-        elif semantic_filter.field == "diagnostico_conceito_label":
-            continue
-        else:
-            return None
-
-    if not has_diagnosis_target:
+    diagnosis_condition = _diagnosis_join_cohort_condition(plan)
+    if not diagnosis_condition:
         return None
-    where_clause = f" WHERE {' AND '.join(where_conditions)}" if where_conditions else ""
-    return f"SELECT COUNT(*) AS total_internacoes FROM internacoes{where_clause};"
+    where_conditions = [
+        *_internacoes_semantic_filter_conditions(plan),
+        diagnosis_condition,
+    ]
+    where_clause = f" WHERE {' AND '.join(dict.fromkeys(where_conditions))}" if where_conditions else ""
+    return (
+        "SELECT COUNT(*) AS total_internacoes"
+        " FROM internacoes i"
+        ' JOIN cid c ON i."DIAG_PRINC" = c."CID"'
+        f"{where_clause};"
+    )
 
 
 def _build_deterministic_diagnosis_average_cost_sql(plan: SemanticPlan) -> str | None:
@@ -528,6 +618,10 @@ def _build_deterministic_scalar_sql(semantic_plan) -> str | None:
     except Exception:
         return None
 
+    cid_catalog_sql = _build_deterministic_cid_catalog_sql(plan)
+    if cid_catalog_sql:
+        return cid_catalog_sql
+
     if plan.base_grain != "internacao" or plan.answer_shape.row_grain != "single_scalar":
         return None
 
@@ -693,6 +787,10 @@ def _build_deterministic_grouped_sql(semantic_plan) -> str | None:
     plan = _parse_semantic_plan(semantic_plan)
     if plan is None:
         return None
+
+    cid_catalog_sql = _build_deterministic_cid_catalog_sql(plan)
+    if cid_catalog_sql:
+        return cid_catalog_sql
 
     metric_names = {metric.name for metric in plan.metrics}
     dimensions = set(plan.answer_shape.required_dimensions)
@@ -935,6 +1033,106 @@ def _build_deterministic_grouped_sql(semantic_plan) -> str | None:
             ' GROUP BY c."DS_CAPITULO"'
             ' ORDER BY "total_internacoes" DESC'
             f" LIMIT {plan.answer_shape.top_n};"
+        )
+
+    if (
+        dimensions == {"cid_capitulo", "ano"}
+        and plan.answer_shape.row_grain == "top_n_per_group"
+        and plan.answer_shape.top_n
+        and (metric_names & {"total", "total_internacoes", "requested_metric"})
+    ):
+        where_conditions = [
+            *_internacoes_semantic_filter_conditions(plan),
+            *_nonempty_label_conditions('c."DS_CAPITULO"'),
+        ]
+        where_clause = " AND ".join(dict.fromkeys(where_conditions))
+        return (
+            "WITH ranked_cid AS ("
+            ' SELECT EXTRACT(YEAR FROM i."DT_INTER") AS ano,'
+            ' c."DS_CAPITULO" AS cid_capitulo,'
+            " COUNT(*) AS total_internacoes,"
+            ' ROW_NUMBER() OVER (PARTITION BY EXTRACT(YEAR FROM i."DT_INTER")'
+            " ORDER BY COUNT(*) DESC) AS rn"
+            " FROM internacoes i"
+            ' JOIN cid c ON i."DIAG_PRINC" = c."CID"'
+            f" WHERE {where_clause}"
+            ' GROUP BY EXTRACT(YEAR FROM i."DT_INTER"), c."DS_CAPITULO"'
+            ")"
+            " SELECT ano, cid_capitulo, total_internacoes"
+            " FROM ranked_cid"
+            f" WHERE rn <= {plan.answer_shape.top_n}"
+            " GROUP BY ano, cid_capitulo, total_internacoes"
+            " ORDER BY ano ASC, total_internacoes DESC;"
+        )
+
+    cid_hierarchy_dimensions = {
+        "cid_codigo": ('c."CID"', "cid"),
+        "cid_descricao": ('c."DESCRICAO"', "descricao"),
+        "cid_categoria": ('c."DS_CATEGORIA"', "categoria_cid"),
+        "cid_grupo": ('c."DS_GRUPO"', "grupo_cid"),
+        "cid_capitulo": ('c."DS_CAPITULO"', "capitulo_cid"),
+    }
+    if (
+        len(dimensions) == 1
+        and next(iter(dimensions)) in cid_hierarchy_dimensions
+        and plan.answer_shape.row_grain in {"one_row_per_group", "top_n_global"}
+        and (
+            metric_names
+            & {
+                "total",
+                "total_internacoes",
+                "requested_metric",
+                "media",
+                "media_dias_permanencia",
+                "valor_total_uti",
+                "taxa_mortalidade",
+            }
+        )
+    ):
+        dimension_name = next(iter(dimensions))
+        column, alias = cid_hierarchy_dimensions[dimension_name]
+        where_conditions = [
+            *_internacoes_semantic_filter_conditions(plan),
+            *_nonempty_label_conditions(column),
+        ]
+        if "valor_total_uti" in metric_names:
+            where_conditions.append('i."VAL_UTI" IS NOT NULL AND i."VAL_UTI" > 0')
+        if "media_dias_permanencia" in metric_names:
+            where_conditions.append('i."DIAS_PERM" IS NOT NULL')
+        if "media" in metric_names:
+            where_conditions.append('i."VAL_TOT" IS NOT NULL')
+        where_clause = " AND ".join(dict.fromkeys(where_conditions))
+        limit = (
+            f" LIMIT {plan.answer_shape.top_n}"
+            if plan.answer_shape.row_grain == "top_n_global" and plan.answer_shape.top_n
+            else ""
+        )
+        metric_expression = "COUNT(*)"
+        metric_alias = "total_internacoes"
+        if "valor_total_uti" in metric_names:
+            metric_expression = 'ROUND(SUM(i."VAL_UTI"), 2)'
+            metric_alias = "valor_total_uti"
+        elif "media_dias_permanencia" in metric_names:
+            metric_expression = 'ROUND(AVG(i."DIAS_PERM"), 2)'
+            metric_alias = "permanencia_media"
+        elif "media" in metric_names:
+            metric_expression = 'ROUND(AVG(i."VAL_TOT"), 2)'
+            metric_alias = "valor_medio_internacao"
+        elif "taxa_mortalidade" in metric_names:
+            metric_expression = (
+                'ROUND(SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 100.0 /'
+                " NULLIF(COUNT(*), 0), 2)"
+            )
+            metric_alias = "taxa_mortalidade_percentual"
+        return (
+            f"SELECT {column} AS {alias},"
+            f" {metric_expression} AS {metric_alias}"
+            " FROM internacoes i"
+            ' JOIN cid c ON i."DIAG_PRINC" = c."CID"'
+            f" WHERE {where_clause}"
+            f" GROUP BY {column}"
+            f" ORDER BY {metric_alias} DESC"
+            f"{limit};"
         )
 
     if (
@@ -1975,7 +2173,14 @@ def _internacoes_semantic_filter_conditions(plan: SemanticPlan) -> list[str]:
         if field == "obstetrico":
             conditions.append('i."ESPEC" = 2')
         elif field == "uti":
-            conditions.append('i."VAL_UTI" IS NOT NULL AND i."VAL_UTI" > 0')
+            conditions.append('i."UTI_INT_TO" IS NOT NULL AND i."UTI_INT_TO" > 0')
+        elif field == "carater_internacao" and values:
+            numeric_values = [value for value in values if re.fullmatch(r"\d+", value)]
+            if numeric_values:
+                conditions.append(f'i."CAR_INT" IN ({", ".join(numeric_values)})')
+        elif field == "longa_permanencia":
+            threshold = next((value for value in values if re.fullmatch(r"\d+", value)), "30")
+            conditions.append(f'i."DIAS_PERM" >= {threshold}')
         elif field == "sexo" and values:
             numeric_values = [value for value in values if re.fullmatch(r"\d+", value)]
             if numeric_values:
@@ -2003,6 +2208,10 @@ def _internacoes_semantic_filter_conditions(plan: SemanticPlan) -> list[str]:
                 )
                 conditions.append(f'i."IDADE" {operator} {numeric_values[0]}')
         elif field == "diagnostico_principal_prefix" and values:
+            values = [
+                value.upper() if value.endswith("%") else f"{value.upper()}%"
+                for value in values
+            ]
             prefix_conditions = " OR ".join(
                 f'i."DIAG_PRINC" LIKE {_sql_string_literal(value.upper())}'
                 for value in values
@@ -2065,6 +2274,10 @@ def _diagnosis_semantic_filter_conditions(
             quoted = ", ".join(_sql_string_literal(value.upper()) for value in values)
             conditions.append(f"{diagnosis_column} IN ({quoted})")
         elif field == "diagnostico_principal_prefix":
+            values = [
+                value.upper() if value.endswith("%") else f"{value.upper()}%"
+                for value in values
+            ]
             prefix_conditions = " OR ".join(
                 f"{diagnosis_column} LIKE {_sql_string_literal(value.upper())}"
                 for value in values
@@ -2083,11 +2296,6 @@ def _diagnosis_semantic_filter_conditions(
 
 def _diagnosis_join_cohort_condition(plan: SemanticPlan) -> str | None:
     predicates: list[str] = []
-    has_prefix_filter = any(
-        semantic_filter.field.lower() == "diagnostico_principal_prefix"
-        and any(str(value).strip() for value in semantic_filter.values)
-        for semantic_filter in plan.filters
-    )
     for semantic_filter in plan.filters:
         field = semantic_filter.field.lower()
         values = [str(value).strip() for value in semantic_filter.values if str(value).strip()]
@@ -2097,17 +2305,28 @@ def _diagnosis_join_cohort_condition(plan: SemanticPlan) -> str | None:
             quoted = ", ".join(_sql_string_literal(value.upper()) for value in values)
             predicates.append(f'c."CID" IN ({quoted})')
         elif field == "diagnostico_principal_prefix":
+            values = [
+                value.upper() if value.endswith("%") else f"{value.upper()}%"
+                for value in values
+            ]
             predicates.extend(
                 f'c."CID" LIKE {_sql_string_literal(value.upper())}' for value in values
             )
         elif field == "diagnostico_principal_descricao" or (
-            field == "diagnostico_conceito_termo_expandido" and not has_prefix_filter
+            field == "diagnostico_conceito_termo_expandido"
         ):
-            predicates.extend(
-                f'c."DESCRICAO" ILIKE {_sql_string_literal(f"%{value}%")}'
-                for value in values
-                if "cid " not in value.lower()
-            )
+            for value in values:
+                if "cid " in value.lower():
+                    continue
+                predicates.extend(
+                    f"{column} ILIKE {_sql_string_literal(f'%{value}%')}"
+                    for column in [
+                        'c."DESCRICAO"',
+                        'c."DS_CATEGORIA"',
+                        'c."DS_GRUPO"',
+                        'c."DS_CAPITULO"',
+                    ]
+                )
     if not predicates:
         return None
     return "(" + " OR ".join(dict.fromkeys(predicates)) + ")"

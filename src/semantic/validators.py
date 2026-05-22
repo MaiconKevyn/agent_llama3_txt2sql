@@ -100,6 +100,24 @@ def _has_group_by_dimension(inspector: SQLInspector, dimension: str) -> bool:
             r"\bds_capitulo\b",
             r"\bsubstr\s*\(",
         ],
+        "cid_categoria": [
+            r"\bcategoria\b",
+            r"\bcategoria_cid\b",
+            r"\bcid_categoria\b",
+            r"\bds_categoria\b",
+        ],
+        "cid_grupo": [
+            r"\bgrupo\b",
+            r"\bgrupo_cid\b",
+            r"\bcid_grupo\b",
+            r"\bds_grupo\b",
+        ],
+        "cid_restrsexo": [
+            r"\brestr(?:icao|ição|icoes|ições)?_?sexo\b",
+            r"\brestrsexo\b",
+        ],
+        "cid_codigo": [r"\bcid\b"],
+        "cid_descricao": [r"\bdescricao\b", r"\bdescri[cç][aã]o\b"],
         "diagnostico": [r"\b(?:descricao|\"descricao\"|diag_princ|cid)\b"],
         "procedimento": [r"\b(?:nome_proc|\"nome_proc\"|proc_rea)\b"],
         "marca_uti": [r"\b(?:marca_uti|tipo_uti|descri[cç][aã]o)\b"],
@@ -264,6 +282,11 @@ def validate_sql_against_semantic_plan(
                     "hospital",
                     "especialidade",
                     "cid_capitulo",
+                    "cid_categoria",
+                    "cid_grupo",
+                    "cid_restrsexo",
+                    "cid_codigo",
+                    "cid_descricao",
                     "diagnostico",
                     "procedimento",
                     "contraceptivo",
@@ -511,7 +534,7 @@ def _validate_additional_semantic_constraints(
                 "the question asks for a diagnosis breakdown."
             )
 
-    if "diagnosis_description_lookup_required" in plan.constraints:
+    if "diagnosis_description_lookup_required" in plan.constraints and plan.base_grain != "cid_catalog":
         if "diag_princ" not in text or "cid" not in text or "descricao" not in text:
             return False, (
                 "SEMANTIC PLAN ERROR: Diagnosis description lookup must resolve disease terms "
@@ -1388,7 +1411,11 @@ def _validate_required_filters(
                 )
         elif field == "diagnostico_principal_prefix" and values:
             expected_prefix = values[0].replace("%", "").lower()
-            has_diag_column = re.search(r"\bdiag_princ\b|\bcid\b", text, re.I)
+            has_diag_column = (
+                "cid" in text
+                if plan.base_grain == "cid_catalog"
+                else re.search(r"\bdiag_princ\b|\bcid\b", text, re.I)
+            )
             has_prefix = re.search(
                 rf"\blike\s+['\"]{re.escape(expected_prefix)}%['\"]",
                 text,
@@ -1399,7 +1426,7 @@ def _validate_required_filters(
                     "SEMANTIC PLAN ERROR: SQL does not apply the requested diagnosis prefix filter."
                 )
         elif field == "diagnostico_principal_codigo" and values:
-            if "diag_princ" not in text:
+            if plan.base_grain != "cid_catalog" and "diag_princ" not in text:
                 return False, (
                     "SEMANTIC PLAN ERROR: SQL does not apply the resolved diagnosis code "
                     "through DIAG_PRINC."
@@ -1425,7 +1452,7 @@ def _validate_required_filters(
             if not re.search(r"\bmorte\b", text, re.I):
                 return False, "SEMANTIC PLAN ERROR: SQL does not apply the requested death filter."
         elif field == "diagnostico_principal_descricao" and values:
-            if "diag_princ" not in text:
+            if plan.base_grain != "cid_catalog" and "diag_princ" not in text:
                 return False, (
                     "SEMANTIC PLAN ERROR: SQL does not apply the requested diagnosis description "
                     "filter through DIAG_PRINC."

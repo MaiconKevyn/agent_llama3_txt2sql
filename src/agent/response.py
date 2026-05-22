@@ -34,6 +34,18 @@ def build_domain_caveats(*, user_query: str, semantic_plan: dict[str, Any] | Non
         for item in filters
     ):
         caveats.append("Causas respiratorias foram operacionalizadas como CID J00-J99.")
+    if (
+        "quais cid" in normalized or "quais cids" in normalized
+    ) and "analisar" in normalized and any(
+        item.get("field") == "diagnostico_principal_prefix" for item in filters
+    ):
+        caveats.append(
+            "Lista candidata de CIDs; confirme o escopo clinico antes de usar em contagens."
+        )
+    if "cronica" in normalized or "cronicas" in normalized or "crônica" in normalized:
+        caveats.append(
+            "Doencas cronicas nao sao um unico bloco CID; confirme a lista de condicoes ou o escopo clinico."
+        )
     if any(item.get("field") == "desfecho" for item in filters):
         caveats.append("Mortes hospitalares foram filtradas com MORTE=true.")
     return caveats

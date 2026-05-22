@@ -37,6 +37,8 @@ def resolve_population_group(text: str) -> list[SemanticFilter]:
                 operator="<",
             )
         ]
+    if re.search(r"\b(idoso|idosos|idosa|idosas|geriatrico|geriatricos)\b", normalized):
+        return [SemanticFilter(field="idade", values=["60"], operator=">=")]
     return []
 
 
