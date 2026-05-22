@@ -185,6 +185,32 @@ def test_build_age_diagnosis_association_sql_supports_generic_diagnosis_descript
     assert valid is True, message
 
 
+@pytest.mark.parametrize(
+    "question",
+    [
+        "O que os dados mostram sobre idade e doencas respiratorias?",
+        "Compare covid segundo idade, com denominador e caveats.",
+        "O que os dados mostram sobre idade e diabetes?",
+    ],
+)
+def test_build_age_diagnosis_association_sql_supports_natural_analysis_phrasings(question):
+    from src.agent.analytic_sql import build_age_diagnosis_association_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(question)
+
+    sql = build_age_diagnosis_association_sql(plan)
+
+    assert sql is not None
+    assert "'age_diagnosis_association' AS analysis_type" in sql
+    assert "taxa_por_100k_denominador" in sql
+    assert "rate_ratio_maior_igual_50_vs_menor_50" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
 def test_deterministic_analytic_sql_respects_rollout_flag():
     from src.agent.sql_generation import _build_deterministic_analytic_sql
     from src.semantic.planner import build_semantic_plan
@@ -339,6 +365,31 @@ def test_build_geographic_condition_rate_sql_package():
     assert valid is True, message
 
 
+@pytest.mark.parametrize(
+    "question",
+    [
+        "O que os dados mostram sobre UF de residencia e doencas respiratorias?",
+        "Compare covid segundo UF de residencia, com denominador e caveats.",
+    ],
+)
+def test_build_geographic_condition_rate_sql_package_supports_natural_phrasings(question):
+    from src.agent.analytic_sql import build_analytic_sql_package
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(question)
+
+    sql = build_analytic_sql_package(plan)
+
+    assert sql is not None
+    assert "'geographic_condition_rate' AS analysis_type" in sql
+    assert "group_distribution" in sql
+    assert "taxa_por_100k_denominador" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
 def test_build_temporal_condition_trend_sql_package_resolves_covid():
     from src.agent.analytic_sql import build_analytic_sql_package
     from src.semantic.planner import build_semantic_plan
@@ -353,6 +404,197 @@ def test_build_temporal_condition_trend_sql_package_resolves_covid():
     assert "'B342'" in sql
     assert "'B972'" in sql
     assert "time_series" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "O que os dados mostram sobre ano e doencas respiratorias?",
+        "Compare doencas respiratorias segundo ano, com denominador e caveats.",
+    ],
+)
+def test_build_temporal_condition_trend_sql_package_supports_natural_phrasings(question):
+    from src.agent.analytic_sql import build_analytic_sql_package
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(question)
+
+    sql = build_analytic_sql_package(plan)
+
+    assert sql is not None
+    assert "'temporal_condition_trend' AS analysis_type" in sql
+    assert "time_series" in sql
+    assert "delta_percent" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_temporal_condition_trend_package_does_not_capture_monthly_fixed_year_counts():
+    from src.agent.analytic_sql import build_analytic_sql_package
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan("Qual foi a evolucao mensal de internacoes por covid em 2021?")
+
+    assert build_analytic_sql_package(plan) is None
+
+
+def test_deterministic_grouped_sql_uses_standard_mortality_age_bands():
+    from src.agent.sql_generation import _build_deterministic_grouped_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan("Qual foi a mortalidade por faixa etaria em 2021?")
+
+    sql = _build_deterministic_grouped_sql(plan)
+
+    assert sql is not None
+    assert "'00-17'" in sql
+    assert "'18-39'" in sql
+    assert "'40-59'" in sql
+    assert "'60-79'" in sql
+    assert "'80+'" in sql
+    assert "total_obitos" in sql
+    assert "taxa_mortalidade_percentual" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_grouped_sql_outputs_hospital_mortality_support_counts():
+    from src.agent.sql_generation import _build_deterministic_grouped_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(
+        "Quais hospitais tiveram maior taxa de mortalidade em 2021 considerando pelo menos 1000 internacoes?"
+    )
+
+    sql = _build_deterministic_grouped_sql(plan)
+
+    assert sql is not None
+    assert 'JOIN hospital h ON i."CNES" = h."CNES"' in sql
+    assert 'h."NO_HOSPITAL" AS hospital' in sql
+    assert "total_internacoes" in sql
+    assert "total_obitos" in sql
+    assert "taxa_mortalidade_percentual" in sql
+    assert "HAVING COUNT(*) >= 1000" in sql
+    assert "LIMIT 10" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_grouped_sql_limits_top_diagnosis_death_ranking():
+    from src.agent.sql_generation import _build_deterministic_grouped_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(
+        "Quais diagnosticos principais concentraram mais obitos hospitalares em 2021?"
+    )
+
+    sql = _build_deterministic_grouped_sql(plan)
+
+    assert sql is not None
+    assert 'JOIN cid c ON i."DIAG_PRINC" = c."CID"' in sql
+    assert 'c."DESCRICAO" AS diagnostico' in sql
+    assert "COUNT(*) AS total_obitos" in sql
+    assert 'i."MORTE" = true' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert "ORDER BY total_obitos DESC" in sql
+    assert "LIMIT 10" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_grouped_sql_uses_cid_chapter_lookup_label():
+    from src.agent.sql_generation import _build_deterministic_grouped_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan("Quais capitulos CID concentraram mais internacoes em 2021?")
+
+    sql = _build_deterministic_grouped_sql(plan)
+
+    assert sql is not None
+    assert 'JOIN cid c ON i."DIAG_PRINC" = c."CID"' in sql
+    assert 'c."DS_CAPITULO" AS capitulo_cid' in sql
+    assert "SUBSTR" not in sql.upper()
+    assert "COUNT(*) AS total_internacoes" in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert 'ORDER BY "total_internacoes" DESC' in sql
+    assert "LIMIT 10" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_scalar_sql_counts_description_condition_with_trimmed_term():
+    from src.agent.sql_generation import _build_deterministic_scalar_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan("Quantas internacoes por hipertensao ocorreram em 2021?")
+
+    sql = _build_deterministic_scalar_sql(plan)
+
+    assert sql is not None
+    assert '"DIAG_PRINC" IN (SELECT c."CID" FROM cid c' in sql
+    assert 'c."DESCRICAO" ILIKE' in sql
+    assert "%hipertens%" in sql
+    assert "ocorreram" not in sql
+    assert 'EXTRACT(YEAR FROM "DT_INTER") = 2021' in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_grouped_sql_limits_residence_municipality_rankings():
+    from src.agent.sql_generation import _build_deterministic_grouped_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(
+        "Quais municipios de residencia tiveram mais internacoes em MA em 2020?"
+    )
+
+    sql = _build_deterministic_grouped_sql(plan)
+
+    assert sql is not None
+    assert 'JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"' in sql
+    assert 'mu."NO_MUNICIPIO" AS municipio_residencia' in sql
+    assert 'mu."SG_UF" = \'MA\'' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2020' in sql
+    assert 'ORDER BY "total_internacoes" DESC' in sql
+    assert "LIMIT 10" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_grouped_sql_limits_health_region_rankings():
+    from src.agent.sql_generation import _build_deterministic_grouped_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan("Quais regioes de saude de MA tiveram mais internacoes em 2021?")
+
+    sql = _build_deterministic_grouped_sql(plan)
+
+    assert sql is not None
+    assert 'JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"' in sql
+    assert 'mu."NO_REGIAO_SAUDE" AS "regiao_saude"' in sql
+    assert 'mu."NO_MUNICIPIO" AS regiao_saude' not in sql
+    assert 'mu."SG_UF" = \'MA\'' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert 'ORDER BY "total_internacoes" DESC' in sql
+    assert "LIMIT 10" in sql
 
     valid, message = validate_sql_against_semantic_plan(plan, sql)
     assert valid is True, message
@@ -771,6 +1013,670 @@ def test_post_execution_contract_rejects_successful_sql_missing_requested_dimens
 
     assert passed is False
     assert "requested output dimension" in (message or "").lower()
+
+
+def test_post_execution_contract_accepts_health_region_output_dimension():
+    from src.agent.execution import _validate_post_execution_contract
+    from src.semantic.planner import build_semantic_plan
+
+    plan = build_semantic_plan(
+        "Quais regioes de saude de MA tiveram mais internacoes em 2021?"
+    )
+    sql = """
+        SELECT mu."NO_REGIAO_SAUDE" AS regiao_saude,
+               COUNT(*) AS total_internacoes
+        FROM internacoes i
+        JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+        WHERE mu."SG_UF" = 'MA'
+        GROUP BY mu."NO_REGIAO_SAUDE"
+    """
+
+    passed, message = _validate_post_execution_contract(
+        plan,
+        sql,
+        results=[{"regiao_saude": "São Luís", "total_internacoes": 82991}],
+        row_count=10,
+    )
+
+    assert passed is True
+    assert message is None
+
+
+def test_deterministic_grouped_sql_ranks_procedures_with_required_aliases():
+    from src.agent.sql_generation import _build_deterministic_grouped_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan("Quais foram os procedimentos mais frequentes em 2021?")
+
+    sql = _build_deterministic_grouped_sql(plan)
+
+    assert sql is not None
+    assert 'JOIN internacao_procedimento ip ON i."N_AIH" = ip."N_AIH"' in sql
+    assert 'JOIN procedimentos p ON ip."PROC_REA" = p."PROC_REA"' in sql
+    assert 'p."NOME_PROC" AS "procedimento"' in sql
+    assert 'COUNT(*) AS "total_procedimentos"' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert 'ORDER BY "total_procedimentos" DESC' in sql
+    assert "LIMIT 10" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_grouped_sql_ranks_procedures_inside_diagnosis_description_cohort():
+    from src.agent.sql_generation import _build_deterministic_grouped_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(
+        "Quais procedimentos apareceram com mais frequencia em internacoes por diabetes em 2021?"
+    )
+
+    sql = _build_deterministic_grouped_sql(plan)
+
+    assert sql is not None
+    assert 'p."NOME_PROC" AS "procedimento"' in sql
+    assert 'COUNT(*) AS "total_procedimentos"' in sql
+    assert 'JOIN internacao_procedimento ip ON i."N_AIH" = ip."N_AIH"' in sql
+    assert 'JOIN procedimentos p ON ip."PROC_REA" = p."PROC_REA"' in sql
+    assert 'i."DIAG_PRINC" IN (SELECT c."CID" FROM cid c' in sql
+    assert 'c."DESCRICAO" ILIKE \'%diabetes%\'' in sql
+    assert 'GROUP BY p."NOME_PROC"' in sql
+    assert 'ORDER BY "total_procedimentos" DESC' in sql
+    assert "LIMIT 10" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_grouped_sql_ranks_procedures_inside_diagnosis_prefix_cohort():
+    from src.agent.sql_generation import _build_deterministic_grouped_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(
+        "Quais procedimentos apareceram com mais frequencia em internacoes por neoplasias em 2021?"
+    )
+
+    sql = _build_deterministic_grouped_sql(plan)
+
+    assert sql is not None
+    assert 'p."NOME_PROC" AS "procedimento"' in sql
+    assert 'COUNT(*) AS "total_procedimentos"' in sql
+    assert 'i."DIAG_PRINC" LIKE \'C%\'' in sql
+    assert 'GROUP BY p."NOME_PROC"' in sql
+    assert "LIMIT 10" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_grouped_sql_sums_total_value_by_residence_uf_contract_aliases():
+    from src.agent.sql_generation import _build_deterministic_grouped_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan("Qual foi o valor total de internacoes por UF em 2021?")
+
+    sql = _build_deterministic_grouped_sql(plan)
+
+    assert sql is not None
+    assert 'mu."SG_UF" AS "uf_residencia"' in sql
+    assert 'ROUND(SUM(i."VAL_TOT"), 2) AS "valor_total"' in sql
+    assert 'JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert 'GROUP BY mu."SG_UF"' in sql
+    assert 'ORDER BY "valor_total" DESC' in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_grouped_sql_sums_uti_value_by_residence_uf_contract_aliases():
+    from src.agent.sql_generation import _build_deterministic_grouped_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan("Qual foi o valor total de UTI por UF em 2021?")
+
+    sql = _build_deterministic_grouped_sql(plan)
+
+    assert sql is not None
+    assert 'mu."SG_UF" AS "uf_residencia"' in sql
+    assert 'ROUND(SUM(i."VAL_UTI"), 2) AS "valor_uti_total"' in sql
+    assert 'JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert 'GROUP BY mu."SG_UF"' in sql
+    assert 'ORDER BY "valor_uti_total" DESC' in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_grouped_sql_rates_uti_mortality_by_residence_uf_with_usage_markers():
+    from src.agent.sql_generation import _build_deterministic_grouped_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(
+        "Qual foi a mortalidade em internacoes com UTI por UF em 2021?"
+    )
+
+    sql = _build_deterministic_grouped_sql(plan)
+
+    assert sql is not None
+    assert 'mu."SG_UF" AS "uf_residencia"' in sql
+    assert "COUNT(*) AS total_internacoes" in sql
+    assert "SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_obitos" in sql
+    assert "taxa_mortalidade_percentual" in sql
+    assert 'JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert 'i."MARCA_UTI" IS NOT NULL OR i."UTI_INT_TO" > 0' in sql
+    assert 'i."VAL_UTI" > 0' not in sql
+    assert 'GROUP BY mu."SG_UF"' in sql
+    assert "ORDER BY taxa_mortalidade_percentual DESC" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_grouped_sql_distributes_uti_admissions_by_marker_label():
+    from src.agent.sql_generation import _build_deterministic_grouped_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(
+        "Como as internacoes com UTI se distribuem por marca de UTI em 2021?"
+    )
+
+    sql = _build_deterministic_grouped_sql(plan)
+
+    assert sql is not None
+    assert 'COALESCE(m."DESCRICAO", ' in sql
+    assert 'AS tipo_uti' in sql
+    assert "COUNT(*) AS total_internacoes" in sql
+    assert 'LEFT JOIN marca_uti m ON i."MARCA_UTI" = m."MARCA_UTI"' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert 'i."MARCA_UTI" IS NOT NULL OR i."UTI_INT_TO" > 0' in sql
+    assert 'i."VAL_UTI" > 0' not in sql
+    assert "GROUP BY tipo_uti" in sql
+    assert "ORDER BY total_internacoes DESC" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_scalar_sql_sums_uti_spending_with_value_alias():
+    from src.agent.sql_generation import _build_deterministic_scalar_sql
+    from src.semantic.plan_schema import SemanticFilter
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan("Qual foi o gasto total de UTI em 2021?")
+    plan.filters.append(SemanticFilter(field="VAL_UTI", values=["0"], operator="not_equal"))
+
+    sql = _build_deterministic_scalar_sql(plan)
+
+    assert sql is not None
+    assert 'ROUND(SUM(i."VAL_UTI"), 2) AS valor_uti_total' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert 'i."VAL_UTI" > 0' not in sql
+    assert "COUNT(*)" not in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_grouped_sql_distributes_admissions_by_sex_lookup_label():
+    from src.agent.sql_generation import _build_deterministic_grouped_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan("Como as internacoes se distribuem por sexo em 2021?")
+
+    sql = _build_deterministic_grouped_sql(plan)
+
+    assert sql is not None
+    assert 's."DESCRICAO" AS sexo' in sql
+    assert "COUNT(*) AS total_internacoes" in sql
+    assert 'JOIN sexo s ON i."SEXO" = s."SEXO"' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert 'i."MORTE" = true' not in sql
+    assert 'GROUP BY s."DESCRICAO"' in sql
+    assert "ORDER BY total_internacoes DESC" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_grouped_sql_distributes_deaths_by_race_color_with_unmapped_bucket():
+    from src.agent.sql_generation import _build_deterministic_grouped_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(
+        "Como os obitos hospitalares se distribuem por raca/cor informada em 2021?"
+    )
+
+    sql = _build_deterministic_grouped_sql(plan)
+
+    assert sql is not None
+    assert "COALESCE" in sql
+    assert "'sem raca/cor mapeada'" in sql
+    assert "AS raca_cor" in sql
+    assert "COUNT(*) AS total_obitos" in sql
+    assert 'LEFT JOIN raca_cor r ON i."RACA_COR" = r."RACA_COR"' in sql
+    assert 'i."MORTE" = true' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert 'i."RACA_COR" IN (1, 2, 3, 4, 5)' not in sql
+    assert "GROUP BY COALESCE" in sql
+    assert "ORDER BY total_obitos DESC" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_scalar_sql_reports_instruction_mapping_coverage():
+    from src.agent.sql_generation import _build_deterministic_scalar_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(
+        "Qual e a cobertura de instrucao preenchida nas internacoes de 2020?"
+    )
+
+    sql = _build_deterministic_scalar_sql(plan)
+
+    assert sql is not None
+    assert "COUNT(*) AS total_internacoes" in sql
+    assert 'COUNT(ins."INSTRU") AS com_instrucao_mapeada' in sql
+    assert "percentual_mapeado" in sql
+    assert 'LEFT JOIN instrucao ins ON i."INSTRU" = ins."INSTRU"' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2020' in sql
+    assert "GROUP BY" not in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_scalar_sql_average_age_for_diagnosis_cohort_contract_aliases():
+    from src.agent.sql_generation import _build_deterministic_scalar_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(
+        "Qual foi a idade media dos pacientes internados por pneumonia em 2021?"
+    )
+
+    sql = _build_deterministic_scalar_sql(plan)
+
+    assert sql is not None
+    assert "COUNT(*) AS total_internacoes" in sql
+    assert 'ROUND(AVG(i."IDADE"), 2) AS idade_media' in sql
+    assert 'JOIN cid c ON i."DIAG_PRINC" = c."CID"' in sql
+    assert 'c."DESCRICAO" ILIKE \'%pneumonia%\'' in sql
+    assert 'i."IDADE" IS NOT NULL' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert 'AVG(i."VAL_TOT")' not in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_grouped_sql_sums_population_by_uf_contract_aliases():
+    from src.agent.sql_generation import _build_deterministic_grouped_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan("Qual era a populacao total por UF em 2019?")
+
+    sql = _build_deterministic_grouped_sql(plan)
+
+    assert sql is not None
+    assert 'm."SG_UF" AS uf' in sql
+    assert 'SUM(s."QT_POPULACAO") AS populacao' in sql
+    assert 'JOIN municipios m ON s."CO_MUNICIPIO_6D" = m."CO_MUNICIPIO_6D"' in sql
+    assert 's."NU_ANO" = 2019' in sql
+    assert 'GROUP BY m."SG_UF"' in sql
+    assert "ORDER BY populacao DESC" in sql
+    assert "populacao_total" not in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_grouped_sql_socioeconomic_indicator_by_uf_contract_aliases():
+    from src.agent.sql_generation import _build_deterministic_grouped_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(
+        "Quais UFs tiveram maior leitos SUS por 1000 habitantes em 2021?"
+    )
+
+    sql = _build_deterministic_grouped_sql(plan)
+
+    assert sql is not None
+    assert 'm."SG_UF" AS uf' in sql
+    assert 'ROUND(AVG(s."VL_LEITOS_SUS_1000"), 2) AS valor_indicador' in sql
+    assert 'JOIN municipios m ON s."CO_MUNICIPIO_6D" = m."CO_MUNICIPIO_6D"' in sql
+    assert 's."VL_LEITOS_SUS_1000" IS NOT NULL' not in sql
+    assert 's."NU_ANO" = 2021' in sql
+    assert 'GROUP BY m."SG_UF"' in sql
+    assert "ORDER BY valor_indicador DESC NULLS LAST" in sql
+    assert "LIMIT" not in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_grouped_sql_pib_per_capita_municipality_includes_uf():
+    from src.agent.sql_generation import _build_deterministic_grouped_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan("Quais municipios tiveram maior PIB per capita em 2019?")
+
+    sql = _build_deterministic_grouped_sql(plan)
+
+    assert sql is not None
+    assert 'm."NO_MUNICIPIO" AS municipio' in sql
+    assert 'm."SG_UF" AS uf' in sql
+    assert 'ROUND(s."VL_PIB_PERCAPITA", 2) AS pib_per_capita' in sql
+    assert 'JOIN municipios m ON s."CO_MUNICIPIO_6D" = m."CO_MUNICIPIO_6D"' in sql
+    assert 's."NU_ANO" = 2019' in sql
+    assert "ORDER BY pib_per_capita DESC NULLS LAST" in sql
+    assert "LIMIT 10" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_grouped_sql_population_rate_by_uf_contract_aliases():
+    from src.agent.sql_generation import _build_deterministic_grouped_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(
+        "Qual foi a taxa de internacoes por 100 mil habitantes por UF em 2021?"
+    )
+
+    sql = _build_deterministic_grouped_sql(plan)
+
+    assert sql is not None
+    assert "internacoes_por_uf AS" in sql
+    assert "populacao_por_uf AS" in sql
+    assert 'mu."SG_UF" AS uf' in sql
+    assert 'm."SG_UF" AS uf' in sql
+    assert 'COUNT(*) AS total_internacoes' in sql
+    assert 'SUM(s."QT_POPULACAO") AS populacao' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert 's."NU_ANO" = 2021' in sql
+    assert "i.total_internacoes * 100000.0 / NULLIF(p.populacao, 0)" in sql
+    assert "AS taxa_por_100k" in sql
+    assert "JOIN populacao_por_uf p ON i.uf = p.uf" in sql
+    assert "ORDER BY taxa_por_100k DESC" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_scalar_sql_counts_missing_primary_diagnosis():
+    from src.agent.sql_generation import _build_deterministic_scalar_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(
+        "Quantas internacoes tiveram diagnostico principal ausente ou em branco em 2021?"
+    )
+
+    sql = _build_deterministic_scalar_sql(plan)
+
+    assert sql is not None
+    assert "COUNT(*) AS internacoes_sem_diag_princ" in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert '(i."DIAG_PRINC" IS NULL OR TRIM(i."DIAG_PRINC") = \'\')' in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_scalar_sql_counts_primary_diagnosis_without_cid_lookup():
+    from src.agent.sql_generation import _build_deterministic_scalar_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(
+        "Quantos diagnosticos principais de 2021 nao existem no catalogo CID?"
+    )
+
+    sql = _build_deterministic_scalar_sql(plan)
+
+    assert sql is not None
+    assert "COUNT(*) AS diagnosticos_sem_lookup" in sql
+    assert 'LEFT JOIN cid c ON i."DIAG_PRINC" = c."CID"' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert 'i."DIAG_PRINC" IS NOT NULL' in sql
+    assert 'c."CID" IS NULL' in sql
+    assert "ROW_NUMBER" not in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_scalar_sql_counts_missing_residence_municipality_lookup():
+    from src.agent.sql_generation import _build_deterministic_scalar_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(
+        "Quantas internacoes de 2021 tem municipio de residencia sem cadastro territorial?"
+    )
+
+    sql = _build_deterministic_scalar_sql(plan)
+
+    assert sql is not None
+    assert "COUNT(*) AS municipios_residencia_sem_lookup" in sql
+    assert 'LEFT JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert 'i."MUNIC_RES" IS NOT NULL' in sql
+    assert 'mu."CO_MUNICIPIO_6D" IS NULL' in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_scalar_sql_reports_missing_race_color_death_rate():
+    from src.agent.sql_generation import _build_deterministic_scalar_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(
+        "Qual percentual dos obitos de 2021 esta sem informacao de raca/cor mapeada?"
+    )
+
+    sql = _build_deterministic_scalar_sql(plan)
+
+    assert sql is not None
+    assert "COUNT(*) AS total_obitos" in sql
+    assert "AS obitos_sem_raca_cor_mapeada" in sql
+    assert "AS percentual_sem_raca_cor" in sql
+    assert 'LEFT JOIN raca_cor r ON i."RACA_COR" = r."RACA_COR"' in sql
+    assert 'i."MORTE" = true' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert 'r."RACA_COR" IS NULL' in sql
+    assert "DIAG_PRINC" not in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_scalar_sql_counts_discharge_before_admission_dates():
+    from src.agent.sql_generation import _build_deterministic_scalar_sql
+    from src.semantic.plan_schema import SemanticFilter
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(
+        "Existem internacoes com data de saida anterior a data de entrada em 2021?"
+    )
+    plan = plan.model_copy(
+        update={
+            "filters": [
+                *plan.filters,
+                SemanticFilter(field="DT_SAIDA", values=[], operator="<"),
+                SemanticFilter(field="DT_INTER", values=[], operator=">"),
+            ]
+        }
+    )
+
+    sql = _build_deterministic_scalar_sql(plan)
+
+    assert sql is not None
+    assert "COUNT(*) AS altas_antes_da_internacao" in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert 'i."DT_SAIDA" < i."DT_INTER"' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_SAIDA")' not in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_grouped_sql_limits_average_stay_by_specialty():
+    from src.agent.sql_generation import _build_deterministic_grouped_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan("Qual foi a permanencia media por especialidade em 2021?")
+
+    sql = _build_deterministic_grouped_sql(plan)
+
+    assert sql is not None
+    assert 'e."DESCRICAO" AS especialidade' in sql
+    assert 'ROUND(AVG(i."DIAS_PERM"), 2) AS permanencia_media' in sql
+    assert 'JOIN especialidade e ON i."ESPEC" = e."ESPEC"' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert 'ORDER BY permanencia_media DESC NULLS LAST' in sql
+    assert 'LIMIT 10' in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_scalar_sql_counts_uti_usage_with_usage_markers():
+    from src.agent.sql_generation import _build_deterministic_scalar_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan("Quantas internacoes tiveram uso de UTI em 2019?")
+
+    sql = _build_deterministic_scalar_sql(plan)
+
+    assert sql is not None
+    assert 'COUNT(*) AS internacoes_com_uti' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2019' in sql
+    assert 'i."MARCA_UTI" IS NOT NULL OR i."UTI_INT_TO" > 0' in sql
+    assert 'i."VAL_UTI" > 0' not in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_scalar_sql_average_cost_for_diagnosis_cohort_contract_aliases():
+    from src.agent.sql_generation import _build_deterministic_scalar_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(
+        "Qual foi o custo medio de internacao por pneumonia em 2021?"
+    )
+
+    sql = _build_deterministic_scalar_sql(plan)
+
+    assert sql is not None
+    assert 'COUNT(*) AS total_internacoes' in sql
+    assert 'ROUND(AVG(i."VAL_TOT"), 2) AS custo_medio' in sql
+    assert 'JOIN cid c ON i."DIAG_PRINC" = c."CID"' in sql
+    assert 'c."DESCRICAO" ILIKE \'%pneumonia%\'' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert "GROUP BY" not in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_scalar_sql_average_cost_for_resolved_code_concept_keeps_description_synonym():
+    from src.agent.sql_generation import _build_deterministic_scalar_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan("Qual foi o custo medio de internacao por covid em 2021?")
+
+    sql = _build_deterministic_scalar_sql(plan)
+
+    assert sql is not None
+    assert 'c."CID" IN (\'B342\', \'B972\')' in sql
+    assert 'c."DESCRICAO" ILIKE \'%coronavirus%\'' in sql
+    assert 'COUNT(*) AS total_internacoes' in sql
+    assert 'ROUND(AVG(i."VAL_TOT"), 2) AS custo_medio' in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_grouped_sql_ranks_hospital_cost_per_day_with_support_columns():
+    from src.agent.sql_generation import _build_deterministic_grouped_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(
+        "Quais hospitais tiveram maior custo por dia de internacao em 2021 com pelo menos 1000 internacoes?"
+    )
+
+    sql = _build_deterministic_grouped_sql(plan)
+
+    assert sql is not None
+    assert 'h."NO_HOSPITAL" AS hospital' in sql
+    assert 'COUNT(*) AS total_internacoes' in sql
+    assert 'ROUND(SUM(i."VAL_TOT") / NULLIF(SUM(i."DIAS_PERM"), 0), 2) AS custo_medio_por_dia' in sql
+    assert 'JOIN hospital h ON i."CNES" = h."CNES"' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert 'i."DIAS_PERM" > 0' in sql
+    assert 'GROUP BY h."NO_HOSPITAL"' in sql
+    assert 'HAVING COUNT(*) >= 1000' in sql
+    assert 'ORDER BY custo_medio_por_dia DESC NULLS LAST' in sql
+    assert 'LIMIT 10' in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_grouped_sql_filters_procedure_births_by_residence_uf():
+    from src.agent.sql_generation import _build_deterministic_grouped_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(
+        "Qual foi a quantidade de partos cesareos por UF de residencia em 2022?"
+    )
+
+    sql = _build_deterministic_grouped_sql(plan)
+
+    assert sql is not None
+    assert 'JOIN internacao_procedimento ip ON i."N_AIH" = ip."N_AIH"' in sql
+    assert 'JOIN procedimentos p ON ip."PROC_REA" = p."PROC_REA"' in sql
+    assert 'JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"' in sql
+    assert 'mu."SG_UF" AS "uf_residencia"' in sql
+    assert 'COUNT(*) AS "total_procedimentos_cesarea"' in sql
+    assert 'p."NOME_PROC" ILIKE \'%CESAR%\'' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2022' in sql
+    assert 'ORDER BY "total_procedimentos_cesarea" DESC' in sql
+    assert 'i."DIAG_PRINC"' not in sql
+    assert 'i."ESPEC" = 2' not in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
 
 
 def test_build_goalv2_reference_uti_rate_sql():

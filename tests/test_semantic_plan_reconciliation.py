@@ -175,3 +175,87 @@ def test_reconciler_ignores_table_names_as_output_dimensions():
 
     assert result.reconciled_plan.answer_shape.required_dimensions == ["diagnostico"]
     assert [dimension.name for dimension in result.reconciled_plan.dimensions] == ["diagnostico"]
+
+
+def test_reconciler_rejects_llm_residence_uf_as_literal_state_filter():
+    heuristic = build_semantic_plan(
+        "Quantas internacoes ocorreram fora da UF de residencia do paciente em 2020?"
+    )
+    llm = SemanticPlan(
+        intent="count",
+        base_grain="internacao",
+        metrics=[SemanticMetric(name="total", expression_type="count")],
+        filters=[
+            SemanticFilter(field="ano", values=["2020"], operator="="),
+            SemanticFilter(field="estado", values=["UF_residencia"], operator="!="),
+        ],
+        answer_shape=AnswerShape(row_grain="single_scalar"),
+    )
+
+    result = reconcile_semantic_plans(heuristic, llm)
+
+    assert "hospital_location_differs_from_residence_uf_required" in (
+        result.reconciled_plan.constraints
+    )
+    assert not any(
+        semantic_filter.field == "estado"
+        and semantic_filter.values == ["UF_residencia"]
+        and semantic_filter.operator == "!="
+        for semantic_filter in result.reconciled_plan.filters
+    )
+
+
+def test_reconciler_preserves_health_region_dimension_over_llm_omission():
+    heuristic = build_semantic_plan(
+        "Quais regioes de saude de MA tiveram mais internacoes em 2021?"
+    )
+    llm = SemanticPlan(
+        intent="ranking",
+        base_grain="internacao",
+        metrics=[SemanticMetric(name="total", expression_type="count")],
+        filters=[
+            SemanticFilter(field="estado", values=["MA"], operator="="),
+            SemanticFilter(field="ano", values=["2021"], operator="="),
+        ],
+        answer_shape=AnswerShape(
+            row_grain="top_n_global",
+            top_n=10,
+            top_n_scope="global",
+            required_dimensions=[],
+            requires_group_by=True,
+        ),
+    )
+
+    result = reconcile_semantic_plans(heuristic, llm)
+
+    assert result.reconciled_plan.answer_shape.required_dimensions == ["regiao_saude"]
+    assert [dimension.name for dimension in result.reconciled_plan.dimensions] == [
+        "regiao_saude"
+    ]
+
+
+def test_reconciler_rejects_spurious_diagnosis_filter_for_race_color_quality_rate():
+    heuristic = build_semantic_plan(
+        "Qual percentual dos obitos de 2021 esta sem informacao de raca/cor mapeada?"
+    )
+    llm = SemanticPlan(
+        intent="rate",
+        base_grain="internacao",
+        metrics=[SemanticMetric(name="proporcao", expression_type="rate")],
+        filters=[
+            SemanticFilter(field="ano", values=["2021"], operator="="),
+            SemanticFilter(
+                field="diagnostico_principal_descricao",
+                values=["2021 esta sem informacao de raca cor mapeada"],
+                operator="ILIKE",
+            ),
+        ],
+        answer_shape=AnswerShape(row_grain="single_scalar"),
+    )
+
+    result = reconcile_semantic_plans(heuristic, llm)
+
+    assert not any(
+        filter_.field == "diagnostico_principal_descricao"
+        for filter_ in result.reconciled_plan.filters
+    )

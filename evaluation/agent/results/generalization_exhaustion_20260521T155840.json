@@ -1,0 +1,3737 @@
+{
+  "run_id": "generalization_exhaustion_20260521T155840",
+  "created_at": "2026-05-21T16:00:16",
+  "dry_run": false,
+  "summary": {
+    "status_counts": {
+      "passed": 10
+    },
+    "root_cause_counts": {},
+    "severity_counts": {}
+  },
+  "items": [
+    {
+      "id": "GEN291",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "Compare mortalidade hospitalar segundo instrucao, com denominador e caveats.",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "instrucao_mortalidade_caveat",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Sim. Há diferença observada em mortalidade hospitalar (MORTE=true) em diagnostico informado quando as internações são agrupadas por instrução.\n\nEscopo usado: internações com instrucao valida no diagnostico resolvido; denominador por grupo: internações do próprio grupo.\nResumo: 0 internações no denominador analisado e - mortes hospitalares.\n\nLeitura objetiva: maior taxa em - (-%) e menor em - (-%); razão entre maior e menor taxa: -x.\nLimite: isto descreve associação observada nas internações, não causalidade individual.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    SELECT c.\"CID\" FROM cid c WHERE c.\"DESCRICAO\" ILIKE '%mortalidade hospitalar%'\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), coorte AS (\n    SELECT\n        inst.\"DESCRICAO\" AS grupo_label,\n        CAST(i.\"INSTRU\" AS INTEGER) AS ordem,\n        CAST(i.\"INSTRU\" AS INTEGER) AS instrucao,\n        i.\"MORTE\"\n    FROM internacoes i\n    JOIN instrucao inst ON i.\"INSTRU\" = inst.\"INSTRU\"\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"INSTRU\" IS NOT NULL AND i.\"INSTRU\" != 0\n), grupos AS (\n    SELECT\n        grupo_label AS grupo,\n        ordem,\n        COUNT(*) AS total_internacoes,\n        SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes,\n        ROUND(SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2)\n            AS taxa_mortalidade_percentual\n    FROM coorte\n    GROUP BY grupo_label, ordem, instrucao\n), extremos AS (\n    SELECT\n        (SELECT grupo FROM grupos ORDER BY taxa_mortalidade_percentual DESC, total_internacoes DESC LIMIT 1)\n            AS maior_grupo,\n        (SELECT taxa_mortalidade_percentual FROM grupos ORDER BY taxa_mortalidade_percentual DESC, total_internacoes DESC LIMIT 1)\n            AS maior_taxa,\n        (SELECT grupo FROM grupos ORDER BY taxa_mortalidade_percentual ASC, total_internacoes DESC LIMIT 1)\n            AS menor_grupo,\n        (SELECT taxa_mortalidade_percentual FROM grupos ORDER BY taxa_mortalidade_percentual ASC, total_internacoes DESC LIMIT 1)\n            AS menor_taxa\n), excluidos AS (\n    SELECT COUNT(*) AS total_excluidos\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"INSTRU\" IS NULL OR i.\"INSTRU\" = 0\n)\nSELECT\n    'categorical_outcome_association' AS analysis_type,\n    'instrucao' AS factor_name,\n    'mortalidade hospitalar (MORTE=true) em ' || COALESCE((SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos), 'diagnostico informado') AS outcome,\n    (SELECT COUNT(*) FROM coorte) AS total_internacoes,\n    (SELECT SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) FROM coorte) AS total_mortes,\n    'internacoes com instrucao valida no diagnostico resolvido' AS denominador,\n    (SELECT STRING_AGG(\n        grupo || ':' || total_internacoes || ':' || total_mortes || ':' ||\n        taxa_mortalidade_percentual,\n        ' | ' ORDER BY ordem)\n     FROM grupos) AS group_distribution,\n    (SELECT maior_grupo FROM extremos) AS highest_group,\n    (SELECT maior_taxa FROM extremos) AS highest_rate,\n    (SELECT menor_grupo FROM extremos) AS lowest_group,\n    (SELECT menor_taxa FROM extremos) AS lowest_rate,\n    (SELECT ROUND(maior_taxa / NULLIF(menor_taxa, 0), 2) FROM extremos)\n        AS rate_ratio_highest_vs_lowest,\n    (SELECT CASE\n        WHEN total_excluidos > 0 THEN\n            'data_scope: ' || CAST(total_excluidos AS VARCHAR) ||\n            ' registros ficaram fora do denominador por categoria ausente/invalida'\n        ELSE NULL\n     END FROM excluidos) AS warnings\nFROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 9.93208360671997
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 1.1397404670715332
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.09821009635925293
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.03771328926086426
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid",
+          "instrucao",
+          "hospital"
+        ],
+        "schema_context_length": 12975,
+        "latency_by_component": {
+          "query_classification": 0.00033783912658691406,
+          "table_discovery": 1.1398296356201172,
+          "schema_analysis": 0.0008821487426757812,
+          "reasoning": 8.627879619598389,
+          "sql_generation": 0.0006983280181884766,
+          "sql_validation": 0.09824109077453613,
+          "sql_execution": 0.037813663482666016,
+          "completed": 0.00038695335388183594
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Compare mortalidade hospitalar segundo instrucao, com denominador e caveats.",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "association",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            },
+            {
+              "name": "total_mortes",
+              "expression_type": "count",
+              "numerator_condition": "MORTE = true",
+              "required_filters": []
+            },
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters_per_category",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "instrucao",
+              "source": "instrucao.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "diagnostico_principal_descricao",
+              "values": [
+                "mortalidade hospitalar"
+              ],
+              "operator": "ILIKE"
+            },
+            {
+              "field": "instrucao_valid",
+              "values": [
+                "INSTRU IS NOT NULL",
+                "INSTRU != 0"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "instrucao"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "instrucao"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "analytic_response_required",
+            "categorical_outcome_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope",
+            "diagnosis_filter_dimension_not_output",
+            "domain_instrucao_valid_required",
+            "diagnosis_description_lookup_required",
+            "death_cause_description_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid",
+          "instrucao",
+          "hospital"
+        ],
+        "llamaindex_confidence": 0.535092252400412,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "instrucao",
+          "hospital"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid",
+          "instrucao",
+          "hospital"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid",
+          "instrucao",
+          "hospital"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "categorical_outcome_association_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary",
+          "rate_denominator_must_preserve_full_scope",
+          "diagnosis_filter_dimension_not_output",
+          "domain_instrucao_valid_required",
+          "diagnosis_description_lookup_required",
+          "death_cause_description_requires_diag_princ_with_morte"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "association",
+        "analytic_template": "categorical_factor_by_outcome",
+        "denominator_policy": "all_rows_matching_non_outcome_filters_per_category",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "denominator",
+          "group_distribution",
+          "effect_summary",
+          "limitations"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [],
+          "diagnosis_prefixes": [],
+          "diagnosis_description_terms": [
+            "mortalidade hospitalar"
+          ],
+          "labels": [],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.95,
+          "reasoning": "A análise busca comparar a mortalidade hospitalar com base na instrução, utilizando métricas de contagem e taxa. As dimensões e filtros foram definidos para garantir que apenas as internações relevantes sejam consideradas, respeitando as regras de validação da instrução e a descrição do diagnóstico. A taxa de mortalidade é calculada com o numerador condicionado ao desfecho de morte, enquanto o denominador abrange todas as internações que atendem aos critérios estabelecidos.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "categorical_outcome_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope",
+            "diagnosis_filter_dimension_not_output",
+            "domain_instrucao_valid_required",
+            "diagnosis_description_lookup_required",
+            "death_cause_description_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T155840_gen291",
+        "query_number": 1,
+        "orchestrator_execution_time": 9.951117992401123
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN292",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "Existe relacao entre UF de residencia e doencas respiratorias nas internacoes?",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "geografia_condicao_respiratoria",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Há variação observada entre UFs no recorte solicitado.\n\nEscopo usado: CID J00-J99 - Doenças do aparelho respiratório; denominador: internações mapeadas por UF de residencia.\nResumo: 19.570.263 internações no diagnóstico resolvido.\n\n| UF | Internações | Denominador | Taxa por 100 mil | % dos casos |\n|---|---:|---:|---:|---:|\n| RS | 1.560.026 | 11.834.981 | 13.181,48 | 7,97% |\n| PR | 1.617.722 | 12.700.186 | 12.737,78 | 8,27% |\n| PI | 424.254 | 3.338.399 | 12.708,31 | 2,17% |\n| PA | 987.794 | 7.958.966 | 12.411,08 | 5,05% |\n| PB | 393.838 | 3.223.339 | 12.218,32 | 2,01% |\n| MS | 317.216 | 2.706.080 | 11.722,34 | 1,62% |\n| RO | 202.366 | 1.738.501 | 11.640,26 | 1,03% |\n| SC | 838.478 | 7.223.756 | 11.607,23 | -% |\n\nLeitura objetiva: maior taxa em RS (13.181,48 por 100 mil) e menor taxa não zero em SE (7.792,13 por 100 mil); razão: 1,69x.\n\nAtenção sobre escopo dos dados: data_scope: considera apenas internacoes com municipio de residencia mapeado para UF valida.\nLimite: isto descreve distribuição observada nos registros, não risco populacional individual.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    SELECT c.\"CID\" FROM cid c WHERE c.\"CID\" LIKE 'J%'\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), denominador_estado AS (\n    SELECT mu.\"SG_UF\" AS estado, COUNT(*) AS total_denominador\n    FROM internacoes i\n    JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\"\n    WHERE mu.\"SG_UF\" IN ('AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO')\n    GROUP BY mu.\"SG_UF\"\n), casos_estado AS (\n    SELECT mu.\"SG_UF\" AS estado, COUNT(*) AS total_internacoes\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\"\n    WHERE mu.\"SG_UF\" IN ('AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO')\n    GROUP BY mu.\"SG_UF\"\n), grupos AS (\n    SELECT\n        d.estado,\n        COALESCE(c.total_internacoes, 0) AS total_internacoes,\n        d.total_denominador,\n        ROUND(COALESCE(c.total_internacoes, 0) * 100000.0 / NULLIF(d.total_denominador, 0), 2)\n            AS taxa_por_100k_denominador,\n        ROUND(COALESCE(c.total_internacoes, 0) * 100.0 /\n            NULLIF(SUM(COALESCE(c.total_internacoes, 0)) OVER (), 0), 2)\n            AS percentual_casos\n    FROM denominador_estado d\n    LEFT JOIN casos_estado c ON c.estado = d.estado\n), extremos AS (\n    SELECT\n        (SELECT estado FROM grupos ORDER BY taxa_por_100k_denominador DESC, total_internacoes DESC LIMIT 1)\n            AS maior_grupo,\n        (SELECT taxa_por_100k_denominador FROM grupos ORDER BY taxa_por_100k_denominador DESC, total_internacoes DESC LIMIT 1)\n            AS maior_taxa,\n        (SELECT estado FROM grupos WHERE total_internacoes > 0 ORDER BY taxa_por_100k_denominador ASC, total_internacoes DESC LIMIT 1)\n            AS menor_grupo,\n        (SELECT taxa_por_100k_denominador FROM grupos WHERE total_internacoes > 0 ORDER BY taxa_por_100k_denominador ASC, total_internacoes DESC LIMIT 1)\n            AS menor_taxa\n)\nSELECT\n    'geographic_condition_rate' AS analysis_type,\n    'CID J00-J99 - Doencas do aparelho respiratorio' AS resolved_concept,\n    'estado de residencia' AS factor_name,\n    (SELECT SUM(total_internacoes) FROM grupos) AS total_internacoes,\n    'internacoes mapeadas por UF de residencia' AS denominador,\n    (SELECT STRING_AGG(\n        estado || ':' || total_internacoes || ':' || total_denominador || ':' ||\n        taxa_por_100k_denominador || ':' || percentual_casos,\n        ' | ' ORDER BY taxa_por_100k_denominador DESC, total_internacoes DESC)\n     FROM grupos) AS group_distribution,\n    (SELECT maior_grupo FROM extremos) AS highest_group,\n    (SELECT maior_taxa FROM extremos) AS highest_rate,\n    (SELECT menor_grupo FROM extremos) AS lowest_group,\n    (SELECT menor_taxa FROM extremos) AS lowest_rate,\n    (SELECT ROUND(maior_taxa / NULLIF(menor_taxa, 0), 2) FROM extremos)\n        AS rate_ratio_highest_vs_lowest,\n    'data_scope: considera apenas internacoes com municipio de residencia mapeado para UF valida'\n        AS warnings\nFROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 8.2347412109375
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5842211246490479
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.08108282089233398
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.7823295593261719
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.0002510547637939453,
+          "table_discovery": 0.5842914581298828,
+          "schema_analysis": 0.0007727146148681641,
+          "reasoning": 6.7595765590667725,
+          "sql_generation": 0.0008027553558349609,
+          "sql_validation": 0.08111071586608887,
+          "sql_execution": 0.7824389934539795,
+          "completed": 0.00043010711669921875
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Existe relacao entre UF de residencia e doencas respiratorias nas internacoes?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "comparison",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "diagnostico_principal_prefix",
+              "values": [
+                "J%"
+              ],
+              "operator": "LIKE"
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "values": [
+                "CID J00-J99 - Doencas do aparelho respiratorio"
+              ],
+              "operator": "metadata"
+            },
+            {
+              "field": "diagnostico_conceito_termo_expandido",
+              "values": [
+                "doenca respiratoria",
+                "doenca pulmonar",
+                "cid j"
+              ],
+              "operator": "metadata"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [
+              "diagnostico"
+            ],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.42143124163023576,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "diagnosis_concept_resolution_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "comparison",
+        "analytic_template": "geographic_factor_by_condition",
+        "denominator_policy": "same_geographic_scope_per_group",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "denominator",
+          "group_distribution"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [],
+          "diagnosis_prefixes": [
+            "J%"
+          ],
+          "diagnosis_description_terms": [],
+          "labels": [
+            "CID J00-J99 - Doencas do aparelho respiratorio"
+          ],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A comparação entre a UF de residência e as internações por doenças respiratórias requer a contagem total de internações filtradas por diagnósticos respiratórios. As dimensões e métricas foram escolhidas para permitir a análise por estado, considerando a relação entre a localização e a incidência de doenças respiratórias.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T155840_gen292",
+        "query_number": 2,
+        "orchestrator_execution_time": 8.249595880508423
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN293",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "O que os dados mostram sobre UF de residencia e doencas respiratorias?",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "geografia_condicao_respiratoria",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Há variação observada entre UFs no recorte solicitado.\n\nEscopo usado: CID J00-J99 - Doenças do aparelho respiratório; denominador: internações mapeadas por UF de residencia.\nResumo: 19.570.263 internações no diagnóstico resolvido.\n\n| UF | Internações | Denominador | Taxa por 100 mil | % dos casos |\n|---|---:|---:|---:|---:|\n| RS | 1.560.026 | 11.834.981 | 13.181,48 | 7,97% |\n| PR | 1.617.722 | 12.700.186 | 12.737,78 | 8,27% |\n| PI | 424.254 | 3.338.399 | 12.708,31 | 2,17% |\n| PA | 987.794 | 7.958.966 | 12.411,08 | 5,05% |\n| PB | 393.838 | 3.223.339 | 12.218,32 | 2,01% |\n| MS | 317.216 | 2.706.080 | 11.722,34 | 1,62% |\n| RO | 202.366 | 1.738.501 | 11.640,26 | 1,03% |\n| SC | 838.478 | 7.223.756 | 11.607,23 | -% |\n\nLeitura objetiva: maior taxa em RS (13.181,48 por 100 mil) e menor taxa não zero em SE (7.792,13 por 100 mil); razão: 1,69x.\n\nAtenção sobre escopo dos dados: data_scope: considera apenas internacoes com municipio de residencia mapeado para UF valida.\nLimite: isto descreve distribuição observada nos registros, não risco populacional individual.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    SELECT c.\"CID\" FROM cid c WHERE c.\"CID\" LIKE 'J%'\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), denominador_estado AS (\n    SELECT mu.\"SG_UF\" AS estado, COUNT(*) AS total_denominador\n    FROM internacoes i\n    JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\"\n    WHERE mu.\"SG_UF\" IN ('AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO')\n    GROUP BY mu.\"SG_UF\"\n), casos_estado AS (\n    SELECT mu.\"SG_UF\" AS estado, COUNT(*) AS total_internacoes\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\"\n    WHERE mu.\"SG_UF\" IN ('AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO')\n    GROUP BY mu.\"SG_UF\"\n), grupos AS (\n    SELECT\n        d.estado,\n        COALESCE(c.total_internacoes, 0) AS total_internacoes,\n        d.total_denominador,\n        ROUND(COALESCE(c.total_internacoes, 0) * 100000.0 / NULLIF(d.total_denominador, 0), 2)\n            AS taxa_por_100k_denominador,\n        ROUND(COALESCE(c.total_internacoes, 0) * 100.0 /\n            NULLIF(SUM(COALESCE(c.total_internacoes, 0)) OVER (), 0), 2)\n            AS percentual_casos\n    FROM denominador_estado d\n    LEFT JOIN casos_estado c ON c.estado = d.estado\n), extremos AS (\n    SELECT\n        (SELECT estado FROM grupos ORDER BY taxa_por_100k_denominador DESC, total_internacoes DESC LIMIT 1)\n            AS maior_grupo,\n        (SELECT taxa_por_100k_denominador FROM grupos ORDER BY taxa_por_100k_denominador DESC, total_internacoes DESC LIMIT 1)\n            AS maior_taxa,\n        (SELECT estado FROM grupos WHERE total_internacoes > 0 ORDER BY taxa_por_100k_denominador ASC, total_internacoes DESC LIMIT 1)\n            AS menor_grupo,\n        (SELECT taxa_por_100k_denominador FROM grupos WHERE total_internacoes > 0 ORDER BY taxa_por_100k_denominador ASC, total_internacoes DESC LIMIT 1)\n            AS menor_taxa\n)\nSELECT\n    'geographic_condition_rate' AS analysis_type,\n    'CID J00-J99 - Doencas do aparelho respiratorio' AS resolved_concept,\n    'estado de residencia' AS factor_name,\n    (SELECT SUM(total_internacoes) FROM grupos) AS total_internacoes,\n    'internacoes mapeadas por UF de residencia' AS denominador,\n    (SELECT STRING_AGG(\n        estado || ':' || total_internacoes || ':' || total_denominador || ':' ||\n        taxa_por_100k_denominador || ':' || percentual_casos,\n        ' | ' ORDER BY taxa_por_100k_denominador DESC, total_internacoes DESC)\n     FROM grupos) AS group_distribution,\n    (SELECT maior_grupo FROM extremos) AS highest_group,\n    (SELECT maior_taxa FROM extremos) AS highest_rate,\n    (SELECT menor_grupo FROM extremos) AS lowest_group,\n    (SELECT menor_taxa FROM extremos) AS lowest_rate,\n    (SELECT ROUND(maior_taxa / NULLIF(menor_taxa, 0), 2) FROM extremos)\n        AS rate_ratio_highest_vs_lowest,\n    'data_scope: considera apenas internacoes com municipio de residencia mapeado para UF valida'\n        AS warnings\nFROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 9.111335754394531
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.49378538131713867
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.08312821388244629
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.6687157154083252
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.9459972381591797,
+          "table_discovery": 0.4938662052154541,
+          "schema_analysis": 0.0007405281066894531,
+          "reasoning": 6.910191059112549,
+          "sql_generation": 0.0007994174957275391,
+          "sql_validation": 0.08315491676330566,
+          "sql_execution": 0.6688334941864014,
+          "completed": 0.0005018711090087891
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "O que os dados mostram sobre UF de residencia e doencas respiratorias?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "comparison",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "requested_metric",
+              "expression_type": "unknown",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "diagnostico_principal_prefix",
+              "values": [
+                "J%"
+              ],
+              "operator": "LIKE"
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "values": [
+                "CID J00-J99 - Doencas do aparelho respiratorio"
+              ],
+              "operator": "metadata"
+            },
+            {
+              "field": "diagnostico_conceito_termo_expandido",
+              "values": [
+                "doenca respiratoria",
+                "doenca pulmonar",
+                "cid j"
+              ],
+              "operator": "metadata"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [
+              "diagnostico"
+            ],
+            "counted_entity": "internacao",
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.3642920778202488,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "socioeconomico",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "diagnosis_concept_resolution_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "comparison",
+        "analytic_template": "geographic_factor_by_condition",
+        "denominator_policy": "same_geographic_scope_per_group",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "denominator",
+          "group_distribution"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [],
+          "diagnosis_prefixes": [
+            "J%"
+          ],
+          "diagnosis_description_terms": [],
+          "labels": [
+            "CID J00-J99 - Doencas do aparelho respiratorio"
+          ],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A comparação entre UF de residência e doenças respiratórias foi estruturada para contar o número de internações com diagnóstico respiratório, agrupadas por estado. As métricas e dimensões foram escolhidas para refletir a relação entre a localização e a incidência de doenças respiratórias, utilizando filtros específicos para garantir a relevância dos dados.",
+          "conflicts": [
+            "unknown_metric_ignored: doencas_respiratorias"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T155840_gen293",
+        "query_number": 3,
+        "orchestrator_execution_time": 9.126347780227661
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN294",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "Compare doencas respiratorias segundo UF de residencia, com denominador e caveats.",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "geografia_condicao_respiratoria",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Há variação observada entre UFs no recorte solicitado.\n\nEscopo usado: CID J00-J99 - Doenças do aparelho respiratório; denominador: internações mapeadas por UF de residencia.\nResumo: 19.570.263 internações no diagnóstico resolvido.\n\n| UF | Internações | Denominador | Taxa por 100 mil | % dos casos |\n|---|---:|---:|---:|---:|\n| RS | 1.560.026 | 11.834.981 | 13.181,48 | 7,97% |\n| PR | 1.617.722 | 12.700.186 | 12.737,78 | 8,27% |\n| PI | 424.254 | 3.338.399 | 12.708,31 | 2,17% |\n| PA | 987.794 | 7.958.966 | 12.411,08 | 5,05% |\n| PB | 393.838 | 3.223.339 | 12.218,32 | 2,01% |\n| MS | 317.216 | 2.706.080 | 11.722,34 | 1,62% |\n| RO | 202.366 | 1.738.501 | 11.640,26 | 1,03% |\n| SC | 838.478 | 7.223.756 | 11.607,23 | -% |\n\nLeitura objetiva: maior taxa em RS (13.181,48 por 100 mil) e menor taxa não zero em SE (7.792,13 por 100 mil); razão: 1,69x.\n\nAtenção sobre escopo dos dados: data_scope: considera apenas internacoes com municipio de residencia mapeado para UF valida.\nLimite: isto descreve distribuição observada nos registros, não risco populacional individual.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    SELECT c.\"CID\" FROM cid c WHERE c.\"CID\" LIKE 'J%'\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), denominador_estado AS (\n    SELECT mu.\"SG_UF\" AS estado, COUNT(*) AS total_denominador\n    FROM internacoes i\n    JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\"\n    WHERE mu.\"SG_UF\" IN ('AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO')\n    GROUP BY mu.\"SG_UF\"\n), casos_estado AS (\n    SELECT mu.\"SG_UF\" AS estado, COUNT(*) AS total_internacoes\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\"\n    WHERE mu.\"SG_UF\" IN ('AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO')\n    GROUP BY mu.\"SG_UF\"\n), grupos AS (\n    SELECT\n        d.estado,\n        COALESCE(c.total_internacoes, 0) AS total_internacoes,\n        d.total_denominador,\n        ROUND(COALESCE(c.total_internacoes, 0) * 100000.0 / NULLIF(d.total_denominador, 0), 2)\n            AS taxa_por_100k_denominador,\n        ROUND(COALESCE(c.total_internacoes, 0) * 100.0 /\n            NULLIF(SUM(COALESCE(c.total_internacoes, 0)) OVER (), 0), 2)\n            AS percentual_casos\n    FROM denominador_estado d\n    LEFT JOIN casos_estado c ON c.estado = d.estado\n), extremos AS (\n    SELECT\n        (SELECT estado FROM grupos ORDER BY taxa_por_100k_denominador DESC, total_internacoes DESC LIMIT 1)\n            AS maior_grupo,\n        (SELECT taxa_por_100k_denominador FROM grupos ORDER BY taxa_por_100k_denominador DESC, total_internacoes DESC LIMIT 1)\n            AS maior_taxa,\n        (SELECT estado FROM grupos WHERE total_internacoes > 0 ORDER BY taxa_por_100k_denominador ASC, total_internacoes DESC LIMIT 1)\n            AS menor_grupo,\n        (SELECT taxa_por_100k_denominador FROM grupos WHERE total_internacoes > 0 ORDER BY taxa_por_100k_denominador ASC, total_internacoes DESC LIMIT 1)\n            AS menor_taxa\n)\nSELECT\n    'geographic_condition_rate' AS analysis_type,\n    'CID J00-J99 - Doencas do aparelho respiratorio' AS resolved_concept,\n    'estado de residencia' AS factor_name,\n    (SELECT SUM(total_internacoes) FROM grupos) AS total_internacoes,\n    'internacoes mapeadas por UF de residencia' AS denominador,\n    (SELECT STRING_AGG(\n        estado || ':' || total_internacoes || ':' || total_denominador || ':' ||\n        taxa_por_100k_denominador || ':' || percentual_casos,\n        ' | ' ORDER BY taxa_por_100k_denominador DESC, total_internacoes DESC)\n     FROM grupos) AS group_distribution,\n    (SELECT maior_grupo FROM extremos) AS highest_group,\n    (SELECT maior_taxa FROM extremos) AS highest_rate,\n    (SELECT menor_grupo FROM extremos) AS lowest_group,\n    (SELECT menor_taxa FROM extremos) AS lowest_rate,\n    (SELECT ROUND(maior_taxa / NULLIF(menor_taxa, 0), 2) FROM extremos)\n        AS rate_ratio_highest_vs_lowest,\n    'data_scope: considera apenas internacoes com municipio de residencia mapeado para UF valida'\n        AS warnings\nFROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 9.07326626777649
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5045907497406006
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.08105707168579102
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.6671650409698486
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "cid",
+          "internacoes"
+        ],
+        "schema_context_length": 12667,
+        "latency_by_component": {
+          "query_classification": 0.9005904197692871,
+          "table_discovery": 0.5046625137329102,
+          "schema_analysis": 0.0006732940673828125,
+          "reasoning": 6.895497560501099,
+          "sql_generation": 0.0004897117614746094,
+          "sql_validation": 0.0810842514038086,
+          "sql_execution": 0.6672718524932861,
+          "completed": 0.0003535747528076172
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Compare doencas respiratorias segundo UF de residencia, com denominador e caveats.",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "comparison",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "requested_metric",
+              "expression_type": "unknown",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "diagnostico_principal_prefix",
+              "values": [
+                "J%"
+              ],
+              "operator": "LIKE"
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "values": [
+                "CID J00-J99 - Doencas do aparelho respiratorio"
+              ],
+              "operator": "metadata"
+            },
+            {
+              "field": "diagnostico_conceito_termo_expandido",
+              "values": [
+                "doenca respiratoria",
+                "doenca pulmonar",
+                "cid j"
+              ],
+              "operator": "metadata"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [
+              "diagnostico"
+            ],
+            "counted_entity": "internacoes_doencas_respiratorias",
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.4374242607444095,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "diagnosis_concept_resolution_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "comparison",
+        "analytic_template": "geographic_factor_by_condition",
+        "denominator_policy": "same_geographic_scope_per_group",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "denominator",
+          "group_distribution"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [],
+          "diagnosis_prefixes": [
+            "J%"
+          ],
+          "diagnosis_description_terms": [],
+          "labels": [
+            "CID J00-J99 - Doencas do aparelho respiratorio"
+          ],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A comparação de doenças respiratórias segundo UF de residência requer a contagem de internações com base em diagnósticos específicos. As métricas e dimensões foram escolhidas para refletir a necessidade de agrupar por estado e contar as internações relacionadas a doenças respiratórias, garantindo que o denominador esteja presente para a análise correta.",
+          "conflicts": [
+            "unknown_metric_ignored: total_internacoes_doencas_respiratorias"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T155840_gen294",
+        "query_number": 4,
+        "orchestrator_execution_time": 9.089540004730225
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN295",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "Existe relacao entre UF de residencia e covid nas internacoes?",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "geografia_condicao_covid",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Há variação observada entre UFs no recorte solicitado.\n\nEscopo usado: B342 - Infecc p/coronavirus NE | B972 - Coronavirus como doenc class outr cap; denominador: internações mapeadas por UF de residencia.\nResumo: 1.862.525 internações no diagnóstico resolvido.\n\n| UF | Internações | Denominador | Taxa por 100 mil | % dos casos |\n|---|---:|---:|---:|---:|\n| DF | 30.147 | 1.264.585 | 2.383,94 | 1,62% |\n| AM | 39.032 | 2.877.882 | 1.356,28 | 2,1% |\n| RO | 22.873 | 1.738.501 | 1.315,67 | 1,23% |\n| MT | 39.258 | 3.028.008 | 1.296,5 | 2,11% |\n| GO | 78.420 | 6.179.099 | 1.269,12 | 4,21% |\n| PE | 102.794 | 8.532.465 | 1.204,74 | 5,52% |\n| AP | 6.791 | 586.680 | 1.157,53 | 0,36% |\n| RJ | 125.214 | 10.939.273 | 1.144,63 | 6,72% |\n| SP | 412.344 | 37.750.172 | 1.092,3 | -% |\n\nLeitura objetiva: maior taxa em DF (2.383,94 por 100 mil) e menor taxa não zero em BA (629,1 por 100 mil); razão: 3,79x.\n\nAtenção sobre escopo dos dados: data_scope: considera apenas internacoes com municipio de residencia mapeado para UF valida.\nLimite: isto descreve distribuição observada nos registros, não risco populacional individual.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    VALUES ('B342'), ('B972')\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), denominador_estado AS (\n    SELECT mu.\"SG_UF\" AS estado, COUNT(*) AS total_denominador\n    FROM internacoes i\n    JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\"\n    WHERE mu.\"SG_UF\" IN ('AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO')\n    GROUP BY mu.\"SG_UF\"\n), casos_estado AS (\n    SELECT mu.\"SG_UF\" AS estado, COUNT(*) AS total_internacoes\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\"\n    WHERE mu.\"SG_UF\" IN ('AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO')\n    GROUP BY mu.\"SG_UF\"\n), grupos AS (\n    SELECT\n        d.estado,\n        COALESCE(c.total_internacoes, 0) AS total_internacoes,\n        d.total_denominador,\n        ROUND(COALESCE(c.total_internacoes, 0) * 100000.0 / NULLIF(d.total_denominador, 0), 2)\n            AS taxa_por_100k_denominador,\n        ROUND(COALESCE(c.total_internacoes, 0) * 100.0 /\n            NULLIF(SUM(COALESCE(c.total_internacoes, 0)) OVER (), 0), 2)\n            AS percentual_casos\n    FROM denominador_estado d\n    LEFT JOIN casos_estado c ON c.estado = d.estado\n), extremos AS (\n    SELECT\n        (SELECT estado FROM grupos ORDER BY taxa_por_100k_denominador DESC, total_internacoes DESC LIMIT 1)\n            AS maior_grupo,\n        (SELECT taxa_por_100k_denominador FROM grupos ORDER BY taxa_por_100k_denominador DESC, total_internacoes DESC LIMIT 1)\n            AS maior_taxa,\n        (SELECT estado FROM grupos WHERE total_internacoes > 0 ORDER BY taxa_por_100k_denominador ASC, total_internacoes DESC LIMIT 1)\n            AS menor_grupo,\n        (SELECT taxa_por_100k_denominador FROM grupos WHERE total_internacoes > 0 ORDER BY taxa_por_100k_denominador ASC, total_internacoes DESC LIMIT 1)\n            AS menor_taxa\n)\nSELECT\n    'geographic_condition_rate' AS analysis_type,\n    (SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos) AS resolved_concept,\n    'estado de residencia' AS factor_name,\n    (SELECT SUM(total_internacoes) FROM grupos) AS total_internacoes,\n    'internacoes mapeadas por UF de residencia' AS denominador,\n    (SELECT STRING_AGG(\n        estado || ':' || total_internacoes || ':' || total_denominador || ':' ||\n        taxa_por_100k_denominador || ':' || percentual_casos,\n        ' | ' ORDER BY taxa_por_100k_denominador DESC, total_internacoes DESC)\n     FROM grupos) AS group_distribution,\n    (SELECT maior_grupo FROM extremos) AS highest_group,\n    (SELECT maior_taxa FROM extremos) AS highest_rate,\n    (SELECT menor_grupo FROM extremos) AS lowest_group,\n    (SELECT menor_taxa FROM extremos) AS lowest_rate,\n    (SELECT ROUND(maior_taxa / NULLIF(menor_taxa, 0), 2) FROM extremos)\n        AS rate_ratio_highest_vs_lowest,\n    'data_scope: considera apenas internacoes com municipio de residencia mapeado para UF valida'\n        AS warnings\nFROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 8.629969120025635
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5633840560913086
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.09039735794067383
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.5937240123748779
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes"
+        ],
+        "schema_context_length": 11400,
+        "latency_by_component": {
+          "query_classification": 0.0002491474151611328,
+          "table_discovery": 0.5634503364562988,
+          "schema_analysis": 0.00046563148498535156,
+          "reasoning": 7.377869606018066,
+          "sql_generation": 0.0006248950958251953,
+          "sql_validation": 0.09042620658874512,
+          "sql_execution": 0.5938348770141602,
+          "completed": 0.0003769397735595703
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Existe relacao entre UF de residencia e covid nas internacoes?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "comparison",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "diagnostico_principal_codigo",
+              "values": [
+                "B342",
+                "B972"
+              ],
+              "operator": "IN"
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "values": [
+                "B342 - Infecc p/coronavirus NE",
+                "B972 - Coronavirus como causa de doenc class outr cap"
+              ],
+              "operator": "metadata"
+            },
+            {
+              "field": "diagnostico_conceito_termo_expandido",
+              "values": [
+                "covid",
+                "coronavirus"
+              ],
+              "operator": "metadata"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.4111304014285006,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "internacao_procedimento"
+        ],
+        "validated_selected_tables": [
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "diagnosis_concept_resolution_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "comparison",
+        "analytic_template": "geographic_factor_by_condition",
+        "denominator_policy": "same_geographic_scope_per_group",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "denominator",
+          "group_distribution"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [
+            "B342",
+            "B972"
+          ],
+          "diagnosis_prefixes": [],
+          "diagnosis_description_terms": [],
+          "labels": [
+            "B342 - Infecc p/coronavirus NE",
+            "B972 - Coronavirus como causa de doenc class outr cap"
+          ],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A comparação entre a UF de residência e as internações por COVID-19 é feita contando o total de internações agrupadas por estado. As métricas e dimensões foram escolhidas para refletir a relação entre a localização e a incidência de internações relacionadas ao COVID-19, utilizando filtros específicos para garantir que apenas os diagnósticos relevantes sejam considerados.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T155840_gen295",
+        "query_number": 5,
+        "orchestrator_execution_time": 8.652758121490479
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN296",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "O que os dados mostram sobre UF de residencia e covid?",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "geografia_condicao_covid",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Há variação observada entre UFs no recorte solicitado.\n\nEscopo usado: B342 - Infecc p/coronavirus NE | B972 - Coronavirus como doenc class outr cap; denominador: internações mapeadas por UF de residencia.\nResumo: 1.862.525 internações no diagnóstico resolvido.\n\n| UF | Internações | Denominador | Taxa por 100 mil | % dos casos |\n|---|---:|---:|---:|---:|\n| DF | 30.147 | 1.264.585 | 2.383,94 | 1,62% |\n| AM | 39.032 | 2.877.882 | 1.356,28 | 2,1% |\n| RO | 22.873 | 1.738.501 | 1.315,67 | 1,23% |\n| MT | 39.258 | 3.028.008 | 1.296,5 | 2,11% |\n| GO | 78.420 | 6.179.099 | 1.269,12 | 4,21% |\n| PE | 102.794 | 8.532.465 | 1.204,74 | 5,52% |\n| AP | 6.791 | 586.680 | 1.157,53 | 0,36% |\n| RJ | 125.214 | 10.939.273 | 1.144,63 | 6,72% |\n| SP | 412.344 | 37.750.172 | 1.092,3 | -% |\n\nLeitura objetiva: maior taxa em DF (2.383,94 por 100 mil) e menor taxa não zero em BA (629,1 por 100 mil); razão: 3,79x.\n\nAtenção sobre escopo dos dados: data_scope: considera apenas internacoes com municipio de residencia mapeado para UF valida.\nLimite: isto descreve distribuição observada nos registros, não risco populacional individual.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    VALUES ('B342'), ('B972')\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), denominador_estado AS (\n    SELECT mu.\"SG_UF\" AS estado, COUNT(*) AS total_denominador\n    FROM internacoes i\n    JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\"\n    WHERE mu.\"SG_UF\" IN ('AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO')\n    GROUP BY mu.\"SG_UF\"\n), casos_estado AS (\n    SELECT mu.\"SG_UF\" AS estado, COUNT(*) AS total_internacoes\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\"\n    WHERE mu.\"SG_UF\" IN ('AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO')\n    GROUP BY mu.\"SG_UF\"\n), grupos AS (\n    SELECT\n        d.estado,\n        COALESCE(c.total_internacoes, 0) AS total_internacoes,\n        d.total_denominador,\n        ROUND(COALESCE(c.total_internacoes, 0) * 100000.0 / NULLIF(d.total_denominador, 0), 2)\n            AS taxa_por_100k_denominador,\n        ROUND(COALESCE(c.total_internacoes, 0) * 100.0 /\n            NULLIF(SUM(COALESCE(c.total_internacoes, 0)) OVER (), 0), 2)\n            AS percentual_casos\n    FROM denominador_estado d\n    LEFT JOIN casos_estado c ON c.estado = d.estado\n), extremos AS (\n    SELECT\n        (SELECT estado FROM grupos ORDER BY taxa_por_100k_denominador DESC, total_internacoes DESC LIMIT 1)\n            AS maior_grupo,\n        (SELECT taxa_por_100k_denominador FROM grupos ORDER BY taxa_por_100k_denominador DESC, total_internacoes DESC LIMIT 1)\n            AS maior_taxa,\n        (SELECT estado FROM grupos WHERE total_internacoes > 0 ORDER BY taxa_por_100k_denominador ASC, total_internacoes DESC LIMIT 1)\n            AS menor_grupo,\n        (SELECT taxa_por_100k_denominador FROM grupos WHERE total_internacoes > 0 ORDER BY taxa_por_100k_denominador ASC, total_internacoes DESC LIMIT 1)\n            AS menor_taxa\n)\nSELECT\n    'geographic_condition_rate' AS analysis_type,\n    (SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos) AS resolved_concept,\n    'estado de residencia' AS factor_name,\n    (SELECT SUM(total_internacoes) FROM grupos) AS total_internacoes,\n    'internacoes mapeadas por UF de residencia' AS denominador,\n    (SELECT STRING_AGG(\n        estado || ':' || total_internacoes || ':' || total_denominador || ':' ||\n        taxa_por_100k_denominador || ':' || percentual_casos,\n        ' | ' ORDER BY taxa_por_100k_denominador DESC, total_internacoes DESC)\n     FROM grupos) AS group_distribution,\n    (SELECT maior_grupo FROM extremos) AS highest_group,\n    (SELECT maior_taxa FROM extremos) AS highest_rate,\n    (SELECT menor_grupo FROM extremos) AS lowest_group,\n    (SELECT menor_taxa FROM extremos) AS lowest_rate,\n    (SELECT ROUND(maior_taxa / NULLIF(menor_taxa, 0), 2) FROM extremos)\n        AS rate_ratio_highest_vs_lowest,\n    'data_scope: considera apenas internacoes com municipio de residencia mapeado para UF valida'\n        AS warnings\nFROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 9.314198017120361
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.529895544052124
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.09045910835266113
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.600257396697998
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "municipios"
+        ],
+        "schema_context_length": 15487,
+        "latency_by_component": {
+          "query_classification": 1.1982781887054443,
+          "table_discovery": 0.5299618244171143,
+          "schema_analysis": 0.0006959438323974609,
+          "reasoning": 6.890917778015137,
+          "sql_generation": 0.0007467269897460938,
+          "sql_validation": 0.09048604965209961,
+          "sql_execution": 0.6003758907318115,
+          "completed": 0.00038170814514160156
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "O que os dados mostram sobre UF de residencia e covid?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "comparison",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "requested_metric",
+              "expression_type": "unknown",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "diagnostico_principal_codigo",
+              "values": [
+                "B342",
+                "B972"
+              ],
+              "operator": "IN"
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "values": [
+                "B342 - Infecc p/coronavirus NE",
+                "B972 - Coronavirus como causa de doenc class outr cap"
+              ],
+              "operator": "metadata"
+            },
+            {
+              "field": "diagnostico_conceito_termo_expandido",
+              "values": [
+                "covid",
+                "coronavirus"
+              ],
+              "operator": "metadata"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [],
+            "counted_entity": "internacoes",
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "llamaindex_confidence": 0.3681522150175085,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "socioeconomico",
+          "internacoes",
+          "municipios"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "diagnosis_concept_resolution_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "comparison",
+        "analytic_template": "geographic_factor_by_condition",
+        "denominator_policy": "same_geographic_scope_per_group",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "denominator",
+          "group_distribution"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [
+            "B342",
+            "B972"
+          ],
+          "diagnosis_prefixes": [],
+          "diagnosis_description_terms": [],
+          "labels": [
+            "B342 - Infecc p/coronavirus NE",
+            "B972 - Coronavirus como causa de doenc class outr cap"
+          ],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A comparação entre as internações por COVID-19 em diferentes estados é feita utilizando a dimensão 'estado_residencia' da tabela 'municipios'. A métrica conta o total de internações com base nos códigos de diagnóstico relacionados ao coronavírus. Os filtros garantem que apenas os registros relevantes para COVID-19 sejam considerados.",
+          "conflicts": [
+            "unknown_metric_ignored: total_internacoes_covid"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T155840_gen296",
+        "query_number": 6,
+        "orchestrator_execution_time": 9.329603433609009
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN297",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "Compare covid segundo UF de residencia, com denominador e caveats.",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "geografia_condicao_covid",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Há variação observada entre UFs no recorte solicitado.\n\nEscopo usado: B342 - Infecc p/coronavirus NE | B972 - Coronavirus como doenc class outr cap; denominador: internações mapeadas por UF de residencia.\nResumo: 1.862.525 internações no diagnóstico resolvido.\n\n| UF | Internações | Denominador | Taxa por 100 mil | % dos casos |\n|---|---:|---:|---:|---:|\n| DF | 30.147 | 1.264.585 | 2.383,94 | 1,62% |\n| AM | 39.032 | 2.877.882 | 1.356,28 | 2,1% |\n| RO | 22.873 | 1.738.501 | 1.315,67 | 1,23% |\n| MT | 39.258 | 3.028.008 | 1.296,5 | 2,11% |\n| GO | 78.420 | 6.179.099 | 1.269,12 | 4,21% |\n| PE | 102.794 | 8.532.465 | 1.204,74 | 5,52% |\n| AP | 6.791 | 586.680 | 1.157,53 | 0,36% |\n| RJ | 125.214 | 10.939.273 | 1.144,63 | 6,72% |\n| SP | 412.344 | 37.750.172 | 1.092,3 | -% |\n\nLeitura objetiva: maior taxa em DF (2.383,94 por 100 mil) e menor taxa não zero em BA (629,1 por 100 mil); razão: 3,79x.\n\nAtenção sobre escopo dos dados: data_scope: considera apenas internacoes com municipio de residencia mapeado para UF valida.\nLimite: isto descreve distribuição observada nos registros, não risco populacional individual.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    VALUES ('B342'), ('B972')\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), denominador_estado AS (\n    SELECT mu.\"SG_UF\" AS estado, COUNT(*) AS total_denominador\n    FROM internacoes i\n    JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\"\n    WHERE mu.\"SG_UF\" IN ('AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO')\n    GROUP BY mu.\"SG_UF\"\n), casos_estado AS (\n    SELECT mu.\"SG_UF\" AS estado, COUNT(*) AS total_internacoes\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\"\n    WHERE mu.\"SG_UF\" IN ('AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO')\n    GROUP BY mu.\"SG_UF\"\n), grupos AS (\n    SELECT\n        d.estado,\n        COALESCE(c.total_internacoes, 0) AS total_internacoes,\n        d.total_denominador,\n        ROUND(COALESCE(c.total_internacoes, 0) * 100000.0 / NULLIF(d.total_denominador, 0), 2)\n            AS taxa_por_100k_denominador,\n        ROUND(COALESCE(c.total_internacoes, 0) * 100.0 /\n            NULLIF(SUM(COALESCE(c.total_internacoes, 0)) OVER (), 0), 2)\n            AS percentual_casos\n    FROM denominador_estado d\n    LEFT JOIN casos_estado c ON c.estado = d.estado\n), extremos AS (\n    SELECT\n        (SELECT estado FROM grupos ORDER BY taxa_por_100k_denominador DESC, total_internacoes DESC LIMIT 1)\n            AS maior_grupo,\n        (SELECT taxa_por_100k_denominador FROM grupos ORDER BY taxa_por_100k_denominador DESC, total_internacoes DESC LIMIT 1)\n            AS maior_taxa,\n        (SELECT estado FROM grupos WHERE total_internacoes > 0 ORDER BY taxa_por_100k_denominador ASC, total_internacoes DESC LIMIT 1)\n            AS menor_grupo,\n        (SELECT taxa_por_100k_denominador FROM grupos WHERE total_internacoes > 0 ORDER BY taxa_por_100k_denominador ASC, total_internacoes DESC LIMIT 1)\n            AS menor_taxa\n)\nSELECT\n    'geographic_condition_rate' AS analysis_type,\n    (SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos) AS resolved_concept,\n    'estado de residencia' AS factor_name,\n    (SELECT SUM(total_internacoes) FROM grupos) AS total_internacoes,\n    'internacoes mapeadas por UF de residencia' AS denominador,\n    (SELECT STRING_AGG(\n        estado || ':' || total_internacoes || ':' || total_denominador || ':' ||\n        taxa_por_100k_denominador || ':' || percentual_casos,\n        ' | ' ORDER BY taxa_por_100k_denominador DESC, total_internacoes DESC)\n     FROM grupos) AS group_distribution,\n    (SELECT maior_grupo FROM extremos) AS highest_group,\n    (SELECT maior_taxa FROM extremos) AS highest_rate,\n    (SELECT menor_grupo FROM extremos) AS lowest_group,\n    (SELECT menor_taxa FROM extremos) AS lowest_rate,\n    (SELECT ROUND(maior_taxa / NULLIF(menor_taxa, 0), 2) FROM extremos)\n        AS rate_ratio_highest_vs_lowest,\n    'data_scope: considera apenas internacoes com municipio de residencia mapeado para UF valida'\n        AS warnings\nFROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 8.668163061141968
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.659020185470581
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.09159708023071289
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.5940608978271484
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid",
+          "municipios"
+        ],
+        "schema_context_length": 14206,
+        "latency_by_component": {
+          "query_classification": 0.7853107452392578,
+          "table_discovery": 0.6591084003448486,
+          "schema_analysis": 0.000774383544921875,
+          "reasoning": 6.534007549285889,
+          "sql_generation": 0.0004558563232421875,
+          "sql_validation": 0.09162545204162598,
+          "sql_execution": 0.594167947769165,
+          "completed": 0.00036978721618652344
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Compare covid segundo UF de residencia, com denominador e caveats.",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "comparison",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "requested_metric",
+              "expression_type": "unknown",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "diagnostico_principal_codigo",
+              "values": [
+                "B342",
+                "B972"
+              ],
+              "operator": "IN"
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "values": [
+                "B342 - Infecc p/coronavirus NE",
+                "B972 - Coronavirus como causa de doenc class outr cap"
+              ],
+              "operator": "metadata"
+            },
+            {
+              "field": "diagnostico_conceito_termo_expandido",
+              "values": [
+                "covid",
+                "coronavirus"
+              ],
+              "operator": "metadata"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [],
+            "counted_entity": "internacoes",
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid",
+          "municipios"
+        ],
+        "llamaindex_confidence": 0.4376717478935624,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "municipios"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid",
+          "municipios"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid",
+          "municipios"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "diagnosis_concept_resolution_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "comparison",
+        "analytic_template": "geographic_factor_by_condition",
+        "denominator_policy": "same_geographic_scope_per_group",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "denominator",
+          "group_distribution"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [
+            "B342",
+            "B972"
+          ],
+          "diagnosis_prefixes": [],
+          "diagnosis_description_terms": [],
+          "labels": [
+            "B342 - Infecc p/coronavirus NE",
+            "B972 - Coronavirus como causa de doenc class outr cap"
+          ],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A comparação de casos de COVID-19 por UF de residência requer a contagem de internações com diagnósticos específicos. O denominador é o total de internações, e as métricas e dimensões foram definidas para refletir a intenção de comparação por estado.",
+          "conflicts": [
+            "unknown_metric_ignored: covid_cases"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T155840_gen297",
+        "query_number": 7,
+        "orchestrator_execution_time": 8.683138847351074
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN298",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "Existe relacao entre ano e doencas respiratorias nas internacoes?",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "tendencia_condicao_respiratoria",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Há uma tendência temporal observada no recorte solicitado.\n\nEscopo usado: CID J00-J99 - Doenças do aparelho respiratório; denominador: internações por ano no mesmo escopo.\nResumo: 19.690.732 internações no diagnóstico resolvido ao longo da série.\n\n| Ano | Internações | Denominador | Taxa por 100 mil |\n|---|---:|---:|---:|\n| 2000 | 0 | 9 | 0 |\n| 2001 | 0 | 2 | 0 |\n| 2002 | 0 | 2 | 0 |\n| 2003 | 0 | 1 | 0 |\n| 2005 | 0 | 6 | 0 |\n| 2006 | 0 | 7 | 0 |\n| 2007 | 65.785 | 602.947 | 10.910,58 |\n| 2008 | 1.396.542 | 10.847.458 | 12.874,37 |\n| 2009 | 1.537.569 | 11.114.857 | 13.833,46 |\n| 2010 | 1.452.855 | 11.347.880 | 12.802,88 |\n| 2011 | 1.407.662 | 11.267.097 | 12.493,56 |\n| 2012 | 1.312.143 | 11.103.250 | - |\n\nLeitura objetiva: de 2000 (0) a 2023 (1.250.696), a variação absoluta foi 1.250.696 internações (-%). O pico foi em 2009, com 1.537.569 internações.\nLimite: isto descreve evolução observada nos registros, não causalidade.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    SELECT c.\"CID\" FROM cid c WHERE c.\"CID\" LIKE 'J%'\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), denominador_ano AS (\n    SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_denominador\n    FROM internacoes i\n    WHERE i.\"DT_INTER\" IS NOT NULL\n    GROUP BY ano\n), casos_ano AS (\n    SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_internacoes\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"DT_INTER\" IS NOT NULL\n    GROUP BY ano\n), serie AS (\n    SELECT\n        d.ano,\n        COALESCE(c.total_internacoes, 0) AS total_internacoes,\n        d.total_denominador,\n        ROUND(COALESCE(c.total_internacoes, 0) * 100000.0 / NULLIF(d.total_denominador, 0), 2)\n            AS taxa_por_100k_denominador\n    FROM denominador_ano d\n    LEFT JOIN casos_ano c ON c.ano = d.ano\n), extremos AS (\n    SELECT\n        (SELECT ano FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_ano,\n        (SELECT total_internacoes FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_total,\n        (SELECT ano FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_ano,\n        (SELECT total_internacoes FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_total,\n        (SELECT ano FROM serie ORDER BY total_internacoes DESC, ano ASC LIMIT 1) AS ano_pico,\n        (SELECT total_internacoes FROM serie ORDER BY total_internacoes DESC, ano ASC LIMIT 1)\n            AS total_pico\n)\nSELECT\n    'temporal_condition_trend' AS analysis_type,\n    'CID J00-J99 - Doencas do aparelho respiratorio' AS resolved_concept,\n    'ano de internacao' AS factor_name,\n    (SELECT SUM(total_internacoes) FROM serie) AS total_internacoes,\n    'internacoes por ano no mesmo escopo' AS denominador,\n    (SELECT STRING_AGG(\n        CAST(ano AS VARCHAR) || ':' || total_internacoes || ':' || total_denominador || ':' ||\n        taxa_por_100k_denominador,\n        ' | ' ORDER BY ano)\n     FROM serie) AS time_series,\n    (SELECT primeiro_ano FROM extremos) AS first_period,\n    (SELECT primeiro_total FROM extremos) AS first_total,\n    (SELECT ultimo_ano FROM extremos) AS last_period,\n    (SELECT ultimo_total FROM extremos) AS last_total,\n    (SELECT ultimo_total - primeiro_total FROM extremos) AS delta_absolute,\n    (SELECT ROUND((ultimo_total - primeiro_total) * 100.0 / NULLIF(primeiro_total, 0), 2)\n     FROM extremos) AS delta_percent,\n    (SELECT ano_pico FROM extremos) AS peak_period,\n    (SELECT total_pico FROM extremos) AS peak_total,\n    NULL AS warnings\nFROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 8.785811185836792
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.6293187141418457
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.08542799949645996
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.44281005859375
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 12667,
+        "latency_by_component": {
+          "query_classification": 0.00026035308837890625,
+          "table_discovery": 0.6294057369232178,
+          "schema_analysis": 0.000690460205078125,
+          "reasoning": 7.621548175811768,
+          "sql_generation": 0.0008852481842041016,
+          "sql_validation": 0.08545470237731934,
+          "sql_execution": 0.4429142475128174,
+          "completed": 0.0004048347473144531
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Existe relacao entre ano e doencas respiratorias nas internacoes?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "trend",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "ano",
+              "source": "EXTRACT(YEAR FROM internacoes.DT_INTER)",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "diagnostico_principal_prefix",
+              "values": [
+                "J%"
+              ],
+              "operator": "LIKE"
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "values": [
+                "CID J00-J99 - Doencas do aparelho respiratorio"
+              ],
+              "operator": "metadata"
+            },
+            {
+              "field": "diagnostico_conceito_termo_expandido",
+              "values": [
+                "doenca respiratoria",
+                "doenca pulmonar",
+                "cid j"
+              ],
+              "operator": "metadata"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "time_series",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "ano"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "time_series",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "ano"
+            ],
+            "filter_dimensions": [
+              "diagnostico"
+            ],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary"
+          ],
+          "null_policy": [],
+          "ambiguities": [
+            "profile_temporal_coverage: internacoes.DT_INTER ranges from 2008-01-01 to 2023-12-31",
+            "profile_cardinality: ano uses high-cardinality identifier internacoes.DT_INTER"
+          ]
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.41576129244095156,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "diagnosis_concept_resolution_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "trend",
+        "analytic_template": "temporal_trend_by_condition",
+        "denominator_policy": "period_rows_matching_same_condition",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "time_series",
+          "trend_summary",
+          "limitations"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [],
+          "diagnosis_prefixes": [
+            "J%"
+          ],
+          "diagnosis_description_terms": [],
+          "labels": [
+            "CID J00-J99 - Doencas do aparelho respiratorio"
+          ],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "O plano semântico foi estruturado para analisar a tendência de internações relacionadas a doenças respiratórias ao longo dos anos. A métrica escolhida é a contagem total de internações, filtrada por diagnósticos que correspondem a doenças do aparelho respiratório. A dimensão 'ano' foi selecionada para agrupar os dados por ano de internação, permitindo observar a evolução temporal. As restrições e ambiguidades foram incluídas para garantir a precisão e a relevância dos dados analisados.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T155840_gen298",
+        "query_number": 8,
+        "orchestrator_execution_time": 8.800767421722412
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN299",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "O que os dados mostram sobre ano e doencas respiratorias?",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "tendencia_condicao_respiratoria",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Há uma tendência temporal observada no recorte solicitado.\n\nEscopo usado: CID J00-J99 - Doenças do aparelho respiratório; denominador: internações por ano no mesmo escopo.\nResumo: 19.690.732 internações no diagnóstico resolvido ao longo da série.\n\n| Ano | Internações | Denominador | Taxa por 100 mil |\n|---|---:|---:|---:|\n| 2000 | 0 | 9 | 0 |\n| 2001 | 0 | 2 | 0 |\n| 2002 | 0 | 2 | 0 |\n| 2003 | 0 | 1 | 0 |\n| 2005 | 0 | 6 | 0 |\n| 2006 | 0 | 7 | 0 |\n| 2007 | 65.785 | 602.947 | 10.910,58 |\n| 2008 | 1.396.542 | 10.847.458 | 12.874,37 |\n| 2009 | 1.537.569 | 11.114.857 | 13.833,46 |\n| 2010 | 1.452.855 | 11.347.880 | 12.802,88 |\n| 2011 | 1.407.662 | 11.267.097 | 12.493,56 |\n| 2012 | 1.312.143 | 11.103.250 | - |\n\nLeitura objetiva: de 2000 (0) a 2023 (1.250.696), a variação absoluta foi 1.250.696 internações (-%). O pico foi em 2009, com 1.537.569 internações.\nLimite: isto descreve evolução observada nos registros, não causalidade.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    SELECT c.\"CID\" FROM cid c WHERE c.\"CID\" LIKE 'J%'\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), denominador_ano AS (\n    SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_denominador\n    FROM internacoes i\n    WHERE i.\"DT_INTER\" IS NOT NULL\n    GROUP BY ano\n), casos_ano AS (\n    SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_internacoes\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"DT_INTER\" IS NOT NULL\n    GROUP BY ano\n), serie AS (\n    SELECT\n        d.ano,\n        COALESCE(c.total_internacoes, 0) AS total_internacoes,\n        d.total_denominador,\n        ROUND(COALESCE(c.total_internacoes, 0) * 100000.0 / NULLIF(d.total_denominador, 0), 2)\n            AS taxa_por_100k_denominador\n    FROM denominador_ano d\n    LEFT JOIN casos_ano c ON c.ano = d.ano\n), extremos AS (\n    SELECT\n        (SELECT ano FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_ano,\n        (SELECT total_internacoes FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_total,\n        (SELECT ano FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_ano,\n        (SELECT total_internacoes FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_total,\n        (SELECT ano FROM serie ORDER BY total_internacoes DESC, ano ASC LIMIT 1) AS ano_pico,\n        (SELECT total_internacoes FROM serie ORDER BY total_internacoes DESC, ano ASC LIMIT 1)\n            AS total_pico\n)\nSELECT\n    'temporal_condition_trend' AS analysis_type,\n    'CID J00-J99 - Doencas do aparelho respiratorio' AS resolved_concept,\n    'ano de internacao' AS factor_name,\n    (SELECT SUM(total_internacoes) FROM serie) AS total_internacoes,\n    'internacoes por ano no mesmo escopo' AS denominador,\n    (SELECT STRING_AGG(\n        CAST(ano AS VARCHAR) || ':' || total_internacoes || ':' || total_denominador || ':' ||\n        taxa_por_100k_denominador,\n        ' | ' ORDER BY ano)\n     FROM serie) AS time_series,\n    (SELECT primeiro_ano FROM extremos) AS first_period,\n    (SELECT primeiro_total FROM extremos) AS first_total,\n    (SELECT ultimo_ano FROM extremos) AS last_period,\n    (SELECT ultimo_total FROM extremos) AS last_total,\n    (SELECT ultimo_total - primeiro_total FROM extremos) AS delta_absolute,\n    (SELECT ROUND((ultimo_total - primeiro_total) * 100.0 / NULLIF(primeiro_total, 0), 2)\n     FROM extremos) AS delta_percent,\n    (SELECT ano_pico FROM extremos) AS peak_period,\n    (SELECT total_pico FROM extremos) AS peak_total,\n    NULL AS warnings\nFROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 11.478603601455688
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.4592738151550293
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.08275198936462402
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.4042038917541504
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 1.0236001014709473,
+          "table_discovery": 0.45934247970581055,
+          "schema_analysis": 0.0007369518280029297,
+          "reasoning": 9.503720998764038,
+          "sql_generation": 0.0007374286651611328,
+          "sql_validation": 0.0827789306640625,
+          "sql_execution": 0.4043118953704834,
+          "completed": 0.00039505958557128906
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "O que os dados mostram sobre ano e doencas respiratorias?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "trend",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "requested_metric",
+              "expression_type": "unknown",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "ano",
+              "source": "EXTRACT(YEAR FROM internacoes.DT_INTER)",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "diagnostico_principal_prefix",
+              "values": [
+                "J%"
+              ],
+              "operator": "LIKE"
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "values": [
+                "CID J00-J99 - Doencas do aparelho respiratorio"
+              ],
+              "operator": "metadata"
+            },
+            {
+              "field": "diagnostico_conceito_termo_expandido",
+              "values": [
+                "doenca respiratoria",
+                "doenca pulmonar",
+                "cid j"
+              ],
+              "operator": "metadata"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "time_series",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "ano"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "time_series",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "ano"
+            ],
+            "filter_dimensions": [
+              "diagnostico"
+            ],
+            "counted_entity": "internacoes",
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary"
+          ],
+          "null_policy": [],
+          "ambiguities": [
+            "profile_temporal_coverage: internacoes.DT_INTER ranges from 2008-01-01 to 2023-12-31",
+            "profile_cardinality: ano uses high-cardinality identifier internacoes.DT_INTER"
+          ]
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.3770703635584562,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "socioeconomico",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "diagnosis_concept_resolution_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "trend",
+        "analytic_template": "temporal_trend_by_condition",
+        "denominator_policy": "period_rows_matching_same_condition",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "time_series",
+          "trend_summary",
+          "limitations"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [],
+          "diagnosis_prefixes": [
+            "J%"
+          ],
+          "diagnosis_description_terms": [],
+          "labels": [
+            "CID J00-J99 - Doencas do aparelho respiratorio"
+          ],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A análise busca entender a tendência de internações por doenças respiratórias ao longo dos anos, utilizando a dimensão 'ano' extraída da data de internação. A métrica conta as internações que têm como diagnóstico principal doenças do aparelho respiratório, filtrando por códigos CID específicos. A estrutura de resposta é configurada para retornar uma série temporal, permitindo observar a evolução ao longo do tempo.",
+          "conflicts": [
+            "unknown_metric_ignored: internacoes_por_doencas_respiratorias"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T155840_gen299",
+        "query_number": 9,
+        "orchestrator_execution_time": 11.49508261680603
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN300",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "Compare doencas respiratorias segundo ano, com denominador e caveats.",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "tendencia_condicao_respiratoria",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Há uma tendência temporal observada no recorte solicitado.\n\nEscopo usado: CID J00-J99 - Doenças do aparelho respiratório; denominador: internações por ano no mesmo escopo.\nResumo: 19.690.732 internações no diagnóstico resolvido ao longo da série.\n\n| Ano | Internações | Denominador | Taxa por 100 mil |\n|---|---:|---:|---:|\n| 2000 | 0 | 9 | 0 |\n| 2001 | 0 | 2 | 0 |\n| 2002 | 0 | 2 | 0 |\n| 2003 | 0 | 1 | 0 |\n| 2005 | 0 | 6 | 0 |\n| 2006 | 0 | 7 | 0 |\n| 2007 | 65.785 | 602.947 | 10.910,58 |\n| 2008 | 1.396.542 | 10.847.458 | 12.874,37 |\n| 2009 | 1.537.569 | 11.114.857 | 13.833,46 |\n| 2010 | 1.452.855 | 11.347.880 | 12.802,88 |\n| 2011 | 1.407.662 | 11.267.097 | 12.493,56 |\n| 2012 | 1.312.143 | 11.103.250 | - |\n\nLeitura objetiva: de 2000 (0) a 2023 (1.250.696), a variação absoluta foi 1.250.696 internações (-%). O pico foi em 2009, com 1.537.569 internações.\nLimite: isto descreve evolução observada nos registros, não causalidade.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    SELECT c.\"CID\" FROM cid c WHERE c.\"CID\" LIKE 'J%'\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), denominador_ano AS (\n    SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_denominador\n    FROM internacoes i\n    WHERE i.\"DT_INTER\" IS NOT NULL\n    GROUP BY ano\n), casos_ano AS (\n    SELECT EXTRACT(YEAR FROM i.\"DT_INTER\") AS ano, COUNT(*) AS total_internacoes\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"DT_INTER\" IS NOT NULL\n    GROUP BY ano\n), serie AS (\n    SELECT\n        d.ano,\n        COALESCE(c.total_internacoes, 0) AS total_internacoes,\n        d.total_denominador,\n        ROUND(COALESCE(c.total_internacoes, 0) * 100000.0 / NULLIF(d.total_denominador, 0), 2)\n            AS taxa_por_100k_denominador\n    FROM denominador_ano d\n    LEFT JOIN casos_ano c ON c.ano = d.ano\n), extremos AS (\n    SELECT\n        (SELECT ano FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_ano,\n        (SELECT total_internacoes FROM serie ORDER BY ano ASC LIMIT 1) AS primeiro_total,\n        (SELECT ano FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_ano,\n        (SELECT total_internacoes FROM serie ORDER BY ano DESC LIMIT 1) AS ultimo_total,\n        (SELECT ano FROM serie ORDER BY total_internacoes DESC, ano ASC LIMIT 1) AS ano_pico,\n        (SELECT total_internacoes FROM serie ORDER BY total_internacoes DESC, ano ASC LIMIT 1)\n            AS total_pico\n)\nSELECT\n    'temporal_condition_trend' AS analysis_type,\n    'CID J00-J99 - Doencas do aparelho respiratorio' AS resolved_concept,\n    'ano de internacao' AS factor_name,\n    (SELECT SUM(total_internacoes) FROM serie) AS total_internacoes,\n    'internacoes por ano no mesmo escopo' AS denominador,\n    (SELECT STRING_AGG(\n        CAST(ano AS VARCHAR) || ':' || total_internacoes || ':' || total_denominador || ':' ||\n        taxa_por_100k_denominador,\n        ' | ' ORDER BY ano)\n     FROM serie) AS time_series,\n    (SELECT primeiro_ano FROM extremos) AS first_period,\n    (SELECT primeiro_total FROM extremos) AS first_total,\n    (SELECT ultimo_ano FROM extremos) AS last_period,\n    (SELECT ultimo_total FROM extremos) AS last_total,\n    (SELECT ultimo_total - primeiro_total FROM extremos) AS delta_absolute,\n    (SELECT ROUND((ultimo_total - primeiro_total) * 100.0 / NULLIF(primeiro_total, 0), 2)\n     FROM extremos) AS delta_percent,\n    (SELECT ano_pico FROM extremos) AS peak_period,\n    (SELECT total_pico FROM extremos) AS peak_total,\n    NULL AS warnings\nFROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 8.479934930801392
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5546698570251465
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.08444046974182129
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.4008793830871582
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "cid",
+          "internacoes"
+        ],
+        "schema_context_length": 12667,
+        "latency_by_component": {
+          "query_classification": 0.9683675765991211,
+          "table_discovery": 0.5547459125518799,
+          "schema_analysis": 0.0005180835723876953,
+          "reasoning": 6.467700481414795,
+          "sql_generation": 0.0006976127624511719,
+          "sql_validation": 0.08447027206420898,
+          "sql_execution": 0.4009828567504883,
+          "completed": 0.0003204345703125
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Compare doencas respiratorias segundo ano, com denominador e caveats.",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "trend",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "requested_metric",
+              "expression_type": "unknown",
+              "required_filters": []
+            },
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "denominator_scope": "internacoes",
+              "required_filters": [
+                "diagnostico_principal_prefix LIKE 'J%'",
+                "diagnostico_conceito_label = 'CID J00-J99 - Doencas do aparelho respiratorio'"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "ano",
+              "source": "EXTRACT(YEAR FROM internacoes.DT_INTER)",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "diagnostico_principal_prefix",
+              "values": [
+                "J%"
+              ],
+              "operator": "LIKE"
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "values": [
+                "CID J00-J99 - Doencas do aparelho respiratorio"
+              ],
+              "operator": "metadata"
+            },
+            {
+              "field": "diagnostico_conceito_termo_expandido",
+              "values": [
+                "doenca respiratoria",
+                "doenca pulmonar",
+                "cid j"
+              ],
+              "operator": "metadata"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "time_series",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "ano"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "time_series",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "ano"
+            ],
+            "filter_dimensions": [
+              "diagnostico"
+            ],
+            "counted_entity": "internacoes",
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary"
+          ],
+          "null_policy": [],
+          "ambiguities": [
+            "profile_temporal_coverage: internacoes.DT_INTER ranges from 2008-01-01 to 2023-12-31",
+            "profile_cardinality: ano uses high-cardinality identifier internacoes.DT_INTER"
+          ]
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.44262152797320464,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "diagnosis_concept_resolution_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "trend",
+        "analytic_template": "temporal_trend_by_condition",
+        "denominator_policy": "period_rows_matching_same_condition",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "time_series",
+          "trend_summary",
+          "limitations"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [],
+          "diagnosis_prefixes": [
+            "J%"
+          ],
+          "diagnosis_description_terms": [],
+          "labels": [
+            "CID J00-J99 - Doencas do aparelho respiratorio"
+          ],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A métrica total_internacoes foi escolhida para contar o número de internações relacionadas a doenças respiratórias, com o filtro adequado para o diagnóstico. A dimensão ano foi utilizada para agrupar os dados por ano, permitindo a análise temporal. As restrições e ambiguidades foram mantidas para garantir a integridade e a precisão dos dados.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T155840_gen300",
+        "query_number": 10,
+        "orchestrator_execution_time": 8.50194263458252
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    }
+  ]
+}

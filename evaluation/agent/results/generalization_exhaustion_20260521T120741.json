@@ -1,0 +1,796 @@
+{
+  "run_id": "generalization_exhaustion_20260521T120741",
+  "created_at": "2026-05-21T12:08:46",
+  "dry_run": false,
+  "summary": {
+    "status_counts": {
+      "failed": 2
+    },
+    "root_cause_counts": {
+      "response_grounding_error": 2
+    },
+    "severity_counts": {
+      "medium": 2
+    }
+  },
+  "items": [
+    {
+      "id": "GEN091",
+      "persona": "gestor_hospitalar",
+      "category": "geografia",
+      "difficulty": "medium",
+      "question": "Quais regioes de saude de MA tiveram mais internacoes em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "regiao_saude_volume",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:regiao_saude",
+          "missing_column:total_internacoes"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "regiao_saude": "São Luís",
+            "total_internacoes": 82991
+          },
+          {
+            "regiao_saude": "Imperatriz",
+            "total_internacoes": 37144
+          },
+          {
+            "regiao_saude": "Santa Inês",
+            "total_internacoes": 31307
+          },
+          {
+            "regiao_saude": "Pinheiro",
+            "total_internacoes": 25695
+          },
+          {
+            "regiao_saude": "São João dos Patos",
+            "total_internacoes": 25125
+          }
+        ],
+        "actual_preview": [
+          {
+            "REGIAO_SAUDE": "São Luís",
+            "TOTAL_INTERNACOES": 82991
+          },
+          {
+            "REGIAO_SAUDE": "Imperatriz",
+            "TOTAL_INTERNACOES": 37144
+          },
+          {
+            "REGIAO_SAUDE": "Santa Inês",
+            "TOTAL_INTERNACOES": 31307
+          },
+          {
+            "REGIAO_SAUDE": "Pinheiro",
+            "TOTAL_INTERNACOES": 25695
+          },
+          {
+            "REGIAO_SAUDE": "São João dos Patos",
+            "TOTAL_INTERNACOES": 25125
+          }
+        ]
+      },
+      "success": false,
+      "response": "Não foi possível processar sua consulta: POST EXECUTION CONTRACT ERROR: successful SQL is missing requested output dimension(s): regiao_saude.",
+      "sql": "SELECT mu.\"NO_REGIAO_SAUDE\" AS \"REGIAO_SAUDE\", COUNT(*) AS \"TOTAL_INTERNACOES\" FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND mu.\"NO_REGIAO_SAUDE\" IS NOT NULL AND TRIM(mu.\"NO_REGIAO_SAUDE\") <> '' AND mu.\"NO_REGIAO_SAUDE\" NOT IN ('Nao preenchido', 'Nao informado') AND mu.\"SG_UF\" = 'MA' GROUP BY mu.\"NO_REGIAO_SAUDE\" ORDER BY \"TOTAL_INTERNACOES\" DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": false,
+          "completion_rate": 0.6428571428571429,
+          "phases_completed": 9,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 2,
+          "error_count": 2,
+          "execution_time": 35.953590869903564
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution",
+          "sql_repair"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 1.366330862045288
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 5.355903625488281
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 9.019233465194702
+          }
+        ],
+        "message_count": 16,
+        "retry_count": 2,
+        "error_count": 2,
+        "tables_used": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "schema_context_length": 16512,
+        "latency_by_component": {
+          "query_classification": 0.00029969215393066406,
+          "table_discovery": 1.3664133548736572,
+          "schema_analysis": 0.0005707740783691406,
+          "reasoning": 6.976897478103638,
+          "sql_generation": 0.000614166259765625,
+          "sql_validation": 9.019263505935669,
+          "sql_execution": 0.06914877891540527,
+          "sql_repair": 12.942556142807007,
+          "completed": 5.412101745605469e-05
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais regioes de saude de MA tiveram mais internacoes em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": [
+            "wrong_aggregation"
+          ]
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "regiao_saude",
+              "source": "municipios.NO_REGIAO_SAUDE",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "estado",
+              "values": [
+                "MA"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "regiao_saude"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "regiao_saude"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.4338205316638338,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar as regiões de saúde do estado do Maranhão com base no número total de internações em 2021. A métrica utilizada é a contagem total de internações, agrupadas pela dimensão 'regiao_saude'. Os filtros aplicados garantem que apenas os dados do estado do Maranhão e do ano de 2021 sejam considerados. A resposta deve retornar as 10 regiões com mais internações, o que justifica a configuração de 'top_n_global'.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "post_execution_contract_error": "POST EXECUTION CONTRACT ERROR: successful SQL is missing requested output dimension(s): regiao_saude.",
+        "repair_attempts": [
+          {
+            "previous_sql": "SELECT mu.\"NO_REGIAO_SAUDE\" AS regiao_saude, COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND mu.\"NO_REGIAO_SAUDE\" IS NOT NULL AND TRIM(mu.\"NO_REGIAO_SAUDE\") <> '' AND mu.\"NO_REGIAO_SAUDE\" NOT IN ('Nao preenchido', 'Nao informado') AND mu.\"SG_UF\" = 'MA' GROUP BY mu.\"NO_REGIAO_SAUDE\" ORDER BY total_internacoes DESC LIMIT 10;",
+            "error_message": "POST EXECUTION CONTRACT ERROR: successful SQL is missing requested output dimension(s): regiao_saude.",
+            "semantic_category": "unknown",
+            "semantic_guidance": "Erro semantico desconhecido",
+            "violated_contract": {},
+            "repair_strategy": "llm_guided",
+            "timestamp": "2026-05-21T12:08:12.203301",
+            "post_repair_validation": {
+              "passed": true,
+              "message": null
+            }
+          }
+        ],
+        "semantic_repair": {
+          "original_category": "unknown",
+          "original_message": "POST EXECUTION CONTRACT ERROR: successful SQL is missing requested output dimension(s): regiao_saude.",
+          "guidance_title": "Erro semantico desconhecido",
+          "strategy": "llm_guided",
+          "post_repair_category": null,
+          "post_repair_message": null,
+          "validation_passed_after_repair": true
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T120741_gen091",
+        "query_number": 1,
+        "orchestrator_execution_time": 35.98306202888489
+      },
+      "error": "POST EXECUTION CONTRACT ERROR: successful SQL is missing requested output dimension(s): regiao_saude.",
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN092",
+      "persona": "gestor_hospitalar",
+      "category": "geografia",
+      "difficulty": "medium",
+      "question": "Quais regioes de saude de RS tiveram mais internacoes em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "regiao_saude_volume",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:regiao_saude",
+          "missing_column:total_internacoes"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "regiao_saude": "Região 10 - Capital e Vale do Gravataí",
+            "total_internacoes": 144737
+          },
+          {
+            "regiao_saude": "Região 08 - Vale do Caí e Metropolitana",
+            "total_internacoes": 56945
+          },
+          {
+            "regiao_saude": "Região 07 - Vale dos Sinos",
+            "total_internacoes": 46989
+          },
+          {
+            "regiao_saude": "Região 21 - Sul",
+            "total_internacoes": 46661
+          },
+          {
+            "regiao_saude": "Região 17 - Planalto",
+            "total_internacoes": 30580
+          }
+        ],
+        "actual_preview": [
+          {
+            "REGIAO_SAUDE": "Região 10 - Capital e Vale do Gravataí",
+            "TOTAL_INTERNACOES": 144737
+          },
+          {
+            "REGIAO_SAUDE": "Região 08 - Vale do Caí e Metropolitana",
+            "TOTAL_INTERNACOES": 56945
+          },
+          {
+            "REGIAO_SAUDE": "Região 07 - Vale dos Sinos",
+            "TOTAL_INTERNACOES": 46989
+          },
+          {
+            "REGIAO_SAUDE": "Região 21 - Sul",
+            "TOTAL_INTERNACOES": 46661
+          },
+          {
+            "REGIAO_SAUDE": "Região 17 - Planalto",
+            "TOTAL_INTERNACOES": 30580
+          }
+        ]
+      },
+      "success": false,
+      "response": "Não foi possível processar sua consulta: POST EXECUTION CONTRACT ERROR: successful SQL is missing requested output dimension(s): regiao_saude.",
+      "sql": "SELECT mu.\"NO_REGIAO_SAUDE\" AS \"REGIAO_SAUDE\", COUNT(*) AS \"TOTAL_INTERNACOES\" FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND mu.\"NO_REGIAO_SAUDE\" IS NOT NULL AND TRIM(mu.\"NO_REGIAO_SAUDE\") <> '' AND mu.\"NO_REGIAO_SAUDE\" NOT IN ('Nao preenchido', 'Nao informado') AND mu.\"SG_UF\" = 'RS' GROUP BY mu.\"NO_REGIAO_SAUDE\" ORDER BY \"TOTAL_INTERNACOES\" DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": false,
+          "completion_rate": 0.6428571428571429,
+          "phases_completed": 9,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 2,
+          "error_count": 2,
+          "execution_time": 24.798505544662476
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution",
+          "sql_repair"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.6650717258453369
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 4.2461302280426025
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 5.829685926437378
+          }
+        ],
+        "message_count": 15,
+        "retry_count": 2,
+        "error_count": 2,
+        "tables_used": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "schema_context_length": 16512,
+        "latency_by_component": {
+          "query_classification": 0.00031948089599609375,
+          "table_discovery": 0.6651387214660645,
+          "schema_analysis": 0.0007789134979248047,
+          "reasoning": 6.589417457580566,
+          "sql_generation": 0.0005314350128173828,
+          "sql_validation": 5.829714775085449,
+          "sql_execution": 0.06043648719787598,
+          "sql_repair": 7.3424293994903564,
+          "completed": 5.364418029785156e-05
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais regioes de saude de RS tiveram mais internacoes em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": [
+            "wrong_aggregation"
+          ]
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "regiao_saude",
+              "source": "municipios.NO_REGIAO_SAUDE",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "estado",
+              "values": [
+                "RS"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "regiao_saude"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "regiao_saude"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.42681201969467847,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar as regiões de saúde do Rio Grande do Sul com base no número total de internações em 2021. A métrica utilizada é a contagem total de internações, agrupadas pela dimensão 'regiao_saude'. Os filtros aplicados garantem que apenas os dados do estado do RS e do ano de 2021 sejam considerados. A resposta deve retornar as 10 regiões com mais internações, o que justifica o uso de um formato de resposta de top N global.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "post_execution_contract_error": "POST EXECUTION CONTRACT ERROR: successful SQL is missing requested output dimension(s): regiao_saude.",
+        "repair_attempts": [
+          {
+            "previous_sql": "SELECT mu.\"NO_REGIAO_SAUDE\" AS regiao_saude, COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND mu.\"NO_REGIAO_SAUDE\" IS NOT NULL AND TRIM(mu.\"NO_REGIAO_SAUDE\") <> '' AND mu.\"NO_REGIAO_SAUDE\" NOT IN ('Nao preenchido', 'Nao informado') AND mu.\"SG_UF\" = 'RS' GROUP BY mu.\"NO_REGIAO_SAUDE\" ORDER BY total_internacoes DESC LIMIT 10;",
+            "error_message": "POST EXECUTION CONTRACT ERROR: successful SQL is missing requested output dimension(s): regiao_saude.",
+            "semantic_category": "unknown",
+            "semantic_guidance": "Erro semantico desconhecido",
+            "violated_contract": {},
+            "repair_strategy": "llm_guided",
+            "timestamp": "2026-05-21T12:08:40.362479",
+            "post_repair_validation": {
+              "passed": true,
+              "message": null
+            }
+          }
+        ],
+        "semantic_repair": {
+          "original_category": "unknown",
+          "original_message": "POST EXECUTION CONTRACT ERROR: successful SQL is missing requested output dimension(s): regiao_saude.",
+          "guidance_title": "Erro semantico desconhecido",
+          "strategy": "llm_guided",
+          "post_repair_category": null,
+          "post_repair_message": null,
+          "validation_passed_after_repair": true
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T120741_gen092",
+        "query_number": 2,
+        "orchestrator_execution_time": 24.817585229873657
+      },
+      "error": "POST EXECUTION CONTRACT ERROR: successful SQL is missing requested output dimension(s): regiao_saude.",
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    }
+  ]
+}

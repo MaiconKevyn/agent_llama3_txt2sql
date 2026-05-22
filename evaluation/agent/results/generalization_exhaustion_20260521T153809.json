@@ -1,0 +1,2305 @@
+{
+  "run_id": "generalization_exhaustion_20260521T153809",
+  "created_at": "2026-05-21T15:39:22",
+  "dry_run": false,
+  "summary": {
+    "status_counts": {
+      "passed": 6
+    },
+    "root_cause_counts": {},
+    "severity_counts": {}
+  },
+  "items": [
+    {
+      "id": "GEN272",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "O que os dados mostram sobre idade e doencas respiratorias?",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "idade_condicao_respiratoria",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Sim. Há uma associação observada entre idade e o diagnóstico resolvido nos dados.\n\nEscopo usado: CID J00-J99 - Doenças do aparelho respiratório; denominador: todas as internações.\nResumo: 19.690.732 internações, 1.438.634 mortes nessas internações, idade média 35,18 e mediana 30.\n\n| Faixa etária | Internações | Taxa por 100 mil denominador | % dos casos |\n|---|---:|---:|---:|\n| 00-39 | 10.691.790 | 10.713,23 | 54,3% |\n| 40-49 | 1.085.330 | 5.729,39 | 5,51% |\n| 50-59 | 1.490.181 | 7.629,47 | 7,57% |\n| 60-69 | 1.950.531 | 10.020,13 | 9,91% |\n| 70-79 | 2.240.895 | 14.348,27 | 11,38% |\n| 80+ | 2.232.005 | 21.220,41 | 11,34% |\n\nLeitura objetiva: a taxa em >=50 anos foi 1,22x a taxa em <50 anos; a taxa em >=60 anos foi 1,47x a taxa em <60 anos; as idades com maior volume foram 0 anos (7.207.910), 10 anos (345.762), 11 anos (312.945).\n\nAtenção sobre qualidade dos dados: IDADE=0 contém 5.164.368 registros com NASC/DT_INTER indicando 1 ano ou mais.\nLimite: isto descreve associação observada nas internações, não causalidade individual.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    SELECT c.\"CID\" FROM cid c WHERE c.\"CID\" LIKE 'J%'\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), coorte AS (\n    SELECT i.\"IDADE\", i.\"MORTE\", i.\"NASC\", i.\"DT_INTER\"\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"IDADE\" IS NOT NULL\n), base_denominador AS (\n    SELECT i.\"IDADE\"\n    FROM internacoes i\n    WHERE i.\"IDADE\" IS NOT NULL\n), coorte_faixas AS (\n    SELECT\n        CASE\n            WHEN \"IDADE\" < 40 THEN '00-39'\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN '40-49'\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN '50-59'\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN '60-69'\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN '70-79'\n            ELSE '80+'\n        END AS faixa_etaria,\n        CASE\n            WHEN \"IDADE\" < 40 THEN 1\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN 2\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN 3\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN 4\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN 5\n            ELSE 6\n        END AS ordem,\n        \"MORTE\"\n    FROM coorte\n), denominador_faixas AS (\n    SELECT\n        CASE\n            WHEN \"IDADE\" < 40 THEN '00-39'\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN '40-49'\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN '50-59'\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN '60-69'\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN '70-79'\n            ELSE '80+'\n        END AS faixa_etaria,\n        CASE\n            WHEN \"IDADE\" < 40 THEN 1\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN 2\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN 3\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN 4\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN 5\n            ELSE 6\n        END AS ordem,\n        COUNT(*) AS total_denominador\n    FROM base_denominador\n    GROUP BY faixa_etaria, ordem\n), faixas_etarias AS (\n    SELECT\n        d.faixa_etaria,\n        d.ordem,\n        COUNT(c.faixa_etaria) AS total_internacoes,\n        d.total_denominador,\n        ROUND(COUNT(c.faixa_etaria) * 100000.0 / NULLIF(d.total_denominador, 0), 2)\n            AS taxa_por_100k_denominador,\n        ROUND(COUNT(c.faixa_etaria) * 100.0 / NULLIF((SELECT COUNT(*) FROM coorte), 0), 2)\n            AS percentual_casos\n    FROM denominador_faixas d\n    LEFT JOIN coorte_faixas c ON c.faixa_etaria = d.faixa_etaria\n    GROUP BY d.faixa_etaria, d.ordem, d.total_denominador\n), cortes_etarios AS (\n    SELECT\n        'maior_igual_50' AS corte,\n        SUM(CASE WHEN \"IDADE\" >= 50 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" >= 50) AS denominador\n    FROM coorte\n    UNION ALL\n    SELECT\n        'menor_50' AS corte,\n        SUM(CASE WHEN \"IDADE\" < 50 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" < 50) AS denominador\n    FROM coorte\n    UNION ALL\n    SELECT\n        'maior_igual_60' AS corte,\n        SUM(CASE WHEN \"IDADE\" >= 60 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" >= 60) AS denominador\n    FROM coorte\n    UNION ALL\n    SELECT\n        'menor_60' AS corte,\n        SUM(CASE WHEN \"IDADE\" < 60 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" < 60) AS denominador\n    FROM coorte\n), taxas_cortes AS (\n    SELECT corte, casos * 1.0 / NULLIF(denominador, 0) AS taxa\n    FROM cortes_etarios\n), top_idades AS (\n    SELECT \"IDADE\", COUNT(*) AS total_internacoes\n    FROM coorte\n    GROUP BY \"IDADE\"\n    ORDER BY total_internacoes DESC, \"IDADE\" ASC\n    LIMIT 3\n), qualidade_idade AS (\n    SELECT\n        SUM(CASE WHEN \"IDADE\" = 0 THEN 1 ELSE 0 END) AS idade_zero_total,\n        SUM(CASE\n            WHEN \"IDADE\" = 0\n             AND \"NASC\" IS NOT NULL\n             AND \"DT_INTER\" IS NOT NULL\n             AND date_diff('day', \"NASC\", \"DT_INTER\") >= 365\n            THEN 1 ELSE 0 END\n        ) AS idade_zero_inconsistente_nasc,\n        SUM(CASE\n            WHEN \"IDADE\" = 0\n             AND \"NASC\" IS NOT NULL\n             AND \"DT_INTER\" IS NOT NULL\n             AND date_diff('day', \"NASC\", \"DT_INTER\") BETWEEN 0 AND 364\n            THEN 1 ELSE 0 END\n        ) AS idade_zero_compativel_menor_1_ano\n    FROM coorte\n)\nSELECT\n    'age_diagnosis_association' AS analysis_type,\n    'CID J00-J99 - Doencas do aparelho respiratorio' AS resolved_concept,\n    (SELECT COUNT(*) FROM coorte) AS total_internacoes,\n    (SELECT SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) FROM coorte) AS total_mortes,\n    (SELECT ROUND(AVG(\"IDADE\"), 2) FROM coorte) AS idade_media,\n    (SELECT MEDIAN(\"IDADE\") FROM coorte) AS idade_mediana,\n    'todas as internacoes' AS denominador,\n    (SELECT STRING_AGG(\n        faixa_etaria || ':' || total_internacoes || ':' || total_denominador || ':' ||\n        taxa_por_100k_denominador || ':' || percentual_casos,\n        ' | ' ORDER BY ordem)\n     FROM faixas_etarias) AS faixas_etarias,\n    (SELECT STRING_AGG(\n        CAST(\"IDADE\" AS VARCHAR) || ':' || total_internacoes,\n        ' | ' ORDER BY total_internacoes DESC, \"IDADE\" ASC)\n     FROM top_idades) AS top_idades,\n    (SELECT ROUND(\n        (SELECT taxa FROM taxas_cortes WHERE corte = 'maior_igual_50') /\n        NULLIF((SELECT taxa FROM taxas_cortes WHERE corte = 'menor_50'), 0), 2))\n        AS rate_ratio_maior_igual_50_vs_menor_50,\n    (SELECT ROUND(\n        (SELECT taxa FROM taxas_cortes WHERE corte = 'maior_igual_60') /\n        NULLIF((SELECT taxa FROM taxas_cortes WHERE corte = 'menor_60'), 0), 2))\n        AS rate_ratio_maior_igual_60_vs_menor_60,\n    (SELECT idade_zero_total FROM qualidade_idade) AS idade_zero_total,\n    (SELECT idade_zero_inconsistente_nasc FROM qualidade_idade)\n        AS idade_zero_inconsistente_nasc,\n    (SELECT idade_zero_compativel_menor_1_ano FROM qualidade_idade)\n        AS idade_zero_compativel_menor_1_ano,\n    (SELECT\n        CASE\n            WHEN idade_zero_inconsistente_nasc > 0 THEN\n                'data_quality: IDADE=0 contem ' ||\n                CAST(idade_zero_inconsistente_nasc AS VARCHAR) ||\n                ' registros com NASC/DT_INTER indicando 1 ano ou mais'\n            ELSE NULL\n        END\n     FROM qualidade_idade) AS warnings FROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 13.553442001342773
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 1.2812106609344482
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.15315628051757812
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 2.704388380050659
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 1.0797264575958252,
+          "table_discovery": 1.28129243850708,
+          "schema_analysis": 0.0008552074432373047,
+          "reasoning": 8.306037902832031,
+          "sql_generation": 0.0005795955657958984,
+          "sql_validation": 0.1531977653503418,
+          "sql_execution": 2.7044947147369385,
+          "completed": 0.0007038116455078125
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "O que os dados mostram sobre idade e doencas respiratorias?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "association",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            },
+            {
+              "name": "taxa_por_denominador",
+              "expression_type": "rate",
+              "denominator_scope": "same_scope_without_target_diagnosis",
+              "required_filters": []
+            },
+            {
+              "name": "razao_taxas",
+              "expression_type": "ratio",
+              "required_filters": []
+            },
+            {
+              "name": "idade_media",
+              "expression_type": "avg",
+              "required_filters": []
+            },
+            {
+              "name": "idade_mediana",
+              "expression_type": "value",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "diagnostico_principal_prefix",
+              "values": [
+                "J%"
+              ],
+              "operator": "LIKE"
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "values": [
+                "CID J00-J99 - Doencas do aparelho respiratorio"
+              ],
+              "operator": "metadata"
+            },
+            {
+              "field": "diagnostico_conceito_termo_expandido",
+              "values": [
+                "doenca respiratoria",
+                "doenca pulmonar",
+                "cid j"
+              ],
+              "operator": "metadata"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "single_row",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [
+              "diagnostico"
+            ],
+            "forbidden_output_dimensions": [
+              "diagnostico",
+              "idade"
+            ]
+          },
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "age_diagnosis_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.35080813928383986,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "diagnosis_concept_resolution_required",
+          "age_diagnosis_association_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary",
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "association",
+        "analytic_template": "numeric_factor_by_condition",
+        "denominator_policy": "same_scope_without_target_condition_by_age_band",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "denominator",
+          "group_distribution",
+          "effect_summary",
+          "limitations"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [],
+          "diagnosis_prefixes": [
+            "J%"
+          ],
+          "diagnosis_description_terms": [],
+          "labels": [
+            "CID J00-J99 - Doencas do aparelho respiratorio"
+          ],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A associação entre idade e doenças respiratórias é explorada através da contagem de internações e taxas relacionadas, considerando diagnósticos específicos. As métricas de idade média e mediana são incluídas para entender a distribuição etária dos pacientes. Filtros são aplicados para focar em diagnósticos respiratórios, garantindo que a análise seja relevante e precisa.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "age_diagnosis_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T153809_gen272",
+        "query_number": 1,
+        "orchestrator_execution_time": 13.574489116668701
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN273",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "Compare doencas respiratorias segundo idade, com denominador e caveats.",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "idade_condicao_respiratoria",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Sim. Há uma associação observada entre idade e o diagnóstico resolvido nos dados.\n\nEscopo usado: CID J00-J99 - Doenças do aparelho respiratório; denominador: todas as internações.\nResumo: 19.690.732 internações, 1.438.634 mortes nessas internações, idade média 35,18 e mediana 30.\n\n| Faixa etária | Internações | Taxa por 100 mil denominador | % dos casos |\n|---|---:|---:|---:|\n| 00-39 | 10.691.790 | 10.713,23 | 54,3% |\n| 40-49 | 1.085.330 | 5.729,39 | 5,51% |\n| 50-59 | 1.490.181 | 7.629,47 | 7,57% |\n| 60-69 | 1.950.531 | 10.020,13 | 9,91% |\n| 70-79 | 2.240.895 | 14.348,27 | 11,38% |\n| 80+ | 2.232.005 | 21.220,41 | 11,34% |\n\nLeitura objetiva: a taxa em >=50 anos foi 1,22x a taxa em <50 anos; a taxa em >=60 anos foi 1,47x a taxa em <60 anos; as idades com maior volume foram 0 anos (7.207.910), 10 anos (345.762), 11 anos (312.945).\n\nAtenção sobre qualidade dos dados: IDADE=0 contém 5.164.368 registros com NASC/DT_INTER indicando 1 ano ou mais.\nLimite: isto descreve associação observada nas internações, não causalidade individual.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    SELECT c.\"CID\" FROM cid c WHERE c.\"CID\" LIKE 'J%'\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), coorte AS (\n    SELECT i.\"IDADE\", i.\"MORTE\", i.\"NASC\", i.\"DT_INTER\"\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"IDADE\" IS NOT NULL\n), base_denominador AS (\n    SELECT i.\"IDADE\"\n    FROM internacoes i\n    WHERE i.\"IDADE\" IS NOT NULL\n), coorte_faixas AS (\n    SELECT\n        CASE\n            WHEN \"IDADE\" < 40 THEN '00-39'\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN '40-49'\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN '50-59'\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN '60-69'\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN '70-79'\n            ELSE '80+'\n        END AS faixa_etaria,\n        CASE\n            WHEN \"IDADE\" < 40 THEN 1\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN 2\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN 3\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN 4\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN 5\n            ELSE 6\n        END AS ordem,\n        \"MORTE\"\n    FROM coorte\n), denominador_faixas AS (\n    SELECT\n        CASE\n            WHEN \"IDADE\" < 40 THEN '00-39'\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN '40-49'\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN '50-59'\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN '60-69'\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN '70-79'\n            ELSE '80+'\n        END AS faixa_etaria,\n        CASE\n            WHEN \"IDADE\" < 40 THEN 1\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN 2\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN 3\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN 4\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN 5\n            ELSE 6\n        END AS ordem,\n        COUNT(*) AS total_denominador\n    FROM base_denominador\n    GROUP BY faixa_etaria, ordem\n), faixas_etarias AS (\n    SELECT\n        d.faixa_etaria,\n        d.ordem,\n        COUNT(c.faixa_etaria) AS total_internacoes,\n        d.total_denominador,\n        ROUND(COUNT(c.faixa_etaria) * 100000.0 / NULLIF(d.total_denominador, 0), 2)\n            AS taxa_por_100k_denominador,\n        ROUND(COUNT(c.faixa_etaria) * 100.0 / NULLIF((SELECT COUNT(*) FROM coorte), 0), 2)\n            AS percentual_casos\n    FROM denominador_faixas d\n    LEFT JOIN coorte_faixas c ON c.faixa_etaria = d.faixa_etaria\n    GROUP BY d.faixa_etaria, d.ordem, d.total_denominador\n), cortes_etarios AS (\n    SELECT\n        'maior_igual_50' AS corte,\n        SUM(CASE WHEN \"IDADE\" >= 50 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" >= 50) AS denominador\n    FROM coorte\n    UNION ALL\n    SELECT\n        'menor_50' AS corte,\n        SUM(CASE WHEN \"IDADE\" < 50 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" < 50) AS denominador\n    FROM coorte\n    UNION ALL\n    SELECT\n        'maior_igual_60' AS corte,\n        SUM(CASE WHEN \"IDADE\" >= 60 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" >= 60) AS denominador\n    FROM coorte\n    UNION ALL\n    SELECT\n        'menor_60' AS corte,\n        SUM(CASE WHEN \"IDADE\" < 60 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" < 60) AS denominador\n    FROM coorte\n), taxas_cortes AS (\n    SELECT corte, casos * 1.0 / NULLIF(denominador, 0) AS taxa\n    FROM cortes_etarios\n), top_idades AS (\n    SELECT \"IDADE\", COUNT(*) AS total_internacoes\n    FROM coorte\n    GROUP BY \"IDADE\"\n    ORDER BY total_internacoes DESC, \"IDADE\" ASC\n    LIMIT 3\n), qualidade_idade AS (\n    SELECT\n        SUM(CASE WHEN \"IDADE\" = 0 THEN 1 ELSE 0 END) AS idade_zero_total,\n        SUM(CASE\n            WHEN \"IDADE\" = 0\n             AND \"NASC\" IS NOT NULL\n             AND \"DT_INTER\" IS NOT NULL\n             AND date_diff('day', \"NASC\", \"DT_INTER\") >= 365\n            THEN 1 ELSE 0 END\n        ) AS idade_zero_inconsistente_nasc,\n        SUM(CASE\n            WHEN \"IDADE\" = 0\n             AND \"NASC\" IS NOT NULL\n             AND \"DT_INTER\" IS NOT NULL\n             AND date_diff('day', \"NASC\", \"DT_INTER\") BETWEEN 0 AND 364\n            THEN 1 ELSE 0 END\n        ) AS idade_zero_compativel_menor_1_ano\n    FROM coorte\n)\nSELECT\n    'age_diagnosis_association' AS analysis_type,\n    'CID J00-J99 - Doencas do aparelho respiratorio' AS resolved_concept,\n    (SELECT COUNT(*) FROM coorte) AS total_internacoes,\n    (SELECT SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) FROM coorte) AS total_mortes,\n    (SELECT ROUND(AVG(\"IDADE\"), 2) FROM coorte) AS idade_media,\n    (SELECT MEDIAN(\"IDADE\") FROM coorte) AS idade_mediana,\n    'todas as internacoes' AS denominador,\n    (SELECT STRING_AGG(\n        faixa_etaria || ':' || total_internacoes || ':' || total_denominador || ':' ||\n        taxa_por_100k_denominador || ':' || percentual_casos,\n        ' | ' ORDER BY ordem)\n     FROM faixas_etarias) AS faixas_etarias,\n    (SELECT STRING_AGG(\n        CAST(\"IDADE\" AS VARCHAR) || ':' || total_internacoes,\n        ' | ' ORDER BY total_internacoes DESC, \"IDADE\" ASC)\n     FROM top_idades) AS top_idades,\n    (SELECT ROUND(\n        (SELECT taxa FROM taxas_cortes WHERE corte = 'maior_igual_50') /\n        NULLIF((SELECT taxa FROM taxas_cortes WHERE corte = 'menor_50'), 0), 2))\n        AS rate_ratio_maior_igual_50_vs_menor_50,\n    (SELECT ROUND(\n        (SELECT taxa FROM taxas_cortes WHERE corte = 'maior_igual_60') /\n        NULLIF((SELECT taxa FROM taxas_cortes WHERE corte = 'menor_60'), 0), 2))\n        AS rate_ratio_maior_igual_60_vs_menor_60,\n    (SELECT idade_zero_total FROM qualidade_idade) AS idade_zero_total,\n    (SELECT idade_zero_inconsistente_nasc FROM qualidade_idade)\n        AS idade_zero_inconsistente_nasc,\n    (SELECT idade_zero_compativel_menor_1_ano FROM qualidade_idade)\n        AS idade_zero_compativel_menor_1_ano,\n    (SELECT\n        CASE\n            WHEN idade_zero_inconsistente_nasc > 0 THEN\n                'data_quality: IDADE=0 contem ' ||\n                CAST(idade_zero_inconsistente_nasc AS VARCHAR) ||\n                ' registros com NASC/DT_INTER indicando 1 ano ou mais'\n            ELSE NULL\n        END\n     FROM qualidade_idade) AS warnings FROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 11.175777912139893
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.6749651432037354
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.14930367469787598
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 2.448909044265747
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "cid",
+          "internacoes"
+        ],
+        "schema_context_length": 12667,
+        "latency_by_component": {
+          "query_classification": 0.84173583984375,
+          "table_discovery": 0.6750447750091553,
+          "schema_analysis": 0.0004894733428955078,
+          "reasoning": 7.03283166885376,
+          "sql_generation": 0.0008399486541748047,
+          "sql_validation": 0.14933252334594727,
+          "sql_execution": 2.449019432067871,
+          "completed": 0.0006275177001953125
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Compare doencas respiratorias segundo idade, com denominador e caveats.",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "association",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            },
+            {
+              "name": "taxa_por_denominador",
+              "expression_type": "rate",
+              "denominator_scope": "same_scope_without_target_diagnosis",
+              "required_filters": []
+            },
+            {
+              "name": "razao_taxas",
+              "expression_type": "ratio",
+              "required_filters": []
+            },
+            {
+              "name": "idade_media",
+              "expression_type": "avg",
+              "required_filters": []
+            },
+            {
+              "name": "idade_mediana",
+              "expression_type": "value",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "diagnostico_principal_prefix",
+              "values": [
+                "J%"
+              ],
+              "operator": "LIKE"
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "values": [
+                "CID J00-J99 - Doencas do aparelho respiratorio"
+              ],
+              "operator": "metadata"
+            },
+            {
+              "field": "diagnostico_conceito_termo_expandido",
+              "values": [
+                "doenca respiratoria",
+                "doenca pulmonar",
+                "cid j"
+              ],
+              "operator": "metadata"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "single_row",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [
+              "diagnostico"
+            ],
+            "forbidden_output_dimensions": [
+              "diagnostico",
+              "idade"
+            ]
+          },
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "age_diagnosis_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.4387831242049034,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "diagnosis_concept_resolution_required",
+          "age_diagnosis_association_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary",
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "association",
+        "analytic_template": "numeric_factor_by_condition",
+        "denominator_policy": "same_scope_without_target_condition_by_age_band",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "denominator",
+          "group_distribution",
+          "effect_summary",
+          "limitations"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [],
+          "diagnosis_prefixes": [
+            "J%"
+          ],
+          "diagnosis_description_terms": [],
+          "labels": [
+            "CID J00-J99 - Doencas do aparelho respiratorio"
+          ],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A comparação de doenças respiratórias segundo a idade requer a contagem total de internações e a taxa por denominador, que deve ser calculada mantendo o escopo completo. A média e mediana de idade são métricas relevantes para entender a distribuição etária. As dimensões e filtros foram definidos para focar nas doenças respiratórias, utilizando prefixos e conceitos específicos do CID.",
+          "conflicts": [
+            "row_grain_mismatch: heuristic=single_scalar; llm=one_row_per_group",
+            "top_n_scope_mismatch: heuristic=none; llm=per_group"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": [
+            "answer_shape.row_grain",
+            "answer_shape.top_n_scope"
+          ]
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "age_diagnosis_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T153809_gen273",
+        "query_number": 2,
+        "orchestrator_execution_time": 11.192325592041016
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN275",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "O que os dados mostram sobre idade e covid?",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "idade_condicao_covid",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Sim. Há uma associação observada entre idade e o diagnóstico resolvido nos dados.\n\nEscopo usado: B342 - Infecc p/coronavirus NE | B972 - Coronavirus como doenc class outr cap; denominador: todas as internações.\nResumo: 1.862.525 internações, 393.450 mortes nessas internações, idade média 56,85 e mediana 58.\n\n| Faixa etária | Internações | Taxa por 100 mil denominador | % dos casos |\n|---|---:|---:|---:|\n| 00-39 | 331.217 | 331,88 | 17,78% |\n| 40-49 | 278.584 | 1.470,63 | 14,96% |\n| 50-59 | 365.966 | 1.873,68 | 19,65% |\n| 60-69 | 369.824 | 1.899,83 | 19,86% |\n| 70-79 | 299.631 | 1.918,51 | 16,09% |\n| 80+ | 217.303 | 2.065,97 | 11,67% |\n\nLeitura objetiva: a taxa em >=50 anos foi 3,75x a taxa em <50 anos; a taxa em >=60 anos foi 2,76x a taxa em <60 anos; as idades com maior volume foram 0 anos (47.250), 57 anos (39.771), 58 anos (39.539).\n\nAtenção sobre qualidade dos dados: IDADE=0 contém 30.790 registros com NASC/DT_INTER indicando 1 ano ou mais.\nLimite: isto descreve associação observada nas internações, não causalidade individual.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    VALUES ('B342'), ('B972')\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), coorte AS (\n    SELECT i.\"IDADE\", i.\"MORTE\", i.\"NASC\", i.\"DT_INTER\"\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"IDADE\" IS NOT NULL\n), base_denominador AS (\n    SELECT i.\"IDADE\"\n    FROM internacoes i\n    WHERE i.\"IDADE\" IS NOT NULL\n), coorte_faixas AS (\n    SELECT\n        CASE\n            WHEN \"IDADE\" < 40 THEN '00-39'\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN '40-49'\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN '50-59'\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN '60-69'\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN '70-79'\n            ELSE '80+'\n        END AS faixa_etaria,\n        CASE\n            WHEN \"IDADE\" < 40 THEN 1\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN 2\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN 3\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN 4\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN 5\n            ELSE 6\n        END AS ordem,\n        \"MORTE\"\n    FROM coorte\n), denominador_faixas AS (\n    SELECT\n        CASE\n            WHEN \"IDADE\" < 40 THEN '00-39'\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN '40-49'\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN '50-59'\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN '60-69'\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN '70-79'\n            ELSE '80+'\n        END AS faixa_etaria,\n        CASE\n            WHEN \"IDADE\" < 40 THEN 1\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN 2\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN 3\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN 4\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN 5\n            ELSE 6\n        END AS ordem,\n        COUNT(*) AS total_denominador\n    FROM base_denominador\n    GROUP BY faixa_etaria, ordem\n), faixas_etarias AS (\n    SELECT\n        d.faixa_etaria,\n        d.ordem,\n        COUNT(c.faixa_etaria) AS total_internacoes,\n        d.total_denominador,\n        ROUND(COUNT(c.faixa_etaria) * 100000.0 / NULLIF(d.total_denominador, 0), 2)\n            AS taxa_por_100k_denominador,\n        ROUND(COUNT(c.faixa_etaria) * 100.0 / NULLIF((SELECT COUNT(*) FROM coorte), 0), 2)\n            AS percentual_casos\n    FROM denominador_faixas d\n    LEFT JOIN coorte_faixas c ON c.faixa_etaria = d.faixa_etaria\n    GROUP BY d.faixa_etaria, d.ordem, d.total_denominador\n), cortes_etarios AS (\n    SELECT\n        'maior_igual_50' AS corte,\n        SUM(CASE WHEN \"IDADE\" >= 50 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" >= 50) AS denominador\n    FROM coorte\n    UNION ALL\n    SELECT\n        'menor_50' AS corte,\n        SUM(CASE WHEN \"IDADE\" < 50 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" < 50) AS denominador\n    FROM coorte\n    UNION ALL\n    SELECT\n        'maior_igual_60' AS corte,\n        SUM(CASE WHEN \"IDADE\" >= 60 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" >= 60) AS denominador\n    FROM coorte\n    UNION ALL\n    SELECT\n        'menor_60' AS corte,\n        SUM(CASE WHEN \"IDADE\" < 60 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" < 60) AS denominador\n    FROM coorte\n), taxas_cortes AS (\n    SELECT corte, casos * 1.0 / NULLIF(denominador, 0) AS taxa\n    FROM cortes_etarios\n), top_idades AS (\n    SELECT \"IDADE\", COUNT(*) AS total_internacoes\n    FROM coorte\n    GROUP BY \"IDADE\"\n    ORDER BY total_internacoes DESC, \"IDADE\" ASC\n    LIMIT 3\n), qualidade_idade AS (\n    SELECT\n        SUM(CASE WHEN \"IDADE\" = 0 THEN 1 ELSE 0 END) AS idade_zero_total,\n        SUM(CASE\n            WHEN \"IDADE\" = 0\n             AND \"NASC\" IS NOT NULL\n             AND \"DT_INTER\" IS NOT NULL\n             AND date_diff('day', \"NASC\", \"DT_INTER\") >= 365\n            THEN 1 ELSE 0 END\n        ) AS idade_zero_inconsistente_nasc,\n        SUM(CASE\n            WHEN \"IDADE\" = 0\n             AND \"NASC\" IS NOT NULL\n             AND \"DT_INTER\" IS NOT NULL\n             AND date_diff('day', \"NASC\", \"DT_INTER\") BETWEEN 0 AND 364\n            THEN 1 ELSE 0 END\n        ) AS idade_zero_compativel_menor_1_ano\n    FROM coorte\n)\nSELECT\n    'age_diagnosis_association' AS analysis_type,\n    (SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos) AS resolved_concept,\n    (SELECT COUNT(*) FROM coorte) AS total_internacoes,\n    (SELECT SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) FROM coorte) AS total_mortes,\n    (SELECT ROUND(AVG(\"IDADE\"), 2) FROM coorte) AS idade_media,\n    (SELECT MEDIAN(\"IDADE\") FROM coorte) AS idade_mediana,\n    'todas as internacoes' AS denominador,\n    (SELECT STRING_AGG(\n        faixa_etaria || ':' || total_internacoes || ':' || total_denominador || ':' ||\n        taxa_por_100k_denominador || ':' || percentual_casos,\n        ' | ' ORDER BY ordem)\n     FROM faixas_etarias) AS faixas_etarias,\n    (SELECT STRING_AGG(\n        CAST(\"IDADE\" AS VARCHAR) || ':' || total_internacoes,\n        ' | ' ORDER BY total_internacoes DESC, \"IDADE\" ASC)\n     FROM top_idades) AS top_idades,\n    (SELECT ROUND(\n        (SELECT taxa FROM taxas_cortes WHERE corte = 'maior_igual_50') /\n        NULLIF((SELECT taxa FROM taxas_cortes WHERE corte = 'menor_50'), 0), 2))\n        AS rate_ratio_maior_igual_50_vs_menor_50,\n    (SELECT ROUND(\n        (SELECT taxa FROM taxas_cortes WHERE corte = 'maior_igual_60') /\n        NULLIF((SELECT taxa FROM taxas_cortes WHERE corte = 'menor_60'), 0), 2))\n        AS rate_ratio_maior_igual_60_vs_menor_60,\n    (SELECT idade_zero_total FROM qualidade_idade) AS idade_zero_total,\n    (SELECT idade_zero_inconsistente_nasc FROM qualidade_idade)\n        AS idade_zero_inconsistente_nasc,\n    (SELECT idade_zero_compativel_menor_1_ano FROM qualidade_idade)\n        AS idade_zero_compativel_menor_1_ano,\n    (SELECT\n        CASE\n            WHEN idade_zero_inconsistente_nasc > 0 THEN\n                'data_quality: IDADE=0 contem ' ||\n                CAST(idade_zero_inconsistente_nasc AS VARCHAR) ||\n                ' registros com NASC/DT_INTER indicando 1 ano ou mais'\n            ELSE NULL\n        END\n     FROM qualidade_idade) AS warnings FROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 12.715926885604858
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.6941585540771484
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.15287089347839355
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 1.2670719623565674
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "cid",
+          "internacoes"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.8041088581085205,
+          "table_discovery": 0.6942257881164551,
+          "schema_analysis": 0.00048065185546875,
+          "reasoning": 9.792715072631836,
+          "sql_generation": 0.0005650520324707031,
+          "sql_validation": 0.15289831161499023,
+          "sql_execution": 1.2671921253204346,
+          "completed": 0.0006265640258789062
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "O que os dados mostram sobre idade e covid?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "association",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            },
+            {
+              "name": "taxa_por_denominador",
+              "expression_type": "rate",
+              "denominator_scope": "same_scope_without_target_diagnosis",
+              "required_filters": []
+            },
+            {
+              "name": "razao_taxas",
+              "expression_type": "ratio",
+              "required_filters": []
+            },
+            {
+              "name": "idade_media",
+              "expression_type": "avg",
+              "required_filters": []
+            },
+            {
+              "name": "idade_mediana",
+              "expression_type": "value",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "diagnostico_principal_codigo",
+              "values": [
+                "B342",
+                "B972"
+              ],
+              "operator": "IN"
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "values": [
+                "B342 - Infecc p/coronavirus NE",
+                "B972 - Coronavirus como causa de doenc class outr cap"
+              ],
+              "operator": "metadata"
+            },
+            {
+              "field": "diagnostico_conceito_termo_expandido",
+              "values": [
+                "covid",
+                "coronavirus"
+              ],
+              "operator": "metadata"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "single_row",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [
+              "idade"
+            ],
+            "forbidden_output_dimensions": [
+              "idade"
+            ]
+          },
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "age_diagnosis_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope",
+            "diagnosis_filter_dimension_not_output"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.34329466614258525,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "cid",
+          "internacoes",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "diagnosis_concept_resolution_required",
+          "age_diagnosis_association_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary",
+          "rate_denominator_must_preserve_full_scope",
+          "diagnosis_filter_dimension_not_output"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "association",
+        "analytic_template": "numeric_factor_by_condition",
+        "denominator_policy": "same_scope_without_target_condition_by_age_band",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "denominator",
+          "group_distribution",
+          "effect_summary",
+          "limitations"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [
+            "B342",
+            "B972"
+          ],
+          "diagnosis_prefixes": [],
+          "diagnosis_description_terms": [],
+          "labels": [
+            "B342 - Infecc p/coronavirus NE",
+            "B972 - Coronavirus como causa de doenc class outr cap"
+          ],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A associação entre idade e COVID-19 é explorada através da contagem total de internações, taxas de internação por idade, razão entre taxas, e medidas de idade média e mediana. As dimensões de idade são utilizadas para agrupar os dados, permitindo uma análise mais detalhada. Os filtros garantem que apenas os diagnósticos relacionados ao coronavírus sejam considerados, enquanto as métricas são definidas para capturar a relação entre idade e internações por COVID-19.",
+          "conflicts": [
+            "row_grain_mismatch: heuristic=single_scalar; llm=one_row_per_group"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": [
+            "answer_shape.row_grain"
+          ]
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "age_diagnosis_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope",
+            "diagnosis_filter_dimension_not_output"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T153809_gen275",
+        "query_number": 3,
+        "orchestrator_execution_time": 12.731467723846436
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN276",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "Compare covid segundo idade, com denominador e caveats.",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "idade_condicao_covid",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Sim. Há uma associação observada entre idade e o diagnóstico resolvido nos dados.\n\nEscopo usado: B342 - Infecc p/coronavirus NE | B972 - Coronavirus como doenc class outr cap; denominador: todas as internações.\nResumo: 1.862.525 internações, 393.450 mortes nessas internações, idade média 56,85 e mediana 58.\n\n| Faixa etária | Internações | Taxa por 100 mil denominador | % dos casos |\n|---|---:|---:|---:|\n| 00-39 | 331.217 | 331,88 | 17,78% |\n| 40-49 | 278.584 | 1.470,63 | 14,96% |\n| 50-59 | 365.966 | 1.873,68 | 19,65% |\n| 60-69 | 369.824 | 1.899,83 | 19,86% |\n| 70-79 | 299.631 | 1.918,51 | 16,09% |\n| 80+ | 217.303 | 2.065,97 | 11,67% |\n\nLeitura objetiva: a taxa em >=50 anos foi 3,75x a taxa em <50 anos; a taxa em >=60 anos foi 2,76x a taxa em <60 anos; as idades com maior volume foram 0 anos (47.250), 57 anos (39.771), 58 anos (39.539).\n\nAtenção sobre qualidade dos dados: IDADE=0 contém 30.790 registros com NASC/DT_INTER indicando 1 ano ou mais.\nLimite: isto descreve associação observada nas internações, não causalidade individual.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    VALUES ('B342'), ('B972')\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), coorte AS (\n    SELECT i.\"IDADE\", i.\"MORTE\", i.\"NASC\", i.\"DT_INTER\"\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"IDADE\" IS NOT NULL\n), base_denominador AS (\n    SELECT i.\"IDADE\"\n    FROM internacoes i\n    WHERE i.\"IDADE\" IS NOT NULL\n), coorte_faixas AS (\n    SELECT\n        CASE\n            WHEN \"IDADE\" < 40 THEN '00-39'\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN '40-49'\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN '50-59'\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN '60-69'\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN '70-79'\n            ELSE '80+'\n        END AS faixa_etaria,\n        CASE\n            WHEN \"IDADE\" < 40 THEN 1\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN 2\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN 3\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN 4\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN 5\n            ELSE 6\n        END AS ordem,\n        \"MORTE\"\n    FROM coorte\n), denominador_faixas AS (\n    SELECT\n        CASE\n            WHEN \"IDADE\" < 40 THEN '00-39'\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN '40-49'\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN '50-59'\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN '60-69'\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN '70-79'\n            ELSE '80+'\n        END AS faixa_etaria,\n        CASE\n            WHEN \"IDADE\" < 40 THEN 1\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN 2\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN 3\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN 4\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN 5\n            ELSE 6\n        END AS ordem,\n        COUNT(*) AS total_denominador\n    FROM base_denominador\n    GROUP BY faixa_etaria, ordem\n), faixas_etarias AS (\n    SELECT\n        d.faixa_etaria,\n        d.ordem,\n        COUNT(c.faixa_etaria) AS total_internacoes,\n        d.total_denominador,\n        ROUND(COUNT(c.faixa_etaria) * 100000.0 / NULLIF(d.total_denominador, 0), 2)\n            AS taxa_por_100k_denominador,\n        ROUND(COUNT(c.faixa_etaria) * 100.0 / NULLIF((SELECT COUNT(*) FROM coorte), 0), 2)\n            AS percentual_casos\n    FROM denominador_faixas d\n    LEFT JOIN coorte_faixas c ON c.faixa_etaria = d.faixa_etaria\n    GROUP BY d.faixa_etaria, d.ordem, d.total_denominador\n), cortes_etarios AS (\n    SELECT\n        'maior_igual_50' AS corte,\n        SUM(CASE WHEN \"IDADE\" >= 50 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" >= 50) AS denominador\n    FROM coorte\n    UNION ALL\n    SELECT\n        'menor_50' AS corte,\n        SUM(CASE WHEN \"IDADE\" < 50 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" < 50) AS denominador\n    FROM coorte\n    UNION ALL\n    SELECT\n        'maior_igual_60' AS corte,\n        SUM(CASE WHEN \"IDADE\" >= 60 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" >= 60) AS denominador\n    FROM coorte\n    UNION ALL\n    SELECT\n        'menor_60' AS corte,\n        SUM(CASE WHEN \"IDADE\" < 60 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" < 60) AS denominador\n    FROM coorte\n), taxas_cortes AS (\n    SELECT corte, casos * 1.0 / NULLIF(denominador, 0) AS taxa\n    FROM cortes_etarios\n), top_idades AS (\n    SELECT \"IDADE\", COUNT(*) AS total_internacoes\n    FROM coorte\n    GROUP BY \"IDADE\"\n    ORDER BY total_internacoes DESC, \"IDADE\" ASC\n    LIMIT 3\n), qualidade_idade AS (\n    SELECT\n        SUM(CASE WHEN \"IDADE\" = 0 THEN 1 ELSE 0 END) AS idade_zero_total,\n        SUM(CASE\n            WHEN \"IDADE\" = 0\n             AND \"NASC\" IS NOT NULL\n             AND \"DT_INTER\" IS NOT NULL\n             AND date_diff('day', \"NASC\", \"DT_INTER\") >= 365\n            THEN 1 ELSE 0 END\n        ) AS idade_zero_inconsistente_nasc,\n        SUM(CASE\n            WHEN \"IDADE\" = 0\n             AND \"NASC\" IS NOT NULL\n             AND \"DT_INTER\" IS NOT NULL\n             AND date_diff('day', \"NASC\", \"DT_INTER\") BETWEEN 0 AND 364\n            THEN 1 ELSE 0 END\n        ) AS idade_zero_compativel_menor_1_ano\n    FROM coorte\n)\nSELECT\n    'age_diagnosis_association' AS analysis_type,\n    (SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos) AS resolved_concept,\n    (SELECT COUNT(*) FROM coorte) AS total_internacoes,\n    (SELECT SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) FROM coorte) AS total_mortes,\n    (SELECT ROUND(AVG(\"IDADE\"), 2) FROM coorte) AS idade_media,\n    (SELECT MEDIAN(\"IDADE\") FROM coorte) AS idade_mediana,\n    'todas as internacoes' AS denominador,\n    (SELECT STRING_AGG(\n        faixa_etaria || ':' || total_internacoes || ':' || total_denominador || ':' ||\n        taxa_por_100k_denominador || ':' || percentual_casos,\n        ' | ' ORDER BY ordem)\n     FROM faixas_etarias) AS faixas_etarias,\n    (SELECT STRING_AGG(\n        CAST(\"IDADE\" AS VARCHAR) || ':' || total_internacoes,\n        ' | ' ORDER BY total_internacoes DESC, \"IDADE\" ASC)\n     FROM top_idades) AS top_idades,\n    (SELECT ROUND(\n        (SELECT taxa FROM taxas_cortes WHERE corte = 'maior_igual_50') /\n        NULLIF((SELECT taxa FROM taxas_cortes WHERE corte = 'menor_50'), 0), 2))\n        AS rate_ratio_maior_igual_50_vs_menor_50,\n    (SELECT ROUND(\n        (SELECT taxa FROM taxas_cortes WHERE corte = 'maior_igual_60') /\n        NULLIF((SELECT taxa FROM taxas_cortes WHERE corte = 'menor_60'), 0), 2))\n        AS rate_ratio_maior_igual_60_vs_menor_60,\n    (SELECT idade_zero_total FROM qualidade_idade) AS idade_zero_total,\n    (SELECT idade_zero_inconsistente_nasc FROM qualidade_idade)\n        AS idade_zero_inconsistente_nasc,\n    (SELECT idade_zero_compativel_menor_1_ano FROM qualidade_idade)\n        AS idade_zero_compativel_menor_1_ano,\n    (SELECT\n        CASE\n            WHEN idade_zero_inconsistente_nasc > 0 THEN\n                'data_quality: IDADE=0 contem ' ||\n                CAST(idade_zero_inconsistente_nasc AS VARCHAR) ||\n                ' registros com NASC/DT_INTER indicando 1 ano ou mais'\n            ELSE NULL\n        END\n     FROM qualidade_idade) AS warnings FROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 10.978551626205444
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.4613769054412842
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.15403985977172852
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 1.2689902782440186
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "cid",
+          "internacoes"
+        ],
+        "schema_context_length": 12667,
+        "latency_by_component": {
+          "query_classification": 0.7680354118347168,
+          "table_discovery": 0.4614565372467041,
+          "schema_analysis": 0.0007064342498779297,
+          "reasoning": 8.321382522583008,
+          "sql_generation": 0.0004994869232177734,
+          "sql_validation": 0.1540699005126953,
+          "sql_execution": 1.2690942287445068,
+          "completed": 0.0006427764892578125
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Compare covid segundo idade, com denominador e caveats.",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "association",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            },
+            {
+              "name": "taxa_por_denominador",
+              "expression_type": "rate",
+              "denominator_scope": "same_scope_without_target_diagnosis",
+              "required_filters": []
+            },
+            {
+              "name": "razao_taxas",
+              "expression_type": "ratio",
+              "required_filters": []
+            },
+            {
+              "name": "idade_media",
+              "expression_type": "avg",
+              "required_filters": []
+            },
+            {
+              "name": "idade_mediana",
+              "expression_type": "value",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "diagnostico_principal_codigo",
+              "values": [
+                "B342",
+                "B972"
+              ],
+              "operator": "IN"
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "values": [
+                "B342 - Infecc p/coronavirus NE",
+                "B972 - Coronavirus como causa de doenc class outr cap"
+              ],
+              "operator": "metadata"
+            },
+            {
+              "field": "diagnostico_conceito_termo_expandido",
+              "values": [
+                "covid",
+                "coronavirus"
+              ],
+              "operator": "metadata"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "single_row",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [
+              "idade"
+            ],
+            "forbidden_output_dimensions": [
+              "idade"
+            ]
+          },
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "age_diagnosis_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope",
+            "diagnosis_filter_dimension_not_output"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.45803074767530744,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "diagnosis_concept_resolution_required",
+          "age_diagnosis_association_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary",
+          "rate_denominator_must_preserve_full_scope",
+          "diagnosis_filter_dimension_not_output"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "association",
+        "analytic_template": "numeric_factor_by_condition",
+        "denominator_policy": "same_scope_without_target_condition_by_age_band",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "denominator",
+          "group_distribution",
+          "effect_summary",
+          "limitations"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [
+            "B342",
+            "B972"
+          ],
+          "diagnosis_prefixes": [],
+          "diagnosis_description_terms": [],
+          "labels": [
+            "B342 - Infecc p/coronavirus NE",
+            "B972 - Coronavirus como causa de doenc class outr cap"
+          ],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "O plano foi estruturado para comparar internações por COVID-19 segundo a idade, utilizando métricas que incluem contagem total de internações, taxa por denominador, razão de taxas, idade média e mediana. As dimensões foram definidas para agrupar por idade, e os filtros foram aplicados para focar nos diagnósticos relevantes. A forma de resposta foi ajustada para retornar uma tabela agrupada por idade, permitindo uma análise detalhada por faixa etária.",
+          "conflicts": [
+            "row_grain_mismatch: heuristic=single_scalar; llm=one_row_per_group",
+            "top_n_scope_mismatch: heuristic=none; llm=per_group"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": [
+            "answer_shape.row_grain",
+            "answer_shape.top_n_scope"
+          ]
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "age_diagnosis_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope",
+            "diagnosis_filter_dimension_not_output"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T153809_gen276",
+        "query_number": 4,
+        "orchestrator_execution_time": 10.99409532546997
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN278",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "O que os dados mostram sobre idade e diabetes?",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "idade_condicao_diabetes",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Sim. Há uma associação observada entre idade e o diagnóstico resolvido nos dados.\n\nEscopo usado: E10 - Diabetes mellitus insulino-dependente | E11 - Diabetes mellitus nao-insulino-dependemte | E12 - Diabetes mellitus relac c/a desnutr | E13 - Outr tipos espec de diabetes mellitus | E14 - Diabetes mellitus NE | E232 - Diabetes insipido | N083 - Transt glomerulares no diabetes mellitus | N251...; denominador: todas as internações.\nResumo: 405.318 internações, 707 mortes nessas internações, idade média 30,97 e mediana 31.\n\n| Faixa etária | Internações | Taxa por 100 mil denominador | % dos casos |\n|---|---:|---:|---:|\n| 00-39 | 358.812 | 359,53 | 88,53% |\n| 40-49 | 36.913 | 194,86 | 9,11% |\n| 50-59 | 2.616 | 13,39 | 0,65% |\n| 60-69 | 3.063 | 15,74 | 0,76% |\n| 70-79 | 2.484 | 15,9 | 0,61% |\n| 80+ | 1.430 | 13,6 | 0,35% |\n\nLeitura objetiva: a taxa em >=50 anos foi 0,04x a taxa em <50 anos; a taxa em >=60 anos foi 0,05x a taxa em <60 anos; as idades com maior volume foram 33 anos (20.596), 32 anos (20.591), 31 anos (20.560).\n\nAtenção sobre qualidade dos dados: IDADE=0 contém 656 registros com NASC/DT_INTER indicando 1 ano ou mais.\nLimite: isto descreve associação observada nas internações, não causalidade individual.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    SELECT c.\"CID\" FROM cid c WHERE c.\"DESCRICAO\" ILIKE '%diabetes%'\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), coorte AS (\n    SELECT i.\"IDADE\", i.\"MORTE\", i.\"NASC\", i.\"DT_INTER\"\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"IDADE\" IS NOT NULL\n), base_denominador AS (\n    SELECT i.\"IDADE\"\n    FROM internacoes i\n    WHERE i.\"IDADE\" IS NOT NULL\n), coorte_faixas AS (\n    SELECT\n        CASE\n            WHEN \"IDADE\" < 40 THEN '00-39'\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN '40-49'\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN '50-59'\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN '60-69'\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN '70-79'\n            ELSE '80+'\n        END AS faixa_etaria,\n        CASE\n            WHEN \"IDADE\" < 40 THEN 1\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN 2\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN 3\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN 4\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN 5\n            ELSE 6\n        END AS ordem,\n        \"MORTE\"\n    FROM coorte\n), denominador_faixas AS (\n    SELECT\n        CASE\n            WHEN \"IDADE\" < 40 THEN '00-39'\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN '40-49'\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN '50-59'\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN '60-69'\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN '70-79'\n            ELSE '80+'\n        END AS faixa_etaria,\n        CASE\n            WHEN \"IDADE\" < 40 THEN 1\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN 2\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN 3\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN 4\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN 5\n            ELSE 6\n        END AS ordem,\n        COUNT(*) AS total_denominador\n    FROM base_denominador\n    GROUP BY faixa_etaria, ordem\n), faixas_etarias AS (\n    SELECT\n        d.faixa_etaria,\n        d.ordem,\n        COUNT(c.faixa_etaria) AS total_internacoes,\n        d.total_denominador,\n        ROUND(COUNT(c.faixa_etaria) * 100000.0 / NULLIF(d.total_denominador, 0), 2)\n            AS taxa_por_100k_denominador,\n        ROUND(COUNT(c.faixa_etaria) * 100.0 / NULLIF((SELECT COUNT(*) FROM coorte), 0), 2)\n            AS percentual_casos\n    FROM denominador_faixas d\n    LEFT JOIN coorte_faixas c ON c.faixa_etaria = d.faixa_etaria\n    GROUP BY d.faixa_etaria, d.ordem, d.total_denominador\n), cortes_etarios AS (\n    SELECT\n        'maior_igual_50' AS corte,\n        SUM(CASE WHEN \"IDADE\" >= 50 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" >= 50) AS denominador\n    FROM coorte\n    UNION ALL\n    SELECT\n        'menor_50' AS corte,\n        SUM(CASE WHEN \"IDADE\" < 50 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" < 50) AS denominador\n    FROM coorte\n    UNION ALL\n    SELECT\n        'maior_igual_60' AS corte,\n        SUM(CASE WHEN \"IDADE\" >= 60 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" >= 60) AS denominador\n    FROM coorte\n    UNION ALL\n    SELECT\n        'menor_60' AS corte,\n        SUM(CASE WHEN \"IDADE\" < 60 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" < 60) AS denominador\n    FROM coorte\n), taxas_cortes AS (\n    SELECT corte, casos * 1.0 / NULLIF(denominador, 0) AS taxa\n    FROM cortes_etarios\n), top_idades AS (\n    SELECT \"IDADE\", COUNT(*) AS total_internacoes\n    FROM coorte\n    GROUP BY \"IDADE\"\n    ORDER BY total_internacoes DESC, \"IDADE\" ASC\n    LIMIT 3\n), qualidade_idade AS (\n    SELECT\n        SUM(CASE WHEN \"IDADE\" = 0 THEN 1 ELSE 0 END) AS idade_zero_total,\n        SUM(CASE\n            WHEN \"IDADE\" = 0\n             AND \"NASC\" IS NOT NULL\n             AND \"DT_INTER\" IS NOT NULL\n             AND date_diff('day', \"NASC\", \"DT_INTER\") >= 365\n            THEN 1 ELSE 0 END\n        ) AS idade_zero_inconsistente_nasc,\n        SUM(CASE\n            WHEN \"IDADE\" = 0\n             AND \"NASC\" IS NOT NULL\n             AND \"DT_INTER\" IS NOT NULL\n             AND date_diff('day', \"NASC\", \"DT_INTER\") BETWEEN 0 AND 364\n            THEN 1 ELSE 0 END\n        ) AS idade_zero_compativel_menor_1_ano\n    FROM coorte\n)\nSELECT\n    'age_diagnosis_association' AS analysis_type,\n    (SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos) AS resolved_concept,\n    (SELECT COUNT(*) FROM coorte) AS total_internacoes,\n    (SELECT SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) FROM coorte) AS total_mortes,\n    (SELECT ROUND(AVG(\"IDADE\"), 2) FROM coorte) AS idade_media,\n    (SELECT MEDIAN(\"IDADE\") FROM coorte) AS idade_mediana,\n    'todas as internacoes' AS denominador,\n    (SELECT STRING_AGG(\n        faixa_etaria || ':' || total_internacoes || ':' || total_denominador || ':' ||\n        taxa_por_100k_denominador || ':' || percentual_casos,\n        ' | ' ORDER BY ordem)\n     FROM faixas_etarias) AS faixas_etarias,\n    (SELECT STRING_AGG(\n        CAST(\"IDADE\" AS VARCHAR) || ':' || total_internacoes,\n        ' | ' ORDER BY total_internacoes DESC, \"IDADE\" ASC)\n     FROM top_idades) AS top_idades,\n    (SELECT ROUND(\n        (SELECT taxa FROM taxas_cortes WHERE corte = 'maior_igual_50') /\n        NULLIF((SELECT taxa FROM taxas_cortes WHERE corte = 'menor_50'), 0), 2))\n        AS rate_ratio_maior_igual_50_vs_menor_50,\n    (SELECT ROUND(\n        (SELECT taxa FROM taxas_cortes WHERE corte = 'maior_igual_60') /\n        NULLIF((SELECT taxa FROM taxas_cortes WHERE corte = 'menor_60'), 0), 2))\n        AS rate_ratio_maior_igual_60_vs_menor_60,\n    (SELECT idade_zero_total FROM qualidade_idade) AS idade_zero_total,\n    (SELECT idade_zero_inconsistente_nasc FROM qualidade_idade)\n        AS idade_zero_inconsistente_nasc,\n    (SELECT idade_zero_compativel_menor_1_ano FROM qualidade_idade)\n        AS idade_zero_compativel_menor_1_ano,\n    (SELECT\n        CASE\n            WHEN idade_zero_inconsistente_nasc > 0 THEN\n                'data_quality: IDADE=0 contem ' ||\n                CAST(idade_zero_inconsistente_nasc AS VARCHAR) ||\n                ' registros com NASC/DT_INTER indicando 1 ano ou mais'\n            ELSE NULL\n        END\n     FROM qualidade_idade) AS warnings FROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 11.929751873016357
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.48749279975891113
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.14928936958312988
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 1.290684700012207
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 2.9659316539764404,
+          "table_discovery": 0.48755717277526855,
+          "schema_analysis": 0.0006644725799560547,
+          "reasoning": 7.032217979431152,
+          "sql_generation": 0.0001862049102783203,
+          "sql_validation": 0.14931750297546387,
+          "sql_execution": 1.2907946109771729,
+          "completed": 0.0006313323974609375
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "O que os dados mostram sobre idade e diabetes?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "association",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "diagnostico_principal_descricao",
+              "values": [
+                "diabetes"
+              ],
+              "operator": "ILIKE"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "single_row",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [
+              "idade"
+            ],
+            "counted_entity": "internacao",
+            "forbidden_output_dimensions": [
+              "idade"
+            ]
+          },
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "age_diagnosis_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "diagnosis_filter_dimension_not_output",
+            "diagnosis_description_lookup_required"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.31935193965248515,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "diagnosis_concept_resolution_required",
+          "age_diagnosis_association_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary",
+          "diagnosis_filter_dimension_not_output",
+          "diagnosis_description_lookup_required"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "association",
+        "analytic_template": "numeric_factor_by_condition",
+        "denominator_policy": "same_scope_without_target_condition_by_age_band",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "denominator",
+          "group_distribution",
+          "effect_summary",
+          "limitations"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [],
+          "diagnosis_prefixes": [],
+          "diagnosis_description_terms": [
+            "diabetes"
+          ],
+          "labels": [],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é explorar a associação entre idade e diabetes, utilizando a tabela de internações. A métrica conta o total de internações com diagnóstico de diabetes, filtrando por idade. A resposta deve ser agrupada por idade para mostrar a distribuição das internações por faixa etária.",
+          "conflicts": [
+            "row_grain_mismatch: heuristic=single_scalar; llm=one_row_per_group",
+            "top_n_scope_mismatch: heuristic=none; llm=per_group"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": [
+            "answer_shape.row_grain",
+            "answer_shape.top_n_scope"
+          ]
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "age_diagnosis_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "diagnosis_filter_dimension_not_output",
+            "diagnosis_description_lookup_required"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T153809_gen278",
+        "query_number": 5,
+        "orchestrator_execution_time": 11.953434467315674
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN279",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "Compare diabetes segundo idade, com denominador e caveats.",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "idade_condicao_diabetes",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Sim. Há uma associação observada entre idade e o diagnóstico resolvido nos dados.\n\nEscopo usado: E10 - Diabetes mellitus insulino-dependente | E11 - Diabetes mellitus nao-insulino-dependemte | E12 - Diabetes mellitus relac c/a desnutr | E13 - Outr tipos espec de diabetes mellitus | E14 - Diabetes mellitus NE | E232 - Diabetes insipido | N083 - Transt glomerulares no diabetes mellitus | N251...; denominador: todas as internações.\nResumo: 405.318 internações, 707 mortes nessas internações, idade média 30,97 e mediana 31.\n\n| Faixa etária | Internações | Taxa por 100 mil denominador | % dos casos |\n|---|---:|---:|---:|\n| 00-39 | 358.812 | 359,53 | 88,53% |\n| 40-49 | 36.913 | 194,86 | 9,11% |\n| 50-59 | 2.616 | 13,39 | 0,65% |\n| 60-69 | 3.063 | 15,74 | 0,76% |\n| 70-79 | 2.484 | 15,9 | 0,61% |\n| 80+ | 1.430 | 13,6 | 0,35% |\n\nLeitura objetiva: a taxa em >=50 anos foi 0,04x a taxa em <50 anos; a taxa em >=60 anos foi 0,05x a taxa em <60 anos; as idades com maior volume foram 33 anos (20.596), 32 anos (20.591), 31 anos (20.560).\n\nAtenção sobre qualidade dos dados: IDADE=0 contém 656 registros com NASC/DT_INTER indicando 1 ano ou mais.\nLimite: isto descreve associação observada nas internações, não causalidade individual.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    SELECT c.\"CID\" FROM cid c WHERE c.\"DESCRICAO\" ILIKE '%diabetes%'\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), coorte AS (\n    SELECT i.\"IDADE\", i.\"MORTE\", i.\"NASC\", i.\"DT_INTER\"\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"IDADE\" IS NOT NULL\n), base_denominador AS (\n    SELECT i.\"IDADE\"\n    FROM internacoes i\n    WHERE i.\"IDADE\" IS NOT NULL\n), coorte_faixas AS (\n    SELECT\n        CASE\n            WHEN \"IDADE\" < 40 THEN '00-39'\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN '40-49'\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN '50-59'\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN '60-69'\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN '70-79'\n            ELSE '80+'\n        END AS faixa_etaria,\n        CASE\n            WHEN \"IDADE\" < 40 THEN 1\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN 2\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN 3\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN 4\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN 5\n            ELSE 6\n        END AS ordem,\n        \"MORTE\"\n    FROM coorte\n), denominador_faixas AS (\n    SELECT\n        CASE\n            WHEN \"IDADE\" < 40 THEN '00-39'\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN '40-49'\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN '50-59'\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN '60-69'\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN '70-79'\n            ELSE '80+'\n        END AS faixa_etaria,\n        CASE\n            WHEN \"IDADE\" < 40 THEN 1\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN 2\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN 3\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN 4\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN 5\n            ELSE 6\n        END AS ordem,\n        COUNT(*) AS total_denominador\n    FROM base_denominador\n    GROUP BY faixa_etaria, ordem\n), faixas_etarias AS (\n    SELECT\n        d.faixa_etaria,\n        d.ordem,\n        COUNT(c.faixa_etaria) AS total_internacoes,\n        d.total_denominador,\n        ROUND(COUNT(c.faixa_etaria) * 100000.0 / NULLIF(d.total_denominador, 0), 2)\n            AS taxa_por_100k_denominador,\n        ROUND(COUNT(c.faixa_etaria) * 100.0 / NULLIF((SELECT COUNT(*) FROM coorte), 0), 2)\n            AS percentual_casos\n    FROM denominador_faixas d\n    LEFT JOIN coorte_faixas c ON c.faixa_etaria = d.faixa_etaria\n    GROUP BY d.faixa_etaria, d.ordem, d.total_denominador\n), cortes_etarios AS (\n    SELECT\n        'maior_igual_50' AS corte,\n        SUM(CASE WHEN \"IDADE\" >= 50 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" >= 50) AS denominador\n    FROM coorte\n    UNION ALL\n    SELECT\n        'menor_50' AS corte,\n        SUM(CASE WHEN \"IDADE\" < 50 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" < 50) AS denominador\n    FROM coorte\n    UNION ALL\n    SELECT\n        'maior_igual_60' AS corte,\n        SUM(CASE WHEN \"IDADE\" >= 60 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" >= 60) AS denominador\n    FROM coorte\n    UNION ALL\n    SELECT\n        'menor_60' AS corte,\n        SUM(CASE WHEN \"IDADE\" < 60 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" < 60) AS denominador\n    FROM coorte\n), taxas_cortes AS (\n    SELECT corte, casos * 1.0 / NULLIF(denominador, 0) AS taxa\n    FROM cortes_etarios\n), top_idades AS (\n    SELECT \"IDADE\", COUNT(*) AS total_internacoes\n    FROM coorte\n    GROUP BY \"IDADE\"\n    ORDER BY total_internacoes DESC, \"IDADE\" ASC\n    LIMIT 3\n), qualidade_idade AS (\n    SELECT\n        SUM(CASE WHEN \"IDADE\" = 0 THEN 1 ELSE 0 END) AS idade_zero_total,\n        SUM(CASE\n            WHEN \"IDADE\" = 0\n             AND \"NASC\" IS NOT NULL\n             AND \"DT_INTER\" IS NOT NULL\n             AND date_diff('day', \"NASC\", \"DT_INTER\") >= 365\n            THEN 1 ELSE 0 END\n        ) AS idade_zero_inconsistente_nasc,\n        SUM(CASE\n            WHEN \"IDADE\" = 0\n             AND \"NASC\" IS NOT NULL\n             AND \"DT_INTER\" IS NOT NULL\n             AND date_diff('day', \"NASC\", \"DT_INTER\") BETWEEN 0 AND 364\n            THEN 1 ELSE 0 END\n        ) AS idade_zero_compativel_menor_1_ano\n    FROM coorte\n)\nSELECT\n    'age_diagnosis_association' AS analysis_type,\n    (SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos) AS resolved_concept,\n    (SELECT COUNT(*) FROM coorte) AS total_internacoes,\n    (SELECT SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) FROM coorte) AS total_mortes,\n    (SELECT ROUND(AVG(\"IDADE\"), 2) FROM coorte) AS idade_media,\n    (SELECT MEDIAN(\"IDADE\") FROM coorte) AS idade_mediana,\n    'todas as internacoes' AS denominador,\n    (SELECT STRING_AGG(\n        faixa_etaria || ':' || total_internacoes || ':' || total_denominador || ':' ||\n        taxa_por_100k_denominador || ':' || percentual_casos,\n        ' | ' ORDER BY ordem)\n     FROM faixas_etarias) AS faixas_etarias,\n    (SELECT STRING_AGG(\n        CAST(\"IDADE\" AS VARCHAR) || ':' || total_internacoes,\n        ' | ' ORDER BY total_internacoes DESC, \"IDADE\" ASC)\n     FROM top_idades) AS top_idades,\n    (SELECT ROUND(\n        (SELECT taxa FROM taxas_cortes WHERE corte = 'maior_igual_50') /\n        NULLIF((SELECT taxa FROM taxas_cortes WHERE corte = 'menor_50'), 0), 2))\n        AS rate_ratio_maior_igual_50_vs_menor_50,\n    (SELECT ROUND(\n        (SELECT taxa FROM taxas_cortes WHERE corte = 'maior_igual_60') /\n        NULLIF((SELECT taxa FROM taxas_cortes WHERE corte = 'menor_60'), 0), 2))\n        AS rate_ratio_maior_igual_60_vs_menor_60,\n    (SELECT idade_zero_total FROM qualidade_idade) AS idade_zero_total,\n    (SELECT idade_zero_inconsistente_nasc FROM qualidade_idade)\n        AS idade_zero_inconsistente_nasc,\n    (SELECT idade_zero_compativel_menor_1_ano FROM qualidade_idade)\n        AS idade_zero_compativel_menor_1_ano,\n    (SELECT\n        CASE\n            WHEN idade_zero_inconsistente_nasc > 0 THEN\n                'data_quality: IDADE=0 contem ' ||\n                CAST(idade_zero_inconsistente_nasc AS VARCHAR) ||\n                ' registros com NASC/DT_INTER indicando 1 ano ou mais'\n            ELSE NULL\n        END\n     FROM qualidade_idade) AS warnings FROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 8.186095714569092
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.561150074005127
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.14916276931762695
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 1.3481028079986572
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "cid",
+          "internacoes"
+        ],
+        "schema_context_length": 11962,
+        "latency_by_component": {
+          "query_classification": 1.451596736907959,
+          "table_discovery": 0.5612268447875977,
+          "schema_analysis": 0.0005190372467041016,
+          "reasoning": 4.671910524368286,
+          "sql_generation": 0.0006220340728759766,
+          "sql_validation": 0.14919042587280273,
+          "sql_execution": 1.3482146263122559,
+          "completed": 0.0006201267242431641
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Compare diabetes segundo idade, com denominador e caveats.",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "association",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "diagnostico_principal_descricao",
+              "values": [
+                "diabetes"
+              ],
+              "operator": "ILIKE"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "single_row",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [
+              "idade"
+            ],
+            "counted_entity": "internacoes",
+            "forbidden_output_dimensions": [
+              "idade"
+            ]
+          },
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "age_diagnosis_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "diagnosis_filter_dimension_not_output",
+            "diagnosis_description_lookup_required"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.43483926021066965,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "diagnosis_concept_resolution_required",
+          "age_diagnosis_association_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary",
+          "diagnosis_filter_dimension_not_output",
+          "diagnosis_description_lookup_required"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "association",
+        "analytic_template": "numeric_factor_by_condition",
+        "denominator_policy": "same_scope_without_target_condition_by_age_band",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "denominator",
+          "group_distribution",
+          "effect_summary",
+          "limitations"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [],
+          "diagnosis_prefixes": [],
+          "diagnosis_description_terms": [
+            "diabetes"
+          ],
+          "labels": [],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A comparação de diabetes segundo idade requer a contagem de internações com diabetes como diagnóstico principal, agrupadas por idade. O denominador é a idade, e a métrica total conta as internações. A estrutura do plano reflete a necessidade de um agrupamento por idade para a análise comparativa.",
+          "conflicts": [
+            "intent_mismatch: heuristic=association; llm=comparison",
+            "row_grain_mismatch: heuristic=single_scalar; llm=one_row_per_group"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": [
+            "intent",
+            "answer_shape.row_grain"
+          ]
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "age_diagnosis_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "diagnosis_filter_dimension_not_output",
+            "diagnosis_description_lookup_required"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T153809_gen279",
+        "query_number": 6,
+        "orchestrator_execution_time": 8.2013680934906
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    }
+  ]
+}

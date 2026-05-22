@@ -1,0 +1,3507 @@
+{
+  "run_id": "generalization_exhaustion_20260521T111320",
+  "created_at": "2026-05-21T11:16:52",
+  "dry_run": false,
+  "summary": {
+    "status_counts": {
+      "passed": 6,
+      "failed": 4
+    },
+    "root_cause_counts": {
+      "response_grounding_error": 4
+    },
+    "severity_counts": {
+      "medium": 4
+    }
+  },
+  "items": [
+    {
+      "id": "GEN051",
+      "persona": "medico_pesquisador",
+      "category": "diagnosticos_cid",
+      "difficulty": "medium",
+      "question": "Quais foram os 10 diagnosticos principais mais frequentes em 2018?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "diagnostico_principal_ranking",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "diagnostico": "Parto espontaneo cefalico",
+            "total_internacoes": 807423
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_internacoes": 263515
+          },
+          {
+            "diagnostico": "Parto unico espontaneo NE",
+            "total_internacoes": 200669
+          },
+          {
+            "diagnostico": "Infecc do trato urinario de localiz NE",
+            "total_internacoes": 179357
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_internacoes": 157203
+          }
+        ],
+        "actual_preview": [
+          {
+            "diagnostico": "Parto espontaneo cefalico",
+            "total": 807423
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total": 263515
+          },
+          {
+            "diagnostico": "Parto unico espontaneo NE",
+            "total": 200669
+          },
+          {
+            "diagnostico": "Infecc do trato urinario de localiz NE",
+            "total": 179357
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total": 157203
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os 10 diagnósticos principais mais frequentes em 2018 foram:\n\n1. Parto espontâneo cefálico: 807.423\n2. Pneumonia NE: 263.515\n3. Parto único espontâneo NE: 200.669\n4. Infecção do trato urinário de localização NE: 179.357\n5. Acidente vascular cerebral NE como hemorragia isquêmica: 157.203\n6. Diarreia e gastroenterite de origem infecciosa presumida: 118.446\n7. Insuficiência cardíaca congestiva: 114.336\n8. Hérnia inguinal unilateral NE sem obstrução ou gangrena: 104.152\n9. Pneumonia bacteriana NE: 101.775\n10. Broncopneumonia NE: 101.191",
+      "sql": "SELECT c.\"DESCRICAO\" AS diagnostico, COUNT(*) AS total FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM \"DT_INTER\") = 2018 GROUP BY c.\"DESCRICAO\" ORDER BY total DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 19.00484037399292
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 1.2654845714569092
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.626424789428711
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.4778139591217041
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "cid",
+          "internacoes"
+        ],
+        "schema_context_length": 12667,
+        "latency_by_component": {
+          "query_classification": 0.0004343986511230469,
+          "table_discovery": 1.2655718326568604,
+          "schema_analysis": 0.0008609294891357422,
+          "reasoning": 5.086535930633545,
+          "sql_generation": 7.671403884887695,
+          "sql_validation": 1.6264581680297852,
+          "sql_execution": 0.47794175148010254,
+          "completed": 2.858027696609497
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais foram os 10 diagnosticos principais mais frequentes em 2018?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "requested_metric",
+              "expression_type": "unknown",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "diagnostico",
+              "source": "cid.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2018"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "diagnostico"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "diagnostico"
+            ],
+            "filter_dimensions": [],
+            "counted_entity": "diagnostico",
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.47725370906068604,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os diagnósticos mais frequentes em 2018, utilizando a tabela de internações e a descrição dos diagnósticos da tabela CID. A métrica escolhida é a contagem de diagnósticos, agrupada pela descrição do diagnóstico. O filtro aplicado é para o ano de 2018, e a resposta deve retornar os 10 diagnósticos mais frequentes.",
+          "conflicts": [
+            "unknown_metric_ignored: frequencia_diagnostico"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query counts the occurrences of each primary diagnosis in 2018 by joining the internacoes table with the cid table to get the diagnosis descriptions. It filters for the year 2018 and groups the results by diagnosis description, ordering them by frequency to return the top 10.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T111320_gen051",
+        "query_number": 1,
+        "orchestrator_execution_time": 19.02125310897827
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN052",
+      "persona": "medico_pesquisador",
+      "category": "diagnosticos_cid",
+      "difficulty": "medium",
+      "question": "Quais foram os 10 diagnosticos principais mais frequentes em 2019?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "diagnostico_principal_ranking",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "diagnostico": "Parto espontaneo cefalico",
+            "total_internacoes": 787459
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_internacoes": 266105
+          },
+          {
+            "diagnostico": "Parto unico espontaneo NE",
+            "total_internacoes": 192357
+          },
+          {
+            "diagnostico": "Infecc do trato urinario de localiz NE",
+            "total_internacoes": 188896
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_internacoes": 163384
+          }
+        ],
+        "actual_preview": [
+          {
+            "diagnostico": "Parto espontaneo cefalico",
+            "total": 787459
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total": 266105
+          },
+          {
+            "diagnostico": "Parto unico espontaneo NE",
+            "total": 192357
+          },
+          {
+            "diagnostico": "Infecc do trato urinario de localiz NE",
+            "total": 188896
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total": 163384
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os 10 diagnósticos principais mais frequentes em 2019 foram:\n\n1. Parto espontâneo cefálico: 787.459\n2. Pneumonia NE: 266.105\n3. Parto único espontâneo NE: 192.357\n4. Infecção do trato urinário de localiz NE: 188.896\n5. Acidente vascular cerebral NE como hemorragia isquêmica: 163.384\n6. Diarreia e gastroenterite de origem infecciosa presumida: 117.269\n7. Insuficiência cardíaca congestiva: 115.268\n8. Pneumonia bacteriana NE: 111.692\n9. Esterilização: 109.680\n10. Hérnia inguinal unilateral NE sem obstrução ou gangrena: 106.669",
+      "sql": "SELECT c.\"DESCRICAO\" AS diagnostico, COUNT(*) AS total FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM \"DT_INTER\") = 2019 GROUP BY c.\"DESCRICAO\" ORDER BY total DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 17.67415142059326
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5219593048095703
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.541290521621704
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.3827509880065918
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "cid",
+          "internacoes"
+        ],
+        "schema_context_length": 12667,
+        "latency_by_component": {
+          "query_classification": 0.00032806396484375,
+          "table_discovery": 0.5220377445220947,
+          "schema_analysis": 0.0007741451263427734,
+          "reasoning": 6.499163627624512,
+          "sql_generation": 6.52456521987915,
+          "sql_validation": 1.5413193702697754,
+          "sql_execution": 0.3828551769256592,
+          "completed": 2.2014358043670654
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais foram os 10 diagnosticos principais mais frequentes em 2019?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "requested_metric",
+              "expression_type": "unknown",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "diagnostico",
+              "source": "cid.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2019"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "diagnostico"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "diagnostico"
+            ],
+            "filter_dimensions": [],
+            "counted_entity": "diagnostico",
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.4753207969000899,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os diagnósticos mais frequentes em 2019, utilizando a tabela de internações e a descrição dos diagnósticos. A métrica escolhida é a contagem de diagnósticos, agrupada pela descrição do CID. O filtro aplicado é para o ano de 2019, e a resposta deve retornar os 10 diagnósticos mais frequentes.",
+          "conflicts": [
+            "unknown_metric_ignored: frequencia_diagnostico"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query counts the occurrences of each primary diagnosis in 2019 by joining the 'internacoes' table with the 'cid' table to get the diagnosis descriptions. It groups the results by diagnosis description and orders them by frequency, limiting the output to the top 10 diagnoses.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T111320_gen052",
+        "query_number": 2,
+        "orchestrator_execution_time": 17.68691611289978
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN053",
+      "persona": "medico_pesquisador",
+      "category": "diagnosticos_cid",
+      "difficulty": "medium",
+      "question": "Quais foram os 10 diagnosticos principais mais frequentes em 2020?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "diagnostico_principal_ranking",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "diagnostico": "Parto espontaneo cefalico",
+            "total_internacoes": 738548
+          },
+          {
+            "diagnostico": "Infecc p/coronavirus NE",
+            "total_internacoes": 541859
+          },
+          {
+            "diagnostico": "Parto unico espontaneo NE",
+            "total_internacoes": 171165
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_internacoes": 159694
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_internacoes": 153507
+          }
+        ],
+        "actual_preview": [
+          {
+            "diagnostico": "Parto espontaneo cefalico",
+            "total": 738548
+          },
+          {
+            "diagnostico": "Infecc p/coronavirus NE",
+            "total": 541859
+          },
+          {
+            "diagnostico": "Parto unico espontaneo NE",
+            "total": 171165
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total": 159694
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total": 153507
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os 10 diagnósticos principais mais frequentes em 2020 foram:\n\n1. Parto espontâneo cefálico: 738.548\n2. Infecção por coronavírus NE: 541.859\n3. Parto único espontâneo NE: 171.165\n4. Pneumonia NE: 159.694\n5. Acidente vascular cerebral NE como hemorragia isquêmica: 153.507\n6. Infecção do trato urinário de localização NE: 145.285\n7. Parto por cesariana eletiva: 103.079\n8. Insuficiência cardíaca congestiva: 95.534\n9. Apendicite aguda SOE: 93.894\n10. Infarto agudo do miocárdio NE: 92.304",
+      "sql": "SELECT c.\"DESCRICAO\" AS diagnostico, COUNT(*) AS total FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 GROUP BY c.\"DESCRICAO\" ORDER BY total DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 18.065993070602417
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5069911479949951
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.4045569896697998
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.37436437606811523
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "cid",
+          "internacoes"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.00031566619873046875,
+          "table_discovery": 0.5070593357086182,
+          "schema_analysis": 0.0006964206695556641,
+          "reasoning": 6.360080003738403,
+          "sql_generation": 6.960036754608154,
+          "sql_validation": 1.404583215713501,
+          "sql_execution": 0.3744673728942871,
+          "completed": 2.456876754760742
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais foram os 10 diagnosticos principais mais frequentes em 2020?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "requested_metric",
+              "expression_type": "unknown",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "diagnostico",
+              "source": "cid.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "diagnostico"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "diagnostico"
+            ],
+            "filter_dimensions": [],
+            "counted_entity": "diagnostico",
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.4538093937639584,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "cid",
+          "internacoes",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os diagnósticos mais frequentes em 2020, utilizando a tabela de internações. A métrica escolhida é a contagem de diagnósticos, agrupada pela descrição do CID. O filtro aplicado é para o ano de 2020, e a resposta deve retornar os 10 diagnósticos mais frequentes.",
+          "conflicts": [
+            "unknown_metric_ignored: frequencia_diagnostico"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query counts the occurrences of each primary diagnosis in 2020 by joining the 'internacoes' table with the 'cid' table to get the diagnosis descriptions. It groups the results by diagnosis description and orders them by frequency, limiting the output to the top 10 diagnoses.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T111320_gen053",
+        "query_number": 3,
+        "orchestrator_execution_time": 18.078182697296143
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN054",
+      "persona": "medico_pesquisador",
+      "category": "diagnosticos_cid",
+      "difficulty": "medium",
+      "question": "Quais foram os 10 diagnosticos principais mais frequentes em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "diagnostico_principal_ranking",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "diagnostico": "Infecc p/coronavirus NE",
+            "total_internacoes": 1152036
+          },
+          {
+            "diagnostico": "Parto espontaneo cefalico",
+            "total_internacoes": 727371
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_internacoes": 164265
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_internacoes": 160250
+          },
+          {
+            "diagnostico": "Parto unico espontaneo NE",
+            "total_internacoes": 158964
+          }
+        ],
+        "actual_preview": [
+          {
+            "diagnostico": "Infecc p/coronavirus NE",
+            "total": 1152036
+          },
+          {
+            "diagnostico": "Parto espontaneo cefalico",
+            "total": 727371
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total": 164265
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total": 160250
+          },
+          {
+            "diagnostico": "Parto unico espontaneo NE",
+            "total": 158964
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os 10 diagnósticos principais mais frequentes em 2021 foram:\n\n1. Infecc p/coronavirus NE - 1.152.036\n2. Parto espontaneo cefalico - 727.371\n3. Acid vasc cerebr NE como hemorrag isquemico - 164.265\n4. Pneumonia NE - 160.250\n5. Parto unico espontaneo NE - 158.964\n6. Infecc do trato urinario de localiz NE - 145.549\n7. Parto p/cesariana eletiva - 107.647\n8. Infarto agudo do miocardio NE - 102.473\n9. Insuf cardiaca congestiva - 94.578\n10. Apendicite aguda SOE - 94.209",
+      "sql": "SELECT c.\"DESCRICAO\" AS diagnostico, COUNT(*) AS total FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 GROUP BY c.\"DESCRICAO\" ORDER BY total DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 23.74586009979248
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.6023001670837402
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.5559139251708984
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.3815193176269531
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "cid",
+          "internacoes"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.0003476142883300781,
+          "table_discovery": 0.602367639541626,
+          "schema_analysis": 0.000762939453125,
+          "reasoning": 6.47016453742981,
+          "sql_generation": 11.598992824554443,
+          "sql_validation": 1.5559418201446533,
+          "sql_execution": 0.3816196918487549,
+          "completed": 3.1340627670288086
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais foram os 10 diagnosticos principais mais frequentes em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "requested_metric",
+              "expression_type": "unknown",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "diagnostico",
+              "source": "cid.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "diagnostico"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "diagnostico"
+            ],
+            "filter_dimensions": [],
+            "counted_entity": "diagnostico",
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.4501830018407835,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "cid",
+          "internacoes",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é identificar os 10 diagnósticos mais frequentes em internações no ano de 2021. A métrica escolhida é a contagem de diagnósticos, agrupada pela descrição do CID. O filtro aplicado é para o ano de 2021, e a forma de resposta é a lista dos 10 principais diagnósticos, o que justifica o uso de um ranking global.",
+          "conflicts": [
+            "unknown_metric_ignored: frequencia_diagnostico"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query counts the occurrences of each primary diagnosis in 2021 by joining the 'internacoes' table with the 'cid' table to get the diagnosis descriptions. It filters for the year 2021 and groups by diagnosis description to get the top 10 most frequent diagnoses.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T111320_gen054",
+        "query_number": 4,
+        "orchestrator_execution_time": 23.767524242401123
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN055",
+      "persona": "medico_pesquisador",
+      "category": "diagnosticos_cid",
+      "difficulty": "medium",
+      "question": "Quais foram os 10 diagnosticos principais mais frequentes em 2022?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "diagnostico_principal_ranking",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "diagnostico": "Parto espontaneo cefalico",
+            "total_internacoes": 676088
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_internacoes": 277771
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_internacoes": 185849
+          },
+          {
+            "diagnostico": "Infecc do trato urinario de localiz NE",
+            "total_internacoes": 174771
+          },
+          {
+            "diagnostico": "Infecc p/coronavirus NE",
+            "total_internacoes": 153314
+          }
+        ],
+        "actual_preview": [
+          {
+            "diagnostico": "Parto espontaneo cefalico",
+            "total": 676088
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total": 277771
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total": 185849
+          },
+          {
+            "diagnostico": "Infecc do trato urinario de localiz NE",
+            "total": 174771
+          },
+          {
+            "diagnostico": "Infecc p/coronavirus NE",
+            "total": 153314
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os 10 diagnósticos principais mais frequentes em 2022 foram:\n\n1. Parto espontâneo cefálico: 676.088\n2. Pneumonia NE: 277.771\n3. Acid vasc cerebr NE como hemorrag isquêmica: 185.849\n4. Infecção do trato urinário de localiz NE: 174.771\n5. Infecção p/coronavírus NE: 153.314\n6. Parto único espontâneo NE: 140.375\n7. Esterilização: 134.940\n8. Parto p/cesariana eletiva: 118.778\n9. Infarto agudo do miocárdio NE: 116.723\n10. Hérnia inguinal unilat NE s/obstr gangrena: 113.734",
+      "sql": "SELECT c.\"DESCRICAO\" AS diagnostico, COUNT(*) AS total FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM \"DT_INTER\") = 2022 GROUP BY c.\"DESCRICAO\" ORDER BY total DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 18.178383827209473
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.59637451171875
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.4143683910369873
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.38658618927001953
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "cid",
+          "internacoes"
+        ],
+        "schema_context_length": 12667,
+        "latency_by_component": {
+          "query_classification": 0.0002925395965576172,
+          "table_discovery": 0.5964481830596924,
+          "schema_analysis": 0.000759124755859375,
+          "reasoning": 5.719315052032471,
+          "sql_generation": 7.0661797523498535,
+          "sql_validation": 1.4143962860107422,
+          "sql_execution": 0.38669848442077637,
+          "completed": 2.9926609992980957
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais foram os 10 diagnosticos principais mais frequentes em 2022?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "requested_metric",
+              "expression_type": "unknown",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "diagnostico",
+              "source": "cid.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2022"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "diagnostico"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "diagnostico"
+            ],
+            "filter_dimensions": [],
+            "counted_entity": "diagnostico",
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.460914679525199,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é identificar os 10 diagnósticos mais frequentes em internações no ano de 2022. A métrica escolhida é a contagem de diagnósticos, agrupada pela descrição do CID. O filtro aplicado é para o ano de 2022, e a forma de resposta é a lista dos 10 principais diagnósticos, o que justifica o uso de um ranking global.",
+          "conflicts": [
+            "unknown_metric_ignored: frequencia_diagnostico"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query counts the occurrences of each primary diagnosis in 2022 by joining the 'internacoes' table with the 'cid' table to get the diagnosis descriptions. It filters for the year 2022 and groups the results by diagnosis description, ordering them by frequency to return the top 10.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T111320_gen055",
+        "query_number": 5,
+        "orchestrator_execution_time": 18.19063949584961
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN056",
+      "persona": "medico_pesquisador",
+      "category": "diagnosticos_cid",
+      "difficulty": "medium",
+      "question": "Quais foram os 10 diagnosticos principais mais frequentes em 2023?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "diagnostico_principal_ranking",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "diagnostico": "Parto espontaneo cefalico",
+            "total_internacoes": 616249
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_internacoes": 281105
+          },
+          {
+            "diagnostico": "Esterilizacao",
+            "total_internacoes": 214253
+          },
+          {
+            "diagnostico": "Infecc do trato urinario de localiz NE",
+            "total_internacoes": 185982
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_internacoes": 182109
+          }
+        ],
+        "actual_preview": [
+          {
+            "diagnostico": "Parto espontaneo cefalico",
+            "total": 616249
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total": 281105
+          },
+          {
+            "diagnostico": "Esterilizacao",
+            "total": 214253
+          },
+          {
+            "diagnostico": "Infecc do trato urinario de localiz NE",
+            "total": 185982
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total": 182109
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os 10 diagnósticos principais mais frequentes em 2023 foram:\n\n1. Parto espontâneo cefálico: 616.249\n2. Pneumonia NE: 281.105\n3. Esterilização: 214.253\n4. Infecção do trato urinário de localiz NE: 185.982\n5. Acidente vascular cerebral NE como hemorragia isquêmica: 182.109\n6. Parto por cesariana eletiva: 131.724\n7. Hérnia inguinal unilateral NE sem obstrução gangrena: 128.647\n8. Parto único espontâneo NE: 126.661\n9. Septicemia NE: 113.220\n10. Infarto agudo do miocárdio NE: 113.170",
+      "sql": "SELECT c.\"DESCRICAO\" AS diagnostico, COUNT(*) AS total FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM \"DT_INTER\") = 2023 GROUP BY c.\"DESCRICAO\" ORDER BY total DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 23.350456476211548
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.49798083305358887
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 5.480177164077759
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.38641834259033203
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "cid",
+          "internacoes"
+        ],
+        "schema_context_length": 12667,
+        "latency_by_component": {
+          "query_classification": 0.00028395652770996094,
+          "table_discovery": 0.49807310104370117,
+          "schema_analysis": 0.00087738037109375,
+          "reasoning": 7.4320948123931885,
+          "sql_generation": 6.929195165634155,
+          "sql_validation": 5.480209112167358,
+          "sql_execution": 0.3865222930908203,
+          "completed": 2.6214418411254883
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais foram os 10 diagnosticos principais mais frequentes em 2023?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "requested_metric",
+              "expression_type": "unknown",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "diagnostico",
+              "source": "cid.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2023"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "diagnostico"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "diagnostico"
+            ],
+            "filter_dimensions": [],
+            "counted_entity": "diagnostico",
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.47712398427503255,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é identificar os 10 diagnósticos mais frequentes em internações no ano de 2023. A métrica escolhida é a contagem de diagnósticos, agrupada pela descrição do CID. O filtro aplicado é para o ano de 2023, e a forma de resposta é a lista dos 10 principais diagnósticos, o que justifica o uso de um ranking global.",
+          "conflicts": [
+            "unknown_metric_ignored: frequencia_diagnostico"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query counts the occurrences of each primary diagnosis in 2023 by joining the 'internacoes' table with the 'cid' table to get the diagnosis descriptions. It groups the results by diagnosis description and orders them by frequency, limiting the output to the top 10 diagnoses.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T111320_gen056",
+        "query_number": 6,
+        "orchestrator_execution_time": 23.36463975906372
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN057",
+      "persona": "epidemiologista",
+      "category": "diagnosticos_cid",
+      "difficulty": "medium",
+      "question": "Quais capitulos CID concentraram mais internacoes em 2018?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "cid_capitulo_ranking",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:capitulo_cid"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "capitulo_cid": "XV. Gravidez, parto e puerpério",
+            "total_internacoes": 2481810
+          },
+          {
+            "capitulo_cid": "XIX. Lesões, envenenamento e outras consequências de causas externas",
+            "total_internacoes": 1193323
+          },
+          {
+            "capitulo_cid": "X. Doenças do aparelho respiratório",
+            "total_internacoes": 1180369
+          },
+          {
+            "capitulo_cid": "XI. Doenças do aparelho digestivo",
+            "total_internacoes": 1170242
+          },
+          {
+            "capitulo_cid": "IX. Doenças do aparelho circulatório",
+            "total_internacoes": 1155560
+          }
+        ],
+        "actual_preview": [
+          {
+            "cid_capitulo": "O",
+            "total": 2481810
+          },
+          {
+            "cid_capitulo": "J",
+            "total": 1180369
+          },
+          {
+            "cid_capitulo": "K",
+            "total": 1170242
+          },
+          {
+            "cid_capitulo": "I",
+            "total": 1155560
+          },
+          {
+            "cid_capitulo": "S",
+            "total": 872992
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os capítulos CID que concentraram mais internações em 2018 foram:\n\n1. O: 2.481.810\n2. J: 1.180.369\n3. K: 1.170.242\n4. I: 1.155.560\n5. S: 872.992\n6. N: 840.643\n7. A: 657.941\n8. C: 632.982\n9. T: 320.331\n10. D: 310.283",
+      "sql": "SELECT SUBSTR(i.\"DIAG_PRINC\", 1, 1) AS cid_capitulo, COUNT(*) AS total FROM internacoes i WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2018 GROUP BY cid_capitulo ORDER BY total DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 21.01503896713257
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5171117782592773
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.2117919921875
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.1713414192199707
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "cid",
+          "internacoes"
+        ],
+        "schema_context_length": 12667,
+        "latency_by_component": {
+          "query_classification": 0.00028705596923828125,
+          "table_discovery": 0.5171945095062256,
+          "schema_analysis": 0.0005121231079101562,
+          "reasoning": 6.474499702453613,
+          "sql_generation": 10.677989959716797,
+          "sql_validation": 1.2118210792541504,
+          "sql_execution": 0.17144465446472168,
+          "completed": 1.9560816287994385
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais capitulos CID concentraram mais internacoes em 2018?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "cid_capitulo",
+              "source": "SUBSTR(internacoes.DIAG_PRINC, 1, 1)",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2018"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "cid_capitulo"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "cid_capitulo"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.4497937248478357,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os capítulos CID com base no número total de internações em 2018. A métrica utilizada é a contagem total de internações, agrupada pelo capítulo CID, que é extraído do diagnóstico principal. O filtro aplicado é para o ano de 2018, e a resposta deve retornar os 10 capítulos com mais internações, sem incluir registros desconhecidos.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query counts the number of hospitalizations grouped by the first character of the primary diagnosis (CID chapter) for the year 2018. It uses the EXTRACT function to filter by year and groups the results to find the top 10 chapters with the most hospitalizations.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T111320_gen057",
+        "query_number": 7,
+        "orchestrator_execution_time": 21.028858423233032
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN058",
+      "persona": "epidemiologista",
+      "category": "diagnosticos_cid",
+      "difficulty": "medium",
+      "question": "Quais capitulos CID concentraram mais internacoes em 2019?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "cid_capitulo_ranking",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:capitulo_cid"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "capitulo_cid": "XV. Gravidez, parto e puerpério",
+            "total_internacoes": 2446396
+          },
+          {
+            "capitulo_cid": "XIX. Lesões, envenenamento e outras consequências de causas externas",
+            "total_internacoes": 1238969
+          },
+          {
+            "capitulo_cid": "XI. Doenças do aparelho digestivo",
+            "total_internacoes": 1213057
+          },
+          {
+            "capitulo_cid": "X. Doenças do aparelho respiratório",
+            "total_internacoes": 1190791
+          },
+          {
+            "capitulo_cid": "IX. Doenças do aparelho circulatório",
+            "total_internacoes": 1180508
+          }
+        ],
+        "actual_preview": [
+          {
+            "cid_capitulo": "O",
+            "total": 2446396
+          },
+          {
+            "cid_capitulo": "K",
+            "total": 1213057
+          },
+          {
+            "cid_capitulo": "J",
+            "total": 1190791
+          },
+          {
+            "cid_capitulo": "I",
+            "total": 1180508
+          },
+          {
+            "cid_capitulo": "S",
+            "total": 901479
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os capítulos CID que concentraram mais internações em 2019 foram:\n\n1. O: 2.446.396 internações\n2. K: 1.213.057 internações\n3. J: 1.190.791 internações\n4. I: 1.180.508 internações\n5. S: 901.479 internações\n6. N: 874.684 internações\n7. A: 712.485 internações\n8. C: 672.521 internações\n9. T: 337.490 internações\n10. D: 325.025 internações",
+      "sql": "SELECT SUBSTR(i.\"DIAG_PRINC\", 1, 1) AS cid_capitulo, COUNT(*) AS total FROM internacoes i WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2019 GROUP BY cid_capitulo ORDER BY total DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 24.300748586654663
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.640587329864502
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.2320199012756348
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.17005562782287598
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "cid",
+          "internacoes"
+        ],
+        "schema_context_length": 12667,
+        "latency_by_component": {
+          "query_classification": 0.0002875328063964844,
+          "table_discovery": 0.6406619548797607,
+          "schema_analysis": 0.0008502006530761719,
+          "reasoning": 7.011394262313843,
+          "sql_generation": 13.129587650299072,
+          "sql_validation": 1.2320547103881836,
+          "sql_execution": 0.17016363143920898,
+          "completed": 2.1140735149383545
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais capitulos CID concentraram mais internacoes em 2019?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "cid_capitulo",
+              "source": "SUBSTR(internacoes.DIAG_PRINC, 1, 1)",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2019"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "cid_capitulo"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "cid_capitulo"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.4556073405178602,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os capítulos CID com base no número total de internações em 2019. A métrica utilizada é a contagem total de internações, agrupada pelo capítulo CID, que é extraído do diagnóstico principal. O filtro aplicado é para o ano de 2019, e a resposta deve retornar os 10 capítulos com mais internações, sem incluir registros desconhecidos.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query counts the number of hospitalizations grouped by the first character of the primary diagnosis (CID chapter) for the year 2019. It uses the EXTRACT function to filter by year and groups the results to find the top 10 chapters with the most hospitalizations.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T111320_gen058",
+        "query_number": 8,
+        "orchestrator_execution_time": 24.322730779647827
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN059",
+      "persona": "epidemiologista",
+      "category": "diagnosticos_cid",
+      "difficulty": "medium",
+      "question": "Quais capitulos CID concentraram mais internacoes em 2020?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "cid_capitulo_ranking",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:capitulo_cid"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "capitulo_cid": "XV. Gravidez, parto e puerpério",
+            "total_internacoes": 2324800
+          },
+          {
+            "capitulo_cid": "XIX. Lesões, envenenamento e outras consequências de causas externas",
+            "total_internacoes": 1189764
+          },
+          {
+            "capitulo_cid": "I. Algumas doenças infecciosas e parasitárias",
+            "total_internacoes": 1155078
+          },
+          {
+            "capitulo_cid": "IX. Doenças do aparelho circulatório",
+            "total_internacoes": 986437
+          },
+          {
+            "capitulo_cid": "XI. Doenças do aparelho digestivo",
+            "total_internacoes": 880913
+          }
+        ],
+        "actual_preview": [
+          {
+            "cid_capitulo": "O",
+            "total": 2324800
+          },
+          {
+            "cid_capitulo": "I",
+            "total": 986437
+          },
+          {
+            "cid_capitulo": "S",
+            "total": 884572
+          },
+          {
+            "cid_capitulo": "K",
+            "total": 880913
+          },
+          {
+            "cid_capitulo": "J",
+            "total": 745729
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os capítulos CID que concentraram mais internações em 2020 foram:\n\n1. O: 2.324.800 internações\n2. I: 986.437 internações\n3. S: 884.572 internações\n4. K: 880.913 internações\n5. J: 745.729 internações\n6. N: 647.371 internações\n7. B: 623.439 internações\n8. C: 608.706 internações\n9. A: 531.639 internações\n10. P: 310.647 internações",
+      "sql": "SELECT SUBSTR(i.\"DIAG_PRINC\", 1, 1) AS cid_capitulo, COUNT(*) AS total FROM internacoes i WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 GROUP BY cid_capitulo ORDER BY total DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 18.168444395065308
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.4777250289916992
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.5070197582244873
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.1669464111328125
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "cid",
+          "internacoes"
+        ],
+        "schema_context_length": 12667,
+        "latency_by_component": {
+          "query_classification": 0.00032210350036621094,
+          "table_discovery": 0.4777965545654297,
+          "schema_analysis": 0.0004951953887939453,
+          "reasoning": 6.22515606880188,
+          "sql_generation": 7.74409818649292,
+          "sql_validation": 1.5070488452911377,
+          "sql_execution": 0.16705989837646484,
+          "completed": 2.0445914268493652
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais capitulos CID concentraram mais internacoes em 2020?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "cid_capitulo",
+              "source": "SUBSTR(internacoes.DIAG_PRINC, 1, 1)",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "cid_capitulo"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "cid_capitulo"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.44705233642774034,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os capítulos CID com base no número total de internações em 2020. A métrica escolhida é a contagem total de internações, agrupada pelo capítulo CID, que é extraído do diagnóstico principal. O filtro aplicado é para o ano de 2020, e a resposta deve retornar os 10 capítulos com mais internações, sem incluir registros desconhecidos.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 0.9,
+        "sql_generation_reasoning": "The query counts the number of hospitalizations grouped by the first character of the primary diagnosis (CID chapter) for the year 2020. It filters the data by the admission date and orders the results to show the top 10 chapters with the highest number of hospitalizations.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T111320_gen059",
+        "query_number": 9,
+        "orchestrator_execution_time": 18.182565212249756
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN060",
+      "persona": "epidemiologista",
+      "category": "diagnosticos_cid",
+      "difficulty": "medium",
+      "question": "Quais capitulos CID concentraram mais internacoes em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "cid_capitulo_ranking",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:capitulo_cid"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "capitulo_cid": "XV. Gravidez, parto e puerpério",
+            "total_internacoes": 2311986
+          },
+          {
+            "capitulo_cid": "I. Algumas doenças infecciosas e parasitárias",
+            "total_internacoes": 1747710
+          },
+          {
+            "capitulo_cid": "XIX. Lesões, envenenamento e outras consequências de causas externas",
+            "total_internacoes": 1258653
+          },
+          {
+            "capitulo_cid": "IX. Doenças do aparelho circulatório",
+            "total_internacoes": 1025656
+          },
+          {
+            "capitulo_cid": "XI. Doenças do aparelho digestivo",
+            "total_internacoes": 933392
+          }
+        ],
+        "actual_preview": [
+          {
+            "cid_capitulo": "O",
+            "total": 2311986
+          },
+          {
+            "cid_capitulo": "B",
+            "total": 1232418
+          },
+          {
+            "cid_capitulo": "I",
+            "total": 1025656
+          },
+          {
+            "cid_capitulo": "K",
+            "total": 933392
+          },
+          {
+            "cid_capitulo": "S",
+            "total": 931389
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os capítulos CID que concentraram mais internações em 2021 foram:\n\n1. O: 2.311.986 internações\n2. B: 1.232.418 internações\n3. I: 1.025.656 internações\n4. K: 933.392 internações\n5. S: 931.389 internações\n6. J: 803.361 internações\n7. N: 676.833 internações\n8. C: 645.643 internações\n9. A: 515.292 internações\n10. P: 327.335 internações",
+      "sql": "SELECT SUBSTR(i.\"DIAG_PRINC\", 1, 1) AS cid_capitulo, COUNT(*) AS total FROM internacoes i WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 GROUP BY cid_capitulo ORDER BY total DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 17.78293776512146
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.47997283935546875
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.9157497882843018
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.17064881324768066
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "cid",
+          "internacoes"
+        ],
+        "schema_context_length": 12667,
+        "latency_by_component": {
+          "query_classification": 0.00040340423583984375,
+          "table_discovery": 0.48006439208984375,
+          "schema_analysis": 0.0006704330444335938,
+          "reasoning": 5.603277206420898,
+          "sql_generation": 7.057175159454346,
+          "sql_validation": 1.9157917499542236,
+          "sql_execution": 0.17075109481811523,
+          "completed": 2.5531656742095947
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais capitulos CID concentraram mais internacoes em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "cid_capitulo",
+              "source": "SUBSTR(internacoes.DIAG_PRINC, 1, 1)",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "cid_capitulo"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "cid_capitulo"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.44223405282888645,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os capítulos CID com base no número total de internações em 2021. A métrica utilizada é a contagem total de internações, agrupada pelo capítulo CID, que é extraído do diagnóstico principal. O filtro aplicado é para o ano de 2021, e a resposta deve retornar os 10 capítulos CID com mais internações.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query counts the number of hospitalizations grouped by the first character of the primary diagnosis (CID chapter) for the year 2021. It uses the EXTRACT function to filter by year and groups the results accordingly, returning the top 10 chapters with the highest counts.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T111320_gen060",
+        "query_number": 10,
+        "orchestrator_execution_time": 17.797329664230347
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    }
+  ]
+}

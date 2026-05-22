@@ -1,0 +1,3237 @@
+{
+  "run_id": "generalization_exhaustion_20260521T150431",
+  "created_at": "2026-05-21T15:06:45",
+  "dry_run": false,
+  "summary": {
+    "status_counts": {
+      "passed": 10
+    },
+    "root_cause_counts": {},
+    "severity_counts": {}
+  },
+  "items": [
+    {
+      "id": "GEN201",
+      "persona": "auditor_dados",
+      "category": "qualidade_dados",
+      "difficulty": "medium",
+      "question": "Quantos diagnosticos principais de 2022 nao existem no catalogo CID?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "lookup_cid_incompleto",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "diagnosticos_sem_lookup": 175
+          }
+        ],
+        "actual_preview": [
+          {
+            "diagnosticos_sem_lookup": 175
+          }
+        ]
+      },
+      "success": true,
+      "response": "Existem 175 diagnósticos principais de 2022 que não estão no catálogo CID.",
+      "sql": "SELECT COUNT(*) AS diagnosticos_sem_lookup FROM internacoes i LEFT JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2022 AND i.\"DIAG_PRINC\" IS NOT NULL AND c.\"CID\" IS NULL;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 19.934492588043213
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 1.4990811347961426
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 9.527418613433838
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.27129554748535156
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "cid",
+          "internacoes"
+        ],
+        "schema_context_length": 12435,
+        "latency_by_component": {
+          "query_classification": 0.00028967857360839844,
+          "table_discovery": 1.4991722106933594,
+          "schema_analysis": 0.0005595684051513672,
+          "reasoning": 6.00450587272644,
+          "sql_generation": 0.0007703304290771484,
+          "sql_validation": 9.527451038360596,
+          "sql_execution": 0.27140092849731445,
+          "completed": 2.607682466506958
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quantos diagnosticos principais de 2022 nao existem no catalogo CID?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "count",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "diagnosticos_sem_lookup",
+              "expression_type": "count",
+              "required_filters": [
+                "LEFT JOIN cid",
+                "cid.CID IS NULL"
+              ]
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2022"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "counted_entity": "diagnostico",
+            "forbidden_output_dimensions": [
+              "diagnostico"
+            ]
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.5133301412125155,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é contar o número de diagnósticos principais de 2022 que não estão presentes no catálogo CID. A métrica conta as internações onde o CID é nulo, filtrando pelo ano de 2022. Não há dimensões adicionais necessárias, pois o foco é apenas na contagem total.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic scalar SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T150431_gen201",
+        "query_number": 1,
+        "orchestrator_execution_time": 19.95219922065735
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN202",
+      "persona": "auditor_dados",
+      "category": "qualidade_dados",
+      "difficulty": "medium",
+      "question": "Quantas internacoes de 2020 tem municipio de residencia sem cadastro territorial?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "lookup_municipio_incompleto",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "municipios_residencia_sem_lookup": 0
+          }
+        ],
+        "actual_preview": [
+          {
+            "municipios_residencia_sem_lookup": 0
+          }
+        ]
+      },
+      "success": true,
+      "response": "Não houve internações em 2020 no município de residência sem cadastro territorial.",
+      "sql": "SELECT COUNT(*) AS municipios_residencia_sem_lookup FROM internacoes i LEFT JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 AND i.\"MUNIC_RES\" IS NOT NULL AND mu.\"CO_MUNICIPIO_6D\" IS NULL;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 13.943058967590332
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.6386702060699463
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.4907681941986084
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.17342305183410645
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "municipios",
+          "internacoes"
+        ],
+        "schema_context_length": 15487,
+        "latency_by_component": {
+          "query_classification": 0.7523965835571289,
+          "table_discovery": 0.638737678527832,
+          "schema_analysis": 0.0007038116455078125,
+          "reasoning": 5.195241451263428,
+          "sql_generation": 0.0007736682891845703,
+          "sql_validation": 2.490797996520996,
+          "sql_execution": 0.17352986335754395,
+          "completed": 4.67050576210022
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quantas internacoes de 2020 tem municipio de residencia sem cadastro territorial?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "count",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "municipios_residencia_sem_lookup",
+              "expression_type": "count",
+              "required_filters": [
+                "LEFT JOIN municipios",
+                "municipios.CO_MUNICIPIO_6D IS NULL"
+              ]
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": [
+              "municipio"
+            ]
+          },
+          "constraints": [
+            "absence_condition_requires_antijoin_or_aggregate_zero"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "municipios",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.44642596356969566,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "municipios",
+          "socioeconomico",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "municipios",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "municipios",
+          "internacoes"
+        ],
+        "semantic_constraints": [
+          "absence_condition_requires_antijoin_or_aggregate_zero"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A contagem de internações sem cadastro territorial é feita considerando as internações do ano de 2020, filtrando aquelas onde o município de residência não está cadastrado. A métrica foi definida para contar essas internações, e a ausência de registros é tratada com uma condição de anti-join, conforme as regras do catálogo semântico.",
+          "conflicts": [
+            "unknown_metric_ignored: internacoes_sem_cadastro_territorial",
+            "metric_mismatch: heuristic=['municipios_residencia_sem_lookup']; llm=['internacoes_sem_cadastro_territorial']"
+          ],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic scalar SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "absence_condition_requires_antijoin_or_aggregate_zero"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T150431_gen202",
+        "query_number": 2,
+        "orchestrator_execution_time": 13.956202030181885
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN203",
+      "persona": "auditor_dados",
+      "category": "qualidade_dados",
+      "difficulty": "medium",
+      "question": "Quantas internacoes de 2021 tem municipio de residencia sem cadastro territorial?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "lookup_municipio_incompleto",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "municipios_residencia_sem_lookup": 0
+          }
+        ],
+        "actual_preview": [
+          {
+            "municipios_residencia_sem_lookup": 0
+          }
+        ]
+      },
+      "success": true,
+      "response": "Não houve internações em 2021 no município de residência sem cadastro territorial.",
+      "sql": "SELECT COUNT(*) AS municipios_residencia_sem_lookup FROM internacoes i LEFT JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND i.\"MUNIC_RES\" IS NOT NULL AND mu.\"CO_MUNICIPIO_6D\" IS NULL;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 11.904195547103882
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5435855388641357
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.022979259490967
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.10437488555908203
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "municipios",
+          "internacoes"
+        ],
+        "schema_context_length": 15487,
+        "latency_by_component": {
+          "query_classification": 0.8306012153625488,
+          "table_discovery": 0.5436522960662842,
+          "schema_analysis": 0.0007956027984619141,
+          "reasoning": 5.665379524230957,
+          "sql_generation": 0.0007240772247314453,
+          "sql_validation": 2.0230069160461426,
+          "sql_execution": 0.1044776439666748,
+          "completed": 2.7331326007843018
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quantas internacoes de 2021 tem municipio de residencia sem cadastro territorial?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "count",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "municipios_residencia_sem_lookup",
+              "expression_type": "count",
+              "required_filters": [
+                "LEFT JOIN municipios",
+                "municipios.CO_MUNICIPIO_6D IS NULL"
+              ]
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": [
+              "municipio"
+            ]
+          },
+          "constraints": [
+            "absence_condition_requires_antijoin_or_aggregate_zero"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "municipios",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.4567794433657925,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "municipios",
+          "socioeconomico",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "municipios",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "municipios",
+          "internacoes"
+        ],
+        "semantic_constraints": [
+          "absence_condition_requires_antijoin_or_aggregate_zero"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A contagem de internações sem cadastro territorial é feita considerando as internações do ano de 2021, filtrando os municípios que não possuem cadastro territorial. A métrica conta as internações onde o município de residência é nulo, e a ausência de registros é tratada com uma condição de anti-join para garantir que o resultado reflita corretamente a contagem de internações sem cadastro.",
+          "conflicts": [
+            "unknown_metric_ignored: internacoes_sem_cadastro_territorial",
+            "metric_mismatch: heuristic=['municipios_residencia_sem_lookup']; llm=['internacoes_sem_cadastro_territorial']"
+          ],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic scalar SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "absence_condition_requires_antijoin_or_aggregate_zero"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T150431_gen203",
+        "query_number": 3,
+        "orchestrator_execution_time": 11.917990684509277
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN204",
+      "persona": "auditor_dados",
+      "category": "qualidade_dados",
+      "difficulty": "medium",
+      "question": "Quantas internacoes de 2022 tem municipio de residencia sem cadastro territorial?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "lookup_municipio_incompleto",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "municipios_residencia_sem_lookup": 0
+          }
+        ],
+        "actual_preview": [
+          {
+            "municipios_residencia_sem_lookup": 0
+          }
+        ]
+      },
+      "success": true,
+      "response": "Não houve internações em 2022 para municípios de residência sem cadastro territorial.",
+      "sql": "SELECT COUNT(*) AS municipios_residencia_sem_lookup FROM internacoes i LEFT JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2022 AND i.\"MUNIC_RES\" IS NOT NULL AND mu.\"CO_MUNICIPIO_6D\" IS NULL;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 11.26273250579834
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5311057567596436
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.2275969982147217
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.10481619834899902
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "municipios",
+          "internacoes"
+        ],
+        "schema_context_length": 15487,
+        "latency_by_component": {
+          "query_classification": 0.7773890495300293,
+          "table_discovery": 0.5311985015869141,
+          "schema_analysis": 0.0007028579711914062,
+          "reasoning": 6.065292596817017,
+          "sql_generation": 0.0004444122314453125,
+          "sql_validation": 2.2276251316070557,
+          "sql_execution": 0.1049199104309082,
+          "completed": 1.552776575088501
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quantas internacoes de 2022 tem municipio de residencia sem cadastro territorial?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "count",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "municipios_residencia_sem_lookup",
+              "expression_type": "count",
+              "required_filters": [
+                "LEFT JOIN municipios",
+                "municipios.CO_MUNICIPIO_6D IS NULL"
+              ]
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2022"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": [
+              "municipio"
+            ]
+          },
+          "constraints": [
+            "absence_condition_requires_antijoin_or_aggregate_zero"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "municipios",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.4498346206275233,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "municipios",
+          "socioeconomico",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "municipios",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "municipios",
+          "internacoes"
+        ],
+        "semantic_constraints": [
+          "absence_condition_requires_antijoin_or_aggregate_zero"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é contar o número de internações em 2022 para municípios de residência que não possuem cadastro territorial. A métrica conta as internações onde o município é nulo, e o filtro garante que apenas o ano de 2022 seja considerado. Não há dimensões adicionais necessárias, pois a contagem é direta e não requer agrupamento.",
+          "conflicts": [
+            "unknown_metric_ignored: internacoes_sem_cadastro_territorial",
+            "metric_mismatch: heuristic=['municipios_residencia_sem_lookup']; llm=['internacoes_sem_cadastro_territorial']"
+          ],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic scalar SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "absence_condition_requires_antijoin_or_aggregate_zero"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T150431_gen204",
+        "query_number": 4,
+        "orchestrator_execution_time": 11.283436298370361
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN205",
+      "persona": "auditor_dados",
+      "category": "qualidade_dados",
+      "difficulty": "medium",
+      "question": "Qual percentual dos obitos de 2020 esta sem informacao de raca/cor mapeada?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "qualidade_raca_cor",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "total_obitos": 605736,
+            "obitos_sem_raca_cor_mapeada": 136242,
+            "percentual_sem_raca_cor": 22.49
+          }
+        ],
+        "actual_preview": [
+          {
+            "total_obitos": 605736,
+            "obitos_sem_raca_cor_mapeada": 136242,
+            "percentual_sem_raca_cor": 22.49
+          }
+        ]
+      },
+      "success": true,
+      "response": "22,49% dos óbitos de 2020 estão sem informação de raça/cor mapeada.",
+      "sql": "SELECT COUNT(*) AS total_obitos, SUM(CASE WHEN r.\"RACA_COR\" IS NULL THEN 1 ELSE 0 END) AS obitos_sem_raca_cor_mapeada, ROUND(SUM(CASE WHEN r.\"RACA_COR\" IS NULL THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2) AS percentual_sem_raca_cor FROM internacoes i LEFT JOIN raca_cor r ON i.\"RACA_COR\" = r.\"RACA_COR\" WHERE i.\"MORTE\" = true AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 11.57633352279663
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5642321109771729
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.97017240524292
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.15503907203674316
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "raca_cor",
+          "etnia",
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 11607,
+        "latency_by_component": {
+          "query_classification": 0.0003170967102050781,
+          "table_discovery": 0.5643093585968018,
+          "schema_analysis": 0.0007658004760742188,
+          "reasoning": 6.862312316894531,
+          "sql_generation": 0.000484466552734375,
+          "sql_validation": 2.970201253890991,
+          "sql_execution": 0.15514564514160156,
+          "completed": 1.0196175575256348
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual percentual dos obitos de 2020 esta sem informacao de raca/cor mapeada?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "rate",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "percentual_obitos_sem_raca_cor",
+              "expression_type": "rate",
+              "numerator_condition": "raca_cor.\"RACA_COR\" IS NULL",
+              "denominator_scope": "all_deaths_in_scope",
+              "required_filters": [
+                "LEFT JOIN raca_cor",
+                "MORTE = true"
+              ]
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": true,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": [
+              "raca_cor"
+            ]
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [
+            "include_unknown_bucket_with_left_join_or_coalesce"
+          ],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "raca_cor",
+          "etnia",
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.37075029535700704,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "raca_cor",
+          "etnia",
+          "internacoes",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "raca_cor",
+          "etnia",
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "raca_cor",
+          "etnia",
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "semantic_null_policy": [
+          "include_unknown_bucket_with_left_join_or_coalesce"
+        ],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A pergunta busca calcular a taxa de óbitos sem informação de raça/cor em 2020. A métrica foi definida para contar os óbitos onde a raça/cor é nula, mantendo o escopo completo de óbitos para o denominador. O filtro de ano foi aplicado para restringir os dados a 2020. A estrutura da resposta é um escalar único, pois se espera um percentual.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic scalar SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [
+            "include_unknown_bucket_with_left_join_or_coalesce"
+          ],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T150431_gen205",
+        "query_number": 5,
+        "orchestrator_execution_time": 11.58894681930542
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN206",
+      "persona": "auditor_dados",
+      "category": "qualidade_dados",
+      "difficulty": "medium",
+      "question": "Qual percentual dos obitos de 2021 esta sem informacao de raca/cor mapeada?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "qualidade_raca_cor",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "total_obitos": 765328,
+            "obitos_sem_raca_cor_mapeada": 184463,
+            "percentual_sem_raca_cor": 24.1
+          }
+        ],
+        "actual_preview": [
+          {
+            "total_obitos": 765328,
+            "obitos_sem_raca_cor_mapeada": 184463,
+            "percentual_sem_raca_cor": 24.1
+          }
+        ]
+      },
+      "success": true,
+      "response": "24,1% dos óbitos de 2021 estão sem informação de raça/cor mapeada.",
+      "sql": "SELECT COUNT(*) AS total_obitos, SUM(CASE WHEN r.\"RACA_COR\" IS NULL THEN 1 ELSE 0 END) AS obitos_sem_raca_cor_mapeada, ROUND(SUM(CASE WHEN r.\"RACA_COR\" IS NULL THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2) AS percentual_sem_raca_cor FROM internacoes i LEFT JOIN raca_cor r ON i.\"RACA_COR\" = r.\"RACA_COR\" WHERE i.\"MORTE\" = true AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 15.213186264038086
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5451638698577881
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 7.069022178649902
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.09969615936279297
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "raca_cor",
+          "etnia",
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 11607,
+        "latency_by_component": {
+          "query_classification": 0.0004239082336425781,
+          "table_discovery": 0.5452380180358887,
+          "schema_analysis": 0.0006420612335205078,
+          "reasoning": 6.507467031478882,
+          "sql_generation": 0.0013213157653808594,
+          "sql_validation": 7.069051742553711,
+          "sql_execution": 0.09979605674743652,
+          "completed": 0.987351655960083
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual percentual dos obitos de 2021 esta sem informacao de raca/cor mapeada?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "rate",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "percentual_obitos_sem_raca_cor",
+              "expression_type": "rate",
+              "numerator_condition": "raca_cor.\"RACA_COR\" IS NULL",
+              "denominator_scope": "all_deaths_in_scope",
+              "required_filters": [
+                "LEFT JOIN raca_cor",
+                "MORTE = true"
+              ]
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": true,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": [
+              "raca_cor"
+            ]
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [
+            "include_unknown_bucket_with_left_join_or_coalesce"
+          ],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "raca_cor",
+          "etnia",
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.36899051647888365,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "raca_cor",
+          "etnia",
+          "internacoes",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "raca_cor",
+          "etnia",
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "raca_cor",
+          "etnia",
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "semantic_null_policy": [
+          "include_unknown_bucket_with_left_join_or_coalesce"
+        ],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A pergunta busca calcular a taxa de óbitos sem informação de raça/cor em 2021. A métrica foi definida para contar os óbitos onde a raça/cor é nula, mantendo o escopo completo de óbitos para o denominador. O filtro de ano foi aplicado para restringir os dados a 2021. Não há dimensões adicionais necessárias, e a resposta deve ser um único valor escalar.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic scalar SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [
+            "include_unknown_bucket_with_left_join_or_coalesce"
+          ],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T150431_gen206",
+        "query_number": 6,
+        "orchestrator_execution_time": 15.225669384002686
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN207",
+      "persona": "auditor_dados",
+      "category": "qualidade_dados",
+      "difficulty": "medium",
+      "question": "Qual percentual dos obitos de 2022 esta sem informacao de raca/cor mapeada?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "qualidade_raca_cor",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "total_obitos": 598696,
+            "obitos_sem_raca_cor_mapeada": 111861,
+            "percentual_sem_raca_cor": 18.68
+          }
+        ],
+        "actual_preview": [
+          {
+            "total_obitos": 598696,
+            "obitos_sem_raca_cor_mapeada": 111861,
+            "percentual_sem_raca_cor": 18.68
+          }
+        ]
+      },
+      "success": true,
+      "response": "18,68% dos óbitos de 2022 estão sem informação de raça/cor mapeada.",
+      "sql": "SELECT COUNT(*) AS total_obitos, SUM(CASE WHEN r.\"RACA_COR\" IS NULL THEN 1 ELSE 0 END) AS obitos_sem_raca_cor_mapeada, ROUND(SUM(CASE WHEN r.\"RACA_COR\" IS NULL THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2) AS percentual_sem_raca_cor FROM internacoes i LEFT JOIN raca_cor r ON i.\"RACA_COR\" = r.\"RACA_COR\" WHERE i.\"MORTE\" = true AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2022;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 11.464237689971924
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5047402381896973
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 4.129918813705444
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.09886407852172852
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "raca_cor",
+          "etnia",
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 11607,
+        "latency_by_component": {
+          "query_classification": 0.0002830028533935547,
+          "table_discovery": 0.504814624786377,
+          "schema_analysis": 0.0004942417144775391,
+          "reasoning": 5.7669525146484375,
+          "sql_generation": 0.0006937980651855469,
+          "sql_validation": 4.129946708679199,
+          "sql_execution": 0.09896326065063477,
+          "completed": 0.9599337577819824
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual percentual dos obitos de 2022 esta sem informacao de raca/cor mapeada?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "rate",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "percentual_obitos_sem_raca_cor",
+              "expression_type": "rate",
+              "numerator_condition": "raca_cor.\"RACA_COR\" IS NULL",
+              "denominator_scope": "all_deaths_in_scope",
+              "required_filters": [
+                "LEFT JOIN raca_cor",
+                "MORTE = true"
+              ]
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2022"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": true,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": [
+              "raca_cor"
+            ]
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [
+            "include_unknown_bucket_with_left_join_or_coalesce"
+          ],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "raca_cor",
+          "etnia",
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.37404210840306157,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "raca_cor",
+          "etnia",
+          "internacoes",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "raca_cor",
+          "etnia",
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "raca_cor",
+          "etnia",
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "semantic_null_policy": [
+          "include_unknown_bucket_with_left_join_or_coalesce"
+        ],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A pergunta busca calcular a taxa de óbitos sem informação de raça/cor em 2022. A métrica foi definida para contar os óbitos onde a raça/cor é nula, mantendo o escopo completo de óbitos para o denominador. O filtro de ano foi aplicado para restringir os dados a 2022. A estrutura da resposta é um escalar, pois se espera um único percentual como resultado.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic scalar SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [
+            "include_unknown_bucket_with_left_join_or_coalesce"
+          ],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T150431_gen207",
+        "query_number": 7,
+        "orchestrator_execution_time": 11.477259159088135
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN208",
+      "persona": "auditor_dados",
+      "category": "qualidade_dados",
+      "difficulty": "easy",
+      "question": "Existem internacoes com data de saida anterior a data de entrada em 2020?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "qualidade_datas_internacao",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "altas_antes_da_internacao": 0
+          }
+        ],
+        "actual_preview": [
+          {
+            "altas_antes_da_internacao": 0
+          }
+        ]
+      },
+      "success": true,
+      "response": "Não existem internações com data de saída anterior à data de entrada em 2020.",
+      "sql": "SELECT COUNT(*) AS altas_antes_da_internacao FROM internacoes i WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 AND i.\"DT_SAIDA\" < i.\"DT_INTER\";",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 10.817898273468018
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.7184371948242188
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.4251899719238281
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.10393428802490234
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "tempo",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "schema_context_length": 18688,
+        "latency_by_component": {
+          "query_classification": 0.8924298286437988,
+          "table_discovery": 0.718524694442749,
+          "schema_analysis": 0.0007116794586181641,
+          "reasoning": 6.016547203063965,
+          "sql_generation": 0.0006976127624511719,
+          "sql_validation": 1.4252212047576904,
+          "sql_execution": 0.1040349006652832,
+          "completed": 1.6572656631469727
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Existem internacoes com data de saida anterior a data de entrada em 2020?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "count",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "altas_antes_da_internacao",
+              "expression_type": "count",
+              "required_filters": [
+                "DT_SAIDA < DT_INTER"
+              ]
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "DT_SAIDA",
+              "values": [],
+              "operator": "<"
+            },
+            {
+              "field": "DT_INTER",
+              "values": [],
+              "operator": ">"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "tempo",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.3815587968262916,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "tempo",
+          "internacao_procedimento"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "tempo",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "tempo",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A contagem de internações com data de saída anterior à data de entrada em 2020 foi escolhida como intenção, com a métrica correspondente. O filtro de ano foi aplicado para restringir os dados a 2020, e as condições de data foram definidas para garantir que apenas as internações com saída antes da entrada sejam contadas.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics",
+            "filters"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic scalar SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T150431_gen208",
+        "query_number": 8,
+        "orchestrator_execution_time": 10.831301212310791
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN209",
+      "persona": "auditor_dados",
+      "category": "qualidade_dados",
+      "difficulty": "easy",
+      "question": "Existem internacoes com data de saida anterior a data de entrada em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "qualidade_datas_internacao",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "altas_antes_da_internacao": 0
+          }
+        ],
+        "actual_preview": [
+          {
+            "altas_antes_da_internacao": 0
+          }
+        ]
+      },
+      "success": true,
+      "response": "Não houve internações com data de saída anterior à data de entrada em 2021.",
+      "sql": "SELECT COUNT(*) AS altas_antes_da_internacao FROM internacoes i WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND i.\"DT_SAIDA\" < i.\"DT_INTER\";",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 10.927735805511475
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.6604347229003906
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.537980556488037
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.06467843055725098
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "internacao_procedimento",
+          "tempo",
+          "procedimentos"
+        ],
+        "schema_context_length": 18688,
+        "latency_by_component": {
+          "query_classification": 0.8881168365478516,
+          "table_discovery": 0.660498857498169,
+          "schema_analysis": 0.0007381439208984375,
+          "reasoning": 6.4679648876190186,
+          "sql_generation": 0.0006449222564697266,
+          "sql_validation": 1.5380163192749023,
+          "sql_execution": 0.06477975845336914,
+          "completed": 1.3052070140838623
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Existem internacoes com data de saida anterior a data de entrada em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "count",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "altas_antes_da_internacao",
+              "expression_type": "count",
+              "required_filters": [
+                "DT_SAIDA < DT_INTER"
+              ]
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "DT_SAIDA",
+              "values": [],
+              "operator": "<"
+            },
+            {
+              "field": "DT_INTER",
+              "values": [],
+              "operator": ">"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "tempo",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.370784796853254,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "tempo"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "tempo",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "tempo",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A contagem de internações com data de saída anterior à data de entrada em 2021 foi escolhida como intenção, com a métrica correspondente. As dimensões não são necessárias, pois a contagem é uma métrica agregada. Os filtros garantem que apenas os registros de 2021 sejam considerados e que a condição de saída anterior à entrada seja aplicada. A forma da resposta é um escalar único, pois estamos interessados apenas na contagem total.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics",
+            "filters"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic scalar SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T150431_gen209",
+        "query_number": 9,
+        "orchestrator_execution_time": 10.94050669670105
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN210",
+      "persona": "auditor_dados",
+      "category": "qualidade_dados",
+      "difficulty": "easy",
+      "question": "Existem internacoes com data de saida anterior a data de entrada em 2022?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "qualidade_datas_internacao",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "altas_antes_da_internacao": 0
+          }
+        ],
+        "actual_preview": [
+          {
+            "altas_antes_da_internacao": 0
+          }
+        ]
+      },
+      "success": true,
+      "response": "Não existem internações com data de saída anterior à data de entrada em 2022.",
+      "sql": "SELECT COUNT(*) AS altas_antes_da_internacao FROM internacoes i WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2022 AND i.\"DT_SAIDA\" < i.\"DT_INTER\";",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 10.412682056427002
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.6970868110656738
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.27662992477417
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.06615900993347168
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "internacao_procedimento",
+          "tempo",
+          "procedimentos"
+        ],
+        "schema_context_length": 18688,
+        "latency_by_component": {
+          "query_classification": 1.0645968914031982,
+          "table_discovery": 0.6971540451049805,
+          "schema_analysis": 0.0006167888641357422,
+          "reasoning": 6.55400276184082,
+          "sql_generation": 0.0007016658782958984,
+          "sql_validation": 1.2766571044921875,
+          "sql_execution": 0.06626272201538086,
+          "completed": 0.7505292892456055
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Existem internacoes com data de saida anterior a data de entrada em 2022?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "count",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "altas_antes_da_internacao",
+              "expression_type": "count",
+              "required_filters": [
+                "DT_SAIDA < DT_INTER"
+              ]
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2022"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "DT_SAIDA",
+              "values": [],
+              "operator": "<"
+            },
+            {
+              "field": "DT_INTER",
+              "values": [],
+              "operator": ">"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "tempo",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.3596798576128884,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "tempo"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "tempo",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "tempo",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A contagem de internações com data de saída anterior à data de entrada em 2022 foi escolhida como intenção principal. A métrica conta as ocorrências onde a condição de saída é menor que a de entrada, e o filtro garante que apenas os registros de 2022 sejam considerados. Não há dimensões adicionais necessárias para esta consulta, pois o foco é apenas na contagem total.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics",
+            "filters"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic scalar SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T150431_gen210",
+        "query_number": 10,
+        "orchestrator_execution_time": 10.42540192604065
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    }
+  ]
+}

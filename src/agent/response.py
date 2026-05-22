@@ -351,7 +351,9 @@ def _format_age_diagnosis_response_from_package(
     user_query: str, package: dict[str, Any]
 ) -> str:
     """Format a deterministic analytic package without asking the LLM to infer calculations."""
-    concept = _humanize_clinical_label(str(package.get("resolved_concept") or "diagnostico informado"))
+    concept = _humanize_clinical_label_for_response(
+        str(package.get("resolved_concept") or "diagnostico informado")
+    )
     total = _format_int(package.get("total_internacoes"))
     deaths = _format_int(package.get("total_mortes"))
     avg_age = _format_number(package.get("idade_media"))
@@ -668,6 +670,13 @@ def _humanize_clinical_label(value: str) -> str:
         .replace("respiratorio", "respiratório")
         .replace("respiratorias", "respiratórias")
     )
+
+
+def _humanize_clinical_label_for_response(value: str) -> str:
+    label = _humanize_clinical_label(value)
+    if label.count(" | ") >= 3 or len(label) > 240:
+        return "diagnóstico resolvido por consulta ao catálogo CID"
+    return label
 
 
 def _format_integer_tokens(value: str) -> str:

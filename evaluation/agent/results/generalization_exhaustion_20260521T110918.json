@@ -1,0 +1,3549 @@
+{
+  "run_id": "generalization_exhaustion_20260521T110918",
+  "created_at": "2026-05-21T11:13:00",
+  "dry_run": false,
+  "summary": {
+    "status_counts": {
+      "passed": 10
+    },
+    "root_cause_counts": {},
+    "severity_counts": {}
+  },
+  "items": [
+    {
+      "id": "GEN041",
+      "persona": "medico_pesquisador",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "medium",
+      "question": "Quais diagnosticos principais concentraram mais obitos hospitalares em 2019?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "obitos_por_diagnostico_principal",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "diagnostico": "Septicemia NE",
+            "total_obitos": 47668
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_obitos": 27266
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_obitos": 24581
+          },
+          {
+            "diagnostico": "Insuf respirat aguda",
+            "total_obitos": 13529
+          },
+          {
+            "diagnostico": "Insuf cardiaca congestiva",
+            "total_obitos": 13228
+          }
+        ],
+        "actual_preview": [
+          {
+            "diagnostico": "Septicemia NE",
+            "total_obitos": 47668
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_obitos": 27266
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_obitos": 24581
+          },
+          {
+            "diagnostico": "Insuf respirat aguda",
+            "total_obitos": 13529
+          },
+          {
+            "diagnostico": "Insuf cardiaca congestiva",
+            "total_obitos": 13228
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os principais diagnósticos que concentraram mais óbitos hospitalares em 2019 foram:\n\n1. Septicemia NE: 47.668 óbitos\n2. Pneumonia NE: 27.266 óbitos\n3. Acid vasc cerebr NE como hemorrag isquemico: 24.581 óbitos\n4. Insuf respirat aguda: 13.529 óbitos\n5. Insuf cardiaca congestiva: 13.228 óbitos\n6. Pneumonia bacter NE: 11.724 óbitos\n7. Infecc bacter NE: 10.657 óbitos\n8. Outr septicemias espec: 10.457 óbitos\n9. Infarto agudo do miocardio NE: 9.648 óbitos\n10. Insuf cardiaca NE: 9.273 óbitos",
+      "sql": "SELECT c.\"DESCRICAO\" AS diagnostico, COUNT(*) AS total_obitos FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2019 AND i.\"MORTE\" = true AND c.\"DESCRICAO\" IS NOT NULL AND TRIM(c.\"DESCRICAO\") <> '' AND c.\"DESCRICAO\" NOT IN ('Nao preenchido', 'Nao informado') GROUP BY c.\"DESCRICAO\" ORDER BY total_obitos DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 13.930084705352783
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 1.2494356632232666
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.1315510272979736
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.32372450828552246
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.0002777576446533203,
+          "table_discovery": 1.2495293617248535,
+          "schema_analysis": 0.0008745193481445312,
+          "reasoning": 6.742785930633545,
+          "sql_generation": 0.0008463859558105469,
+          "sql_validation": 3.1315853595733643,
+          "sql_execution": 0.3238346576690674,
+          "completed": 2.46195387840271
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais diagnosticos principais concentraram mais obitos hospitalares em 2019?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_mortes",
+              "expression_type": "count",
+              "required_filters": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "diagnostico",
+              "source": "cid.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2019"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "desfecho",
+              "values": [
+                "MORTE = true"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "diagnostico"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "diagnostico"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "death_cause_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.48489252724742676,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "death_cause_requires_diag_princ_with_morte"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os diagnósticos que causaram mais óbitos hospitalares em 2019. A métrica total_mortes conta o número de mortes, filtrando apenas os casos onde a morte ocorreu. A dimensão 'diagnostico' é utilizada para agrupar os resultados por descrição do CID. O filtro de ano garante que apenas os dados de 2019 sejam considerados. A estrutura de resposta é definida para retornar os 10 principais diagnósticos com mais óbitos, o que se alinha com a intenção de ranking.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "death_cause_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T110918_gen041",
+        "query_number": 1,
+        "orchestrator_execution_time": 13.947241306304932
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN042",
+      "persona": "medico_pesquisador",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "medium",
+      "question": "Quais diagnosticos principais concentraram mais obitos hospitalares em 2020?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "obitos_por_diagnostico_principal",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "diagnostico": "Infecc p/coronavirus NE",
+            "total_obitos": 115727
+          },
+          {
+            "diagnostico": "Septicemia NE",
+            "total_obitos": 40373
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_obitos": 23555
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_obitos": 23039
+          },
+          {
+            "diagnostico": "Insuf respirat aguda",
+            "total_obitos": 17082
+          }
+        ],
+        "actual_preview": [
+          {
+            "diagnostico": "Infecc p/coronavirus NE",
+            "total_obitos": 115727
+          },
+          {
+            "diagnostico": "Septicemia NE",
+            "total_obitos": 40373
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_obitos": 23555
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_obitos": 23039
+          },
+          {
+            "diagnostico": "Insuf respirat aguda",
+            "total_obitos": 17082
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os principais diagnósticos que concentraram mais óbitos hospitalares em 2020 foram:\n\n1. Infecc p/coronavirus NE: 115.727 óbitos\n2. Septicemia NE: 40.373 óbitos\n3. Acid vasc cerebr NE como hemorrag isquemico: 23.555 óbitos\n4. Pneumonia NE: 23.039 óbitos\n5. Insuf respirat aguda: 17.082 óbitos\n6. Insuf cardiaca congestiva: 11.682 óbitos\n7. Infecc bacter NE: 9.899 óbitos\n8. Outr septicemias espec: 9.396 óbitos\n9. Infarto agudo do miocardio NE: 9.395 óbitos\n10. Pneumonia bacter NE: 9.090 óbitos",
+      "sql": "SELECT c.\"DESCRICAO\" AS diagnostico, COUNT(*) AS total_obitos FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 AND i.\"MORTE\" = true AND c.\"DESCRICAO\" IS NOT NULL AND TRIM(c.\"DESCRICAO\") <> '' AND c.\"DESCRICAO\" NOT IN ('Nao preenchido', 'Nao informado') GROUP BY c.\"DESCRICAO\" ORDER BY total_obitos DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 14.750423669815063
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.4495978355407715
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.7016079425811768
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.16773653030395508
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.00038814544677734375,
+          "table_discovery": 0.4496650695800781,
+          "schema_analysis": 0.0006673336029052734,
+          "reasoning": 7.9143664836883545,
+          "sql_generation": 0.0009179115295410156,
+          "sql_validation": 3.7016360759735107,
+          "sql_execution": 0.16783809661865234,
+          "completed": 2.513247489929199
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais diagnosticos principais concentraram mais obitos hospitalares em 2020?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_mortes",
+              "expression_type": "count",
+              "required_filters": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "diagnostico",
+              "source": "cid.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "desfecho",
+              "values": [
+                "MORTE = true"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "diagnostico"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "diagnostico"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "death_cause_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.475026390310967,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "death_cause_requires_diag_princ_with_morte"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os diagnósticos que causaram mais óbitos hospitalares em 2020. A métrica total_mortes conta o número de mortes, filtrando apenas os casos onde a morte ocorreu. A dimensão 'diagnostico' é utilizada para agrupar os resultados por descrição do CID. O filtro de ano é aplicado para restringir os dados a 2020, e o desfecho é filtrado para incluir apenas os casos de morte. A resposta deve retornar os 10 principais diagnósticos com mais óbitos, o que justifica o uso de um ranking global.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "death_cause_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T110918_gen042",
+        "query_number": 2,
+        "orchestrator_execution_time": 14.76422929763794
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN043",
+      "persona": "medico_pesquisador",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "medium",
+      "question": "Quais diagnosticos principais concentraram mais obitos hospitalares em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "obitos_por_diagnostico_principal",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "diagnostico": "Infecc p/coronavirus NE",
+            "total_obitos": 246345
+          },
+          {
+            "diagnostico": "Septicemia NE",
+            "total_obitos": 41717
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_obitos": 26622
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_obitos": 22248
+          },
+          {
+            "diagnostico": "Insuf respirat aguda",
+            "total_obitos": 15278
+          }
+        ],
+        "actual_preview": [
+          {
+            "diagnostico": "Infecc p/coronavirus NE",
+            "total_obitos": 246345
+          },
+          {
+            "diagnostico": "Septicemia NE",
+            "total_obitos": 41717
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_obitos": 26622
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_obitos": 22248
+          },
+          {
+            "diagnostico": "Insuf respirat aguda",
+            "total_obitos": 15278
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os principais diagnósticos que concentraram mais óbitos hospitalares em 2021 foram:\n\n1. Infecc p/coronavirus NE: 246.345 óbitos\n2. Septicemia NE: 41.717 óbitos\n3. Acid vasc cerebr NE como hemorrag isquemico: 26.622 óbitos\n4. Pneumonia NE: 22.248 óbitos\n5. Insuf respirat aguda: 15.278 óbitos\n6. Insuf cardiaca congestiva: 12.924 óbitos\n7. Infecc bacter NE: 10.422 óbitos\n8. Infarto agudo do miocardio NE: 10.406 óbitos\n9. Outr septicemias espec: 9.920 óbitos\n10. Insuf cardiaca NE: 9.304 óbitos",
+      "sql": "SELECT c.\"DESCRICAO\" AS diagnostico, COUNT(*) AS total_obitos FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND i.\"MORTE\" = true AND c.\"DESCRICAO\" IS NOT NULL AND TRIM(c.\"DESCRICAO\") <> '' AND c.\"DESCRICAO\" NOT IN ('Nao preenchido', 'Nao informado') GROUP BY c.\"DESCRICAO\" ORDER BY total_obitos DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 13.567551851272583
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.7850415706634521
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.4602978229522705
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.16849398612976074
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.0003101825714111328,
+          "table_discovery": 0.7851240634918213,
+          "schema_analysis": 0.0007669925689697266,
+          "reasoning": 6.901315927505493,
+          "sql_generation": 0.0005297660827636719,
+          "sql_validation": 2.4603271484375,
+          "sql_execution": 0.1685962677001953,
+          "completed": 3.248987913131714
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais diagnosticos principais concentraram mais obitos hospitalares em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_mortes",
+              "expression_type": "count",
+              "required_filters": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "diagnostico",
+              "source": "cid.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "desfecho",
+              "values": [
+                "MORTE = true"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "diagnostico"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "diagnostico"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "death_cause_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.46760715095264804,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "death_cause_requires_diag_princ_with_morte"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os diagnósticos que causaram mais óbitos hospitalares em 2021. A métrica total_mortes conta o número de mortes, filtrando apenas os casos onde a morte ocorreu. A dimensão 'diagnostico' é utilizada para agrupar os resultados por descrição do CID. O filtro de ano garante que apenas os dados de 2021 sejam considerados. A estrutura de resposta é definida para retornar os 10 principais diagnósticos com mais óbitos, em um formato de ranking.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "death_cause_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T110918_gen043",
+        "query_number": 3,
+        "orchestrator_execution_time": 13.580833435058594
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN044",
+      "persona": "medico_pesquisador",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "medium",
+      "question": "Quais diagnosticos principais concentraram mais obitos hospitalares em 2022?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "obitos_por_diagnostico_principal",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "diagnostico": "Septicemia NE",
+            "total_obitos": 52293
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_obitos": 30551
+          },
+          {
+            "diagnostico": "Infecc p/coronavirus NE",
+            "total_obitos": 29428
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_obitos": 27609
+          },
+          {
+            "diagnostico": "Insuf cardiaca congestiva",
+            "total_obitos": 13718
+          }
+        ],
+        "actual_preview": [
+          {
+            "diagnostico": "Septicemia NE",
+            "total_obitos": 52293
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_obitos": 30551
+          },
+          {
+            "diagnostico": "Infecc p/coronavirus NE",
+            "total_obitos": 29428
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_obitos": 27609
+          },
+          {
+            "diagnostico": "Insuf cardiaca congestiva",
+            "total_obitos": 13718
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os principais diagnósticos que concentraram mais óbitos hospitalares em 2022 foram:\n\n1. Septicemia NE: 52.293 óbitos\n2. Pneumonia NE: 30.551 óbitos\n3. Infecc p/coronavirus NE: 29.428 óbitos\n4. Acid vasc cerebr NE como hemorrag isquemico: 27.609 óbitos\n5. Insuf cardiaca congestiva: 13.718 óbitos\n6. Insuf respirat aguda: 12.905 óbitos\n7. Outr septicemias espec: 12.341 óbitos\n8. Infecc bacter NE: 11.628 óbitos\n9. Infarto agudo do miocardio NE: 10.726 óbitos\n10. Pneumonia bacter NE: 10.582 óbitos",
+      "sql": "SELECT c.\"DESCRICAO\" AS diagnostico, COUNT(*) AS total_obitos FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2022 AND i.\"MORTE\" = true AND c.\"DESCRICAO\" IS NOT NULL AND TRIM(c.\"DESCRICAO\") <> '' AND c.\"DESCRICAO\" NOT IN ('Nao preenchido', 'Nao informado') GROUP BY c.\"DESCRICAO\" ORDER BY total_obitos DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 14.00726842880249
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.6208057403564453
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.266511917114258
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.16487884521484375
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.0002906322479248047,
+          "table_discovery": 0.6208865642547607,
+          "schema_analysis": 0.0008203983306884766,
+          "reasoning": 7.736229658126831,
+          "sql_generation": 0.0007507801055908203,
+          "sql_validation": 2.2665414810180664,
+          "sql_execution": 0.1649785041809082,
+          "completed": 3.2151308059692383
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais diagnosticos principais concentraram mais obitos hospitalares em 2022?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_mortes",
+              "expression_type": "count",
+              "required_filters": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "diagnostico",
+              "source": "cid.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2022"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "desfecho",
+              "values": [
+                "MORTE = true"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "diagnostico"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "diagnostico"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "death_cause_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.47505266719998834,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "death_cause_requires_diag_princ_with_morte"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os diagnósticos que causaram mais óbitos hospitalares em 2022. A métrica total_mortes conta o número de mortes, filtrando apenas os casos onde a morte ocorreu. A dimensão 'diagnostico' é utilizada para agrupar os resultados por descrição do CID. O filtro de ano garante que apenas os dados de 2022 sejam considerados. A resposta deve retornar os 10 principais diagnósticos com mais óbitos, por isso a configuração de top_n_global.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "death_cause_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T110918_gen044",
+        "query_number": 4,
+        "orchestrator_execution_time": 14.019851922988892
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN045",
+      "persona": "medico_pesquisador",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "medium",
+      "question": "Quais diagnosticos principais concentraram mais obitos hospitalares em 2023?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "obitos_por_diagnostico_principal",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "diagnostico": "Septicemia NE",
+            "total_obitos": 52774
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_obitos": 29291
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_obitos": 25506
+          },
+          {
+            "diagnostico": "Outr septicemias espec",
+            "total_obitos": 12427
+          },
+          {
+            "diagnostico": "Infecc bacter NE",
+            "total_obitos": 12363
+          }
+        ],
+        "actual_preview": [
+          {
+            "diagnostico": "Septicemia NE",
+            "total_obitos": 52774
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_obitos": 29291
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_obitos": 25506
+          },
+          {
+            "diagnostico": "Outr septicemias espec",
+            "total_obitos": 12427
+          },
+          {
+            "diagnostico": "Infecc bacter NE",
+            "total_obitos": 12363
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os principais diagnósticos que concentraram mais óbitos hospitalares em 2023 foram:\n\n1. Septicemia NE: 52.774 óbitos\n2. Pneumonia NE: 29.291 óbitos\n3. Acid vasc cerebr NE como hemorrag isquemico: 25.506 óbitos\n4. Outr septicemias espec: 12.427 óbitos\n5. Infecc bacter NE: 12.363 óbitos\n6. Insuf cardiaca congestiva: 12.099 óbitos\n7. Insuf respirat aguda: 10.927 óbitos\n8. Pneumonia bacter NE: 9.822 óbitos\n9. Insuf cardiaca NE: 9.587 óbitos\n10. Infarto agudo do miocardio NE: 9.547 óbitos",
+      "sql": "SELECT c.\"DESCRICAO\" AS diagnostico, COUNT(*) AS total_obitos FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2023 AND i.\"MORTE\" = true AND c.\"DESCRICAO\" IS NOT NULL AND TRIM(c.\"DESCRICAO\") <> '' AND c.\"DESCRICAO\" NOT IN ('Nao preenchido', 'Nao informado') GROUP BY c.\"DESCRICAO\" ORDER BY total_obitos DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 12.304609775543213
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.48281240463256836
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.8181838989257812
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.16462945938110352
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.00038886070251464844,
+          "table_discovery": 0.4828765392303467,
+          "schema_analysis": 0.0006377696990966797,
+          "reasoning": 6.009733438491821,
+          "sql_generation": 0.0005197525024414062,
+          "sql_validation": 2.8182120323181152,
+          "sql_execution": 0.16472864151000977,
+          "completed": 2.825923204421997
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais diagnosticos principais concentraram mais obitos hospitalares em 2023?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_mortes",
+              "expression_type": "count",
+              "required_filters": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "diagnostico",
+              "source": "cid.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2023"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "desfecho",
+              "values": [
+                "MORTE = true"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "diagnostico"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "diagnostico"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "death_cause_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.4754090540452063,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "death_cause_requires_diag_princ_with_morte"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os diagnósticos que causaram mais óbitos hospitalares em 2023. A métrica total_mortes conta o número de mortes, filtrando apenas os casos onde a morte ocorreu. A dimensão 'diagnostico' é utilizada para agrupar os resultados por descrição do CID. Os filtros garantem que apenas os dados de 2023 e os casos de morte sejam considerados. A resposta deve retornar os 10 principais diagnósticos com mais óbitos, em um formato de ranking.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "death_cause_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T110918_gen045",
+        "query_number": 5,
+        "orchestrator_execution_time": 12.316238641738892
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN046",
+      "persona": "epidemiologista",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "hard",
+      "question": "Compare a taxa de mortalidade hospitalar entre MA e RS em 2019.",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "comparacao_geografica_dupla",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "uf_residencia": "MA",
+            "total_internacoes": 463173,
+            "total_obitos": 11346,
+            "taxa_mortalidade_percentual": 2.45
+          },
+          {
+            "uf_residencia": "RS",
+            "total_internacoes": 769415,
+            "total_obitos": 39793,
+            "taxa_mortalidade_percentual": 5.17
+          }
+        ],
+        "actual_preview": [
+          {
+            "estado": "MA",
+            "total_internacoes": 463173,
+            "total_mortes": 11346,
+            "taxa_mortalidade": 2.45
+          },
+          {
+            "estado": "RS",
+            "total_internacoes": 769415,
+            "total_mortes": 39793,
+            "taxa_mortalidade": 5.17
+          }
+        ]
+      },
+      "success": true,
+      "response": "Em 2019, a taxa de mortalidade hospitalar em MA foi de 2,45%, com 11.346 mortes em 463.173 internações. No RS, a taxa foi de 5,17%, com 39.793 mortes em 769.415 internações.",
+      "sql": "SELECT mu.\"SG_UF\" AS estado, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2019 AND mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\" ORDER BY mu.\"SG_UF\";",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 28.877457857131958
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5613713264465332
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.323716878890991
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.21527099609375
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "municipios"
+        ],
+        "schema_context_length": 15487,
+        "latency_by_component": {
+          "query_classification": 0.0005586147308349609,
+          "table_discovery": 0.561436653137207,
+          "schema_analysis": 0.0004737377166748047,
+          "reasoning": 5.709134817123413,
+          "sql_generation": 18.130118131637573,
+          "sql_validation": 2.323745012283325,
+          "sql_execution": 0.21537470817565918,
+          "completed": 1.9336752891540527
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Compare a taxa de mortalidade hospitalar entre MA e RS em 2019.",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "rate",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "estado",
+              "values": [
+                "MA",
+                "RS"
+              ],
+              "operator": "IN"
+            },
+            {
+              "field": "ano",
+              "values": [
+                "2019"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "llamaindex_confidence": 0.4700669362513012,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "socioeconomico",
+          "municipios"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "semantic_constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A taxa de mortalidade hospitalar foi escolhida como métrica, com a condição de desfecho para contabilizar as mortes. As dimensões foram definidas para agrupar os resultados por estado, especificamente MA e RS, no ano de 2019. O plano garante que o denominador da taxa preserve o escopo completo das internações, conforme as regras do catálogo semântico.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query calculates the hospital mortality rate for the states of Maranhão (MA) and Rio Grande do Sul (RS) in 2019. It joins the 'internacoes' table with the 'municipios' table to filter by state and counts total hospitalizations and deaths, calculating the mortality rate accordingly.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T110918_gen046",
+        "query_number": 6,
+        "orchestrator_execution_time": 28.890366792678833
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN047",
+      "persona": "epidemiologista",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "hard",
+      "question": "Compare a taxa de mortalidade hospitalar entre MA e RS em 2020.",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "comparacao_geografica_dupla",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "uf_residencia": "MA",
+            "total_internacoes": 395167,
+            "total_obitos": 14778,
+            "taxa_mortalidade_percentual": 3.74
+          },
+          {
+            "uf_residencia": "RS",
+            "total_internacoes": 664747,
+            "total_obitos": 42600,
+            "taxa_mortalidade_percentual": 6.41
+          }
+        ],
+        "actual_preview": [
+          {
+            "estado": "MA",
+            "total_internacoes": 395167,
+            "total_mortes": 14778,
+            "taxa_mortalidade": 3.74
+          },
+          {
+            "estado": "RS",
+            "total_internacoes": 664747,
+            "total_mortes": 42600,
+            "taxa_mortalidade": 6.41
+          }
+        ]
+      },
+      "success": true,
+      "response": "Em 2020, a taxa de mortalidade hospitalar em MA foi de 3,74%, com 395.167 internações e 14.778 mortes. No RS, a taxa foi de 6,41%, com 664.747 internações e 42.600 mortes.",
+      "sql": "SELECT mu.\"SG_UF\" AS estado, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 AND mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\" ORDER BY mu.\"SG_UF\";",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 27.77113676071167
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.516200065612793
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.4461865425109863
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.14686965942382812
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "municipios"
+        ],
+        "schema_context_length": 15487,
+        "latency_by_component": {
+          "query_classification": 0.00029397010803222656,
+          "table_discovery": 0.5162665843963623,
+          "schema_analysis": 0.0006992816925048828,
+          "reasoning": 7.284455060958862,
+          "sql_generation": 15.650700092315674,
+          "sql_validation": 2.4462153911590576,
+          "sql_execution": 0.1469714641571045,
+          "completed": 1.7239174842834473
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Compare a taxa de mortalidade hospitalar entre MA e RS em 2020.",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "rate",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "estado",
+              "values": [
+                "MA",
+                "RS"
+              ],
+              "operator": "IN"
+            },
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "llamaindex_confidence": 0.4734511721860808,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "socioeconomico",
+          "municipios"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "semantic_constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A taxa de mortalidade hospitalar é calculada como a razão entre o número de mortes e o total de internações, mantendo o escopo do denominador completo. As dimensões e filtros foram definidos para comparar os estados MA e RS no ano de 2020, agrupando os resultados por estado.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query calculates the hospital mortality rate for the states of Maranhão (MA) and Rio Grande do Sul (RS) in 2020. It joins the 'internacoes' table with the 'municipios' table to filter by state and counts total hospitalizations and deaths, ensuring the mortality rate is calculated correctly by including all relevant records in the denominator.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T110918_gen047",
+        "query_number": 7,
+        "orchestrator_execution_time": 27.783457040786743
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN048",
+      "persona": "epidemiologista",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "hard",
+      "question": "Compare a taxa de mortalidade hospitalar entre MA e RS em 2021.",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "comparacao_geografica_dupla",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "uf_residencia": "MA",
+            "total_internacoes": 456437,
+            "total_obitos": 17704,
+            "taxa_mortalidade_percentual": 3.88
+          },
+          {
+            "uf_residencia": "RS",
+            "total_internacoes": 719533,
+            "total_obitos": 56416,
+            "taxa_mortalidade_percentual": 7.84
+          }
+        ],
+        "actual_preview": [
+          {
+            "estado": "RS",
+            "total_internacoes": 719533,
+            "total_mortes": 56416,
+            "taxa_mortalidade": 7.84
+          },
+          {
+            "estado": "MA",
+            "total_internacoes": 456437,
+            "total_mortes": 17704,
+            "taxa_mortalidade": 3.88
+          }
+        ]
+      },
+      "success": true,
+      "response": "Em 2021, a taxa de mortalidade hospitalar em MA foi de 3,88%, com 17704 mortes em 456437 internações. No RS, a taxa foi de 7,84%, com 56416 mortes em 719533 internações.",
+      "sql": "SELECT mu.\"SG_UF\" AS estado, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\";",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 28.624937534332275
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.6966781616210938
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.652406930923462
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.1492457389831543
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "municipios"
+        ],
+        "schema_context_length": 15487,
+        "latency_by_component": {
+          "query_classification": 0.00031280517578125,
+          "table_discovery": 0.6967451572418213,
+          "schema_analysis": 0.0008232593536376953,
+          "reasoning": 7.048355340957642,
+          "sql_generation": 15.637381315231323,
+          "sql_validation": 3.652435302734375,
+          "sql_execution": 0.14934706687927246,
+          "completed": 1.4379446506500244
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Compare a taxa de mortalidade hospitalar entre MA e RS em 2021.",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "rate",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "estado",
+              "values": [
+                "MA",
+                "RS"
+              ],
+              "operator": "IN"
+            },
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "llamaindex_confidence": 0.46851650502772973,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "socioeconomico",
+          "municipios"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "semantic_constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A taxa de mortalidade hospitalar é calculada como a razão entre o número de mortes e o total de internações, considerando apenas as internações do ano de 2021 nos estados do Maranhão (MA) e Rio Grande do Sul (RS). As dimensões e filtros foram definidos para garantir a comparação entre os dois estados, mantendo a integridade do denominador da taxa.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query calculates the hospital mortality rate for the states of Maranhão (MA) and Rio Grande do Sul (RS) in 2021. It joins the 'internacoes' table with the 'municipios' table to filter by state and year, and computes the total number of hospitalizations and deaths to derive the mortality rate.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T110918_gen048",
+        "query_number": 8,
+        "orchestrator_execution_time": 28.63721227645874
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN049",
+      "persona": "epidemiologista",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "hard",
+      "question": "Compare a taxa de mortalidade hospitalar entre MA e RS em 2022.",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "comparacao_geografica_dupla",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "uf_residencia": "MA",
+            "total_internacoes": 482349,
+            "total_obitos": 14017,
+            "taxa_mortalidade_percentual": 2.91
+          },
+          {
+            "uf_residencia": "RS",
+            "total_internacoes": 772181,
+            "total_obitos": 45564,
+            "taxa_mortalidade_percentual": 5.9
+          }
+        ],
+        "actual_preview": [
+          {
+            "estado": "MA",
+            "total_internacoes": 482349,
+            "total_mortes": 14017,
+            "taxa_mortalidade": 2.91
+          },
+          {
+            "estado": "RS",
+            "total_internacoes": 772181,
+            "total_mortes": 45564,
+            "taxa_mortalidade": 5.9
+          }
+        ]
+      },
+      "success": true,
+      "response": "Em 2022, a taxa de mortalidade hospitalar em MA foi de 2,91%, com 14.017 mortes em 482.349 internações. No RS, a taxa foi de 5,9%, com 45.564 mortes em 772.181 internações.",
+      "sql": "SELECT mu.\"SG_UF\" AS estado, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE mu.\"SG_UF\" IN ('MA', 'RS') AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2022 GROUP BY mu.\"SG_UF\" ORDER BY mu.\"SG_UF\";",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 30.772261142730713
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.4986240863800049
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 5.182373762130737
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.15157341957092285
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "municipios"
+        ],
+        "schema_context_length": 15487,
+        "latency_by_component": {
+          "query_classification": 0.00024890899658203125,
+          "table_discovery": 0.49869465827941895,
+          "schema_analysis": 0.0007390975952148438,
+          "reasoning": 6.484224796295166,
+          "sql_generation": 17.029215574264526,
+          "sql_validation": 5.182402610778809,
+          "sql_execution": 0.15167713165283203,
+          "completed": 1.4233381748199463
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Compare a taxa de mortalidade hospitalar entre MA e RS em 2022.",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "rate",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "estado",
+              "values": [
+                "MA",
+                "RS"
+              ],
+              "operator": "IN"
+            },
+            {
+              "field": "ano",
+              "values": [
+                "2022"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "llamaindex_confidence": 0.4754171313996425,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "socioeconomico",
+          "municipios"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "semantic_constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A taxa de mortalidade hospitalar é calculada como a razão entre o número de mortes e o total de internações, mantendo o escopo do denominador completo. As dimensões e filtros foram definidos para comparar os estados MA e RS no ano de 2022, garantindo que a análise seja feita por estado.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query calculates the hospital mortality rate for the states of Maranhão (MA) and Rio Grande do Sul (RS) in 2022. It joins the 'internacoes' table with the 'municipios' table to filter by state and uses conditional aggregation to compute the mortality rate while preserving the total count of hospitalizations for the denominator.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T110918_gen049",
+        "query_number": 9,
+        "orchestrator_execution_time": 30.793189525604248
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN050",
+      "persona": "epidemiologista",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "hard",
+      "question": "Compare a taxa de mortalidade hospitalar entre MA e RS em 2023.",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "comparacao_geografica_dupla",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "uf_residencia": "MA",
+            "total_internacoes": 460338,
+            "total_obitos": 12843,
+            "taxa_mortalidade_percentual": 2.79
+          },
+          {
+            "uf_residencia": "RS",
+            "total_internacoes": 745787,
+            "total_obitos": 38682,
+            "taxa_mortalidade_percentual": 5.19
+          }
+        ],
+        "actual_preview": [
+          {
+            "estado": "RS",
+            "total_internacoes": 745787,
+            "total_mortes": 38682,
+            "taxa_mortalidade": 5.19
+          },
+          {
+            "estado": "MA",
+            "total_internacoes": 460338,
+            "total_mortes": 12843,
+            "taxa_mortalidade": 2.79
+          }
+        ]
+      },
+      "success": true,
+      "response": "Em 2023, a taxa de mortalidade hospitalar em MA foi de 2,79%, com 12843 mortes em 460338 internações. No RS, a taxa foi de 5,19%, com 38682 mortes em 745787 internações.",
+      "sql": "SELECT mu.\"SG_UF\" AS estado, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2023 AND mu.\"SG_UF\" IN ('MA', 'RS') GROUP BY mu.\"SG_UF\";",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 29.72537350654602
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.8138751983642578
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.86228609085083
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.1496446132659912
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "municipios"
+        ],
+        "schema_context_length": 15487,
+        "latency_by_component": {
+          "query_classification": 0.00028443336486816406,
+          "table_discovery": 0.8139424324035645,
+          "schema_analysis": 0.0008115768432617188,
+          "reasoning": 7.96241307258606,
+          "sql_generation": 15.447832822799683,
+          "sql_validation": 3.862313747406006,
+          "sql_execution": 0.1497504711151123,
+          "completed": 1.486419916152954
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Compare a taxa de mortalidade hospitalar entre MA e RS em 2023.",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "rate",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "estado",
+              "values": [
+                "MA",
+                "RS"
+              ],
+              "operator": "IN"
+            },
+            {
+              "field": "ano",
+              "values": [
+                "2023"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "llamaindex_confidence": 0.47024854166439906,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "socioeconomico",
+          "municipios"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "semantic_constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A taxa de mortalidade hospitalar é calculada como a razão entre o número de mortes e o total de internações, mantendo o denominador com todas as linhas do escopo. As dimensões e filtros foram definidos para comparar os estados MA e RS no ano de 2023, garantindo que a análise seja feita por estado.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query calculates the hospital mortality rate for the states of Maranhão (MA) and Rio Grande do Sul (RS) in 2023. It joins the 'internacoes' table with the 'municipios' table to filter by state and counts total hospitalizations and deaths, calculating the mortality rate as a percentage.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T110918_gen050",
+        "query_number": 10,
+        "orchestrator_execution_time": 29.73831343650818
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    }
+  ]
+}

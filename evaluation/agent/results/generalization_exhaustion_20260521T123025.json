@@ -1,0 +1,3832 @@
+{
+  "run_id": "generalization_exhaustion_20260521T123025",
+  "created_at": "2026-05-21T12:34:50",
+  "dry_run": false,
+  "summary": {
+    "status_counts": {
+      "passed": 3,
+      "failed": 7
+    },
+    "root_cause_counts": {
+      "response_grounding_error": 7
+    },
+    "severity_counts": {
+      "medium": 7
+    }
+  },
+  "items": [
+    {
+      "id": "GEN111",
+      "persona": "gestor_hospitalar",
+      "category": "procedimentos",
+      "difficulty": "hard",
+      "question": "Quais procedimentos foram mais frequentes em RS em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "procedimento_por_uf",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "procedimento": "TRATAMENTO DE INFECCAO PELO CORONAVIRUS ? COVID 19",
+            "total_procedimentos": 74534
+          },
+          {
+            "procedimento": "PARTO CESARIANO",
+            "total_procedimentos": 37198
+          },
+          {
+            "procedimento": "PARTO NORMAL",
+            "total_procedimentos": 35149
+          },
+          {
+            "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+            "total_procedimentos": 25126
+          },
+          {
+            "procedimento": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+            "total_procedimentos": 22648
+          }
+        ],
+        "actual_preview": [
+          {
+            "procedimento": "TRATAMENTO DE INFECCAO PELO CORONAVIRUS ? COVID 19",
+            "total_procedimentos": 74534
+          },
+          {
+            "procedimento": "PARTO CESARIANO",
+            "total_procedimentos": 37198
+          },
+          {
+            "procedimento": "PARTO NORMAL",
+            "total_procedimentos": 35149
+          },
+          {
+            "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+            "total_procedimentos": 25126
+          },
+          {
+            "procedimento": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+            "total_procedimentos": 22648
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os procedimentos mais frequentes em RS em 2021 foram:\n\n1. Tratamento de infecção pelo coronavírus (COVID-19) - 74.534\n2. Parto cesariano - 37.198\n3. Parto normal - 35.149\n4. Tratamento de pneumonias ou influenza (gripe) - 25.126\n5. Tratamento de outras doenças bacterianas - 22.648\n6. Tratamento clínico de paciente oncológico - 16.093\n7. Tratamento de acidente vascular cerebral - AVC (isquêmico ou hemorrágico agudo) - 15.575\n8. Tratamento de insuficiência cardíaca - 13.854\n9. Tratamento com cirurgias múltiplas - 10.959\n10. Tratamento de intercorrências clínicas na gravidez - 10.622",
+      "sql": "SELECT p.\"NOME_PROC\" AS \"procedimento\", COUNT(*) AS \"total_procedimentos\" FROM internacoes i JOIN internacao_procedimento ip ON i.\"N_AIH\" = ip.\"N_AIH\" JOIN procedimentos p ON ip.\"PROC_REA\" = p.\"PROC_REA\" JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND p.\"NOME_PROC\" IS NOT NULL AND TRIM(p.\"NOME_PROC\") <> '' AND p.\"NOME_PROC\" NOT IN ('Nao preenchido', 'Nao informado') AND mu.\"SG_UF\" = 'RS' GROUP BY p.\"NOME_PROC\" ORDER BY \"total_procedimentos\" DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 17.999186515808105
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 1.1568188667297363
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 6.268253803253174
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.7570850849151611
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "procedimentos",
+          "internacoes",
+          "internacao_procedimento"
+        ],
+        "schema_context_length": 13876,
+        "latency_by_component": {
+          "query_classification": 0.0002880096435546875,
+          "table_discovery": 1.1569111347198486,
+          "schema_analysis": 0.0008938312530517578,
+          "reasoning": 6.517052888870239,
+          "sql_generation": 0.0005884170532226562,
+          "sql_validation": 6.2682859897613525,
+          "sql_execution": 0.7571895122528076,
+          "completed": 3.2799174785614014
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais procedimentos foram mais frequentes em RS em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "procedimento_ocorrencia",
+          "metrics": [
+            {
+              "name": "requested_metric",
+              "expression_type": "unknown",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "procedimento",
+              "source": "procedimentos.NOME_PROC",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "estado",
+              "values": [
+                "RS"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "procedimento"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "procedimento"
+            ],
+            "filter_dimensions": [],
+            "counted_entity": "procedimento",
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "procedimentos",
+          "internacoes",
+          "internacao_procedimento"
+        ],
+        "llamaindex_confidence": 0.3891689896481206,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "procedimentos",
+          "internacoes",
+          "internacao_procedimento"
+        ],
+        "validated_selected_tables": [
+          "procedimentos",
+          "internacoes",
+          "internacao_procedimento"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "procedimentos",
+          "internacoes",
+          "internacao_procedimento"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os procedimentos mais frequentes no estado do Rio Grande do Sul (RS) no ano de 2021. A métrica escolhida é a contagem de ocorrências de cada procedimento, agrupada pelo nome do procedimento. Os filtros aplicados garantem que apenas os dados de RS e do ano de 2021 sejam considerados. A forma de resposta é definida para retornar os 10 procedimentos mais frequentes, o que se alinha com a intenção de ranking.",
+          "conflicts": [
+            "unknown_metric_ignored: frequencia"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T123025_gen111",
+        "query_number": 1,
+        "orchestrator_execution_time": 18.014812707901
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN112",
+      "persona": "gestor_hospitalar",
+      "category": "procedimentos",
+      "difficulty": "hard",
+      "question": "Quais procedimentos foram mais frequentes em SP em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "procedimento_por_uf",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "procedimento": "TRATAMENTO DE INFECCAO PELO CORONAVIRUS ? COVID 19",
+            "total_procedimentos": 245447
+          },
+          {
+            "procedimento": "PARTO NORMAL",
+            "total_procedimentos": 156191
+          },
+          {
+            "procedimento": "PARTO CESARIANO",
+            "total_procedimentos": 106831
+          },
+          {
+            "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+            "total_procedimentos": 73849
+          },
+          {
+            "procedimento": "DIAGNOSTICO E/OU ATENDIMENTO DE URGENCIA EM CLINICA MEDICA",
+            "total_procedimentos": 63160
+          }
+        ],
+        "actual_preview": [
+          {
+            "procedimento": "TRATAMENTO DE INFECCAO PELO CORONAVIRUS ? COVID 19",
+            "total_procedimentos": 245447
+          },
+          {
+            "procedimento": "PARTO NORMAL",
+            "total_procedimentos": 156191
+          },
+          {
+            "procedimento": "PARTO CESARIANO",
+            "total_procedimentos": 106831
+          },
+          {
+            "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+            "total_procedimentos": 73849
+          },
+          {
+            "procedimento": "DIAGNOSTICO E/OU ATENDIMENTO DE URGENCIA EM CLINICA MEDICA",
+            "total_procedimentos": 63160
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os procedimentos mais frequentes em São Paulo em 2021 foram:\n\n1. Tratamento de infecção pelo coronavírus - COVID-19: 245.447\n2. Parto normal: 156.191\n3. Parto cesariano: 106.831\n4. Tratamento de pneumonias ou influenza (gripe): 73.849\n5. Diagnóstico e/ou atendimento de urgência em clínica médica: 63.160\n6. Tratamento com cirurgias múltiplas: 50.484\n7. Tratamento de outras doenças bacterianas: 45.772\n8. Tratamento de acidente vascular cerebral - AVC (isquêmico ou hemorrágico agudo): 40.301\n9. Tratamento de intercorrências clínicas na gravidez: 39.489\n10. Tratamento clínico de paciente oncológico: 33.866",
+      "sql": "SELECT p.\"NOME_PROC\" AS \"procedimento\", COUNT(*) AS \"total_procedimentos\" FROM internacoes i JOIN internacao_procedimento ip ON i.\"N_AIH\" = ip.\"N_AIH\" JOIN procedimentos p ON ip.\"PROC_REA\" = p.\"PROC_REA\" JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND p.\"NOME_PROC\" IS NOT NULL AND TRIM(p.\"NOME_PROC\") <> '' AND p.\"NOME_PROC\" NOT IN ('Nao preenchido', 'Nao informado') AND mu.\"SG_UF\" = 'SP' GROUP BY p.\"NOME_PROC\" ORDER BY \"total_procedimentos\" DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 17.2083420753479
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.9323298931121826
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 4.655661106109619
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.609175443649292
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "procedimentos",
+          "internacoes",
+          "internacao_procedimento"
+        ],
+        "schema_context_length": 16512,
+        "latency_by_component": {
+          "query_classification": 0.00039076805114746094,
+          "table_discovery": 0.9323995113372803,
+          "schema_analysis": 0.0006568431854248047,
+          "reasoning": 7.608268737792969,
+          "sql_generation": 0.0005352497100830078,
+          "sql_validation": 4.655689716339111,
+          "sql_execution": 0.6092777252197266,
+          "completed": 3.39947247505188
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais procedimentos foram mais frequentes em SP em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "procedimento_ocorrencia",
+          "metrics": [
+            {
+              "name": "requested_metric",
+              "expression_type": "unknown",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "procedimento",
+              "source": "procedimentos.NOME_PROC",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "estado",
+              "values": [
+                "SP"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "procedimento"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "procedimento"
+            ],
+            "filter_dimensions": [],
+            "counted_entity": "procedimento",
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "procedimentos",
+          "internacoes",
+          "internacao_procedimento"
+        ],
+        "llamaindex_confidence": 0.37245566827575755,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "procedimentos",
+          "socioeconomico",
+          "internacoes",
+          "internacao_procedimento"
+        ],
+        "validated_selected_tables": [
+          "procedimentos",
+          "internacoes",
+          "internacao_procedimento"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "procedimentos",
+          "internacoes",
+          "internacao_procedimento"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os procedimentos mais frequentes em São Paulo no ano de 2021. A métrica escolhida é a contagem de ocorrências de cada procedimento, agrupada pelo nome do procedimento. Os filtros aplicados garantem que apenas os dados de SP e do ano de 2021 sejam considerados. A forma de resposta é a lista dos 10 procedimentos mais frequentes.",
+          "conflicts": [
+            "unknown_metric_ignored: frequencia"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T123025_gen112",
+        "query_number": 2,
+        "orchestrator_execution_time": 17.22150444984436
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN113",
+      "persona": "gestor_hospitalar",
+      "category": "procedimentos",
+      "difficulty": "hard",
+      "question": "Quais procedimentos foram mais frequentes em RJ em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "procedimento_por_uf",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "procedimento": "TRATAMENTO DE INFECCAO PELO CORONAVIRUS ? COVID 19",
+            "total_procedimentos": 71643
+          },
+          {
+            "procedimento": "PARTO NORMAL",
+            "total_procedimentos": 63041
+          },
+          {
+            "procedimento": "PARTO CESARIANO",
+            "total_procedimentos": 41009
+          },
+          {
+            "procedimento": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+            "total_procedimentos": 30247
+          },
+          {
+            "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+            "total_procedimentos": 26707
+          }
+        ],
+        "actual_preview": [
+          {
+            "procedimento": "TRATAMENTO DE INFECCAO PELO CORONAVIRUS ? COVID 19",
+            "total_procedimentos": 71643
+          },
+          {
+            "procedimento": "PARTO NORMAL",
+            "total_procedimentos": 63041
+          },
+          {
+            "procedimento": "PARTO CESARIANO",
+            "total_procedimentos": 41009
+          },
+          {
+            "procedimento": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+            "total_procedimentos": 30247
+          },
+          {
+            "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+            "total_procedimentos": 26707
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os procedimentos mais frequentes no RJ em 2021 foram:\n\n1. Tratamento de infecção pelo coronavírus (COVID-19): 71.643\n2. Parto normal: 63.041\n3. Parto cesariano: 41.009\n4. Tratamento de outras doenças bacterianas: 30.247\n5. Tratamento de pneumonias ou influenza (gripe): 26.707\n6. Tratamento com cirurgias múltiplas: 17.820\n7. Tratamento de intercorrências clínicas na gravidez: 16.137\n8. Tratamento de acidente vascular cerebral - AVC (isquêmico ou hemorrágico agudo): 16.059\n9. Tratamento clínico de paciente oncológico: 11.854\n10. Tratamento de traumatismos de localização especificada/não especificada: 11.544",
+      "sql": "SELECT p.\"NOME_PROC\" AS \"procedimento\", COUNT(*) AS \"total_procedimentos\" FROM internacoes i JOIN internacao_procedimento ip ON i.\"N_AIH\" = ip.\"N_AIH\" JOIN procedimentos p ON ip.\"PROC_REA\" = p.\"PROC_REA\" JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND p.\"NOME_PROC\" IS NOT NULL AND TRIM(p.\"NOME_PROC\") <> '' AND p.\"NOME_PROC\" NOT IN ('Nao preenchido', 'Nao informado') AND mu.\"SG_UF\" = 'RJ' GROUP BY p.\"NOME_PROC\" ORDER BY \"total_procedimentos\" DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 19.2818386554718
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.7655329704284668
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 5.005640745162964
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.36571168899536133
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "procedimentos",
+          "internacao_procedimento"
+        ],
+        "schema_context_length": 16512,
+        "latency_by_component": {
+          "query_classification": 0.0003287792205810547,
+          "table_discovery": 0.7655987739562988,
+          "schema_analysis": 0.0006673336029052734,
+          "reasoning": 6.602102756500244,
+          "sql_generation": 0.0007886886596679688,
+          "sql_validation": 5.005669355392456,
+          "sql_execution": 0.3658273220062256,
+          "completed": 6.538995265960693
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais procedimentos foram mais frequentes em RJ em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "procedimento_ocorrencia",
+          "metrics": [
+            {
+              "name": "requested_metric",
+              "expression_type": "unknown",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "procedimento",
+              "source": "procedimentos.NOME_PROC",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "estado",
+              "values": [
+                "RJ"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "procedimento"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "procedimento"
+            ],
+            "filter_dimensions": [],
+            "counted_entity": "internacao_procedimento",
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "procedimentos",
+          "internacao_procedimento"
+        ],
+        "llamaindex_confidence": 0.36201067711875085,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "procedimentos",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "procedimentos",
+          "internacao_procedimento"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "procedimentos",
+          "internacao_procedimento"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é identificar os procedimentos mais frequentes no estado do RJ em 2021, utilizando contagem como métrica. A dimensão 'procedimento' é agrupada para permitir a contagem de ocorrências. Os filtros aplicados garantem que os dados sejam restritos ao estado do RJ e ao ano de 2021. A resposta deve retornar os 10 procedimentos mais frequentes, o que justifica o uso de 'top_n_global'.",
+          "conflicts": [
+            "unknown_metric_ignored: frequencia"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T123025_gen113",
+        "query_number": 3,
+        "orchestrator_execution_time": 19.2947735786438
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN114",
+      "persona": "medico_pesquisador",
+      "category": "procedimentos",
+      "difficulty": "hard",
+      "question": "Quais procedimentos apareceram com mais frequencia em internacoes por doencas respiratorias em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "procedimento_por_condicao",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:procedimento",
+          "missing_column:total_procedimentos"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+            "total_procedimentos": 378822
+          },
+          {
+            "procedimento": "TRATAMENTO DAS DOENCAS CRONICAS DAS VIAS AEREAS INFERIORES",
+            "total_procedimentos": 116509
+          },
+          {
+            "procedimento": "TRATAMENTO DE OUTRAS DOENCAS DO APARELHO RESPIRATORIO",
+            "total_procedimentos": 67195
+          },
+          {
+            "procedimento": "TRATAMENTO DE OUTRAS INFECCOES AGUDAS DAS VIAS AEREAS INFERIORES",
+            "total_procedimentos": 46434
+          },
+          {
+            "procedimento": "TORACOSTOMIA COM DRENAGEM PLEURAL FECHADA",
+            "total_procedimentos": 31223
+          }
+        ],
+        "actual_preview": [
+          {
+            "DIAG_PRINC": "J189",
+            "NOME_PROC": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+            "total": 151356
+          },
+          {
+            "DIAG_PRINC": "J159",
+            "NOME_PROC": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+            "total": 55078
+          },
+          {
+            "DIAG_PRINC": "J180",
+            "NOME_PROC": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+            "total": 48691
+          },
+          {
+            "DIAG_PRINC": "J459",
+            "NOME_PROC": "TRATAMENTO DAS DOENCAS CRONICAS DAS VIAS AEREAS INFERIORES",
+            "total": 45183
+          },
+          {
+            "DIAG_PRINC": "J960",
+            "NOME_PROC": "TRATAMENTO DE OUTRAS DOENCAS DO APARELHO RESPIRATORIO",
+            "total": 42709
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os procedimentos mais frequentes em internações por doenças respiratórias em 2021 foram:\n\n1. Tratamento de pneumonias ou influenza (gripe) - 151.356\n2. Tratamento de pneumonias ou influenza (gripe) - 55.078\n3. Tratamento de pneumonias ou influenza (gripe) - 48.691\n4. Tratamento das doenças crônicas das vias aéreas inferiores - 45.183\n5. Tratamento de outras doenças do aparelho respiratório - 42.709\n6. Tratamento de pneumonias ou influenza (gripe) - 27.459\n7. Tratamento das doenças crônicas das vias aéreas inferiores - 27.258\n8. Tratamento de outras infecções agudas das vias aéreas inferiores - 20.721\n9. Tratamento de pneumonias ou influenza (gripe) - 17.288\n10. Tratamento de pneumonias ou influenza (gripe) - 17.039",
+      "sql": "SELECT i.\"DIAG_PRINC\", p.\"NOME_PROC\", COUNT(*) AS total FROM internacoes i JOIN internacao_procedimento ip ON i.\"N_AIH\" = ip.\"N_AIH\" JOIN procedimentos p ON ip.\"PROC_REA\" = p.\"PROC_REA\" WHERE i.\"DT_INTER\" BETWEEN '2021-01-01' AND '2021-12-31' AND i.\"DIAG_PRINC\" LIKE 'J%' GROUP BY i.\"DIAG_PRINC\", p.\"NOME_PROC\" ORDER BY total DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.6428571428571429,
+          "phases_completed": 9,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 4,
+          "retry_count": 0,
+          "error_count": 1,
+          "execution_time": 37.90756177902222
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_repair",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.7680106163024902
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.880795955657959
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.18742036819458
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.5600402355194092
+          }
+        ],
+        "message_count": 16,
+        "retry_count": 0,
+        "error_count": 1,
+        "tables_used": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "schema_context_length": 13876,
+        "latency_by_component": {
+          "query_classification": 0.000293731689453125,
+          "table_discovery": 0.7680864334106445,
+          "schema_analysis": 0.0007874965667724609,
+          "reasoning": 7.546921968460083,
+          "sql_generation": 10.893384456634521,
+          "sql_validation": 3.187448740005493,
+          "sql_repair": 9.659725904464722,
+          "sql_execution": 0.5601496696472168,
+          "completed": 3.4047231674194336
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais procedimentos apareceram com mais frequencia em internacoes por doencas respiratorias em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": [
+            "grouping_dimension"
+          ]
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "procedimento_ocorrencia",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "diagnostico",
+              "source": "cid.DESCRICAO",
+              "role": "group"
+            },
+            {
+              "name": "procedimento",
+              "source": "procedimentos.NOME_PROC",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "diagnostico_principal_prefix",
+              "values": [
+                "J%"
+              ],
+              "operator": "LIKE"
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "values": [
+                "CID J00-J99 - Doencas do aparelho respiratorio"
+              ],
+              "operator": "metadata"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "diagnostico",
+              "procedimento"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "diagnostico",
+              "procedimento"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.4278423904044641,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os procedimentos mais frequentes em internações por doenças respiratórias em 2021. As métricas e dimensões foram escolhidas para contar o número de ocorrências de procedimentos, agrupados por diagnóstico e procedimento. Os filtros garantem que apenas os dados de 2021 e relacionados a doenças respiratórias sejam considerados. A forma de resposta é definida para retornar os 10 procedimentos mais frequentes globalmente.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query counts the occurrences of procedures performed during hospitalizations for respiratory diseases (diagnosed with codes starting with 'J') in the year 2021. It joins the necessary tables to link hospitalizations with procedures and filters by the specified date range and diagnosis prefix.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "semantic_error": {
+          "category": "grouping_dimension",
+          "severity": "error",
+          "message": "SEMANTIC PLAN ERROR: The plan requires grouping by diagnostico, but SQL GROUP BY does not include that dimension."
+        },
+        "repair_attempts": [
+          {
+            "previous_sql": "SELECT p.\"NOME_PROC\", COUNT(*) AS total FROM internacoes i JOIN internacao_procedimento ip ON i.\"N_AIH\" = ip.\"N_AIH\" JOIN procedimentos p ON ip.\"PROC_REA\" = p.\"PROC_REA\" WHERE i.\"DT_INTER\" BETWEEN '2021-01-01' AND '2021-12-31' AND i.\"DIAG_PRINC\" LIKE 'J%' GROUP BY p.\"NOME_PROC\" ORDER BY total DESC LIMIT 10;",
+            "error_message": "SEMANTIC PLAN ERROR: The plan requires grouping by diagnostico, but SQL GROUP BY does not include that dimension.",
+            "semantic_category": "grouping_dimension",
+            "semantic_guidance": "Dimensao de agrupamento",
+            "violated_contract": {
+              "answer_shape.required_dimensions": [
+                "diagnostico",
+                "procedimento"
+              ],
+              "answer_shape.row_grain": "top_n_global",
+              "answer_shape.requires_group_by": true
+            },
+            "repair_strategy": "llm_guided",
+            "timestamp": "2026-05-21T12:31:56.708926",
+            "post_repair_validation": {
+              "passed": true,
+              "message": null
+            }
+          }
+        ],
+        "semantic_repair": {
+          "original_category": "grouping_dimension",
+          "original_message": "SEMANTIC PLAN ERROR: The plan requires grouping by diagnostico, but SQL GROUP BY does not include that dimension.",
+          "guidance_title": "Dimensao de agrupamento",
+          "strategy": "llm_guided",
+          "post_repair_category": null,
+          "post_repair_message": null,
+          "validation_passed_after_repair": true
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T123025_gen114",
+        "query_number": 4,
+        "orchestrator_execution_time": 37.923487424850464
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN115",
+      "persona": "medico_pesquisador",
+      "category": "procedimentos",
+      "difficulty": "hard",
+      "question": "Quais procedimentos apareceram com mais frequencia em internacoes por diabetes em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "procedimento_por_condicao",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:procedimento",
+          "missing_column:total_procedimentos",
+          "row_count:1!=10"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "procedimento": "TRATAMENTO DE INTERCORRENCIAS CLINICAS NA GRAVIDEZ",
+            "total_procedimentos": 18688
+          },
+          {
+            "procedimento": "PARTO CESARIANO EM GESTACAO DE ALTO RISCO",
+            "total_procedimentos": 13828
+          },
+          {
+            "procedimento": "PARTO CESARIANO",
+            "total_procedimentos": 7259
+          },
+          {
+            "procedimento": "PARTO NORMAL EM GESTACAO DE ALTO RISCO",
+            "total_procedimentos": 2710
+          },
+          {
+            "procedimento": "TRATAMENTO DE DIABETES MELLITUS",
+            "total_procedimentos": 2339
+          }
+        ],
+        "actual_preview": [
+          {
+            "total_cids_encontrados": 19,
+            "total_internacoes": 48433,
+            "diagnosticos_encontrados": "E10 - Diabetes mellitus insulino-dependente | E11 - Diabetes mellitus nao-insulino-dependemte | E12 - Diabetes mellitus relac c/a desnutr | E13 - Outr tipos espec de diabetes mellitus | E14 - Diabetes mellitus NE | E232 - Diabetes insipido | N083 - Transt glomerulares no diabetes mellitus | N251 - Diabetes insipido nefrogenico | O24 - Diabetes mellitus na gravidez | O240 - Diabetes mellitus pre-exist insulino-depend | O241 - Diabetes mellitus pre-exist nao-insulino-dep | O242 - Diabetes mellitus pre-existente rel desnutr | O243 - Diabetes mellitus pre-existente NE | O244 - Diabetes mellitus que surge durante gravidez | O249 - Diabetes mellitus na gravidez NE | P700 - Sindr do filho de mae c/diabetes gestacional | P702 - Diabetes mellitus neonatal | Z131 - Exame especial rastr de diabetes mellitus | Z833 - Historia familiar de diabetes mellitus"
+          }
+        ]
+      },
+      "success": false,
+      "response": "Não foi possível processar sua consulta: SEMANTIC PLAN ERROR: The plan requires a global top-N answer, but SQL does not limit the result to top_n=10.",
+      "sql": "WITH diagnosticos_alvo AS ( SELECT c.\"CID\", c.\"DESCRICAO\" FROM cid c WHERE (c.\"DESCRICAO\" ILIKE '%diabetes%')) SELECT COUNT(*) AS total_cids_encontrados, (SELECT COUNT(*) FROM internacoes i WHERE i.\"DIAG_PRINC\" IN (SELECT \"CID\" FROM diagnosticos_alvo) AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021) AS total_internacoes, STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") AS diagnosticos_encontrados FROM diagnosticos_alvo;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": false,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 4,
+          "retry_count": 3,
+          "error_count": 3,
+          "execution_time": 24.03963541984558
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_repair"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.62532639503479
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.5997796058654785
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.587808609008789
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.78957462310791
+          }
+        ],
+        "message_count": 17,
+        "retry_count": 3,
+        "error_count": 3,
+        "tables_used": [
+          "internacao_procedimento",
+          "internacoes",
+          "procedimentos"
+        ],
+        "schema_context_length": 13876,
+        "latency_by_component": {
+          "query_classification": 0.00036597251892089844,
+          "table_discovery": 0.6254029273986816,
+          "schema_analysis": 0.0008902549743652344,
+          "reasoning": 6.8065783977508545,
+          "sql_generation": 0.0007505416870117188,
+          "sql_validation": 3.7896053791046143,
+          "sql_repair": 0.0009765625,
+          "completed": 3.337860107421875e-05
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais procedimentos apareceram com mais frequencia em internacoes por diabetes em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": [
+            "unknown",
+            "top_n_scope"
+          ]
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "procedimento_ocorrencia",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "procedimento",
+              "source": "procedimentos.NOME_PROC",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "diagnostico_principal_descricao",
+              "values": [
+                "diabetes"
+              ],
+              "operator": "ILIKE"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "procedimento"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "procedimento"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "diagnosis_filter_dimension_not_output",
+            "diagnosis_description_lookup_required"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacao_procedimento",
+          "internacoes",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.4716439495900618,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacao_procedimento",
+          "internacoes",
+          "procedimentos"
+        ],
+        "validated_selected_tables": [
+          "internacao_procedimento",
+          "internacoes",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacao_procedimento",
+          "internacoes",
+          "procedimentos"
+        ],
+        "semantic_constraints": [
+          "diagnosis_filter_dimension_not_output",
+          "diagnosis_description_lookup_required"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os procedimentos mais frequentes em internações por diabetes no ano de 2021. A métrica utilizada é a contagem total de ocorrências de cada procedimento, agrupada pelo nome do procedimento. Os filtros aplicados garantem que apenas as internações de 2021 com diagnóstico de diabetes sejam consideradas. A resposta deve retornar os 10 procedimentos mais frequentes, o que justifica a escolha do formato de resposta como top_n_global.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": false,
+          "constraints": [
+            "diagnosis_filter_dimension_not_output",
+            "diagnosis_description_lookup_required"
+          ],
+          "null_policy": [],
+          "message": "SEMANTIC PLAN ERROR: The plan requires a global top-N answer, but SQL does not limit the result to top_n=10."
+        },
+        "semantic_error": {
+          "category": "top_n_scope",
+          "severity": "error",
+          "message": "SEMANTIC PLAN ERROR: The plan requires a global top-N answer, but SQL does not limit the result to top_n=10."
+        },
+        "repair_attempts": [
+          {
+            "previous_sql": "SELECT p.\"NOME_PROC\" AS \"procedimento\", COUNT(*) AS \"total_procedimentos\" FROM internacoes i JOIN internacao_procedimento ip ON i.\"N_AIH\" = ip.\"N_AIH\" JOIN procedimentos p ON ip.\"PROC_REA\" = p.\"PROC_REA\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND p.\"NOME_PROC\" IS NOT NULL AND TRIM(p.\"NOME_PROC\") <> '' AND p.\"NOME_PROC\" NOT IN ('Nao preenchido', 'Nao informado') GROUP BY p.\"NOME_PROC\" ORDER BY \"total_procedimentos\" DESC LIMIT 10;",
+            "error_message": "SEMANTIC PLAN ERROR: SQL does not apply the requested diagnosis description filter through DIAG_PRINC.",
+            "semantic_category": "unknown",
+            "semantic_guidance": "Erro semantico desconhecido",
+            "violated_contract": {},
+            "repair_strategy": "llm_guided",
+            "timestamp": "2026-05-21T12:32:22.560686",
+            "post_repair_validation": {
+              "passed": false,
+              "message": "SEMANTIC PLAN ERROR: Diagnosis description lookup must resolve disease terms through cid.DESCRICAO and then filter internacoes.DIAG_PRINC by CID.",
+              "category": "unknown"
+            }
+          },
+          {
+            "previous_sql": "SELECT p.\"NOME_PROC\" AS \"procedimento\", COUNT(*) AS \"total_procedimentos\" FROM internacoes i JOIN internacao_procedimento ip ON i.\"N_AIH\" = ip.\"N_AIH\" JOIN procedimentos p ON ip.\"PROC_REA\" = p.\"PROC_REA\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND i.\"DIAG_PRINC\" LIKE '%diabetes%' AND p.\"NOME_PROC\" IS NOT NULL AND TRIM(p.\"NOME_PROC\") <> '' AND p.\"NOME_PROC\" NOT IN ('Nao preenchido', 'Nao informado') GROUP BY p.\"NOME_PROC\" ORDER BY \"total_procedimentos\" DESC LIMIT 10;",
+            "error_message": "SEMANTIC PLAN ERROR: Diagnosis description lookup must resolve disease terms through cid.DESCRICAO and then filter internacoes.DIAG_PRINC by CID.",
+            "semantic_category": "unknown",
+            "semantic_guidance": "Erro semantico desconhecido",
+            "violated_contract": {},
+            "repair_strategy": "goalv2_semantic_macro",
+            "timestamp": "2026-05-21T12:32:25.151172",
+            "post_repair_validation": {
+              "passed": false,
+              "message": "SEMANTIC PLAN ERROR: The plan requires a global top-N answer, but SQL does not limit the result to top_n=10.",
+              "category": "top_n_scope"
+            }
+          }
+        ],
+        "semantic_repair": {
+          "original_category": "unknown",
+          "original_message": "SEMANTIC PLAN ERROR: Diagnosis description lookup must resolve disease terms through cid.DESCRICAO and then filter internacoes.DIAG_PRINC by CID.",
+          "guidance_title": "Erro semantico desconhecido",
+          "strategy": "deterministic",
+          "post_repair_category": "top_n_scope",
+          "post_repair_message": "SEMANTIC PLAN ERROR: The plan requires a global top-N answer, but SQL does not limit the result to top_n=10.",
+          "validation_passed_after_repair": false
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T123025_gen115",
+        "query_number": 5,
+        "orchestrator_execution_time": 24.05881428718567
+      },
+      "error": "SEMANTIC PLAN ERROR: The plan requires a global top-N answer, but SQL does not limit the result to top_n=10.",
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN116",
+      "persona": "medico_pesquisador",
+      "category": "procedimentos",
+      "difficulty": "hard",
+      "question": "Quais procedimentos apareceram com mais frequencia em internacoes por pneumonia em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "procedimento_por_condicao",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:procedimento",
+          "missing_column:total_procedimentos",
+          "row_count:1!=10"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+            "total_procedimentos": 367397
+          },
+          {
+            "procedimento": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+            "total_procedimentos": 6453
+          },
+          {
+            "procedimento": "DIAGNOSTICO E/OU ATENDIMENTO DE URGENCIA EM CLINICA MEDICA",
+            "total_procedimentos": 5777
+          },
+          {
+            "procedimento": "TORACOSTOMIA COM DRENAGEM PLEURAL FECHADA",
+            "total_procedimentos": 3503
+          },
+          {
+            "procedimento": "DIAGNOSTICO E/OU ATENDIMENTO DE URGENCIA EM CLINICA PEDIATRICA",
+            "total_procedimentos": 2385
+          }
+        ],
+        "actual_preview": [
+          {
+            "total_cids_encontrados": 54,
+            "total_internacoes": 396362,
+            "diagnosticos_encontrados": "A403 - Septicemia p/Streptococcus pneumonia | B052 - Sarampo complicado p/pneumonia | B206 - Doenc p/HIV result pneumonia p/P.carinii | B953 - S. pneumoniae causa doenc class outr cap | B960 - M.pneumoniae causa doenc class outr cap | B961 - K.pneumoniae como doenc class outr cap | J110 - Influenza c/pneumonia dev virus nao ident | J12 - Pneumonia viral NCOP | J120 - Pneumonia dev adenovirus | J121 - Pneumonia dev virus respirat sincicial | J122 - Pneumonia dev parainfluenza | J128 - Outr pneumonias virais | J129 - Pneumonia viral NE | J13 - Pneumonia dev Streptococcus pneumoniae | J14 - Pneumonia dev Haemophilus infuenzae | J15 - Pneumonia bacter NCOP | J150 - Pneumonia dev Klebsiella pneumoniae | J151 - Pneumonia dev Pseudomonas | J152 - Pneumonia dev Staphylococcus | J153 - Pneumonia dev Streptococcus do grupo B | J154 - Pneumonia dev outr estreptococos | J155 - Pneumonia dev Escherichia coli | J156 - Pneumonia dev outr bact aerobicas gram-neg | J157 - Pneumonia dev Mycoplasma pneumoniae | J158 - Outr pneumonias bacter | J159 - Pneumonia bacter NE | J16 - Pneumonia dev out microorg infecc espec NCOP | J160 - Pneumonia dev clamidias | J168 - Pneumonia dev outr microorg infecc espec | J17 - Pneumonia em doenc COP | J170 - Pneumonia em doenc bacter COP | J171 - Pneumonia em doenc virais COP | J172 - Pneumonia em micoses COP | J173 - Pneumonia em doenc parasit COP | J178 - Pneumonia em outr doenc COP | J18 - Pneumonia p/microorg NE | J180 - Broncopneumonia NE | J181 - Pneumonia lobar NE | J182 - Pneumonia hipostatica NE | J188 - Outr pneumonias dev microorg NE | J189 - Pneumonia NE | J200 - Bronquite aguda dev Mycoplasma pneumoniae | J851 - Abscesso do pulmao c/pneumonia | J852 - Abscesso do pulmao s/pneumonia | P23 - Pneumonia congen | P230 - Pneumonia congen dev agente viral | P231 - Pneumonia congen dev Clamidia | P232 - Pneumonia congen dev estafilococo | P233 - Pneumonia congen dev estreptococo do grupo B | P234 - Pneumonia congen dev Escherichia coli | P235 - Pneumonia congen dev a Pseudomonas | P236 - Pneumonia congen dev outr agentes bacter | P238 - Pneumonia congen dev outr organismos | P239 - Pneumonia congen NE"
+          }
+        ]
+      },
+      "success": false,
+      "response": "Não foi possível processar sua consulta: SEMANTIC PLAN ERROR: The plan requires a global top-N answer, but SQL does not limit the result to top_n=10.",
+      "sql": "WITH diagnosticos_alvo AS ( SELECT c.\"CID\", c.\"DESCRICAO\" FROM cid c WHERE (c.\"DESCRICAO\" ILIKE '%pneumonia%')) SELECT COUNT(*) AS total_cids_encontrados, (SELECT COUNT(*) FROM internacoes i WHERE i.\"DIAG_PRINC\" IN (SELECT \"CID\" FROM diagnosticos_alvo) AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021) AS total_internacoes, STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") AS diagnosticos_encontrados FROM diagnosticos_alvo;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": false,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 4,
+          "retry_count": 3,
+          "error_count": 3,
+          "execution_time": 23.556776523590088
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_repair"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5479378700256348
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.811431646347046
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.345309019088745
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.8442912101745605
+          }
+        ],
+        "message_count": 17,
+        "retry_count": 3,
+        "error_count": 3,
+        "tables_used": [
+          "internacao_procedimento",
+          "internacoes",
+          "procedimentos"
+        ],
+        "schema_context_length": 13876,
+        "latency_by_component": {
+          "query_classification": 0.00033402442932128906,
+          "table_discovery": 0.5480198860168457,
+          "schema_analysis": 0.00078582763671875,
+          "reasoning": 6.556858539581299,
+          "sql_generation": 0.0004971027374267578,
+          "sql_validation": 2.844332456588745,
+          "sql_repair": 0.0008819103240966797,
+          "completed": 3.1948089599609375e-05
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais procedimentos apareceram com mais frequencia em internacoes por pneumonia em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": [
+            "unknown",
+            "top_n_scope"
+          ]
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "procedimento_ocorrencia",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "procedimento",
+              "source": "procedimentos.NOME_PROC",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "diagnostico_principal_descricao",
+              "values": [
+                "pneumonia"
+              ],
+              "operator": "ILIKE"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "procedimento"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "procedimento"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "diagnosis_filter_dimension_not_output",
+            "diagnosis_description_lookup_required"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacao_procedimento",
+          "internacoes",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.44085955271472055,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacao_procedimento",
+          "internacoes",
+          "procedimentos"
+        ],
+        "validated_selected_tables": [
+          "internacao_procedimento",
+          "internacoes",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacao_procedimento",
+          "internacoes",
+          "procedimentos"
+        ],
+        "semantic_constraints": [
+          "diagnosis_filter_dimension_not_output",
+          "diagnosis_description_lookup_required"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os procedimentos mais frequentes em internações por pneumonia no ano de 2021. A métrica escolhida é a contagem total de ocorrências, agrupada pelo nome do procedimento. Os filtros garantem que apenas os dados de 2021 e os diagnósticos de pneumonia sejam considerados. A forma de resposta é a lista dos 10 procedimentos mais frequentes.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": false,
+          "constraints": [
+            "diagnosis_filter_dimension_not_output",
+            "diagnosis_description_lookup_required"
+          ],
+          "null_policy": [],
+          "message": "SEMANTIC PLAN ERROR: The plan requires a global top-N answer, but SQL does not limit the result to top_n=10."
+        },
+        "semantic_error": {
+          "category": "top_n_scope",
+          "severity": "error",
+          "message": "SEMANTIC PLAN ERROR: The plan requires a global top-N answer, but SQL does not limit the result to top_n=10."
+        },
+        "repair_attempts": [
+          {
+            "previous_sql": "SELECT p.\"NOME_PROC\" AS \"procedimento\", COUNT(*) AS \"total_procedimentos\" FROM internacoes i JOIN internacao_procedimento ip ON i.\"N_AIH\" = ip.\"N_AIH\" JOIN procedimentos p ON ip.\"PROC_REA\" = p.\"PROC_REA\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND p.\"NOME_PROC\" IS NOT NULL AND TRIM(p.\"NOME_PROC\") <> '' AND p.\"NOME_PROC\" NOT IN ('Nao preenchido', 'Nao informado') GROUP BY p.\"NOME_PROC\" ORDER BY \"total_procedimentos\" DESC LIMIT 10;",
+            "error_message": "SEMANTIC PLAN ERROR: SQL does not apply the requested diagnosis description filter through DIAG_PRINC.",
+            "semantic_category": "unknown",
+            "semantic_guidance": "Erro semantico desconhecido",
+            "violated_contract": {},
+            "repair_strategy": "llm_guided",
+            "timestamp": "2026-05-21T12:32:47.154276",
+            "post_repair_validation": {
+              "passed": false,
+              "message": "SEMANTIC PLAN ERROR: diagnosis description lookup is missing expanded term(s): pneumonia.",
+              "category": "unknown"
+            }
+          },
+          {
+            "previous_sql": "SELECT p.\"NOME_PROC\" AS \"procedimento\", COUNT(*) AS \"total_procedimentos\" FROM internacoes i JOIN internacao_procedimento ip ON i.\"N_AIH\" = ip.\"N_AIH\" JOIN procedimentos p ON ip.\"PROC_REA\" = p.\"PROC_REA\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND p.\"NOME_PROC\" IS NOT NULL AND TRIM(p.\"NOME_PROC\") <> '' AND p.\"NOME_PROC\" NOT IN ('Nao preenchido', 'Nao informado') AND i.\"DIAG_PRINC\" IS NOT NULL GROUP BY p.\"NOME_PROC\" ORDER BY \"total_procedimentos\" DESC LIMIT 10;",
+            "error_message": "SEMANTIC PLAN ERROR: diagnosis description lookup is missing expanded term(s): pneumonia.",
+            "semantic_category": "unknown",
+            "semantic_guidance": "Erro semantico desconhecido",
+            "violated_contract": {},
+            "repair_strategy": "goalv2_semantic_macro",
+            "timestamp": "2026-05-21T12:32:50.502244",
+            "post_repair_validation": {
+              "passed": false,
+              "message": "SEMANTIC PLAN ERROR: The plan requires a global top-N answer, but SQL does not limit the result to top_n=10.",
+              "category": "top_n_scope"
+            }
+          }
+        ],
+        "semantic_repair": {
+          "original_category": "unknown",
+          "original_message": "SEMANTIC PLAN ERROR: diagnosis description lookup is missing expanded term(s): pneumonia.",
+          "guidance_title": "Erro semantico desconhecido",
+          "strategy": "deterministic",
+          "post_repair_category": "top_n_scope",
+          "post_repair_message": "SEMANTIC PLAN ERROR: The plan requires a global top-N answer, but SQL does not limit the result to top_n=10.",
+          "validation_passed_after_repair": false
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T123025_gen116",
+        "query_number": 6,
+        "orchestrator_execution_time": 23.57449769973755
+      },
+      "error": "SEMANTIC PLAN ERROR: The plan requires a global top-N answer, but SQL does not limit the result to top_n=10.",
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN117",
+      "persona": "medico_pesquisador",
+      "category": "procedimentos",
+      "difficulty": "hard",
+      "question": "Quais procedimentos apareceram com mais frequencia em internacoes por neoplasias em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "procedimento_por_condicao",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "value_mismatch:0:procedimento",
+          "value_mismatch:0:total_procedimentos",
+          "value_mismatch:1:procedimento",
+          "value_mismatch:1:total_procedimentos",
+          "value_mismatch:2:procedimento",
+          "value_mismatch:2:total_procedimentos",
+          "value_mismatch:3:procedimento",
+          "value_mismatch:3:total_procedimentos",
+          "value_mismatch:4:procedimento",
+          "value_mismatch:4:total_procedimentos",
+          "value_mismatch:5:procedimento",
+          "value_mismatch:5:total_procedimentos",
+          "value_mismatch:6:procedimento",
+          "value_mismatch:6:total_procedimentos",
+          "value_mismatch:7:procedimento",
+          "value_mismatch:7:total_procedimentos",
+          "value_mismatch:8:procedimento",
+          "value_mismatch:8:total_procedimentos",
+          "value_mismatch:9:procedimento",
+          "value_mismatch:9:total_procedimentos"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "procedimento": "TRATAMENTO CLINICO DE PACIENTE ONCOLOGICO",
+            "total_procedimentos": 136420
+          },
+          {
+            "procedimento": "TRATAMENTO DE INTERCORRENCIAS CLINICAS DE PACIENTE ONCOLOGICO",
+            "total_procedimentos": 91657
+          },
+          {
+            "procedimento": "INTERNACAO P/ QUIMIOTERAPIA DE ADMINISTRACAO CONTINUA",
+            "total_procedimentos": 67771
+          },
+          {
+            "procedimento": "PROCEDIMENTOS SEQUENCIAIS EM ONCOLOGIA",
+            "total_procedimentos": 61173
+          },
+          {
+            "procedimento": "INTERNACAO P/ QUIMIOTERAPIA DE LEUCEMIAS AGUDAS / CRONICAS AGUDIZADAS",
+            "total_procedimentos": 15167
+          }
+        ],
+        "actual_preview": [
+          {
+            "procedimento": "TRATAMENTO DE INFECCAO PELO CORONAVIRUS ? COVID 19",
+            "total_procedimentos": 1137539
+          },
+          {
+            "procedimento": "PARTO NORMAL",
+            "total_procedimentos": 858790
+          },
+          {
+            "procedimento": "PARTO CESARIANO",
+            "total_procedimentos": 667261
+          },
+          {
+            "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+            "total_procedimentos": 387979
+          },
+          {
+            "procedimento": "TRATAMENTO C/ CIRURGIAS MULTIPLAS",
+            "total_procedimentos": 287604
+          }
+        ]
+      },
+      "success": false,
+      "response": "Não foi possível processar sua consulta: SEMANTIC PLAN ERROR: SQL does not apply the requested diagnosis prefix filter.",
+      "sql": "SELECT p.\"NOME_PROC\" AS \"procedimento\", COUNT(*) AS \"total_procedimentos\" FROM internacoes i JOIN internacao_procedimento ip ON i.\"N_AIH\" = ip.\"N_AIH\" JOIN procedimentos p ON ip.\"PROC_REA\" = p.\"PROC_REA\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND p.\"NOME_PROC\" IS NOT NULL AND TRIM(p.\"NOME_PROC\") <> '' AND p.\"NOME_PROC\" NOT IN ('Nao preenchido', 'Nao informado') GROUP BY p.\"NOME_PROC\" ORDER BY \"total_procedimentos\" DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": false,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 4,
+          "retry_count": 4,
+          "error_count": 4,
+          "execution_time": 32.42679023742676
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_repair"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5840692520141602
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.292957305908203
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.2004144191741943
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.445836067199707
+          }
+        ],
+        "message_count": 16,
+        "retry_count": 4,
+        "error_count": 4,
+        "tables_used": [
+          "procedimentos",
+          "internacao_procedimento",
+          "internacoes"
+        ],
+        "schema_context_length": 13876,
+        "latency_by_component": {
+          "query_classification": 0.0003497600555419922,
+          "table_discovery": 0.5841550827026367,
+          "schema_analysis": 0.0005125999450683594,
+          "reasoning": 6.39534854888916,
+          "sql_generation": 0.0006017684936523438,
+          "sql_validation": 3.445878505706787,
+          "sql_repair": 6.428745746612549,
+          "completed": 3.170967102050781e-05
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais procedimentos apareceram com mais frequencia em internacoes por neoplasias em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": [
+            "unknown",
+            "repair_loop"
+          ]
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "procedimento_ocorrencia",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "procedimento",
+              "source": "procedimentos.NOME_PROC",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "diagnostico_principal_prefix",
+              "values": [
+                "C%"
+              ],
+              "operator": "LIKE"
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "values": [
+                "CID C00-C99 - Neoplasias malignas"
+              ],
+              "operator": "metadata"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "procedimento"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "procedimento"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "diagnosis_filter_dimension_not_output"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "procedimentos",
+          "internacao_procedimento",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.46562483220740186,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "procedimentos",
+          "internacao_procedimento",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "procedimentos",
+          "internacao_procedimento",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "procedimentos",
+          "internacao_procedimento",
+          "internacoes"
+        ],
+        "semantic_constraints": [
+          "diagnosis_filter_dimension_not_output"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os procedimentos com base na frequência de internações por neoplasias em 2021. A métrica utilizada é a contagem total de ocorrências, agrupada pelo nome do procedimento. Os filtros garantem que apenas os dados de 2021 e relacionados a neoplasias malignas sejam considerados. A forma de resposta é a lista dos 10 procedimentos mais frequentes.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": false,
+          "constraints": [
+            "diagnosis_filter_dimension_not_output"
+          ],
+          "null_policy": [],
+          "message": "SEMANTIC PLAN ERROR: SQL does not apply the requested diagnosis prefix filter."
+        },
+        "semantic_error": {
+          "category": "unknown",
+          "severity": "error",
+          "message": "SEMANTIC PLAN ERROR: SQL does not apply the requested diagnosis prefix filter."
+        },
+        "repair_attempts": [
+          {
+            "previous_sql": "SELECT p.\"NOME_PROC\" AS \"procedimento\", COUNT(*) AS \"total_procedimentos\" FROM internacoes i JOIN internacao_procedimento ip ON i.\"N_AIH\" = ip.\"N_AIH\" JOIN procedimentos p ON ip.\"PROC_REA\" = p.\"PROC_REA\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND p.\"NOME_PROC\" IS NOT NULL AND TRIM(p.\"NOME_PROC\") <> '' AND p.\"NOME_PROC\" NOT IN ('Nao preenchido', 'Nao informado') GROUP BY p.\"NOME_PROC\" ORDER BY \"total_procedimentos\" DESC LIMIT 10;",
+            "error_message": "SEMANTIC PLAN ERROR: SQL does not apply the requested diagnosis prefix filter.",
+            "semantic_category": "unknown",
+            "semantic_guidance": "Erro semantico desconhecido",
+            "violated_contract": {},
+            "repair_strategy": "llm_guided",
+            "timestamp": "2026-05-21T12:33:13.601975",
+            "post_repair_validation": {
+              "passed": false,
+              "message": "SEMANTIC PLAN ERROR: SQL does not apply the requested diagnosis prefix filter.",
+              "category": "unknown"
+            }
+          }
+        ],
+        "semantic_repair": {
+          "original_category": "unknown",
+          "original_message": "SEMANTIC PLAN ERROR: SQL does not apply the requested diagnosis prefix filter.",
+          "guidance_title": "Erro semantico desconhecido",
+          "strategy": "llm_guided",
+          "post_repair_category": "unknown",
+          "post_repair_message": "SEMANTIC PLAN ERROR: SQL does not apply the requested diagnosis prefix filter.",
+          "validation_passed_after_repair": false
+        },
+        "repair_early_exit": {
+          "reason": "Reparo produziu a mesma SQL das últimas tentativas. Use apenas colunas válidas conforme lista branca e sugestões.",
+          "whitelist": [],
+          "suggestions": []
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T123025_gen117",
+        "query_number": 7,
+        "orchestrator_execution_time": 32.444676876068115
+      },
+      "error": "SEMANTIC PLAN ERROR: SQL does not apply the requested diagnosis prefix filter.",
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN118",
+      "persona": "gestor_hospitalar",
+      "category": "custos_permanencia",
+      "difficulty": "medium",
+      "question": "Qual foi o valor total de internacoes por UF em 2019?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "custo_total_uf",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:valor_total"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "uf_residencia": "SP",
+            "valor_total": 4153466167.85
+          },
+          {
+            "uf_residencia": "MG",
+            "valor_total": 2344805011.1
+          },
+          {
+            "uf_residencia": "PR",
+            "valor_total": 1783741470.11
+          },
+          {
+            "uf_residencia": "RS",
+            "valor_total": 1327447867.44
+          },
+          {
+            "uf_residencia": "RJ",
+            "valor_total": 1146285509.92
+          }
+        ],
+        "actual_preview": [
+          {
+            "estado": "AM",
+            "valor_total_internacoes": 239798163.03999993
+          },
+          {
+            "estado": "GO",
+            "valor_total_internacoes": 572878186.3299766
+          },
+          {
+            "estado": "ES",
+            "valor_total_internacoes": 385464309.7699988
+          },
+          {
+            "estado": "AC",
+            "valor_total_internacoes": 43697425.28000023
+          },
+          {
+            "estado": "RN",
+            "valor_total_internacoes": 305550687.03000116
+          }
+        ]
+      },
+      "success": true,
+      "response": "O valor total de internações por UF em 2019 foi:\n\n1. CE: R$ 704.405.321,06\n2. RS: R$ 1.327.447.867,44\n3. AM: R$ 239.798.163,04\n4. GO: R$ 572.878.186,33\n5. ES: R$ 385.464.309,77\n6. AC: R$ 43.697.425,28\n7. RN: R$ 305.550.687,03\n8. RO: R$ 140.999.250,05\n9. PE: R$ 923.543.231,19\n10. PB: R$ 296.347.684,89\n11. SC: R$ 895.557.466,28\n12. AP: R$ 33.503.387,66\n13. TO: R$ 106.178.877,85\n14. PA: R$ 483.648.776,51\n15. SE: R$ 152.431.602,43\n16. MS: R$ 277.017.727,61\n17. RR: R$ 45.387.108,34\n18. PI: R$ 226.035.751,37\n19. RJ: R$ 1.146.285.509,92\n20. BA: R$ 1.042.171.388,61\n21. DF: R$ 218.602.228,99\n22. MA: R$ 437.680.224,98\n23. MG: R$ 2.344.805.011,10\n24. SP: R$ 4.153.466.167,85\n25. PR: R$ 1.783.741.470,11\n26. MT: R$ 247.885.743,68\n27. AL: R$ 251.288.461,43",
+      "sql": "SELECT mu.\"SG_UF\" AS estado, SUM(i.\"VAL_TOT\") AS valor_total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2019 GROUP BY mu.\"SG_UF\";",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 33.05835437774658
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.6786844730377197
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 12.222352981567383
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.5258328914642334
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "schema_context_length": 16512,
+        "latency_by_component": {
+          "query_classification": 0.00034165382385253906,
+          "table_discovery": 0.6787490844726562,
+          "schema_analysis": 0.0007417201995849609,
+          "reasoning": 6.51066517829895,
+          "sql_generation": 6.738577365875244,
+          "sql_validation": 12.222380876541138,
+          "sql_execution": 0.5259356498718262,
+          "completed": 6.37799596786499
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi o valor total de internacoes por UF em 2019?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "count",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "valor_total_internacoes",
+              "expression_type": "sum",
+              "required_filters": [
+                "SUM(VAL_TOT)"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2019"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.4447267285551016,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "internacao_procedimento"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é contar o total de internações, agrupando por estado (UF) para o ano de 2019. A métrica utilizada é a soma do valor total das internações, e a dimensão é o estado, que é necessário para o agrupamento. O filtro aplicado é para restringir os dados ao ano de 2019.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query sums the total hospitalization costs (VAL_TOT) grouped by the state (SG_UF) of residence, filtering for the year 2019 using the admission date (DT_INTER).",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T123025_gen118",
+        "query_number": 8,
+        "orchestrator_execution_time": 33.07088327407837
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN119",
+      "persona": "gestor_hospitalar",
+      "category": "custos_permanencia",
+      "difficulty": "medium",
+      "question": "Qual foi o valor total de internacoes por UF em 2020?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "custo_total_uf",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:valor_total"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "uf_residencia": "SP",
+            "valor_total": 4950924292.65
+          },
+          {
+            "uf_residencia": "MG",
+            "valor_total": 2577399237.25
+          },
+          {
+            "uf_residencia": "PR",
+            "valor_total": 1857210768.11
+          },
+          {
+            "uf_residencia": "RS",
+            "valor_total": 1568173261.6
+          },
+          {
+            "uf_residencia": "RJ",
+            "valor_total": 1290754959.94
+          }
+        ],
+        "actual_preview": [
+          {
+            "estado": "PR",
+            "valor_total_internacoes": 1857210768.1099577
+          },
+          {
+            "estado": "RR",
+            "valor_total_internacoes": 48634827.22000068
+          },
+          {
+            "estado": "PI",
+            "valor_total_internacoes": 276904174.11000234
+          },
+          {
+            "estado": "SP",
+            "valor_total_internacoes": 4950924292.652125
+          },
+          {
+            "estado": "MG",
+            "valor_total_internacoes": 2577399237.2501297
+          }
+        ]
+      },
+      "success": true,
+      "response": "O valor total de internações por UF em 2020 foi:\n\n1. PI: R$ 276.904.174,11\n2. RR: R$ 48.634.827,22\n3. AM: R$ 288.456.812,97\n4. GO: R$ 683.160.426,44\n5. ES: R$ 518.675.838,17\n6. RO: R$ 146.411.693,88\n7. PE: R$ 1.031.957.013,05\n8. PB: R$ 300.935.081,47\n9. SP: R$ 4.950.924.292,65\n10. MG: R$ 2.577.399.237,25\n11. DF: R$ 264.225.640,36\n12. MA: R$ 488.262.618,29\n13. AP: R$ 35.253.096,99\n14. TO: R$ 126.838.787,39\n15. SE: R$ 173.279.415,46\n16. PA: R$ 561.930.744,94\n17. PR: R$ 1.857.210.768,11\n18. CE: R$ 803.788.696,24\n19. RS: R$ 1.568.173.261,60\n20. SC: R$ 1.048.970.755,46\n21. MS: R$ 328.918.758,79\n22. RJ: R$ 1.290.754.959,94\n23. BA: R$ 1.205.925.036,17\n24. MT: R$ 291.443.992,53\n25. AL: R$ 264.981.320,79\n26. AC: R$ 52.890.962,08\n27. RN: R$ 354.056.119,69",
+      "sql": "SELECT mu.\"SG_UF\" AS estado, SUM(i.\"VAL_TOT\") AS valor_total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 GROUP BY mu.\"SG_UF\";",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 22.345103979110718
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5521996021270752
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.0766215324401855
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.19609355926513672
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "schema_context_length": 16512,
+        "latency_by_component": {
+          "query_classification": 0.00031185150146484375,
+          "table_discovery": 0.5522642135620117,
+          "schema_analysis": 0.0008089542388916016,
+          "reasoning": 5.993054628372192,
+          "sql_generation": 7.050153017044067,
+          "sql_validation": 2.0766499042510986,
+          "sql_execution": 0.196197509765625,
+          "completed": 6.473956108093262
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi o valor total de internacoes por UF em 2020?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "count",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "valor_total_internacoes",
+              "expression_type": "sum",
+              "required_filters": [
+                "SUM(VAL_TOT)"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.4378774629185122,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "internacao_procedimento"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é contar o total de internações, agrupando por estado (UF) para o ano de 2020. A métrica escolhida é a soma do valor total das internações, e a dimensão utilizada é o estado, que é necessário para o agrupamento. O filtro aplicado é para restringir os dados ao ano de 2020.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query sums the total hospitalization costs (VAL_TOT) grouped by the state (SG_UF) for the year 2020. It joins the internacoes table with the municipios table to access the state information based on the patient's residence municipality.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T123025_gen119",
+        "query_number": 9,
+        "orchestrator_execution_time": 22.358770847320557
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN120",
+      "persona": "gestor_hospitalar",
+      "category": "custos_permanencia",
+      "difficulty": "medium",
+      "question": "Qual foi o valor total de internacoes por UF em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "custo_total_uf",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:valor_total"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "uf_residencia": "SP",
+            "valor_total": 6950094890.4
+          },
+          {
+            "uf_residencia": "MG",
+            "valor_total": 3717091815.35
+          },
+          {
+            "uf_residencia": "PR",
+            "valor_total": 2608272398.31
+          },
+          {
+            "uf_residencia": "RS",
+            "valor_total": 2148346399.62
+          },
+          {
+            "uf_residencia": "RJ",
+            "valor_total": 1966696868.51
+          }
+        ],
+        "actual_preview": [
+          {
+            "estado": "SE",
+            "valor_total_internacoes": 241255125.48999923
+          },
+          {
+            "estado": "RR",
+            "valor_total_internacoes": 59663210.010000706
+          },
+          {
+            "estado": "PI",
+            "valor_total_internacoes": 381116118.03999984
+          },
+          {
+            "estado": "SP",
+            "valor_total_internacoes": 6950094890.40232
+          },
+          {
+            "estado": "MG",
+            "valor_total_internacoes": 3717091815.3503513
+          }
+        ]
+      },
+      "success": true,
+      "response": "O valor total de internações por UF em 2021 foi:\n\n1. Paraná: R$ 2.608.272.398,31\n2. Acre: R$ 68.225.480,80\n3. Rio Grande do Norte: R$ 484.750.794,43\n4. Rio Grande do Sul: R$ 2.148.346.399,62\n5. Ceará: R$ 1.153.785.554,30\n6. Sergipe: R$ 241.255.125,49\n7. Bahia: R$ 1.728.898.372,43\n8. Rio de Janeiro: R$ 1.966.696.868,51\n9. São Paulo: R$ 6.950.094.890,40\n10. Minas Gerais: R$ 3.717.091.815,35\n11. Maranhão: R$ 689.394.606,56\n12. Distrito Federal: R$ 361.410.100,57\n13. Santa Catarina: R$ 1.491.904.954,58\n14. Rondônia: R$ 230.523.335,00\n15. Pernambuco: R$ 1.579.695.863,86\n16. Paraíba: R$ 473.135.688,76\n17. Amapá: R$ 57.583.455,97\n18. Tocantins: R$ 165.240.589,58\n19. Mato Grosso: R$ 501.565.435,55\n20. Alagoas: R$ 380.029.694,53\n21. Amazonas: R$ 371.155.990,27\n22. Goiás: R$ 1.055.434.873,22\n23. Espírito Santo: R$ 770.102.215,04\n24. Roraima: R$ 59.663.210,01\n25. Piauí: R$ 381.116.118,04\n26. Mato Grosso do Sul: R$ 487.341.823,87\n27. Pará: R$ 681.182.417,53",
+      "sql": "SELECT mu.\"SG_UF\" AS estado, SUM(i.\"VAL_TOT\") AS valor_total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 GROUP BY mu.\"SG_UF\";",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 25.71381187438965
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.49791932106018066
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.8411998748779297
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.20174026489257812
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "schema_context_length": 16512,
+        "latency_by_component": {
+          "query_classification": 0.0003082752227783203,
+          "table_discovery": 0.4979832172393799,
+          "schema_analysis": 0.0007925033569335938,
+          "reasoning": 7.084189176559448,
+          "sql_generation": 7.091665983200073,
+          "sql_validation": 2.8412280082702637,
+          "sql_execution": 0.2018425464630127,
+          "completed": 7.994102716445923
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi o valor total de internacoes por UF em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "count",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "valor_total_internacoes",
+              "expression_type": "sum",
+              "required_filters": [
+                "SUM(VAL_TOT)"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.43886410335724757,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "internacao_procedimento"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é contar o total de internações, agrupando por estado (UF) para o ano de 2021. A métrica escolhida é a soma do valor total das internações, e a dimensão utilizada é o estado, que é necessário para o agrupamento. O filtro aplicado é para restringir os dados ao ano de 2021.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query sums the total hospitalization costs (VAL_TOT) grouped by the state (SG_UF) of residence, filtering for the year 2021 using the admission date (DT_INTER).",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T123025_gen120",
+        "query_number": 10,
+        "orchestrator_execution_time": 25.72581934928894
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    }
+  ]
+}

@@ -103,6 +103,40 @@ _CONCEPTS: tuple[_ConceptDefinition, ...] = (
         default_denominator_filters={},
         expanded_terms=("doenca respiratoria", "doenca pulmonar", "cid j"),
     ),
+    _ConceptDefinition(
+        canonical_name="neoplasias",
+        aliases=(
+            "neoplasia",
+            "neoplasias",
+            "cancer",
+            "câncer",
+            "neoplasias malignas",
+            "tumores malignos",
+        ),
+        resolved_codes=(),
+        resolved_prefixes=("C%",),
+        labels=("CID C00-C99 - Neoplasias malignas",),
+        default_denominator_filters={},
+        expanded_terms=("cid c", "neoplasia maligna"),
+    ),
+    _ConceptDefinition(
+        canonical_name="doencas cardiovasculares",
+        aliases=(
+            "doencas cardiovasculares",
+            "doenças cardiovasculares",
+            "doenca cardiovascular",
+            "doença cardiovascular",
+            "cardiovascular",
+            "cardiovasculares",
+            "doencas do aparelho circulatorio",
+            "doenças do aparelho circulatório",
+        ),
+        resolved_codes=(),
+        resolved_prefixes=("I%",),
+        labels=("CID I00-I99 - Doencas do aparelho circulatorio",),
+        default_denominator_filters={},
+        expanded_terms=("cid i", "cardiovascular", "aparelho circulatorio"),
+    ),
 )
 
 

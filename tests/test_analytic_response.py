@@ -55,6 +55,32 @@ def test_format_analytic_age_diagnosis_response_includes_age_quality_warning():
     assert "IDADE=0 contém 5.164.368 registros" in response
 
 
+def test_format_analytic_age_diagnosis_response_compacts_long_cid_catalog_labels():
+    response = _format_analytic_response_from_package(
+        "Existe relacao entre idade e pneumonia nas internacoes?",
+        {
+            "analysis_type": "age_diagnosis_association",
+            "resolved_concept": (
+                "A403 - Septicemia p/Streptococcus pneumonia | "
+                "B953 - S. pneumoniae causa doenc class outr cap | "
+                "J110 - Influenza com pneumonia | J120 - Pneumonia viral"
+            ),
+            "total_internacoes": 100,
+            "total_mortes": 10,
+            "idade_media": 40,
+            "idade_mediana": 40,
+            "denominador": "todas as internacoes",
+            "faixas_etarias": "00-39:40:1000:4000:40 | 40-49:60:1000:6000:60",
+            "top_idades": "40:10",
+            "rate_ratio_maior_igual_50_vs_menor_50": 1.2,
+            "rate_ratio_maior_igual_60_vs_menor_60": 1.4,
+        },
+    )
+
+    assert "catálogo CID" in response
+    assert "causa " not in response.lower()
+
+
 def test_format_categorical_outcome_response_uses_group_distribution():
     response = _format_analytic_response_from_package(
         "Existe diferença de mortalidade entre homens e mulheres?",

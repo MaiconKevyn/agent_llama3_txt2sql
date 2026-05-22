@@ -17,9 +17,9 @@ _SOCIOECONOMIC_WIDE_METRIC_COLUMNS = {
     "populacao_total": ("qt_populacao",),
     "pib_per_capita": ("vl_pib_percapita",),
     "leitos_sus_total": ("qt_leitos_sus",),
-    "leitos_sus_1000": ("qt_leitos_sus", "qt_populacao"),
+    "leitos_sus_1000": ("vl_leitos_sus_1000",),
     "medicos_total": ("qt_medicos",),
-    "medicos_1000": ("qt_medicos", "qt_populacao"),
+    "medicos_1000": ("vl_medicos_1000",),
 }
 
 
@@ -64,7 +64,7 @@ def _has_group_by_dimension(inspector: SQLInspector, dimension: str) -> bool:
         "municipio": [r"\b(?:no_municipio|nome|municipio|município)\b"],
         "municipio_hospital": [r"\b(?:no_municipio|nome|municipio|município)\b"],
         "regiao_saude": [r"\b(?:regiao_saude|região_saude|no_regiao_saude|regiao|região)\b"],
-        "hospital": [r"\b(?:cnes|\"cnes\")\b"],
+        "hospital": [r"\b(?:cnes|\"cnes\"|no_hospital|hospital)\b"],
         "especialidade": [r"\bespecialidade\b", r"\bdescri[cç][aã]o\b", r"\bespec\b"],
         "cid_capitulo": [
             r"\bcap[ií]tulo\b",
@@ -75,9 +75,10 @@ def _has_group_by_dimension(inspector: SQLInspector, dimension: str) -> bool:
         ],
         "diagnostico": [r"\b(?:descricao|\"descricao\"|diag_princ|cid)\b"],
         "procedimento": [r"\b(?:nome_proc|\"nome_proc\"|proc_rea)\b"],
+        "marca_uti": [r"\b(?:marca_uti|tipo_uti|descri[cç][aã]o)\b"],
         "contraceptivo": [r"\b(?:contraceptivo|contracep1|descricao|descri[cç][aã]o)\b"],
         "nacionalidade": [r"\b(?:nacionalidade|nacional|descri[cç][aã]o)\b"],
-        "sexo": [r"\bsexo\b"],
+        "sexo": [r"\bsexo\b", r"\bdescri[cç][aã]o\b"],
         "raca_cor": [r"\b(?:raca_cor|ra[cç]a|cor|descri[cç][aã]o)\b"],
         "instrucao": [r"\b(?:instru|instrucao|instru[cç][aã]o|descri[cç][aã]o)\b"],
         "idade": [r"\bidade\b"],
@@ -128,6 +129,14 @@ def validate_sql_against_semantic_plan(
             "do not use metrica/valor."
         )
     answer_shape = plan.answer_shape
+    if (
+        "cid_capitulo" in answer_shape.required_dimensions
+        and re.search(r"\bsubstr\s*\([^)]*diag_princ", sql_lower, re.I)
+    ):
+        return False, (
+            "SEMANTIC PLAN ERROR: CID chapter grouping must use cid.DS_CAPITULO via the cid lookup; "
+            "do not derive chapter from the first DIAG_PRINC letter."
+        )
     if (
         "geographic_filter_dimension_not_output" in plan.constraints
         and not (set(answer_shape.required_dimensions) & {"estado", "SG_UF", "estado_hospital"})
@@ -409,6 +418,26 @@ def _validate_additional_semantic_constraints(
     inspector: SQLInspector,
 ) -> tuple[bool, str | None]:
     text = inspector.text_lower
+    if "hospital_location_differs_from_residence_uf_required" in plan.constraints:
+        has_residence_join = re.search(r"\bmunic_res\b", text, re.I)
+        has_hospital_location_join = (
+            re.search(r"\bhospital\b", text, re.I)
+            and re.search(r"\bcnes\b", text, re.I)
+            and re.search(r"\bmunic_mov\b", text, re.I)
+        )
+        has_uf_comparison = re.search(
+            r"\bsg_uf\"?\s*(?:<>|!=)\s*[a-z_][\w]*\s*\.\s*\"?sg_uf\b",
+            text,
+            re.I,
+        )
+        if not (has_residence_join and has_hospital_location_join and has_uf_comparison):
+            return False, (
+                "SEMANTIC PLAN ERROR: Hospitalizations outside the residence UF must compare "
+                "patient residence UF with hospital/care location UF using "
+                "internacoes.MUNIC_RES -> municipios and "
+                "internacoes.CNES -> hospital.CNES -> hospital.MUNIC_MOV -> municipios."
+            )
+
     if "join_path_hospital_location_required" in plan.constraints:
         if not (
             re.search(r"\bhospital\b", text)
@@ -1195,13 +1224,14 @@ def _first_dimension_select_position(select_items: list[str], dimension: str) ->
         "estado_hospital": [r"\bestado\b", r"\bsg_uf\b"],
         "municipio": [r"\bnome\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
         "municipio_hospital": [r"\bnome\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
-        "hospital": [r"\bcnes\b"],
+        "hospital": [r"\b(?:cnes|no_hospital|hospital)\b"],
         "especialidade": [r"\bespecialidade\b", r"\bdescri[cç][aã]o\b", r"\bespec\b"],
         "cid_capitulo": [r"\bcap[ií]tulo\b", r"\bcapitulo_cid\b", r"\bcid_capitulo\b", r"\bsubstr\s*\("],
         "diagnostico": [r"\bdescricao\b", r"\bdiag_princ\b", r"\bcid\b"],
         "procedimento": [r"\bnome_proc\b", r"\bproc_rea\b", r"\bprocedimento\b"],
+        "marca_uti": [r"\bmarca_uti\b", r"\btipo_uti\b", r"\bdescri[cç][aã]o\b"],
         "contraceptivo": [r"\bcontraceptivo\b", r"\bcontracep1\b", r"\bdescri[cç][aã]o\b"],
-        "sexo": [r"\bsexo\b"],
+        "sexo": [r"\bsexo\b", r"\bdescri[cç][aã]o\b"],
         "raca_cor": [r"\braca_cor\b", r"\bra[cç]a\b", r"\bcor\b"],
         "instrucao": [r"\binstru\b", r"\binstrucao\b", r"\binstru[cç][aã]o\b"],
         "idade": [r"\bidade\b"],
@@ -1302,7 +1332,9 @@ def _validate_required_filters(
             if not _sql_satisfies_age_filter(text, semantic_filter.operator, values[0]):
                 return False, "SEMANTIC PLAN ERROR: SQL does not apply the requested age filter."
         elif field == "uti":
-            if "val_uti" not in text:
+            has_uti_value_filter = "val_uti" in text
+            has_uti_usage_filter = "marca_uti" in text or "uti_int_to" in text
+            if not (has_uti_value_filter or has_uti_usage_filter):
                 return False, "SEMANTIC PLAN ERROR: SQL does not apply the requested UTI filter."
         elif field == "obstetrico":
             if not re.search(r"\bespec\b\"?\s*=\s*2\b", text, re.I):

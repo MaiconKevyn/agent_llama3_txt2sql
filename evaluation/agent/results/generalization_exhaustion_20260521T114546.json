@@ -1,0 +1,3584 @@
+{
+  "run_id": "generalization_exhaustion_20260521T114546",
+  "created_at": "2026-05-21T11:50:10",
+  "dry_run": false,
+  "summary": {
+    "status_counts": {
+      "passed": 6,
+      "failed": 4
+    },
+    "root_cause_counts": {
+      "response_grounding_error": 4
+    },
+    "severity_counts": {
+      "medium": 4
+    }
+  },
+  "items": [
+    {
+      "id": "GEN081",
+      "persona": "gestor_hospitalar",
+      "category": "geografia",
+      "difficulty": "medium",
+      "question": "Quais municipios de residencia tiveram mais internacoes em SP em 2020?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "municipios_residencia_top",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "municipio_residencia": "São Paulo",
+            "total_internacoes": 521577
+          },
+          {
+            "municipio_residencia": "Guarulhos",
+            "total_internacoes": 56114
+          },
+          {
+            "municipio_residencia": "Campinas",
+            "total_internacoes": 50926
+          },
+          {
+            "municipio_residencia": "São Bernardo do Campo",
+            "total_internacoes": 36536
+          },
+          {
+            "municipio_residencia": "Ribeirão Preto",
+            "total_internacoes": 36237
+          }
+        ],
+        "actual_preview": [
+          {
+            "municipio_residencia": "São Paulo",
+            "total_internacoes": 521577
+          },
+          {
+            "municipio_residencia": "Guarulhos",
+            "total_internacoes": 56114
+          },
+          {
+            "municipio_residencia": "Campinas",
+            "total_internacoes": 50926
+          },
+          {
+            "municipio_residencia": "São Bernardo do Campo",
+            "total_internacoes": 36536
+          },
+          {
+            "municipio_residencia": "Ribeirão Preto",
+            "total_internacoes": 36237
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os municípios de residência com mais internações em SP em 2020 foram:\n\n1. São Paulo: 521.577 internações\n2. Guarulhos: 56.114 internações\n3. Campinas: 50.926 internações\n4. São Bernardo do Campo: 36.536 internações\n5. Ribeirão Preto: 36.237 internações\n6. Santo André: 34.173 internações\n7. São José dos Campos: 30.923 internações\n8. Osasco: 30.229 internações\n9. São José do Rio Preto: 27.046 internações\n10. Sorocaba: 26.675 internações",
+      "sql": "SELECT mu.\"NO_MUNICIPIO\" AS municipio_residencia, COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 AND mu.\"NO_MUNICIPIO\" IS NOT NULL AND TRIM(mu.\"NO_MUNICIPIO\") <> '' AND mu.\"NO_MUNICIPIO\" NOT IN ('Nao preenchido', 'Nao informado') AND mu.\"SG_UF\" = 'SP' GROUP BY mu.\"NO_MUNICIPIO\" ORDER BY total_internacoes DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 15.958271741867065
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 1.2641661167144775
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 4.460865497589111
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.22361969947814941
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "municipios",
+          "internacoes"
+        ],
+        "schema_context_length": 15487,
+        "latency_by_component": {
+          "query_classification": 0.00035953521728515625,
+          "table_discovery": 1.264249563217163,
+          "schema_analysis": 0.0008699893951416016,
+          "reasoning": 7.45111870765686,
+          "sql_generation": 0.0008254051208496094,
+          "sql_validation": 4.460899829864502,
+          "sql_execution": 0.2237241268157959,
+          "completed": 2.5374770164489746
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais municipios de residencia tiveram mais internacoes em SP em 2020?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "municipio",
+              "source": "municipios.NO_MUNICIPIO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "estado",
+              "values": [
+                "SP"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "municipio"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "municipio"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "municipios",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.40418325966828955,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "socioeconomico",
+          "municipios",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "municipios",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "municipios",
+          "internacoes"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os municípios com mais internações em SP no ano de 2020. A métrica utilizada é a contagem total de internações, agrupada por município de residência. Os filtros aplicados garantem que apenas os dados do estado de São Paulo e do ano de 2020 sejam considerados. A forma de resposta é a lista dos 10 municípios com mais internações, o que justifica o uso de 'top_n_global'.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T114546_gen081",
+        "query_number": 1,
+        "orchestrator_execution_time": 15.973743200302124
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN082",
+      "persona": "gestor_hospitalar",
+      "category": "geografia",
+      "difficulty": "medium",
+      "question": "Quais municipios de residencia tiveram mais internacoes em RJ em 2020?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "municipios_residencia_top",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "municipio_residencia": "Rio de Janeiro",
+            "total_internacoes": 201678
+          },
+          {
+            "municipio_residencia": "Duque de Caxias",
+            "total_internacoes": 41430
+          },
+          {
+            "municipio_residencia": "São Gonçalo",
+            "total_internacoes": 38008
+          },
+          {
+            "municipio_residencia": "Nova Iguaçu",
+            "total_internacoes": 32230
+          },
+          {
+            "municipio_residencia": "Belford Roxo",
+            "total_internacoes": 25142
+          }
+        ],
+        "actual_preview": [
+          {
+            "municipio_residencia": "Rio de Janeiro",
+            "total_internacoes": 201678
+          },
+          {
+            "municipio_residencia": "Duque de Caxias",
+            "total_internacoes": 41430
+          },
+          {
+            "municipio_residencia": "São Gonçalo",
+            "total_internacoes": 38008
+          },
+          {
+            "municipio_residencia": "Nova Iguaçu",
+            "total_internacoes": 32230
+          },
+          {
+            "municipio_residencia": "Belford Roxo",
+            "total_internacoes": 25142
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os municípios com mais internações no RJ em 2020 foram:\n\n1. Rio de Janeiro: 201.678 internações\n2. Duque de Caxias: 41.430 internações\n3. São Gonçalo: 38.008 internações\n4. Nova Iguaçu: 32.230 internações\n5. Belford Roxo: 25.142 internações\n6. Campos dos Goytacazes: 24.408 internações\n7. Niterói: 18.656 internações\n8. Petrópolis: 14.755 internações\n9. São João de Meriti: 14.581 internações\n10. Volta Redonda: 12.480 internações",
+      "sql": "SELECT mu.\"NO_MUNICIPIO\" AS municipio_residencia, COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 AND mu.\"NO_MUNICIPIO\" IS NOT NULL AND TRIM(mu.\"NO_MUNICIPIO\") <> '' AND mu.\"NO_MUNICIPIO\" NOT IN ('Nao preenchido', 'Nao informado') AND mu.\"SG_UF\" = 'RJ' GROUP BY mu.\"NO_MUNICIPIO\" ORDER BY total_internacoes DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 18.775112867355347
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5412635803222656
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.530756950378418
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.06876778602600098
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "municipios"
+        ],
+        "schema_context_length": 15487,
+        "latency_by_component": {
+          "query_classification": 0.00031876564025878906,
+          "table_discovery": 0.5413365364074707,
+          "schema_analysis": 0.0007154941558837891,
+          "reasoning": 7.885114669799805,
+          "sql_generation": 0.0002288818359375,
+          "sql_validation": 3.5307869911193848,
+          "sql_execution": 0.06887078285217285,
+          "completed": 6.7460246086120605
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais municipios de residencia tiveram mais internacoes em RJ em 2020?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "municipio",
+              "source": "municipios.NO_MUNICIPIO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "estado",
+              "values": [
+                "RJ"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "municipio"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "municipio"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "llamaindex_confidence": 0.4081690867913677,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "socioeconomico",
+          "internacoes",
+          "municipios"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os municípios com mais internações no estado do RJ em 2020. A métrica utilizada é a contagem total de internações, agrupada por município de residência. Os filtros aplicados garantem que apenas os dados do estado do RJ e do ano de 2020 sejam considerados. A forma de resposta é a lista dos 10 municípios com mais internações, o que justifica o uso de 'top_n_global'.",
+          "conflicts": [
+            "top_n_scope_mismatch: heuristic=global; llm=per_group"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": [
+            "answer_shape.top_n_scope"
+          ]
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T114546_gen082",
+        "query_number": 2,
+        "orchestrator_execution_time": 18.788525819778442
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN083",
+      "persona": "gestor_hospitalar",
+      "category": "geografia",
+      "difficulty": "medium",
+      "question": "Quais municipios de residencia tiveram mais internacoes em MA em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "municipios_residencia_top",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "municipio_residencia": "São Luís",
+            "total_internacoes": 59717
+          },
+          {
+            "municipio_residencia": "Imperatriz",
+            "total_internacoes": 17005
+          },
+          {
+            "municipio_residencia": "São José de Ribamar",
+            "total_internacoes": 14024
+          },
+          {
+            "municipio_residencia": "Santa Inês",
+            "total_internacoes": 9615
+          },
+          {
+            "municipio_residencia": "Caxias",
+            "total_internacoes": 9188
+          }
+        ],
+        "actual_preview": [
+          {
+            "municipio_residencia": "São Luís",
+            "total_internacoes": 59717
+          },
+          {
+            "municipio_residencia": "Imperatriz",
+            "total_internacoes": 17005
+          },
+          {
+            "municipio_residencia": "São José de Ribamar",
+            "total_internacoes": 14024
+          },
+          {
+            "municipio_residencia": "Santa Inês",
+            "total_internacoes": 9615
+          },
+          {
+            "municipio_residencia": "Caxias",
+            "total_internacoes": 9188
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os municípios de residência com mais internações em MA em 2021 foram:\n\n1. São Luís: 59.717 internações\n2. Imperatriz: 17.005 internações\n3. São José de Ribamar: 14.024 internações\n4. Santa Inês: 9.615 internações\n5. Caxias: 9.188 internações\n6. Timon: 8.233 internações\n7. Bacabal: 8.008 internações\n8. Codó: 7.336 internações\n9. Balsas: 6.949 internações\n10. Açailândia: 6.786 internações",
+      "sql": "SELECT mu.\"NO_MUNICIPIO\" AS municipio_residencia, COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND mu.\"NO_MUNICIPIO\" IS NOT NULL AND TRIM(mu.\"NO_MUNICIPIO\") <> '' AND mu.\"NO_MUNICIPIO\" NOT IN ('Nao preenchido', 'Nao informado') AND mu.\"SG_UF\" = 'MA' GROUP BY mu.\"NO_MUNICIPIO\" ORDER BY total_internacoes DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 17.5929434299469
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.474348783493042
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 7.483004808425903
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.06955790519714355
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "municipios"
+        ],
+        "schema_context_length": 15487,
+        "latency_by_component": {
+          "query_classification": 0.00029730796813964844,
+          "table_discovery": 0.47441625595092773,
+          "schema_analysis": 0.0007488727569580078,
+          "reasoning": 7.087392807006836,
+          "sql_generation": 0.00019478797912597656,
+          "sql_validation": 7.483034610748291,
+          "sql_execution": 0.06966042518615723,
+          "completed": 2.475480556488037
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais municipios de residencia tiveram mais internacoes em MA em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "municipio",
+              "source": "municipios.NO_MUNICIPIO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "estado",
+              "values": [
+                "MA"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "municipio"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "municipio"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "llamaindex_confidence": 0.3770070091925517,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "socioeconomico",
+          "internacoes",
+          "municipios"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os municípios com mais internações em MA no ano de 2021. A métrica utilizada é a contagem total de internações, agrupada por município de residência. Os filtros aplicados garantem que apenas os dados do estado do Maranhão e do ano de 2021 sejam considerados. A forma de resposta é a lista dos 10 municípios com mais internações, o que justifica o uso de 'top_n_global'.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T114546_gen083",
+        "query_number": 3,
+        "orchestrator_execution_time": 17.607744693756104
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN084",
+      "persona": "gestor_hospitalar",
+      "category": "geografia",
+      "difficulty": "medium",
+      "question": "Quais municipios de residencia tiveram mais internacoes em RS em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "municipios_residencia_top",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "municipio_residencia": "Porto Alegre",
+            "total_internacoes": 94895
+          },
+          {
+            "municipio_residencia": "Canoas",
+            "total_internacoes": 29429
+          },
+          {
+            "municipio_residencia": "Caxias do Sul",
+            "total_internacoes": 19936
+          },
+          {
+            "municipio_residencia": "Pelotas",
+            "total_internacoes": 17619
+          },
+          {
+            "municipio_residencia": "Passo Fundo",
+            "total_internacoes": 15029
+          }
+        ],
+        "actual_preview": [
+          {
+            "municipio_residencia": "Porto Alegre",
+            "total_internacoes": 94895
+          },
+          {
+            "municipio_residencia": "Canoas",
+            "total_internacoes": 29429
+          },
+          {
+            "municipio_residencia": "Caxias do Sul",
+            "total_internacoes": 19936
+          },
+          {
+            "municipio_residencia": "Pelotas",
+            "total_internacoes": 17619
+          },
+          {
+            "municipio_residencia": "Passo Fundo",
+            "total_internacoes": 15029
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os municípios com mais internações no Rio Grande do Sul em 2021 foram:\n\n1. Porto Alegre: 94.895 internações\n2. Canoas: 29.429 internações\n3. Caxias do Sul: 19.936 internações\n4. Pelotas: 17.619 internações\n5. Passo Fundo: 15.029 internações\n6. Alvorada: 14.104 internações\n7. Gravataí: 13.879 internações\n8. Viamão: 13.847 internações\n9. Novo Hamburgo: 13.638 internações\n10. Santa Maria: 13.404 internações",
+      "sql": "SELECT mu.\"NO_MUNICIPIO\" AS municipio_residencia, COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND mu.\"NO_MUNICIPIO\" IS NOT NULL AND TRIM(mu.\"NO_MUNICIPIO\") <> '' AND mu.\"NO_MUNICIPIO\" NOT IN ('Nao preenchido', 'Nao informado') AND mu.\"SG_UF\" = 'RS' GROUP BY mu.\"NO_MUNICIPIO\" ORDER BY total_internacoes DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 16.10839080810547
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.8566877841949463
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 6.552927732467651
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.06023979187011719
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "municipios",
+          "internacoes"
+        ],
+        "schema_context_length": 15487,
+        "latency_by_component": {
+          "query_classification": 0.0003414154052734375,
+          "table_discovery": 0.8567519187927246,
+          "schema_analysis": 0.0007290840148925781,
+          "reasoning": 6.110143184661865,
+          "sql_generation": 0.0007047653198242188,
+          "sql_validation": 6.552956581115723,
+          "sql_execution": 0.06034111976623535,
+          "completed": 2.5247814655303955
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais municipios de residencia tiveram mais internacoes em RS em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "municipio",
+              "source": "municipios.NO_MUNICIPIO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "estado",
+              "values": [
+                "RS"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "municipio"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "municipio"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "municipios",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.40047356705983433,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "socioeconomico",
+          "municipios",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "municipios",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "municipios",
+          "internacoes"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os municípios com mais internações no estado do Rio Grande do Sul em 2021. A métrica utilizada é a contagem total de internações, agrupada por município de residência. Os filtros aplicados garantem que apenas os dados do estado RS e do ano de 2021 sejam considerados. A forma de resposta é a lista dos 10 municípios com mais internações, o que justifica o uso de 'top_n_global'.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T114546_gen084",
+        "query_number": 4,
+        "orchestrator_execution_time": 16.122809886932373
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN085",
+      "persona": "gestor_hospitalar",
+      "category": "geografia",
+      "difficulty": "medium",
+      "question": "Quais municipios de residencia tiveram mais internacoes em SP em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "municipios_residencia_top",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "municipio_residencia": "São Paulo",
+            "total_internacoes": 540710
+          },
+          {
+            "municipio_residencia": "Guarulhos",
+            "total_internacoes": 56853
+          },
+          {
+            "municipio_residencia": "Campinas",
+            "total_internacoes": 55199
+          },
+          {
+            "municipio_residencia": "Santo André",
+            "total_internacoes": 37647
+          },
+          {
+            "municipio_residencia": "Ribeirão Preto",
+            "total_internacoes": 36773
+          }
+        ],
+        "actual_preview": [
+          {
+            "municipio_residencia": "São Paulo",
+            "total_internacoes": 540710
+          },
+          {
+            "municipio_residencia": "Guarulhos",
+            "total_internacoes": 56853
+          },
+          {
+            "municipio_residencia": "Campinas",
+            "total_internacoes": 55199
+          },
+          {
+            "municipio_residencia": "Santo André",
+            "total_internacoes": 37647
+          },
+          {
+            "municipio_residencia": "Ribeirão Preto",
+            "total_internacoes": 36773
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os municípios de residência com mais internações em SP em 2021 foram:\n\n1. São Paulo: 540.710 internações\n2. Guarulhos: 56.853 internações\n3. Campinas: 55.199 internações\n4. Santo André: 37.647 internações\n5. Ribeirão Preto: 36.773 internações\n6. São Bernardo do Campo: 36.479 internações\n7. Osasco: 34.014 internações\n8. São José dos Campos: 33.166 internações\n9. Sorocaba: 30.229 internações\n10. São José do Rio Preto: 28.348 internações",
+      "sql": "SELECT mu.\"NO_MUNICIPIO\" AS municipio_residencia, COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND mu.\"NO_MUNICIPIO\" IS NOT NULL AND TRIM(mu.\"NO_MUNICIPIO\") <> '' AND mu.\"NO_MUNICIPIO\" NOT IN ('Nao preenchido', 'Nao informado') AND mu.\"SG_UF\" = 'SP' GROUP BY mu.\"NO_MUNICIPIO\" ORDER BY total_internacoes DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 17.21280002593994
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.992558479309082
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 6.189091444015503
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.09167146682739258
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "municipios",
+          "internacoes"
+        ],
+        "schema_context_length": 15487,
+        "latency_by_component": {
+          "query_classification": 0.00028324127197265625,
+          "table_discovery": 0.9926259517669678,
+          "schema_analysis": 0.0007414817810058594,
+          "reasoning": 6.819047212600708,
+          "sql_generation": 0.0005497932434082031,
+          "sql_validation": 6.189119577407837,
+          "sql_execution": 0.09177279472351074,
+          "completed": 3.116997718811035
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais municipios de residencia tiveram mais internacoes em SP em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "municipio",
+              "source": "municipios.NO_MUNICIPIO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "estado",
+              "values": [
+                "SP"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "municipio"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "municipio"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "municipios",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.40095439767680796,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "socioeconomico",
+          "municipios",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "municipios",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "municipios",
+          "internacoes"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os municípios com mais internações em SP no ano de 2021. A métrica utilizada é a contagem total de internações, agrupada por município de residência. Os filtros aplicados garantem que apenas os dados do estado de São Paulo e do ano de 2021 sejam considerados. A forma de resposta é o top 10 municípios com mais internações.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T114546_gen085",
+        "query_number": 5,
+        "orchestrator_execution_time": 17.226866006851196
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN086",
+      "persona": "gestor_hospitalar",
+      "category": "geografia",
+      "difficulty": "medium",
+      "question": "Quais municipios de residencia tiveram mais internacoes em RJ em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "municipios_residencia_top",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "municipio_residencia": "Rio de Janeiro",
+            "total_internacoes": 218470
+          },
+          {
+            "municipio_residencia": "Duque de Caxias",
+            "total_internacoes": 48629
+          },
+          {
+            "municipio_residencia": "São Gonçalo",
+            "total_internacoes": 43859
+          },
+          {
+            "municipio_residencia": "Nova Iguaçu",
+            "total_internacoes": 35254
+          },
+          {
+            "municipio_residencia": "Campos dos Goytacazes",
+            "total_internacoes": 28386
+          }
+        ],
+        "actual_preview": [
+          {
+            "municipio_residencia": "Rio de Janeiro",
+            "total_internacoes": 218470
+          },
+          {
+            "municipio_residencia": "Duque de Caxias",
+            "total_internacoes": 48629
+          },
+          {
+            "municipio_residencia": "São Gonçalo",
+            "total_internacoes": 43859
+          },
+          {
+            "municipio_residencia": "Nova Iguaçu",
+            "total_internacoes": 35254
+          },
+          {
+            "municipio_residencia": "Campos dos Goytacazes",
+            "total_internacoes": 28386
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os municípios com mais internações no RJ em 2021 foram:\n\n1. Rio de Janeiro: 218.470 internações\n2. Duque de Caxias: 48.629 internações\n3. São Gonçalo: 43.859 internações\n4. Nova Iguaçu: 35.254 internações\n5. Campos dos Goytacazes: 28.386 internações\n6. Belford Roxo: 27.443 internações\n7. Niterói: 20.500 internações\n8. São João de Meriti: 17.787 internações\n9. Petrópolis: 17.012 internações\n10. Volta Redonda: 15.318 internações",
+      "sql": "SELECT mu.\"NO_MUNICIPIO\" AS municipio_residencia, COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND mu.\"NO_MUNICIPIO\" IS NOT NULL AND TRIM(mu.\"NO_MUNICIPIO\") <> '' AND mu.\"NO_MUNICIPIO\" NOT IN ('Nao preenchido', 'Nao informado') AND mu.\"SG_UF\" = 'RJ' GROUP BY mu.\"NO_MUNICIPIO\" ORDER BY total_internacoes DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 17.64864492416382
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.6740872859954834
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 6.705441474914551
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.06891751289367676
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "municipios"
+        ],
+        "schema_context_length": 15487,
+        "latency_by_component": {
+          "query_classification": 0.0002930164337158203,
+          "table_discovery": 0.6741509437561035,
+          "schema_analysis": 0.0008213520050048828,
+          "reasoning": 7.460736274719238,
+          "sql_generation": 0.0005116462707519531,
+          "sql_validation": 6.705472707748413,
+          "sql_execution": 0.06902146339416504,
+          "completed": 2.7355918884277344
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais municipios de residencia tiveram mais internacoes em RJ em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "municipio",
+              "source": "municipios.NO_MUNICIPIO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "estado",
+              "values": [
+                "RJ"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "municipio"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "municipio"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "llamaindex_confidence": 0.4024800435604059,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "socioeconomico",
+          "municipios"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "municipios"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os municípios com mais internações no estado do Rio de Janeiro em 2021. A métrica utilizada é a contagem total de internações, agrupada por município de residência. Os filtros aplicados garantem que apenas os dados do estado do RJ e do ano de 2021 sejam considerados. A forma de resposta é a lista dos 10 municípios com mais internações, o que justifica o uso de 'top_n_global'.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T114546_gen086",
+        "query_number": 6,
+        "orchestrator_execution_time": 17.662916898727417
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN087",
+      "persona": "epidemiologista",
+      "category": "geografia",
+      "difficulty": "hard",
+      "question": "Quantas internacoes ocorreram fora da UF de residencia do paciente em 2020?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "internacao_fora_uf_residencia",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:internacoes_fora_uf_residencia"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "internacoes_fora_uf_residencia": 127895
+          }
+        ],
+        "actual_preview": [
+          {
+            "total_internacoes": 0
+          }
+        ]
+      },
+      "success": false,
+      "response": "Não foi possível processar sua consulta: SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter.",
+      "sql": "SELECT COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 AND mu.\"SG_UF\" != (SELECT mu2.\"SG_UF\" FROM municipios mu2 WHERE mu2.\"CO_MUNICIPIO_6D\" = i.\"MUNIC_RES\" LIMIT 1);",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": false,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 4,
+          "retry_count": 3,
+          "error_count": 3,
+          "execution_time": 40.7082245349884
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_repair"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5233008861541748
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.6156296730041504
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 4.937011241912842
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 4.903096914291382
+          }
+        ],
+        "message_count": 17,
+        "retry_count": 3,
+        "error_count": 3,
+        "tables_used": [
+          "internacoes",
+          "internacao_procedimento",
+          "municipios",
+          "procedimentos"
+        ],
+        "schema_context_length": 20599,
+        "latency_by_component": {
+          "query_classification": 0.8986918926239014,
+          "table_discovery": 0.5233848094940186,
+          "schema_analysis": 0.0007176399230957031,
+          "reasoning": 6.22338342666626,
+          "sql_generation": 13.498197793960571,
+          "sql_validation": 4.903129577636719,
+          "sql_repair": 4.611510276794434,
+          "completed": 3.5762786865234375e-05
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quantas internacoes ocorreram fora da UF de residencia do paciente em 2020?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": [
+            "unknown"
+          ]
+        },
+        "semantic_plan": {
+          "intent": "count",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "estado",
+              "values": [
+                "UF_residencia"
+              ],
+              "operator": "!="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "counted_entity": "estado",
+            "forbidden_output_dimensions": [
+              "estado"
+            ]
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "municipios",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.4448749927665621,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "municipios"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "municipios",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "municipios",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A contagem de internações fora da UF de residência do paciente em 2020 requer um filtro para o ano e uma condição que exclua as internações onde o estado é igual à UF de residência. A métrica de contagem é apropriada para obter o total de internações que atendem a esses critérios.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics",
+            "filters"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query counts the total number of hospitalizations in 2020 where the state of residence (UF) of the patient is different from the state where the hospitalization occurred. It joins the internacoes table with the municipios table to access the state information.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": false,
+          "constraints": [],
+          "null_policy": [],
+          "message": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter."
+        },
+        "semantic_error": {
+          "category": "unknown",
+          "severity": "error",
+          "message": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter."
+        },
+        "repair_attempts": [
+          {
+            "previous_sql": "SELECT COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 AND mu.\"SG_UF\" != (SELECT mu2.\"SG_UF\" FROM municipios mu2 WHERE mu2.\"CO_MUNICIPIO_6D\" = i.\"MUNIC_RES\");",
+            "error_message": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter.",
+            "semantic_category": "unknown",
+            "semantic_guidance": "Erro semantico desconhecido",
+            "violated_contract": {},
+            "repair_strategy": "llm_guided",
+            "timestamp": "2026-05-21T11:48:00.769224",
+            "post_repair_validation": {
+              "passed": false,
+              "message": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter.",
+              "category": "unknown"
+            }
+          },
+          {
+            "previous_sql": "SELECT COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 AND mu.\"SG_UF\" != (SELECT mu2.\"SG_UF\" FROM municipios mu2 WHERE mu2.\"CO_MUNICIPIO_6D\" = i.\"MUNIC_RES\" LIMIT 1);",
+            "error_message": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter.",
+            "semantic_category": "unknown",
+            "semantic_guidance": "Erro semantico desconhecido",
+            "violated_contract": {},
+            "repair_strategy": "llm_guided",
+            "timestamp": "2026-05-21T11:48:10.319391",
+            "post_repair_validation": {
+              "passed": false,
+              "message": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter.",
+              "category": "unknown"
+            }
+          }
+        ],
+        "semantic_repair": {
+          "original_category": "unknown",
+          "original_message": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter.",
+          "guidance_title": "Erro semantico desconhecido",
+          "strategy": "llm_guided",
+          "post_repair_category": "unknown",
+          "post_repair_message": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter.",
+          "validation_passed_after_repair": false
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T114546_gen087",
+        "query_number": 7,
+        "orchestrator_execution_time": 40.72675895690918
+      },
+      "error": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter.",
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN088",
+      "persona": "epidemiologista",
+      "category": "geografia",
+      "difficulty": "hard",
+      "question": "Quantas internacoes ocorreram fora da UF de residencia do paciente em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "internacao_fora_uf_residencia",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:internacoes_fora_uf_residencia"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "internacoes_fora_uf_residencia": 126335
+          }
+        ],
+        "actual_preview": [
+          {
+            "total_internacoes": 0
+          }
+        ]
+      },
+      "success": false,
+      "response": "Não foi possível processar sua consulta: SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter.",
+      "sql": "SELECT COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND mu.\"SG_UF\" != (SELECT mu2.\"SG_UF\" FROM municipios mu2 WHERE mu2.\"CO_MUNICIPIO_6D\" = i.\"MUNIC_RES\" LIMIT 1);",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": false,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 4,
+          "retry_count": 3,
+          "error_count": 3,
+          "execution_time": 41.102262020111084
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_repair"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.8303720951080322
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.4477219581604004
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.9979164600372314
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.3059346675872803
+          }
+        ],
+        "message_count": 16,
+        "retry_count": 3,
+        "error_count": 3,
+        "tables_used": [
+          "internacoes",
+          "internacao_procedimento",
+          "municipios",
+          "procedimentos"
+        ],
+        "schema_context_length": 20599,
+        "latency_by_component": {
+          "query_classification": 1.1456258296966553,
+          "table_discovery": 0.8304376602172852,
+          "schema_analysis": 0.0008227825164794922,
+          "reasoning": 7.170283555984497,
+          "sql_generation": 13.095657110214233,
+          "sql_validation": 3.305966377258301,
+          "sql_repair": 6.083895921707153,
+          "completed": 3.2901763916015625e-05
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quantas internacoes ocorreram fora da UF de residencia do paciente em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": [
+            "unknown"
+          ]
+        },
+        "semantic_plan": {
+          "intent": "count",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "estado",
+              "values": [
+                "UF_residencia"
+              ],
+              "operator": "!="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "counted_entity": "estado",
+            "forbidden_output_dimensions": [
+              "estado"
+            ]
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "municipios",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.4449266737750408,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "municipios"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "municipios",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "municipios",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A contagem de internações fora da UF de residência do paciente em 2021 requer um filtro para o ano e uma condição que exclua as internações onde o estado é igual à UF de residência. A métrica de contagem é apropriada para obter o total de internações que atendem a esses critérios.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics",
+            "filters"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query counts the total number of hospitalizations in 2021 where the patient's residence municipality is not in the same state (UF) as the hospitalization. It joins the internacoes table with the municipios table to access the state information based on the municipality of residence.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": false,
+          "constraints": [],
+          "null_policy": [],
+          "message": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter."
+        },
+        "semantic_error": {
+          "category": "unknown",
+          "severity": "error",
+          "message": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter."
+        },
+        "repair_attempts": [
+          {
+            "previous_sql": "SELECT COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND mu.\"SG_UF\" != (SELECT mu2.\"SG_UF\" FROM municipios mu2 WHERE mu2.\"CO_MUNICIPIO_6D\" = i.\"MUNIC_RES\");",
+            "error_message": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter.",
+            "semantic_category": "unknown",
+            "semantic_guidance": "Erro semantico desconhecido",
+            "violated_contract": {},
+            "repair_strategy": "llm_guided",
+            "timestamp": "2026-05-21T11:48:46.103650",
+            "post_repair_validation": {
+              "passed": false,
+              "message": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter.",
+              "category": "unknown"
+            }
+          },
+          {
+            "previous_sql": "SELECT COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND mu.\"SG_UF\" != (SELECT mu2.\"SG_UF\" FROM municipios mu2 WHERE mu2.\"CO_MUNICIPIO_6D\" = i.\"MUNIC_RES\" LIMIT 1);",
+            "error_message": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter.",
+            "semantic_category": "unknown",
+            "semantic_guidance": "Erro semantico desconhecido",
+            "violated_contract": {},
+            "repair_strategy": "llm_guided",
+            "timestamp": "2026-05-21T11:48:55.187080",
+            "post_repair_validation": {
+              "passed": false,
+              "message": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter.",
+              "category": "unknown"
+            }
+          }
+        ],
+        "semantic_repair": {
+          "original_category": "unknown",
+          "original_message": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter.",
+          "guidance_title": "Erro semantico desconhecido",
+          "strategy": "llm_guided",
+          "post_repair_category": "unknown",
+          "post_repair_message": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter.",
+          "validation_passed_after_repair": false
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T114546_gen088",
+        "query_number": 8,
+        "orchestrator_execution_time": 41.1200053691864
+      },
+      "error": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter.",
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN089",
+      "persona": "epidemiologista",
+      "category": "geografia",
+      "difficulty": "hard",
+      "question": "Quantas internacoes ocorreram fora da UF de residencia do paciente em 2022?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "internacao_fora_uf_residencia",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:internacoes_fora_uf_residencia"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "internacoes_fora_uf_residencia": 125432
+          }
+        ],
+        "actual_preview": [
+          {
+            "total_internacoes": 0
+          }
+        ]
+      },
+      "success": false,
+      "response": "Não foi possível processar sua consulta: SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter.",
+      "sql": "SELECT COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2022 AND mu.\"SG_UF\" != (SELECT mu2.\"SG_UF\" FROM municipios mu2 WHERE mu2.\"CO_MUNICIPIO_6D\" = i.\"MUNIC_RES\" LIMIT 1);",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": false,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 4,
+          "retry_count": 3,
+          "error_count": 3,
+          "execution_time": 36.28302788734436
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_repair"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5287735462188721
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.9002268314361572
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.8446574211120605
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.1682400703430176
+          }
+        ],
+        "message_count": 16,
+        "retry_count": 3,
+        "error_count": 3,
+        "tables_used": [
+          "internacoes",
+          "internacao_procedimento",
+          "municipios",
+          "procedimentos"
+        ],
+        "schema_context_length": 20599,
+        "latency_by_component": {
+          "query_classification": 1.010169506072998,
+          "table_discovery": 0.528839111328125,
+          "schema_analysis": 0.0008678436279296875,
+          "reasoning": 7.3007423877716064,
+          "sql_generation": 11.527703523635864,
+          "sql_validation": 2.168269634246826,
+          "sql_repair": 4.336432933807373,
+          "completed": 3.2901763916015625e-05
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quantas internacoes ocorreram fora da UF de residencia do paciente em 2022?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": [
+            "unknown"
+          ]
+        },
+        "semantic_plan": {
+          "intent": "count",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2022"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "estado",
+              "values": [
+                "UF_residencia"
+              ],
+              "operator": "!="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "counted_entity": "estado",
+            "forbidden_output_dimensions": [
+              "estado"
+            ]
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "municipios",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.4397958231712995,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "municipios"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "municipios",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "municipios",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A contagem de internações fora da UF de residência do paciente em 2022 requer um filtro que exclua as internações onde o estado é igual à UF de residência. A métrica de contagem é aplicada ao total de internações, e a dimensão 'estado' é utilizada para garantir que estamos considerando apenas as internações que ocorreram fora da UF de residência. O ano de 2022 é especificado como um filtro.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics",
+            "filters"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query counts the total number of hospitalizations in 2022 where the patient's residence municipality is not in the same state (UF) as the hospitalization. It joins the internacoes table with the municipios table to access the state information based on the municipality of residence.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": false,
+          "constraints": [],
+          "null_policy": [],
+          "message": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter."
+        },
+        "semantic_error": {
+          "category": "unknown",
+          "severity": "error",
+          "message": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter."
+        },
+        "repair_attempts": [
+          {
+            "previous_sql": "SELECT COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2022 AND mu.\"SG_UF\" != (SELECT mu2.\"SG_UF\" FROM municipios mu2 WHERE mu2.\"CO_MUNICIPIO_6D\" = i.\"MUNIC_RES\");",
+            "error_message": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter.",
+            "semantic_category": "unknown",
+            "semantic_guidance": "Erro semantico desconhecido",
+            "violated_contract": {},
+            "repair_strategy": "llm_guided",
+            "timestamp": "2026-05-21T11:49:27.541549",
+            "post_repair_validation": {
+              "passed": false,
+              "message": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter.",
+              "category": "unknown"
+            }
+          },
+          {
+            "previous_sql": "SELECT COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2022 AND mu.\"SG_UF\" != (SELECT mu2.\"SG_UF\" FROM municipios mu2 WHERE mu2.\"CO_MUNICIPIO_6D\" = i.\"MUNIC_RES\" LIMIT 1);",
+            "error_message": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter.",
+            "semantic_category": "unknown",
+            "semantic_guidance": "Erro semantico desconhecido",
+            "violated_contract": {},
+            "repair_strategy": "llm_guided",
+            "timestamp": "2026-05-21T11:49:34.724328",
+            "post_repair_validation": {
+              "passed": false,
+              "message": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter.",
+              "category": "unknown"
+            }
+          }
+        ],
+        "semantic_repair": {
+          "original_category": "unknown",
+          "original_message": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter.",
+          "guidance_title": "Erro semantico desconhecido",
+          "strategy": "llm_guided",
+          "post_repair_category": "unknown",
+          "post_repair_message": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter.",
+          "validation_passed_after_repair": false
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T114546_gen089",
+        "query_number": 9,
+        "orchestrator_execution_time": 36.31000256538391
+      },
+      "error": "SEMANTIC PLAN ERROR: SQL does not apply the requested estado filter.",
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN090",
+      "persona": "epidemiologista",
+      "category": "geografia",
+      "difficulty": "hard",
+      "question": "Quantas internacoes ocorreram fora da UF de residencia do paciente em 2023?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "internacao_fora_uf_residencia",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:internacoes_fora_uf_residencia"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "internacoes_fora_uf_residencia": 123698
+          }
+        ],
+        "actual_preview": [
+          {
+            "total_internacoes": 0
+          }
+        ]
+      },
+      "success": true,
+      "response": "Não houve internações fora da UF de residência do paciente em 2023.",
+      "sql": "SELECT COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2023 AND mu.\"SG_UF\" != (SELECT mu2.\"SG_UF\" FROM municipios mu2 WHERE mu2.\"CO_MUNICIPIO_6D\" = i.\"MUNIC_RES\");",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 29.567610025405884
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5541369915008545
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.5227668285369873
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.1996443271636963
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "internacao_procedimento",
+          "municipios",
+          "procedimentos"
+        ],
+        "schema_context_length": 20599,
+        "latency_by_component": {
+          "query_classification": 4.22878885269165,
+          "table_discovery": 0.5542047023773193,
+          "schema_analysis": 0.0008389949798583984,
+          "reasoning": 6.767163276672363,
+          "sql_generation": 12.714607000350952,
+          "sql_validation": 2.5227949619293213,
+          "sql_execution": 0.19974803924560547,
+          "completed": 2.5772173404693604
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quantas internacoes ocorreram fora da UF de residencia do paciente em 2023?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "count",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2023"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "counted_entity": "estado",
+            "forbidden_output_dimensions": [
+              "estado"
+            ]
+          },
+          "constraints": [
+            "localizacao_internacao != uf_residencia"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "municipios",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.4389791495260411,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "municipios"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "municipios",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "municipios",
+          "procedimentos"
+        ],
+        "semantic_constraints": [
+          "localizacao_internacao != uf_residencia"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A contagem de internações fora da UF de residência do paciente em 2023 requer a filtragem das internações onde a localização da internação é diferente da UF de residência. A métrica de contagem foi escolhida para quantificar essas internações, e a dimensão de localização foi incluída para garantir que a condição de desfecho seja aplicada corretamente.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query counts the total number of hospitalizations in 2023 where the patient's residence municipality is not in the same state (UF) as the hospitalization location. It joins the 'internacoes' table with the 'municipios' table to access the state information.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "localizacao_internacao != uf_residencia"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T114546_gen090",
+        "query_number": 10,
+        "orchestrator_execution_time": 29.5806667804718
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    }
+  ]
+}

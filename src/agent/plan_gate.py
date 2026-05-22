@@ -12,6 +12,21 @@ from .state_models import ExecutionPhase, MessagesStateTXT2SQL, QueryPlan, SubQu
 
 logger = get_nodes_logger()
 
+_UNSUPPORTED_SCHEMA_METRIC_LABELS = {
+    "medicacao": "medicamentos",
+    "exames_laboratoriais": "exames laboratoriais",
+    "vacina": "vacinacao",
+    "area_rural_urbana": "zona rural ou urbana",
+    "bairro": "bairro de residencia",
+    "renda_individual": "renda individual do paciente",
+    "plano_saude": "plano de saude do paciente",
+    "sobrevida_pos_alta": "sobrevida apos alta sem seguimento",
+    "reinternacao": "reinternacao sem identificador longitudinal",
+    "consulta_ambulatorial": "tempo ate consulta ambulatorial",
+    "resultado_imagem": "resultado de imagem",
+    "sinais_vitais": "sinais vitais",
+}
+
 MULTI_ELIGIBLE_PLAN_TYPES = {
     "fanout_concat",
     "bind_then_query",
@@ -174,7 +189,10 @@ def plan_gate_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         if item.startswith("unsupported_metric:")
     ]
     if unsupported_schema_metrics:
-        metric_list = ", ".join(unsupported_schema_metrics)
+        metric_list = ", ".join(
+            _UNSUPPORTED_SCHEMA_METRIC_LABELS.get(metric, metric)
+            for metric in unsupported_schema_metrics
+        )
         state["needs_clarification"] = True
         state["clarification_question"] = (
             "A metrica solicitada nao esta disponivel no schema atual "

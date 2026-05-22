@@ -1,0 +1,3452 @@
+{
+  "run_id": "generalization_exhaustion_20260521T135815",
+  "created_at": "2026-05-21T14:02:13",
+  "dry_run": false,
+  "summary": {
+    "status_counts": {
+      "failed": 10
+    },
+    "root_cause_counts": {
+      "response_grounding_error": 10
+    },
+    "severity_counts": {
+      "medium": 10
+    }
+  },
+  "items": [
+    {
+      "id": "GEN171",
+      "persona": "auditor_dados",
+      "category": "perfil_demografico",
+      "difficulty": "medium",
+      "question": "Qual e a cobertura de instrucao preenchida nas internacoes de 2020?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "perfil_instrucao_caveat",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:com_instrucao_mapeada",
+          "missing_column:percentual_mapeado",
+          "row_count:4!=1"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "total_internacoes": 10531843,
+            "com_instrucao_mapeada": 89156,
+            "percentual_mapeado": 0.85
+          }
+        ],
+        "actual_preview": [
+          {
+            "DESCRICAO": "3º grau",
+            "total": 6121
+          },
+          {
+            "DESCRICAO": "1º grau",
+            "total": 33923
+          },
+          {
+            "DESCRICAO": "Analfabeto",
+            "total": 4414
+          },
+          {
+            "DESCRICAO": "2º grau",
+            "total": 44698
+          }
+        ]
+      },
+      "success": true,
+      "response": "A cobertura de instrução preenchida nas internações de 2020 foi a seguinte:\n\n1. 2º grau: 44.698\n2. Analfabeto: 4.414\n3. 1º grau: 33.923\n4. 3º grau: 6.121",
+      "sql": "SELECT ins.\"DESCRICAO\", COUNT(*) AS total FROM internacoes i JOIN instrucao ins ON i.\"INSTRU\" = ins.\"INSTRU\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 AND i.\"INSTRU\" IS NOT NULL AND i.\"INSTRU\" != 0 GROUP BY ins.\"DESCRICAO\";",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 24.396753787994385
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 1.5767009258270264
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 5.376926898956299
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.16906499862670898
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "instrucao",
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 13212,
+        "latency_by_component": {
+          "query_classification": 0.0002713203430175781,
+          "table_discovery": 1.576786994934082,
+          "schema_analysis": 0.00086212158203125,
+          "reasoning": 4.909388780593872,
+          "sql_generation": 10.402693271636963,
+          "sql_validation": 5.376961708068848,
+          "sql_execution": 0.1691744327545166,
+          "completed": 1.942713737487793
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual e a cobertura de instrucao preenchida nas internacoes de 2020?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "distribution",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "instrucao",
+              "source": "instrucao.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "instrucao_valid",
+              "values": [
+                "INSTRU IS NOT NULL",
+                "INSTRU != 0"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "instrucao"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "instrucao"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "domain_instrucao_valid_required"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "instrucao",
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.4028522953774282,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "instrucao",
+          "internacoes",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "instrucao",
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "instrucao",
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "domain_instrucao_valid_required"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é analisar a distribuição da cobertura de instrução nas internações de 2020. A métrica escolhida é a contagem total de internações, agrupada pela descrição da instrução. Os filtros garantem que apenas os registros de 2020 sejam considerados e que a instrução não seja nula ou zero, conforme as regras do domínio. A estrutura da resposta é uma tabela agrupada por instrução, com uma linha por grupo.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query counts the number of hospitalizations in 2020 grouped by the education level description from the instrucao table, ensuring to exclude records with null or zero education levels.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "domain_instrucao_valid_required"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T135815_gen171",
+        "query_number": 1,
+        "orchestrator_execution_time": 24.413877725601196
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN172",
+      "persona": "auditor_dados",
+      "category": "perfil_demografico",
+      "difficulty": "medium",
+      "question": "Qual e a cobertura de instrucao preenchida nas internacoes de 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "perfil_instrucao_caveat",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:com_instrucao_mapeada",
+          "missing_column:percentual_mapeado",
+          "row_count:4!=1"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "total_internacoes": 11566528,
+            "com_instrucao_mapeada": 98429,
+            "percentual_mapeado": 0.85
+          }
+        ],
+        "actual_preview": [
+          {
+            "DESCRICAO": "3º grau",
+            "total": 7049
+          },
+          {
+            "DESCRICAO": "1º grau",
+            "total": 36438
+          },
+          {
+            "DESCRICAO": "Analfabeto",
+            "total": 5314
+          },
+          {
+            "DESCRICAO": "2º grau",
+            "total": 49628
+          }
+        ]
+      },
+      "success": true,
+      "response": "A cobertura de instrução preenchida nas internações de 2021 foi a seguinte:\n\n1. 2º grau: 49.628\n2. 3º grau: 7.049\n3. 1º grau: 36.438\n4. Analfabeto: 5.314",
+      "sql": "SELECT ins.\"DESCRICAO\", COUNT(*) AS total FROM internacoes i JOIN instrucao ins ON i.\"INSTRU\" = ins.\"INSTRU\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND i.\"INSTRU\" IS NOT NULL AND i.\"INSTRU\" != 0 GROUP BY ins.\"DESCRICAO\";",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 22.25080966949463
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.8091261386871338
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.361119508743286
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.05336737632751465
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "instrucao",
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "schema_context_length": 18443,
+        "latency_by_component": {
+          "query_classification": 0.0004055500030517578,
+          "table_discovery": 0.8091959953308105,
+          "schema_analysis": 0.0007236003875732422,
+          "reasoning": 5.641354322433472,
+          "sql_generation": 11.639889240264893,
+          "sql_validation": 2.361147403717041,
+          "sql_execution": 0.05347180366516113,
+          "completed": 1.7424497604370117
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual e a cobertura de instrucao preenchida nas internacoes de 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "distribution",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "instrucao",
+              "source": "instrucao.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "instrucao_valid",
+              "values": [
+                "INSTRU IS NOT NULL",
+                "INSTRU != 0"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "instrucao"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "instrucao"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "domain_instrucao_valid_required"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "instrucao",
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.3927146601669778,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "instrucao",
+          "internacoes",
+          "internacao_procedimento"
+        ],
+        "validated_selected_tables": [
+          "instrucao",
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "instrucao",
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "semantic_constraints": [
+          "domain_instrucao_valid_required"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A métrica total foi escolhida para contar o número de internações por nível de instrução em 2021. A dimensão 'instrucao' foi utilizada para agrupar os resultados. Os filtros garantem que apenas os registros de 2021 e com instrução válida sejam considerados, conforme as regras do domínio.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query counts the number of hospitalizations in 2021 grouped by the education level description from the instrucao table, ensuring to exclude records with null or zero education levels.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "domain_instrucao_valid_required"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T135815_gen172",
+        "query_number": 2,
+        "orchestrator_execution_time": 22.263760328292847
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN173",
+      "persona": "auditor_dados",
+      "category": "perfil_demografico",
+      "difficulty": "medium",
+      "question": "Qual e a cobertura de instrucao preenchida nas internacoes de 2022?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "perfil_instrucao_caveat",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:com_instrucao_mapeada",
+          "missing_column:percentual_mapeado",
+          "row_count:4!=1"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "total_internacoes": 12363889,
+            "com_instrucao_mapeada": 162415,
+            "percentual_mapeado": 1.31
+          }
+        ],
+        "actual_preview": [
+          {
+            "DESCRICAO": "3º grau",
+            "total": 13123
+          },
+          {
+            "DESCRICAO": "2º grau",
+            "total": 82346
+          },
+          {
+            "DESCRICAO": "1º grau",
+            "total": 57512
+          },
+          {
+            "DESCRICAO": "Analfabeto",
+            "total": 9434
+          }
+        ]
+      },
+      "success": true,
+      "response": "A cobertura de instrução preenchida nas internações de 2022 foi a seguinte:\n\n1. 2º grau: 82.346\n2. 3º grau: 13.123\n3. 1º grau: 57.512\n4. Analfabeto: 9.434",
+      "sql": "SELECT ins.\"DESCRICAO\", COUNT(*) AS total FROM internacoes i JOIN instrucao ins ON i.\"INSTRU\" = ins.\"INSTRU\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2022 AND i.\"INSTRU\" IS NOT NULL AND i.\"INSTRU\" != 0 GROUP BY ins.\"DESCRICAO\";",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 22.152588367462158
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.460416316986084
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.8551950454711914
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.05441904067993164
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "instrucao",
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "schema_context_length": 14385,
+        "latency_by_component": {
+          "query_classification": 0.00029277801513671875,
+          "table_discovery": 0.46049046516418457,
+          "schema_analysis": 0.0005888938903808594,
+          "reasoning": 5.1061530113220215,
+          "sql_generation": 12.916852712631226,
+          "sql_validation": 1.855222225189209,
+          "sql_execution": 0.05453133583068848,
+          "completed": 1.7566983699798584
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual e a cobertura de instrucao preenchida nas internacoes de 2022?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "distribution",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "instrucao",
+              "source": "instrucao.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2022"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "instrucao_valid",
+              "values": [
+                "INSTRU IS NOT NULL",
+                "INSTRU != 0"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "instrucao"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "instrucao"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "domain_instrucao_valid_required"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "instrucao",
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.3785251238253687,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "instrucao",
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "validated_selected_tables": [
+          "instrucao",
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "instrucao",
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "semantic_constraints": [
+          "domain_instrucao_valid_required"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é analisar a distribuição da cobertura de instrução nas internações de 2022, utilizando a contagem total de internações agrupadas por descrição da instrução. As métricas e dimensões foram escolhidas para refletir essa análise, e os filtros garantem que apenas os dados relevantes de 2022 e instruções válidas sejam considerados.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query counts the number of hospitalizations in 2022 grouped by the education level description from the instrucao table, ensuring to exclude records with null or zero education levels as per the specified rules.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "domain_instrucao_valid_required"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T135815_gen173",
+        "query_number": 3,
+        "orchestrator_execution_time": 22.164944410324097
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN174",
+      "persona": "auditor_dados",
+      "category": "perfil_demografico",
+      "difficulty": "medium",
+      "question": "Qual e a cobertura de instrucao preenchida nas internacoes de 2023?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "perfil_instrucao_caveat",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:com_instrucao_mapeada",
+          "missing_column:percentual_mapeado",
+          "row_count:4!=1"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "total_internacoes": 12450724,
+            "com_instrucao_mapeada": 268775,
+            "percentual_mapeado": 2.16
+          }
+        ],
+        "actual_preview": [
+          {
+            "DESCRICAO": "1º grau",
+            "total": 89118
+          },
+          {
+            "DESCRICAO": "Analfabeto",
+            "total": 17279
+          },
+          {
+            "DESCRICAO": "2º grau",
+            "total": 139357
+          },
+          {
+            "DESCRICAO": "3º grau",
+            "total": 23021
+          }
+        ]
+      },
+      "success": true,
+      "response": "A cobertura de instrução preenchida nas internações de 2023 é a seguinte:\n\n1. 3º grau: 23.021\n2. 2º grau: 139.357\n3. 1º grau: 89.118\n4. Analfabeto: 17.279",
+      "sql": "SELECT ins.\"DESCRICAO\", COUNT(*) AS total FROM internacoes i JOIN instrucao ins ON i.\"INSTRU\" = ins.\"INSTRU\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2023 AND i.\"INSTRU\" IS NOT NULL AND i.\"INSTRU\" != 0 GROUP BY ins.\"DESCRICAO\";",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 20.555926084518433
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5311648845672607
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.1353912353515625
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.053714752197265625
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "instrucao",
+          "internacoes",
+          "procedimentos",
+          "internacao_procedimento"
+        ],
+        "schema_context_length": 14385,
+        "latency_by_component": {
+          "query_classification": 0.0003097057342529297,
+          "table_discovery": 0.5312418937683105,
+          "schema_analysis": 0.0007627010345458984,
+          "reasoning": 5.240067720413208,
+          "sql_generation": 10.852243661880493,
+          "sql_validation": 2.13542103767395,
+          "sql_execution": 0.05382418632507324,
+          "completed": 1.7403037548065186
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual e a cobertura de instrucao preenchida nas internacoes de 2023?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "distribution",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "instrucao",
+              "source": "instrucao.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2023"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "instrucao_valid",
+              "values": [
+                "INSTRU IS NOT NULL",
+                "INSTRU != 0"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "instrucao"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "instrucao"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "domain_instrucao_valid_required"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "instrucao",
+          "internacoes",
+          "procedimentos",
+          "internacao_procedimento"
+        ],
+        "llamaindex_confidence": 0.37626800046163256,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "instrucao",
+          "internacoes",
+          "procedimentos",
+          "internacao_procedimento"
+        ],
+        "validated_selected_tables": [
+          "instrucao",
+          "internacoes",
+          "procedimentos",
+          "internacao_procedimento"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "instrucao",
+          "internacoes",
+          "procedimentos",
+          "internacao_procedimento"
+        ],
+        "semantic_constraints": [
+          "domain_instrucao_valid_required"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A pergunta busca entender a distribuição da cobertura de instrução nas internações de 2023, portanto, a métrica escolhida é a contagem total de internações agrupadas por instrução. As dimensões e filtros foram definidos para garantir que apenas as instruções válidas sejam consideradas, e que os dados sejam restritos ao ano de 2023.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query counts the number of hospitalizations in 2023 grouped by the education level description from the instrucao table, ensuring to exclude records with null or zero education levels.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "domain_instrucao_valid_required"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T135815_gen174",
+        "query_number": 4,
+        "orchestrator_execution_time": 20.57683777809143
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN175",
+      "persona": "medico_pesquisador",
+      "category": "perfil_demografico",
+      "difficulty": "medium",
+      "question": "Qual foi a idade media dos pacientes internados por doencas respiratorias em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "idade_media_condicao",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:idade_media"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "total_internacoes": 803361,
+            "idade_media": 41.02
+          }
+        ],
+        "actual_preview": [
+          {
+            "total_internacoes": 803361,
+            "custo_medio": 2302.36
+          }
+        ]
+      },
+      "success": true,
+      "response": "A idade média dos pacientes internados por doenças respiratórias em 2021 não foi informada.",
+      "sql": "SELECT COUNT(*) AS total_internacoes, ROUND(AVG(i.\"VAL_TOT\"), 2) AS custo_medio FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND (c.\"CID\" LIKE 'J%');",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 20.30780053138733
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 6.688537359237671
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.5163094997406006
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.4154527187347412
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.0003807544708251953,
+          "table_discovery": 6.688601732254028,
+          "schema_analysis": 0.0005364418029785156,
+          "reasoning": 9.652577877044678,
+          "sql_generation": 0.0005819797515869141,
+          "sql_validation": 2.516338348388672,
+          "sql_execution": 0.4155588150024414,
+          "completed": 1.0302934646606445
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi a idade media dos pacientes internados por doencas respiratorias em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "unknown",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "media",
+              "expression_type": "avg",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "diagnostico_principal_prefix",
+              "values": [
+                "J%"
+              ],
+              "operator": "LIKE"
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "values": [
+                "CID J00-J99 - Doencas do aparelho respiratorio"
+              ],
+              "operator": "metadata"
+            },
+            {
+              "field": "diagnostico_conceito_termo_expandido",
+              "values": [
+                "doenca respiratoria",
+                "doenca pulmonar",
+                "cid j"
+              ],
+              "operator": "metadata"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [
+              "diagnostico",
+              "idade"
+            ],
+            "forbidden_output_dimensions": [
+              "diagnostico",
+              "idade"
+            ]
+          },
+          "constraints": [
+            "diagnosis_filter_dimension_not_output"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.37806657401253907,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "diagnosis_filter_dimension_not_output"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A média de idade dos pacientes internados por doenças respiratórias em 2021 foi calculada considerando as internações com diagnóstico principal relacionado ao CID J00-J99. A métrica média foi escolhida para representar a idade, e as dimensões e filtros foram definidos para restringir os dados ao ano de 2021 e ao diagnóstico específico.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic scalar SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "diagnosis_filter_dimension_not_output"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T135815_gen175",
+        "query_number": 5,
+        "orchestrator_execution_time": 20.320279598236084
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN176",
+      "persona": "medico_pesquisador",
+      "category": "perfil_demografico",
+      "difficulty": "medium",
+      "question": "Qual foi a idade media dos pacientes internados por covid em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "idade_media_condicao",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:total_internacoes"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "total_internacoes": 1153020,
+            "idade_media": 55.49
+          }
+        ],
+        "actual_preview": [
+          {
+            "idade_media": null
+          }
+        ]
+      },
+      "success": true,
+      "response": "A idade média dos pacientes internados por covid em 2021 foi indeterminada.",
+      "sql": "SELECT AVG(\"IDADE\") AS idade_media FROM internacoes WHERE \"DIAG_PRINC\" IN (SELECT \"CID\" FROM cid WHERE \"DESCRICAO\" ILIKE '%covid%') AND EXTRACT(YEAR FROM \"DT_INTER\") = 2021;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 22.1100172996521
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.4583132266998291
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.9745619297027588
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.006009340286254883
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.0003170967102050781,
+          "table_discovery": 0.4583771228790283,
+          "schema_analysis": 0.0006144046783447266,
+          "reasoning": 5.761202812194824,
+          "sql_generation": 12.461416721343994,
+          "sql_validation": 1.9745891094207764,
+          "sql_execution": 0.006078004837036133,
+          "completed": 1.4456884860992432
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi a idade media dos pacientes internados por covid em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "lookup",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "media",
+              "expression_type": "avg",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "diagnostico",
+              "values": [
+                "covid"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": [
+              "idade"
+            ]
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.3927445969759041,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A média de idade dos pacientes internados por covid em 2021 é calculada considerando apenas as internações relacionadas ao diagnóstico de covid. A métrica utilizada é a média da idade dos pacientes, filtrando pelo ano de 2021.",
+          "conflicts": [
+            "unknown_metric_ignored: media_idade",
+            "metric_mismatch: heuristic=['media']; llm=['media_idade']"
+          ],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics",
+            "filters"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 0.9,
+        "sql_generation_reasoning": "The query calculates the average age of patients hospitalized for COVID-19 in 2021 by filtering the primary diagnosis for COVID-related codes and extracting the year from the admission date.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T135815_gen176",
+        "query_number": 6,
+        "orchestrator_execution_time": 22.122133493423462
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN177",
+      "persona": "medico_pesquisador",
+      "category": "perfil_demografico",
+      "difficulty": "medium",
+      "question": "Qual foi a idade media dos pacientes internados por diabetes em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "idade_media_condicao",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:total_internacoes"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "total_internacoes": 48433,
+            "idade_media": 30.96
+          }
+        ],
+        "actual_preview": [
+          {
+            "idade_media": 54.359361135758654
+          }
+        ]
+      },
+      "success": true,
+      "response": "A idade média dos pacientes internados por diabetes em 2021 foi de 54,36 anos.",
+      "sql": "SELECT AVG(\"IDADE\") AS idade_media FROM internacoes i WHERE (i.\"DIAG_PRINC\" IN ('E10', 'E11')) AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 23.274275302886963
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5678660869598389
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.6563444137573242
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.1956775188446045
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "schema_context_length": 20360,
+        "latency_by_component": {
+          "query_classification": 0.0002906322479248047,
+          "table_discovery": 0.5679371356964111,
+          "schema_analysis": 0.0007700920104980469,
+          "reasoning": 6.338180065155029,
+          "sql_generation": 11.317076683044434,
+          "sql_validation": 1.656372308731079,
+          "sql_execution": 0.19580507278442383,
+          "completed": 3.1960604190826416
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi a idade media dos pacientes internados por diabetes em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "lookup",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "media",
+              "expression_type": "avg",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "cid",
+              "values": [
+                "E10",
+                "E11"
+              ],
+              "operator": "in"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": [
+              "idade"
+            ]
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.3839851155789171,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A média de idade dos pacientes internados por diabetes em 2021 foi calculada considerando as internações relacionadas aos códigos CID para diabetes (E10 e E11). A métrica utilizada é a média da idade dos pacientes, filtrando pelo ano de 2021 e pelos códigos CID relevantes.",
+          "conflicts": [
+            "unknown_metric_ignored: media_idade",
+            "metric_mismatch: heuristic=['media']; llm=['media_idade']"
+          ],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics",
+            "filters"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query calculates the average age of patients hospitalized for diabetes (ICD codes E10 and E11) in the year 2021 by filtering the records based on the diagnosis and admission date.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T135815_gen177",
+        "query_number": 7,
+        "orchestrator_execution_time": 23.28866958618164
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN178",
+      "persona": "medico_pesquisador",
+      "category": "perfil_demografico",
+      "difficulty": "medium",
+      "question": "Qual foi a idade media dos pacientes internados por pneumonia em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "idade_media_condicao",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:total_internacoes"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "total_internacoes": 396362,
+            "idade_media": 45.43
+          }
+        ],
+        "actual_preview": [
+          {
+            "idade_media": 45.43295775074301
+          }
+        ]
+      },
+      "success": true,
+      "response": "A idade média dos pacientes internados por pneumonia em 2021 foi de 45,43 anos.",
+      "sql": "SELECT AVG(\"IDADE\") AS idade_media FROM internacoes WHERE \"DIAG_PRINC\" IN (SELECT \"CID\" FROM cid WHERE \"DESCRICAO\" ILIKE '%pneumonia%') AND EXTRACT(YEAR FROM \"DT_INTER\") = 2021;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 21.14143204689026
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.47867369651794434
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.848924160003662
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.30729198455810547
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "schema_context_length": 16512,
+        "latency_by_component": {
+          "query_classification": 0.00028061866760253906,
+          "table_discovery": 0.47873806953430176,
+          "schema_analysis": 0.0006000995635986328,
+          "reasoning": 5.137030363082886,
+          "sql_generation": 12.417696952819824,
+          "sql_validation": 1.8489525318145752,
+          "sql_execution": 0.30739593505859375,
+          "completed": 0.9489295482635498
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi a idade media dos pacientes internados por pneumonia em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "lookup",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "media",
+              "expression_type": "avg",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "diagnostico",
+              "values": [
+                "pneumonia"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": [
+              "idade"
+            ]
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.342731530880845,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é calcular a média de idade dos pacientes internados por pneumonia em 2021. A métrica escolhida é a média da idade, filtrando por ano e diagnóstico de pneumonia. Não há dimensões adicionais necessárias para este cálculo.",
+          "conflicts": [
+            "unknown_metric_ignored: media_idade",
+            "metric_mismatch: heuristic=['media']; llm=['media_idade']"
+          ],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics",
+            "filters"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query calculates the average age of patients hospitalized for pneumonia in 2021 by filtering the main hospitalization table for records where the primary diagnosis matches pneumonia and the admission year is 2021.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T135815_gen178",
+        "query_number": 8,
+        "orchestrator_execution_time": 21.15366840362549
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN179",
+      "persona": "epidemiologista",
+      "category": "socioeconomico_populacao",
+      "difficulty": "medium",
+      "question": "Qual era a populacao total por UF em 2019?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "populacao_uf",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:populacao"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "uf": "SP",
+            "populacao": 45919049
+          },
+          {
+            "uf": "MG",
+            "populacao": 21168791
+          },
+          {
+            "uf": "RJ",
+            "populacao": 17264943
+          },
+          {
+            "uf": "BA",
+            "populacao": 14873064
+          },
+          {
+            "uf": "PR",
+            "populacao": 11433957
+          }
+        ],
+        "actual_preview": [
+          {
+            "estado": "CE",
+            "populacao_total": 9132078
+          },
+          {
+            "estado": "RS",
+            "populacao_total": 11377239
+          },
+          {
+            "estado": "AM",
+            "populacao_total": 4144597
+          },
+          {
+            "estado": "ES",
+            "populacao_total": 4018650
+          },
+          {
+            "estado": "GO",
+            "populacao_total": 7018354
+          }
+        ]
+      },
+      "success": true,
+      "response": "Em 2019, a população total por UF era a seguinte:\n\n1. MA: 7.075.181\n2. MG: 21.168.791\n3. SP: 45.919.049\n4. DF: 3.015.268\n5. PR: 11.433.957\n6. AP: 845.731\n7. TO: 1.572.866\n8. MS: 2.778.986\n9. SC: 7.164.788\n10. CE: 9.132.078\n11. RS: 11.377.239\n12. AM: 4.144.597\n13. ES: 4.018.650\n14. GO: 7.018.354\n15. RR: 605.761\n16. PI: 3.273.227\n17. RO: 1.777.225\n18. PB: 4.018.127\n19. PE: 9.557.071\n20. SE: 2.298.696\n21. PA: 8.602.865\n22. AC: 881.935\n23. RN: 3.506.853\n24. AL: 3.337.357\n25. MT: 3.484.466\n26. BA: 14.873.064\n27. RJ: 17.264.943",
+      "sql": "SELECT mu.\"SG_UF\" AS estado, SUM(s.\"QT_POPULACAO\") AS populacao_total FROM socioeconomico s JOIN municipios mu ON s.\"CO_MUNICIPIO_6D\" = mu.\"CO_MUNICIPIO_6D\" WHERE s.\"NU_ANO\" = 2019 GROUP BY mu.\"SG_UF\";",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 29.915184259414673
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5135660171508789
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.1295034885406494
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.005979776382446289
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "socioeconomico",
+          "municipios"
+        ],
+        "schema_context_length": 8214,
+        "latency_by_component": {
+          "query_classification": 0.00027680397033691406,
+          "table_discovery": 0.5136306285858154,
+          "schema_analysis": 0.00045299530029296875,
+          "reasoning": 6.677181243896484,
+          "sql_generation": 12.937251567840576,
+          "sql_validation": 2.129533052444458,
+          "sql_execution": 0.0060422420501708984,
+          "completed": 7.6487579345703125
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual era a populacao total por UF em 2019?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "distribution",
+          "base_grain": "municipio_ano",
+          "metrics": [
+            {
+              "name": "populacao_total",
+              "expression_type": "sum",
+              "required_filters": [
+                "SUM(s.\"QT_POPULACAO\")"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2019"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "socioeconomico_column_metric_required"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "socioeconomico",
+          "municipios"
+        ],
+        "llamaindex_confidence": 0.34406252739509774,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "municipios",
+          "socioeconomico",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "socioeconomico",
+          "municipios"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "socioeconomico",
+          "municipios"
+        ],
+        "semantic_constraints": [
+          "socioeconomico_column_metric_required"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A pergunta solicita a população total por UF em 2019, o que implica em somar a população dos municípios agrupados por estado. A métrica utilizada é a soma da população total, e a dimensão é o estado de residência. O filtro é aplicado para o ano de 2019, garantindo que os dados sejam específicos para esse ano.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query aggregates the total population by state (UF) for the year 2019, using the explicit column \"QT_POPULACAO\" from the socioeconomico table and joining with the municipios table to get the state abbreviation.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "socioeconomico_column_metric_required"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T135815_gen179",
+        "query_number": 9,
+        "orchestrator_execution_time": 29.92918300628662
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN180",
+      "persona": "epidemiologista",
+      "category": "socioeconomico_populacao",
+      "difficulty": "medium",
+      "question": "Qual era a populacao total por UF em 2020?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "populacao_uf",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:populacao"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "uf": "SP",
+            "populacao": 46289333
+          },
+          {
+            "uf": "MG",
+            "populacao": 21292666
+          },
+          {
+            "uf": "RJ",
+            "populacao": 17366189
+          },
+          {
+            "uf": "BA",
+            "populacao": 14930634
+          },
+          {
+            "uf": "PR",
+            "populacao": 11516840
+          }
+        ],
+        "actual_preview": [
+          {
+            "estado": "PR",
+            "populacao_total": 11516840
+          },
+          {
+            "estado": "CE",
+            "populacao_total": 9187103
+          },
+          {
+            "estado": "RS",
+            "populacao_total": 11422973
+          },
+          {
+            "estado": "AC",
+            "populacao_total": 894470
+          },
+          {
+            "estado": "RN",
+            "populacao_total": 3534165
+          }
+        ]
+      },
+      "success": true,
+      "response": "A população total por UF em 2020 é a seguinte:\n\n1. MA: 7.114.598\n2. MG: 21.292.666\n3. SP: 46.289.333\n4. DF: 3.055.149\n5. SC: 7.252.502\n6. MS: 2.809.394\n7. PA: 8.690.745\n8. PR: 11.516.840\n9. AC: 894.470\n10. RN: 3.534.165\n11. AM: 4.207.714\n12. ES: 4.064.052\n13. GO: 7.113.540\n14. RR: 631.181\n15. PI: 3.281.480\n16. RO: 1.796.460\n17. PB: 4.039.277\n18. PE: 9.616.621\n19. SE: 2.318.822\n20. CE: 9.187.103\n21. RS: 11.422.973\n22. AL: 3.351.543\n23. MT: 3.526.220\n24. AP: 861.773\n25. TO: 1.590.248\n26. BA: 14.930.634\n27. RJ: 17.366.189",
+      "sql": "SELECT mu.\"SG_UF\" AS estado, SUM(s.\"QT_POPULACAO\") AS populacao_total FROM socioeconomico s JOIN municipios mu ON s.\"CO_MUNICIPIO_6D\" = mu.\"CO_MUNICIPIO_6D\" WHERE s.\"NU_ANO\" = 2020 GROUP BY mu.\"SG_UF\";",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 26.187909603118896
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5810577869415283
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.3341782093048096
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.004285335540771484
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "socioeconomico",
+          "municipios"
+        ],
+        "schema_context_length": 8214,
+        "latency_by_component": {
+          "query_classification": 0.0002849102020263672,
+          "table_discovery": 0.581122636795044,
+          "schema_analysis": 0.0007994174957275391,
+          "reasoning": 7.57709002494812,
+          "sql_generation": 10.040673017501831,
+          "sql_validation": 2.3342056274414062,
+          "sql_execution": 0.004347324371337891,
+          "completed": 5.647820711135864
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual era a populacao total por UF em 2020?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "distribution",
+          "base_grain": "municipio_ano",
+          "metrics": [
+            {
+              "name": "populacao_total",
+              "expression_type": "sum",
+              "required_filters": [
+                "SUM(s.\"QT_POPULACAO\")"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "socioeconomico_column_metric_required"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "socioeconomico",
+          "municipios"
+        ],
+        "llamaindex_confidence": 0.3436846798410544,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "municipios",
+          "socioeconomico",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "socioeconomico",
+          "municipios"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "socioeconomico",
+          "municipios"
+        ],
+        "semantic_constraints": [
+          "socioeconomico_column_metric_required"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A pergunta solicita a população total por UF em 2020, o que implica em somar a população dos municípios agrupados por estado. A métrica utilizada é a soma da população total, e a dimensão é o estado de residência. O filtro é aplicado para o ano de 2020, garantindo que os dados sejam relevantes para o período solicitado.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query sums the total population from the socioeconomico table for each state (UF) in the year 2020, joining with the municipios table to get the state abbreviation.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "socioeconomico_column_metric_required"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T135815_gen180",
+        "query_number": 10,
+        "orchestrator_execution_time": 26.19911766052246
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    }
+  ]
+}

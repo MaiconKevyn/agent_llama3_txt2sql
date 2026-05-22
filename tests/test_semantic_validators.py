@@ -108,6 +108,23 @@ def test_semantic_validator_accepts_cid_chapter_dimension_from_lookup_label():
     assert message is None
 
 
+def test_semantic_validator_rejects_cid_chapter_derived_from_first_letter():
+    plan = build_semantic_plan("Quais capitulos CID concentraram mais internacoes em 2021?")
+    sql = """
+        SELECT SUBSTR(i."DIAG_PRINC", 1, 1) AS cid_capitulo, COUNT(*) AS total_internacoes
+        FROM internacoes i
+        WHERE EXTRACT(YEAR FROM i."DT_INTER") = 2021
+        GROUP BY cid_capitulo
+        ORDER BY total_internacoes DESC
+        LIMIT 10;
+    """
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert valid is False
+    assert "DS_CAPITULO" in (message or "")
+
+
 def test_diagnosis_grouping_query_does_not_become_named_diagnosis_filter():
     from src.agent.sql_generation import _build_deterministic_chart_sql
     from src.visualization.chart_plan import build_chart_plan, validate_sql_against_chart_plan
