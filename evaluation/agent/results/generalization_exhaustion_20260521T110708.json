@@ -1,0 +1,1819 @@
+{
+  "run_id": "generalization_exhaustion_20260521T110708",
+  "created_at": "2026-05-21T11:08:37",
+  "dry_run": false,
+  "summary": {
+    "status_counts": {
+      "passed": 5
+    },
+    "root_cause_counts": {},
+    "severity_counts": {}
+  },
+  "items": [
+    {
+      "id": "GEN041",
+      "persona": "medico_pesquisador",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "medium",
+      "question": "Quais diagnosticos principais concentraram mais obitos hospitalares em 2019?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "obitos_por_diagnostico_principal",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "diagnostico": "Septicemia NE",
+            "total_obitos": 47668
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_obitos": 27266
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_obitos": 24581
+          },
+          {
+            "diagnostico": "Insuf respirat aguda",
+            "total_obitos": 13529
+          },
+          {
+            "diagnostico": "Insuf cardiaca congestiva",
+            "total_obitos": 13228
+          }
+        ],
+        "actual_preview": [
+          {
+            "diagnostico": "Septicemia NE",
+            "total_obitos": 47668
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_obitos": 27266
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_obitos": 24581
+          },
+          {
+            "diagnostico": "Insuf respirat aguda",
+            "total_obitos": 13529
+          },
+          {
+            "diagnostico": "Insuf cardiaca congestiva",
+            "total_obitos": 13228
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os principais diagnósticos que concentraram mais óbitos hospitalares em 2019 foram:\n\n1. Septicemia NE: 47.668 óbitos\n2. Pneumonia NE: 27.266 óbitos\n3. Acid vasc cerebr NE como hemorrag isquemico: 24.581 óbitos\n4. Insuf respirat aguda: 13.529 óbitos\n5. Insuf cardiaca congestiva: 13.228 óbitos\n6. Pneumonia bacter NE: 11.724 óbitos\n7. Infecc bacter NE: 10.657 óbitos\n8. Outr septicemias espec: 10.457 óbitos\n9. Infarto agudo do miocardio NE: 9.648 óbitos\n10. Insuf cardiaca NE: 9.273 óbitos",
+      "sql": "SELECT c.\"DESCRICAO\" AS diagnostico, COUNT(*) AS total_obitos FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2019 AND i.\"MORTE\" = true AND c.\"DESCRICAO\" IS NOT NULL AND TRIM(c.\"DESCRICAO\") <> '' AND c.\"DESCRICAO\" NOT IN ('Nao preenchido', 'Nao informado') GROUP BY c.\"DESCRICAO\" ORDER BY total_obitos DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 18.183526754379272
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 4.78053092956543
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.3388452529907227
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.31853532791137695
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.00033164024353027344,
+          "table_discovery": 4.780612945556641,
+          "schema_analysis": 0.0008041858673095703,
+          "reasoning": 6.567696571350098,
+          "sql_generation": 0.0009391307830810547,
+          "sql_validation": 3.3388776779174805,
+          "sql_execution": 0.31863856315612793,
+          "completed": 3.157247304916382
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais diagnosticos principais concentraram mais obitos hospitalares em 2019?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_mortes",
+              "expression_type": "count",
+              "required_filters": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "diagnostico",
+              "source": "cid.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2019"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "desfecho",
+              "values": [
+                "MORTE = true"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "diagnostico"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "diagnostico"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "death_cause_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.48489252724742676,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "death_cause_requires_diag_princ_with_morte"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os diagnósticos que causaram mais óbitos hospitalares em 2019. A métrica total_mortes conta o número de mortes, filtrando apenas os casos onde a morte ocorreu. A dimensão 'diagnostico' é utilizada para agrupar os resultados por descrição do CID. O filtro de ano é aplicado para restringir os dados a 2019. A resposta deve retornar os 10 principais diagnósticos com mais óbitos, por isso a configuração de top_n_global.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "death_cause_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T110708_gen041",
+        "query_number": 1,
+        "orchestrator_execution_time": 18.201124668121338
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN042",
+      "persona": "medico_pesquisador",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "medium",
+      "question": "Quais diagnosticos principais concentraram mais obitos hospitalares em 2020?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "obitos_por_diagnostico_principal",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "diagnostico": "Infecc p/coronavirus NE",
+            "total_obitos": 115727
+          },
+          {
+            "diagnostico": "Septicemia NE",
+            "total_obitos": 40373
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_obitos": 23555
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_obitos": 23039
+          },
+          {
+            "diagnostico": "Insuf respirat aguda",
+            "total_obitos": 17082
+          }
+        ],
+        "actual_preview": [
+          {
+            "diagnostico": "Infecc p/coronavirus NE",
+            "total_obitos": 115727
+          },
+          {
+            "diagnostico": "Septicemia NE",
+            "total_obitos": 40373
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_obitos": 23555
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_obitos": 23039
+          },
+          {
+            "diagnostico": "Insuf respirat aguda",
+            "total_obitos": 17082
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os principais diagnósticos que concentraram mais óbitos hospitalares em 2020 foram:\n\n1. Infecc p/coronavirus NE: 115.727 óbitos\n2. Septicemia NE: 40.373 óbitos\n3. Acid vasc cerebr NE como hemorrag isquemico: 23.555 óbitos\n4. Pneumonia NE: 23.039 óbitos\n5. Insuf respirat aguda: 17.082 óbitos\n6. Insuf cardiaca congestiva: 11.682 óbitos\n7. Infecc bacter NE: 9.899 óbitos\n8. Outr septicemias espec: 9.396 óbitos\n9. Infarto agudo do miocardio NE: 9.395 óbitos\n10. Pneumonia bacter NE: 9.090 óbitos",
+      "sql": "SELECT c.\"DESCRICAO\" AS diagnostico, COUNT(*) AS total_obitos FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 AND i.\"MORTE\" = true AND c.\"DESCRICAO\" IS NOT NULL AND TRIM(c.\"DESCRICAO\") <> '' AND c.\"DESCRICAO\" NOT IN ('Nao preenchido', 'Nao informado') GROUP BY c.\"DESCRICAO\" ORDER BY total_obitos DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 15.02391791343689
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.4666709899902344
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.138673782348633
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.1675729751586914
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.00029277801513671875,
+          "table_discovery": 0.4667520523071289,
+          "schema_analysis": 0.0008780956268310547,
+          "reasoning": 8.195186614990234,
+          "sql_generation": 0.0009140968322753906,
+          "sql_validation": 3.1387014389038086,
+          "sql_execution": 0.16767644882202148,
+          "completed": 3.0511534214019775
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais diagnosticos principais concentraram mais obitos hospitalares em 2020?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_mortes",
+              "expression_type": "count",
+              "required_filters": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "diagnostico",
+              "source": "cid.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "desfecho",
+              "values": [
+                "MORTE = true"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "diagnostico"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "diagnostico"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "death_cause_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.475026390310967,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "death_cause_requires_diag_princ_with_morte"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os diagnósticos que causaram mais óbitos hospitalares em 2020. A métrica total_mortes conta o número de mortes, filtrando apenas os casos onde a morte ocorreu. A dimensão 'diagnostico' é utilizada para agrupar os resultados por descrição do CID. O filtro de ano garante que apenas os dados de 2020 sejam considerados. A resposta deve retornar os 10 principais diagnósticos com mais óbitos, por isso a configuração de top_n_global.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "death_cause_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T110708_gen042",
+        "query_number": 2,
+        "orchestrator_execution_time": 15.037034273147583
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN043",
+      "persona": "medico_pesquisador",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "medium",
+      "question": "Quais diagnosticos principais concentraram mais obitos hospitalares em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "obitos_por_diagnostico_principal",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "diagnostico": "Infecc p/coronavirus NE",
+            "total_obitos": 246345
+          },
+          {
+            "diagnostico": "Septicemia NE",
+            "total_obitos": 41717
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_obitos": 26622
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_obitos": 22248
+          },
+          {
+            "diagnostico": "Insuf respirat aguda",
+            "total_obitos": 15278
+          }
+        ],
+        "actual_preview": [
+          {
+            "diagnostico": "Infecc p/coronavirus NE",
+            "total_obitos": 246345
+          },
+          {
+            "diagnostico": "Septicemia NE",
+            "total_obitos": 41717
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_obitos": 26622
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_obitos": 22248
+          },
+          {
+            "diagnostico": "Insuf respirat aguda",
+            "total_obitos": 15278
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os principais diagnósticos que concentraram mais óbitos hospitalares em 2021 foram:\n\n1. Infecc p/coronavirus NE: 246.345 óbitos\n2. Septicemia NE: 41.717 óbitos\n3. Acid vasc cerebr NE como hemorrag isquemico: 26.622 óbitos\n4. Pneumonia NE: 22.248 óbitos\n5. Insuf respirat aguda: 15.278 óbitos\n6. Insuf cardiaca congestiva: 12.924 óbitos\n7. Infecc bacter NE: 10.422 óbitos\n8. Infarto agudo do miocardio NE: 10.406 óbitos\n9. Outr septicemias espec: 9.920 óbitos\n10. Insuf cardiaca NE: 9.304 óbitos",
+      "sql": "SELECT c.\"DESCRICAO\" AS diagnostico, COUNT(*) AS total_obitos FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND i.\"MORTE\" = true AND c.\"DESCRICAO\" IS NOT NULL AND TRIM(c.\"DESCRICAO\") <> '' AND c.\"DESCRICAO\" NOT IN ('Nao preenchido', 'Nao informado') GROUP BY c.\"DESCRICAO\" ORDER BY total_obitos DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 20.387402772903442
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 1.0557708740234375
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.8880605697631836
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.16991138458251953
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.00035953521728515625,
+          "table_discovery": 1.0558421611785889,
+          "schema_analysis": 0.0007424354553222656,
+          "reasoning": 10.481260299682617,
+          "sql_generation": 0.0007398128509521484,
+          "sql_validation": 3.888087272644043,
+          "sql_execution": 0.1700143814086914,
+          "completed": 4.788691520690918
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais diagnosticos principais concentraram mais obitos hospitalares em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_mortes",
+              "expression_type": "count",
+              "required_filters": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "diagnostico",
+              "source": "cid.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "desfecho",
+              "values": [
+                "MORTE = true"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "diagnostico"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "diagnostico"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "death_cause_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.46760715095264804,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "death_cause_requires_diag_princ_with_morte"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os diagnósticos que causaram mais óbitos hospitalares em 2021. A métrica total_mortes conta o número de mortes, filtrando apenas os casos onde a morte ocorreu. A dimensão 'diagnostico' é utilizada para agrupar os resultados por descrição do CID. Os filtros garantem que apenas os dados de 2021 e os casos de óbito sejam considerados. A resposta deve retornar os 10 principais diagnósticos com mais óbitos, o que justifica o uso de um ranking global.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "death_cause_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T110708_gen043",
+        "query_number": 3,
+        "orchestrator_execution_time": 20.399473428726196
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN044",
+      "persona": "medico_pesquisador",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "medium",
+      "question": "Quais diagnosticos principais concentraram mais obitos hospitalares em 2022?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "obitos_por_diagnostico_principal",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "diagnostico": "Septicemia NE",
+            "total_obitos": 52293
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_obitos": 30551
+          },
+          {
+            "diagnostico": "Infecc p/coronavirus NE",
+            "total_obitos": 29428
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_obitos": 27609
+          },
+          {
+            "diagnostico": "Insuf cardiaca congestiva",
+            "total_obitos": 13718
+          }
+        ],
+        "actual_preview": [
+          {
+            "diagnostico": "Septicemia NE",
+            "total_obitos": 52293
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_obitos": 30551
+          },
+          {
+            "diagnostico": "Infecc p/coronavirus NE",
+            "total_obitos": 29428
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_obitos": 27609
+          },
+          {
+            "diagnostico": "Insuf cardiaca congestiva",
+            "total_obitos": 13718
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os principais diagnósticos que concentraram mais óbitos hospitalares em 2022 foram:\n\n1. Septicemia NE: 52.293 óbitos\n2. Pneumonia NE: 30.551 óbitos\n3. Infecc p/coronavirus NE: 29.428 óbitos\n4. Acid vasc cerebr NE como hemorrag isquemico: 27.609 óbitos\n5. Insuf cardiaca congestiva: 13.718 óbitos\n6. Insuf respirat aguda: 12.905 óbitos\n7. Outr septicemias espec: 12.341 óbitos\n8. Infecc bacter NE: 11.628 óbitos\n9. Infarto agudo do miocardio NE: 10.726 óbitos\n10. Pneumonia bacter NE: 10.582 óbitos",
+      "sql": "SELECT c.\"DESCRICAO\" AS diagnostico, COUNT(*) AS total_obitos FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2022 AND i.\"MORTE\" = true AND c.\"DESCRICAO\" IS NOT NULL AND TRIM(c.\"DESCRICAO\") <> '' AND c.\"DESCRICAO\" NOT IN ('Nao preenchido', 'Nao informado') GROUP BY c.\"DESCRICAO\" ORDER BY total_obitos DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 14.236848592758179
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5486419200897217
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.1165032386779785
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.16403579711914062
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.00032901763916015625,
+          "table_discovery": 0.5487067699432373,
+          "schema_analysis": 0.000732421875,
+          "reasoning": 7.5170392990112305,
+          "sql_generation": 0.0007526874542236328,
+          "sql_validation": 2.1165313720703125,
+          "sql_execution": 0.16414403915405273,
+          "completed": 3.886843681335449
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais diagnosticos principais concentraram mais obitos hospitalares em 2022?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_mortes",
+              "expression_type": "count",
+              "required_filters": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "diagnostico",
+              "source": "cid.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2022"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "desfecho",
+              "values": [
+                "MORTE = true"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "diagnostico"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "diagnostico"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "death_cause_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.47505266719998834,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "death_cause_requires_diag_princ_with_morte"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os diagnósticos que causaram mais óbitos hospitalares em 2022. A métrica total_mortes conta o número de mortes, filtrando apenas os casos onde a morte ocorreu. A dimensão 'diagnostico' é utilizada para agrupar os resultados por descrição do CID. Os filtros garantem que apenas os dados de 2022 e os casos de óbito sejam considerados. A resposta deve retornar os 10 principais diagnósticos com mais óbitos, o que justifica o uso de um ranking global.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "death_cause_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T110708_gen044",
+        "query_number": 4,
+        "orchestrator_execution_time": 14.251147985458374
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN045",
+      "persona": "medico_pesquisador",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "medium",
+      "question": "Quais diagnosticos principais concentraram mais obitos hospitalares em 2023?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "obitos_por_diagnostico_principal",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "diagnostico": "Septicemia NE",
+            "total_obitos": 52774
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_obitos": 29291
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_obitos": 25506
+          },
+          {
+            "diagnostico": "Outr septicemias espec",
+            "total_obitos": 12427
+          },
+          {
+            "diagnostico": "Infecc bacter NE",
+            "total_obitos": 12363
+          }
+        ],
+        "actual_preview": [
+          {
+            "diagnostico": "Septicemia NE",
+            "total_obitos": 52774
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_obitos": 29291
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_obitos": 25506
+          },
+          {
+            "diagnostico": "Outr septicemias espec",
+            "total_obitos": 12427
+          },
+          {
+            "diagnostico": "Infecc bacter NE",
+            "total_obitos": 12363
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os principais diagnósticos que concentraram mais óbitos hospitalares em 2023 foram:\n\n1. Septicemia NE: 52.774 óbitos\n2. Pneumonia NE: 29.291 óbitos\n3. Acid vasc cerebr NE como hemorrag isquemico: 25.506 óbitos\n4. Outr septicemias espec: 12.427 óbitos\n5. Infecc bacter NE: 12.363 óbitos\n6. Insuf cardiaca congestiva: 12.099 óbitos\n7. Insuf respirat aguda: 10.927 óbitos\n8. Pneumonia bacter NE: 9.822 óbitos\n9. Insuf cardiaca NE: 9.587 óbitos\n10. Infarto agudo do miocardio NE: 9.547 óbitos",
+      "sql": "SELECT c.\"DESCRICAO\" AS diagnostico, COUNT(*) AS total_obitos FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2023 AND i.\"MORTE\" = true AND c.\"DESCRICAO\" IS NOT NULL AND TRIM(c.\"DESCRICAO\") <> '' AND c.\"DESCRICAO\" NOT IN ('Nao preenchido', 'Nao informado') GROUP BY c.\"DESCRICAO\" ORDER BY total_obitos DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 15.480695962905884
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.4855160713195801
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.796051502227783
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.16329598426818848
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.0002884864807128906,
+          "table_discovery": 0.4855802059173584,
+          "schema_analysis": 0.000736236572265625,
+          "reasoning": 7.636630058288574,
+          "sql_generation": 0.0008084774017333984,
+          "sql_validation": 3.796079635620117,
+          "sql_execution": 0.16339802742004395,
+          "completed": 3.3955416679382324
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais diagnosticos principais concentraram mais obitos hospitalares em 2023?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_mortes",
+              "expression_type": "count",
+              "required_filters": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "diagnostico",
+              "source": "cid.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2023"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "desfecho",
+              "values": [
+                "MORTE = true"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "diagnostico"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "diagnostico"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "death_cause_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.4754090540452063,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "death_cause_requires_diag_princ_with_morte"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os diagnósticos que causaram mais óbitos hospitalares em 2023. A métrica total_mortes conta o número de mortes, filtrando apenas os casos onde a morte ocorreu. A dimensão 'diagnostico' é utilizada para agrupar os resultados por descrição do CID. O filtro de ano é aplicado para restringir os dados a 2023. A resposta deve retornar os 10 principais diagnósticos com mais óbitos, portanto, a forma de resposta é definida como top_n_global.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "death_cause_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T110708_gen045",
+        "query_number": 5,
+        "orchestrator_execution_time": 15.493130207061768
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    }
+  ]
+}

@@ -117,9 +117,16 @@ def test_plan_gate_routes_unsupported_schema_metric_to_clarification():
         ("Qual foi a cobertura vacinal dos internados?", "vacina"),
         ("Qual antibiótico foi usado em pneumonia?", "medicacao"),
         ("Qual o resultado dos exames laboratoriais?", "exames_laboratoriais"),
+        ("Existe relação entre resultado de hemograma e mortalidade hospitalar?", "exames_laboratoriais"),
         ("Compare internações em área rural e urbana em 2021.", "area_rural_urbana"),
+        ("Quais bairros de residencia aparecem com mais internacoes?", "bairro"),
+        ("Compare renda individual do paciente entre MA e RS.", "renda_individual"),
+        ("Existe relação entre plano de saude do paciente e mortalidade?", "plano_saude"),
         ("Qual a sobrevida após alta?", "sobrevida_pos_alta"),
         ("Qual a reinternação em 30 dias?", "reinternacao"),
+        ("Qual o tempo ate consulta ambulatorial depois da internacao?", "consulta_ambulatorial"),
+        ("Qual foi o resultado de imagem dos pacientes com pneumonia?", "resultado_imagem"),
+        ("Compare pressao arterial na admissao entre MA e RS.", "sinais_vitais"),
     ],
 )
 def test_plan_gate_routes_new_unavailable_schema_metrics_to_clarification(
@@ -136,6 +143,39 @@ def test_plan_gate_routes_new_unavailable_schema_metrics_to_clarification(
     assert "schema atual" in (new_state["clarification_question"] or "")
     assert new_state["generated_sql"] is None
     assert metric_name in new_state["response_metadata"]["unsupported_schema_metric"]
+
+
+def test_plan_gate_uses_user_facing_label_for_medication_unavailable_message():
+    state = create_initial_messages_state(
+        "Qual antibiotico foi usado em pneumonia?",
+        session_id="test-unsupported-medication-label",
+    )
+
+    new_state = plan_gate_node(state)
+
+    assert new_state["needs_clarification"] is True
+    assert "medicamentos" in (new_state["clarification_question"] or "")
+    assert "medicacao" not in (new_state["clarification_question"] or "")
+    assert new_state["response_metadata"]["unsupported_schema_metric"] == ["medicacao"]
+
+
+def test_plan_gate_explains_longitudinal_followup_unavailable_context():
+    cases = [
+        ("Qual a readmissao em 30 dias?", "identificador longitudinal", "reinternacao"),
+        ("Qual a sobrevida um ano apos alta?", "seguimento", "sobrevida_pos_alta"),
+    ]
+
+    for question, expected_term, metric_name in cases:
+        state = create_initial_messages_state(
+            question,
+            session_id=f"test-unsupported-context-{metric_name}",
+        )
+
+        new_state = plan_gate_node(state)
+
+        assert new_state["needs_clarification"] is True
+        assert expected_term in (new_state["clarification_question"] or "")
+        assert new_state["response_metadata"]["unsupported_schema_metric"] == [metric_name]
 
 
 def test_route_after_multi_verifier_and_repair():

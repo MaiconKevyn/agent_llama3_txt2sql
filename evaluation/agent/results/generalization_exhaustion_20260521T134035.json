@@ -1,0 +1,2650 @@
+{
+  "run_id": "generalization_exhaustion_20260521T134035",
+  "created_at": "2026-05-21T13:42:34",
+  "dry_run": false,
+  "summary": {
+    "status_counts": {
+      "failed": 4,
+      "passed": 4
+    },
+    "root_cause_counts": {
+      "response_grounding_error": 4
+    },
+    "severity_counts": {
+      "medium": 4
+    }
+  },
+  "items": [
+    {
+      "id": "GEN153",
+      "persona": "gestor_hospitalar",
+      "category": "uti",
+      "difficulty": "medium",
+      "question": "Qual foi o gasto total de UTI em 2020?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "custo_uti_total",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:valor_uti_total"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "valor_uti_total": 4883777990.78
+          }
+        ],
+        "actual_preview": [
+          {
+            "total_gasto_uti": 4883777990.780133
+          }
+        ]
+      },
+      "success": true,
+      "response": "O gasto total de UTI em 2020 foi de R$ 4.883.777.990,78.",
+      "sql": "SELECT SUM(\"VAL_UTI\") AS total_gasto_uti FROM internacoes WHERE \"VAL_UTI\" > 0 AND EXTRACT(YEAR FROM \"DT_INTER\") = 2020;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 20.621516227722168
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 1.2551183700561523
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.4228112697601318
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.1814744472503662
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "schema_context_length": 20360,
+        "latency_by_component": {
+          "query_classification": 0.0003418922424316406,
+          "table_discovery": 1.2552006244659424,
+          "schema_analysis": 0.0009152889251708984,
+          "reasoning": 4.854629278182983,
+          "sql_generation": 12.0391845703125,
+          "sql_validation": 1.4228458404541016,
+          "sql_execution": 0.18158197402954102,
+          "completed": 0.8472945690155029
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi o gasto total de UTI em 2020?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "unknown",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "valor_total_uti",
+              "expression_type": "sum",
+              "required_filters": [
+                "SUM(VAL_UTI)",
+                "VAL_UTI > 0"
+              ]
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "uti",
+              "values": [
+                "VAL_UTI > 0"
+              ],
+              "operator": "semantic"
+            },
+            {
+              "field": "VAL_UTI",
+              "values": [
+                "0"
+              ],
+              "operator": "not_equal"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.3753446934396403,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A métrica 'gasto_total_uti' foi escolhida para calcular o total de gastos em UTI, utilizando a soma dos valores de UTI, considerando apenas os registros onde o valor é maior que zero. O filtro de ano foi aplicado para restringir os dados a 2020, e uma condição de anti-registro foi adicionada para garantir que apenas valores válidos sejam considerados.",
+          "conflicts": [
+            "unknown_metric_ignored: gasto_total_uti",
+            "metric_mismatch: heuristic=['valor_total_uti']; llm=['gasto_total_uti']"
+          ],
+          "accepted_llm_fields": [
+            "metrics",
+            "filters"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query calculates the total UTI expenditure by summing the \"VAL_UTI\" column for records where \"VAL_UTI\" is greater than 0 and the admission date is in the year 2020.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T134035_gen153",
+        "query_number": 1,
+        "orchestrator_execution_time": 20.63695979118347
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN154",
+      "persona": "gestor_hospitalar",
+      "category": "uti",
+      "difficulty": "medium",
+      "question": "Qual foi o gasto total de UTI em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "custo_uti_total",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:valor_uti_total"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "valor_uti_total": 8560962991.32
+          }
+        ],
+        "actual_preview": [
+          {
+            "gasto_total_uti": 8560962991.322143
+          }
+        ]
+      },
+      "success": true,
+      "response": "O gasto total de UTI em 2021 foi de R$ 8.560.962.991,32.",
+      "sql": "SELECT SUM(\"VAL_UTI\") AS gasto_total_uti FROM internacoes WHERE \"VAL_UTI\" > 0 AND EXTRACT(YEAR FROM \"DT_INTER\") = 2021;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 23.284939527511597
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 1.5748028755187988
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.451380968093872
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.08419609069824219
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "especialidade",
+          "procedimentos"
+        ],
+        "schema_context_length": 22310,
+        "latency_by_component": {
+          "query_classification": 0.0003330707550048828,
+          "table_discovery": 1.574866533279419,
+          "schema_analysis": 0.0007026195526123047,
+          "reasoning": 5.18462610244751,
+          "sql_generation": 12.775514364242554,
+          "sql_validation": 1.4514105319976807,
+          "sql_execution": 0.08430051803588867,
+          "completed": 2.2113330364227295
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi o gasto total de UTI em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "unknown",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "valor_total_uti",
+              "expression_type": "sum",
+              "required_filters": [
+                "SUM(VAL_UTI)",
+                "VAL_UTI > 0"
+              ]
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "uti",
+              "values": [
+                "VAL_UTI > 0"
+              ],
+              "operator": "semantic"
+            },
+            {
+              "field": "VAL_UTI",
+              "values": [
+                "> 0"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "especialidade",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.37360941486011323,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "especialidade"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "especialidade",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "especialidade",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A métrica 'gasto_total_uti' foi escolhida para calcular o total de gastos em UTI, utilizando a soma dos valores de VAL_UTI, considerando apenas os registros onde VAL_UTI é maior que zero. O filtro de ano foi aplicado para restringir os dados a 2021.",
+          "conflicts": [
+            "unknown_metric_ignored: gasto_total_uti",
+            "metric_mismatch: heuristic=['valor_total_uti']; llm=['gasto_total_uti']"
+          ],
+          "accepted_llm_fields": [
+            "metrics",
+            "filters"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query calculates the total UTI expenditure by summing the \"VAL_UTI\" column, ensuring that only records with a positive UTI cost are included. It filters the records to include only those from the year 2021 using the \"DT_INTER\" date column.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T134035_gen154",
+        "query_number": 2,
+        "orchestrator_execution_time": 23.297358751296997
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN155",
+      "persona": "gestor_hospitalar",
+      "category": "uti",
+      "difficulty": "medium",
+      "question": "Qual foi o gasto total de UTI em 2022?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "custo_uti_total",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:valor_uti_total"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "valor_uti_total": 5259671458.31
+          }
+        ],
+        "actual_preview": [
+          {
+            "gasto_total_uti": 5259671458.310064
+          }
+        ]
+      },
+      "success": true,
+      "response": "O gasto total de UTI em 2022 foi de R$ 5.259.671.458,31.",
+      "sql": "SELECT SUM(\"VAL_UTI\") AS gasto_total_uti FROM internacoes WHERE \"VAL_UTI\" > 0 AND EXTRACT(YEAR FROM \"DT_INTER\") = 2022;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 12.326530456542969
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.6340270042419434
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.7556140422821045
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.0859062671661377
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "especialidade",
+          "procedimentos"
+        ],
+        "schema_context_length": 22310,
+        "latency_by_component": {
+          "query_classification": 0.00025582313537597656,
+          "table_discovery": 0.6340920925140381,
+          "schema_analysis": 0.0007719993591308594,
+          "reasoning": 4.649792909622192,
+          "sql_generation": 3.1642098426818848,
+          "sql_validation": 2.755648374557495,
+          "sql_execution": 0.08600807189941406,
+          "completed": 1.0341687202453613
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi o gasto total de UTI em 2022?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "unknown",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "valor_total_uti",
+              "expression_type": "sum",
+              "required_filters": [
+                "SUM(VAL_UTI)",
+                "VAL_UTI > 0"
+              ]
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2022"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "uti",
+              "values": [
+                "VAL_UTI > 0"
+              ],
+              "operator": "semantic"
+            },
+            {
+              "field": "VAL_UTI",
+              "values": [
+                "> 0"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "especialidade",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.388182788651334,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "especialidade"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "especialidade",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "especialidade",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A métrica 'gasto_total_uti' foi escolhida para calcular o total de gastos em UTI, utilizando a soma dos valores onde VAL_UTI é maior que zero. O filtro de ano foi aplicado para restringir os dados a 2022. Não foram necessárias dimensões adicionais, pois o objetivo é obter um valor total.",
+          "conflicts": [
+            "unknown_metric_ignored: gasto_total_uti",
+            "metric_mismatch: heuristic=['valor_total_uti']; llm=['gasto_total_uti']"
+          ],
+          "accepted_llm_fields": [
+            "metrics",
+            "filters"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query calculates the total UTI expenditure by summing the \"VAL_UTI\" column, ensuring that only records with a positive UTI cost are included. It filters the records to include only those from the year 2022 using the \"DT_INTER\" date column.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T134035_gen155",
+        "query_number": 3,
+        "orchestrator_execution_time": 12.338712930679321
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN156",
+      "persona": "gestor_hospitalar",
+      "category": "uti",
+      "difficulty": "medium",
+      "question": "Qual foi o gasto total de UTI em 2023?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "custo_uti_total",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:valor_uti_total"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "valor_uti_total": 4790050980.76
+          }
+        ],
+        "actual_preview": [
+          {
+            "total_gasto_uti": 4790050980.759971
+          }
+        ]
+      },
+      "success": true,
+      "response": "O gasto total de UTI em 2023 foi de R$ 4.790.050.980,76.",
+      "sql": "SELECT SUM(\"VAL_UTI\") AS total_gasto_uti FROM internacoes WHERE \"VAL_UTI\" > 0 AND EXTRACT(YEAR FROM \"DT_INTER\") = 2023;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 21.462151288986206
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.4442615509033203
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.563910961151123
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.08409762382507324
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "schema_context_length": 20360,
+        "latency_by_component": {
+          "query_classification": 0.0003502368927001953,
+          "table_discovery": 0.44432663917541504,
+          "schema_analysis": 0.0006194114685058594,
+          "reasoning": 5.154505014419556,
+          "sql_generation": 13.244962215423584,
+          "sql_validation": 1.563939094543457,
+          "sql_execution": 0.0841972827911377,
+          "completed": 0.9676365852355957
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi o gasto total de UTI em 2023?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "unknown",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "valor_total_uti",
+              "expression_type": "sum",
+              "required_filters": [
+                "SUM(VAL_UTI)",
+                "VAL_UTI > 0"
+              ]
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2023"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "uti",
+              "values": [
+                "VAL_UTI > 0"
+              ],
+              "operator": "semantic"
+            },
+            {
+              "field": "VAL_UTI",
+              "values": [
+                "0"
+              ],
+              "operator": "not_equal"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.3875671694170044,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A métrica 'gasto_total_uti' foi escolhida para calcular a soma dos valores de UTI, considerando apenas os registros onde o valor é maior que zero. O filtro para o ano de 2023 foi aplicado para restringir os dados ao ano desejado. Não foram necessárias dimensões adicionais, pois o objetivo é obter um valor total único.",
+          "conflicts": [
+            "unknown_metric_ignored: gasto_total_uti",
+            "metric_mismatch: heuristic=['valor_total_uti']; llm=['gasto_total_uti']"
+          ],
+          "accepted_llm_fields": [
+            "metrics",
+            "filters"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query calculates the total UTI expenditure by summing the \"VAL_UTI\" column, ensuring that only records with a positive UTI cost are included. It filters the records to include only those from the year 2023 using the \"DT_INTER\" date column.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T134035_gen156",
+        "query_number": 4,
+        "orchestrator_execution_time": 21.47441029548645
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN157",
+      "persona": "pessoa_comum",
+      "category": "perfil_demografico",
+      "difficulty": "medium",
+      "question": "Como as internacoes se distribuem por sexo em 2020?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "perfil_sexo",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "sexo": "Feminino",
+            "total_internacoes": 6125168
+          },
+          {
+            "sexo": "Masculino",
+            "total_internacoes": 4406675
+          }
+        ],
+        "actual_preview": [
+          {
+            "sexo": "Feminino",
+            "total_internacoes": 6125168
+          },
+          {
+            "sexo": "Masculino",
+            "total_internacoes": 4406675
+          }
+        ]
+      },
+      "success": true,
+      "response": "Em 2020, foram registradas 6.125.168 internações femininas e 4.406.675 internações masculinas.",
+      "sql": "SELECT s.\"DESCRICAO\" AS sexo, COUNT(*) AS total_internacoes FROM internacoes i JOIN sexo s ON i.\"SEXO\" = s.\"SEXO\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 GROUP BY s.\"DESCRICAO\" ORDER BY total_internacoes DESC;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 9.270108699798584
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5588006973266602
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.065345287322998
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.14597797393798828
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes"
+        ],
+        "schema_context_length": 11400,
+        "latency_by_component": {
+          "query_classification": 0.00030040740966796875,
+          "table_discovery": 0.5588655471801758,
+          "schema_analysis": 0.0007631778717041016,
+          "reasoning": 5.379015922546387,
+          "sql_generation": 0.0007317066192626953,
+          "sql_validation": 2.0653727054595947,
+          "sql_execution": 0.14607977867126465,
+          "completed": 1.1168112754821777
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Como as internacoes se distribuem por sexo em 2020?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "distribution",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "sexo",
+              "source": "internacoes.SEXO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "sexo"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "sexo"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "sex_label_output_required"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.37624047963572443,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "sexo",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes"
+        ],
+        "semantic_constraints": [
+          "sex_label_output_required"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A distribuição de internações por sexo em 2020 requer a contagem total de internações agrupadas pelo sexo. O filtro aplicado é para o ano de 2020, e a resposta deve ser apresentada em uma tabela agrupada por sexo, com uma linha para cada grupo.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "sex_label_output_required"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T134035_gen157",
+        "query_number": 5,
+        "orchestrator_execution_time": 9.283188819885254
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN158",
+      "persona": "pessoa_comum",
+      "category": "perfil_demografico",
+      "difficulty": "medium",
+      "question": "Como as internacoes se distribuem por sexo em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "perfil_sexo",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "sexo": "Feminino",
+            "total_internacoes": 6623736
+          },
+          {
+            "sexo": "Masculino",
+            "total_internacoes": 4942792
+          }
+        ],
+        "actual_preview": [
+          {
+            "sexo": "Feminino",
+            "total_internacoes": 6623736
+          },
+          {
+            "sexo": "Masculino",
+            "total_internacoes": 4942792
+          }
+        ]
+      },
+      "success": true,
+      "response": "Em 2021, foram registradas 6.623.736 internações femininas e 4.942.792 internações masculinas.",
+      "sql": "SELECT s.\"DESCRICAO\" AS sexo, COUNT(*) AS total_internacoes FROM internacoes i JOIN sexo s ON i.\"SEXO\" = s.\"SEXO\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 GROUP BY s.\"DESCRICAO\" ORDER BY total_internacoes DESC;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 9.61725378036499
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5066237449645996
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.215480089187622
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.12145805358886719
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes"
+        ],
+        "schema_context_length": 11400,
+        "latency_by_component": {
+          "query_classification": 0.00031757354736328125,
+          "table_discovery": 0.5066874027252197,
+          "schema_analysis": 0.00046753883361816406,
+          "reasoning": 4.454724550247192,
+          "sql_generation": 0.0005209445953369141,
+          "sql_validation": 3.215510129928589,
+          "sql_execution": 0.12155938148498535,
+          "completed": 1.315615177154541
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Como as internacoes se distribuem por sexo em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "distribution",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "sexo",
+              "source": "internacoes.SEXO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "sexo"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "sexo"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "sex_label_output_required"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.38600151012489486,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "sexo",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes"
+        ],
+        "semantic_constraints": [
+          "sex_label_output_required"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A distribuição das internações por sexo em 2021 requer a contagem total de internações agrupadas pelo sexo. O filtro aplicado é para o ano de 2021, e a resposta deve ser apresentada em uma tabela agrupada por sexo, com uma linha para cada grupo.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "sex_label_output_required"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T134035_gen158",
+        "query_number": 6,
+        "orchestrator_execution_time": 9.630295991897583
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN159",
+      "persona": "pessoa_comum",
+      "category": "perfil_demografico",
+      "difficulty": "medium",
+      "question": "Como as internacoes se distribuem por sexo em 2022?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "perfil_sexo",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "sexo": "Feminino",
+            "total_internacoes": 7105583
+          },
+          {
+            "sexo": "Masculino",
+            "total_internacoes": 5258306
+          }
+        ],
+        "actual_preview": [
+          {
+            "sexo": "Feminino",
+            "total_internacoes": 7105583
+          },
+          {
+            "sexo": "Masculino",
+            "total_internacoes": 5258306
+          }
+        ]
+      },
+      "success": true,
+      "response": "Em 2022, foram registradas 7.105.583 internações femininas e 5.258.306 internações masculinas.",
+      "sql": "SELECT s.\"DESCRICAO\" AS sexo, COUNT(*) AS total_internacoes FROM internacoes i JOIN sexo s ON i.\"SEXO\" = s.\"SEXO\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2022 GROUP BY s.\"DESCRICAO\" ORDER BY total_internacoes DESC;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 8.5787193775177
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5154187679290771
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.319448471069336
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.12618136405944824
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes"
+        ],
+        "schema_context_length": 11400,
+        "latency_by_component": {
+          "query_classification": 0.0003230571746826172,
+          "table_discovery": 0.5154836177825928,
+          "schema_analysis": 0.0008349418640136719,
+          "reasoning": 4.442067623138428,
+          "sql_generation": 0.0007836818695068359,
+          "sql_validation": 2.3194758892059326,
+          "sql_execution": 0.1262814998626709,
+          "completed": 1.1718544960021973
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Como as internacoes se distribuem por sexo em 2022?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "distribution",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "sexo",
+              "source": "internacoes.SEXO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2022"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "sexo"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "sexo"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "sex_label_output_required"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.3818307348860171,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "sexo",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes"
+        ],
+        "semantic_constraints": [
+          "sex_label_output_required"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A distribuição das internações por sexo em 2022 requer a contagem total de internações agrupadas pelo sexo. O filtro de ano é aplicado para restringir os dados a 2022, e a saída deve incluir o sexo como dimensão de agrupamento.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "sex_label_output_required"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T134035_gen159",
+        "query_number": 7,
+        "orchestrator_execution_time": 8.59099531173706
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN160",
+      "persona": "pessoa_comum",
+      "category": "perfil_demografico",
+      "difficulty": "medium",
+      "question": "Como as internacoes se distribuem por sexo em 2023?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "perfil_sexo",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "sexo": "Feminino",
+            "total_internacoes": 7154011
+          },
+          {
+            "sexo": "Masculino",
+            "total_internacoes": 5296713
+          }
+        ],
+        "actual_preview": [
+          {
+            "sexo": "Feminino",
+            "total_internacoes": 7154011
+          },
+          {
+            "sexo": "Masculino",
+            "total_internacoes": 5296713
+          }
+        ]
+      },
+      "success": true,
+      "response": "Em 2023, foram registradas 7.154.011 internações femininas e 5.296.713 internações masculinas.",
+      "sql": "SELECT s.\"DESCRICAO\" AS sexo, COUNT(*) AS total_internacoes FROM internacoes i JOIN sexo s ON i.\"SEXO\" = s.\"SEXO\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2023 GROUP BY s.\"DESCRICAO\" ORDER BY total_internacoes DESC;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 8.330124616622925
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.48751020431518555
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.6454699039459229
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.12822389602661133
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes"
+        ],
+        "schema_context_length": 11400,
+        "latency_by_component": {
+          "query_classification": 0.00027298927307128906,
+          "table_discovery": 0.4875752925872803,
+          "schema_analysis": 0.0005202293395996094,
+          "reasoning": 4.944041013717651,
+          "sql_generation": 0.0008037090301513672,
+          "sql_validation": 1.6454980373382568,
+          "sql_execution": 0.12832331657409668,
+          "completed": 1.1215403079986572
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Como as internacoes se distribuem por sexo em 2023?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "distribution",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "sexo",
+              "source": "internacoes.SEXO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2023"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "sexo"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "sexo"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "sex_label_output_required"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.3799134743320786,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "sexo",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes"
+        ],
+        "semantic_constraints": [
+          "sex_label_output_required"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A distribuição das internações por sexo em 2023 requer a contagem total de internações agrupadas pelo sexo. O filtro aplicado é para o ano de 2023, e a resposta deve ser apresentada em uma tabela agrupada por sexo, com uma linha para cada grupo.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "sex_label_output_required"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T134035_gen160",
+        "query_number": 8,
+        "orchestrator_execution_time": 8.342206716537476
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    }
+  ]
+}

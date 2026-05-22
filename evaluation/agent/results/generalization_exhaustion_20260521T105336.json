@@ -1,0 +1,3750 @@
+{
+  "run_id": "generalization_exhaustion_20260521T105336",
+  "created_at": "2026-05-21T10:57:20",
+  "dry_run": false,
+  "summary": {
+    "status_counts": {
+      "passed": 10
+    },
+    "root_cause_counts": {},
+    "severity_counts": {}
+  },
+  "items": [
+    {
+      "id": "GEN031",
+      "persona": "medico_pesquisador",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "medium",
+      "question": "Como a mortalidade hospitalar variou por sexo em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "mortalidade_por_sexo",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "sexo": "Masculino",
+            "total_internacoes": 4942792,
+            "total_obitos": 413032,
+            "taxa_mortalidade_percentual": 8.36
+          },
+          {
+            "sexo": "Feminino",
+            "total_internacoes": 6623736,
+            "total_obitos": 352296,
+            "taxa_mortalidade_percentual": 5.32
+          }
+        ],
+        "actual_preview": [
+          {
+            "sexo": "Masculino",
+            "total_internacoes": 4942792,
+            "total_mortes": 413032,
+            "taxa_mortalidade": 8.36
+          },
+          {
+            "sexo": "Feminino",
+            "total_internacoes": 6623736,
+            "total_mortes": 352296,
+            "taxa_mortalidade": 5.32
+          }
+        ]
+      },
+      "success": true,
+      "response": "Em 2021, a mortalidade hospitalar foi de 8,36% para homens, com 4.942.792 internações e 413.032 mortes. Para mulheres, a taxa foi de 5,32%, com 6.623.736 internações e 352.296 mortes.",
+      "sql": "SELECT CASE WHEN \"SEXO\" = 1 THEN 'Masculino' WHEN \"SEXO\" = 3 THEN 'Feminino' END AS sexo, COUNT(*) AS total_internacoes, SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes, ROUND(SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade FROM internacoes WHERE EXTRACT(YEAR FROM \"DT_INTER\") = 2021 GROUP BY \"SEXO\";",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.6428571428571429,
+          "phases_completed": 9,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 4,
+          "retry_count": 0,
+          "error_count": 1,
+          "execution_time": 34.05970072746277
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_repair",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 1.3926408290863037
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.4959418773651123
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 4.2792863845825195
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.2510354518890381
+          }
+        ],
+        "message_count": 16,
+        "retry_count": 0,
+        "error_count": 1,
+        "tables_used": [
+          "internacoes",
+          "hospital"
+        ],
+        "schema_context_length": 14359,
+        "latency_by_component": {
+          "query_classification": 0.00030517578125,
+          "table_discovery": 1.392730712890625,
+          "schema_analysis": 0.0009024143218994141,
+          "reasoning": 7.762650966644287,
+          "sql_generation": 4.517439365386963,
+          "sql_validation": 4.27931809425354,
+          "sql_repair": 7.812009334564209,
+          "sql_execution": 0.2511439323425293,
+          "completed": 4.530331134796143
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Como a mortalidade hospitalar variou por sexo em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": [
+            "unknown"
+          ]
+        },
+        "semantic_plan": {
+          "intent": "rate",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "sexo",
+              "source": "internacoes.SEXO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "sexo"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "sexo"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope",
+            "sex_label_output_required"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "hospital"
+        ],
+        "llamaindex_confidence": 0.3899858001696194,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "socioeconomico",
+          "hospital"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "hospital"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "hospital"
+        ],
+        "semantic_constraints": [
+          "rate_denominator_must_preserve_full_scope",
+          "sex_label_output_required"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.95,
+          "reasoning": "A intenção é calcular a taxa de mortalidade hospitalar, segmentada por sexo, para o ano de 2021. A métrica 'taxa_mortalidade' foi escolhida para refletir a proporção de mortes em relação ao total de internações, mantendo o escopo do denominador. A dimensão 'sexo' permite a análise por gênero, e o filtro por ano garante que os dados sejam restritos a 2021. A estrutura da resposta é uma tabela agrupada por sexo, com uma linha para cada grupo.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query calculates the mortality rate by sex for hospitalizations in 2021. It counts total hospitalizations and deaths, using the year extracted from the admission date to filter for 2021. The mortality rate is computed as the percentage of deaths over total hospitalizations, grouped by sex.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope",
+            "sex_label_output_required"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "semantic_error": {
+          "category": "unknown",
+          "severity": "error",
+          "message": "SEMANTIC PLAN ERROR: Sex-grouped output must return human-readable labels ('Masculino'/'Feminino' or 'homens'/'mulheres') via CASE or the sexo lookup, not raw SEXO codes."
+        },
+        "repair_attempts": [
+          {
+            "previous_sql": "SELECT sexo, COUNT(*) AS total_internacoes, SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes, ROUND(SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade FROM internacoes WHERE EXTRACT(YEAR FROM \"DT_INTER\") = 2021 GROUP BY \"SEXO\";",
+            "error_message": "SEMANTIC PLAN ERROR: Sex-grouped output must return human-readable labels ('Masculino'/'Feminino' or 'homens'/'mulheres') via CASE or the sexo lookup, not raw SEXO codes.",
+            "semantic_category": "unknown",
+            "semantic_guidance": "Erro semantico desconhecido",
+            "violated_contract": {},
+            "repair_strategy": "llm_guided",
+            "timestamp": "2026-05-21T10:54:04.784314",
+            "post_repair_validation": {
+              "passed": true,
+              "message": null
+            }
+          }
+        ],
+        "semantic_repair": {
+          "original_category": "unknown",
+          "original_message": "SEMANTIC PLAN ERROR: Sex-grouped output must return human-readable labels ('Masculino'/'Feminino' or 'homens'/'mulheres') via CASE or the sexo lookup, not raw SEXO codes.",
+          "guidance_title": "Erro semantico desconhecido",
+          "strategy": "llm_guided",
+          "post_repair_category": null,
+          "post_repair_message": null,
+          "validation_passed_after_repair": true
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T105336_gen031",
+        "query_number": 1,
+        "orchestrator_execution_time": 34.07875442504883
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN032",
+      "persona": "medico_pesquisador",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "medium",
+      "question": "Como a mortalidade hospitalar variou por sexo em 2022?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "mortalidade_por_sexo",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "sexo": "Masculino",
+            "total_internacoes": 5258306,
+            "total_obitos": 317655,
+            "taxa_mortalidade_percentual": 6.04
+          },
+          {
+            "sexo": "Feminino",
+            "total_internacoes": 7105583,
+            "total_obitos": 281041,
+            "taxa_mortalidade_percentual": 3.96
+          }
+        ],
+        "actual_preview": [
+          {
+            "sexo": "Masculino",
+            "total_internacoes": 5258306,
+            "total_mortes": 317655,
+            "taxa_mortalidade": 6.04
+          },
+          {
+            "sexo": "Feminino",
+            "total_internacoes": 7105583,
+            "total_mortes": 281041,
+            "taxa_mortalidade": 3.96
+          }
+        ]
+      },
+      "success": true,
+      "response": "Em 2022, a mortalidade hospitalar por sexo foi a seguinte: entre os homens, houve 5.258.306 internações e 317.655 mortes, resultando em uma taxa de mortalidade de 6,04%. Entre as mulheres, foram 7.105.583 internações e 281.041 mortes, com uma taxa de mortalidade de 3,96%.",
+      "sql": "SELECT CASE WHEN i.\"SEXO\" = 1 THEN 'Masculino' WHEN i.\"SEXO\" = 3 THEN 'Feminino' END AS sexo, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade FROM internacoes i WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2022 GROUP BY i.\"SEXO\";",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 24.35862159729004
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.4789848327636719
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 4.318723917007446
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.10325169563293457
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "hospital"
+        ],
+        "schema_context_length": 14359,
+        "latency_by_component": {
+          "query_classification": 0.0002627372741699219,
+          "table_discovery": 0.4790494441986084,
+          "schema_analysis": 0.000621795654296875,
+          "reasoning": 7.700547456741333,
+          "sql_generation": 9.669494152069092,
+          "sql_validation": 4.318759202957153,
+          "sql_execution": 0.10336017608642578,
+          "completed": 2.084774971008301
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Como a mortalidade hospitalar variou por sexo em 2022?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "rate",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "sexo",
+              "source": "internacoes.SEXO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2022"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "sexo"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "sexo"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope",
+            "sex_label_output_required"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "hospital"
+        ],
+        "llamaindex_confidence": 0.4077861600843741,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "socioeconomico",
+          "hospital"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "hospital"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "hospital"
+        ],
+        "semantic_constraints": [
+          "rate_denominator_must_preserve_full_scope",
+          "sex_label_output_required"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é calcular a taxa de mortalidade hospitalar, segmentada por sexo, para o ano de 2022. A métrica 'taxa_mortalidade' foi escolhida para refletir a proporção de mortes em relação ao total de internações, mantendo o escopo do denominador. A dimensão 'sexo' permite a análise por gênero, e o filtro por ano garante que os dados sejam restritos a 2022. A estrutura da resposta é uma tabela agrupada por sexo, com uma linha para cada grupo.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query calculates the hospital mortality rate by sex for the year 2022. It groups the data by the \"SEXO\" column, counts total hospitalizations, sums the deaths, and computes the mortality rate. The year filter is applied using the \"DT_INTER\" date column to ensure only records from 2022 are included.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope",
+            "sex_label_output_required"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T105336_gen032",
+        "query_number": 2,
+        "orchestrator_execution_time": 24.370579481124878
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN033",
+      "persona": "medico_pesquisador",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "hard",
+      "question": "Qual foi a mortalidade por faixa etaria em 2018?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "mortalidade_faixa_etaria",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "faixa_etaria": "00-17",
+            "total_internacoes": 2152019,
+            "total_obitos": 27536,
+            "taxa_mortalidade_percentual": 1.28
+          },
+          {
+            "faixa_etaria": "18-39",
+            "total_internacoes": 4183964,
+            "total_obitos": 33294,
+            "taxa_mortalidade_percentual": 0.8
+          },
+          {
+            "faixa_etaria": "40-59",
+            "total_internacoes": 2475423,
+            "total_obitos": 101002,
+            "taxa_mortalidade_percentual": 4.08
+          },
+          {
+            "faixa_etaria": "60-79",
+            "total_internacoes": 2344459,
+            "total_obitos": 216066,
+            "taxa_mortalidade_percentual": 9.22
+          },
+          {
+            "faixa_etaria": "80+",
+            "total_internacoes": 701783,
+            "total_obitos": 126734,
+            "taxa_mortalidade_percentual": 18.06
+          }
+        ],
+        "actual_preview": [
+          {
+            "faixa_etaria": "00-17",
+            "total_internacoes": 2152019,
+            "total_obitos": 27536,
+            "taxa_mortalidade_percentual": 1.28
+          },
+          {
+            "faixa_etaria": "18-39",
+            "total_internacoes": 4183964,
+            "total_obitos": 33294,
+            "taxa_mortalidade_percentual": 0.8
+          },
+          {
+            "faixa_etaria": "40-59",
+            "total_internacoes": 2475423,
+            "total_obitos": 101002,
+            "taxa_mortalidade_percentual": 4.08
+          },
+          {
+            "faixa_etaria": "60-79",
+            "total_internacoes": 2344459,
+            "total_obitos": 216066,
+            "taxa_mortalidade_percentual": 9.22
+          },
+          {
+            "faixa_etaria": "80+",
+            "total_internacoes": 701783,
+            "total_obitos": 126734,
+            "taxa_mortalidade_percentual": 18.06
+          }
+        ]
+      },
+      "success": true,
+      "response": "Em 2018, a mortalidade por faixa etária foi a seguinte:\n\n1. Faixa etária 00-17: 27.536 óbitos, taxa de mortalidade de 1,28%.\n2. Faixa etária 18-39: 33.294 óbitos, taxa de mortalidade de 0,80%.\n3. Faixa etária 40-59: 101.002 óbitos, taxa de mortalidade de 4,08%.\n4. Faixa etária 60-79: 216.066 óbitos, taxa de mortalidade de 9,22%.\n5. Faixa etária 80+: 126.734 óbitos, taxa de mortalidade de 18,06%.",
+      "sql": "SELECT CASE WHEN i.\"IDADE\" < 18 THEN '00-17' WHEN i.\"IDADE\" BETWEEN 18 AND 39 THEN '18-39' WHEN i.\"IDADE\" BETWEEN 40 AND 59 THEN '40-59' WHEN i.\"IDADE\" BETWEEN 60 AND 79 THEN '60-79' ELSE '80+' END AS faixa_etaria, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_obitos, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2) AS taxa_mortalidade_percentual FROM internacoes i WHERE i.\"IDADE\" IS NOT NULL AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2018 GROUP BY faixa_etaria ORDER BY faixa_etaria;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 16.13527274131775
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5173108577728271
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 4.528671026229858
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.18760228157043457
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.0002751350402832031,
+          "table_discovery": 0.5173778533935547,
+          "schema_analysis": 0.0006854534149169922,
+          "reasoning": 7.928890705108643,
+          "sql_generation": 0.0006241798400878906,
+          "sql_validation": 4.528698921203613,
+          "sql_execution": 0.18770217895507812,
+          "completed": 2.9687657356262207
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi a mortalidade por faixa etaria em 2018?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "rate",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "faixa_etaria",
+              "source": "internacoes.IDADE",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2018"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "faixa_etaria"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "faixa_etaria"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.3794143620724928,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "socioeconomico",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.95,
+          "reasoning": "A intenção é calcular a taxa de mortalidade por faixa etária em 2018, utilizando a tabela de internações. A métrica 'taxa_mortalidade' foi escolhida para refletir a proporção de mortes em relação ao total de internações. A dimensão 'faixa_etaria' permite agrupar os resultados por faixa etária. O filtro para o ano de 2018 é necessário para restringir os dados ao período desejado. A estrutura da resposta é definida para retornar uma linha por grupo de faixa etária.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T105336_gen033",
+        "query_number": 3,
+        "orchestrator_execution_time": 16.148919343948364
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN034",
+      "persona": "medico_pesquisador",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "hard",
+      "question": "Qual foi a mortalidade por faixa etaria em 2019?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "mortalidade_faixa_etaria",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "faixa_etaria": "00-17",
+            "total_internacoes": 2170240,
+            "total_obitos": 26963,
+            "taxa_mortalidade_percentual": 1.24
+          },
+          {
+            "faixa_etaria": "18-39",
+            "total_internacoes": 4215726,
+            "total_obitos": 33162,
+            "taxa_mortalidade_percentual": 0.79
+          },
+          {
+            "faixa_etaria": "40-59",
+            "total_internacoes": 2580265,
+            "total_obitos": 102437,
+            "taxa_mortalidade_percentual": 3.97
+          },
+          {
+            "faixa_etaria": "60-79",
+            "total_internacoes": 2477384,
+            "total_obitos": 226696,
+            "taxa_mortalidade_percentual": 9.15
+          },
+          {
+            "faixa_etaria": "80+",
+            "total_internacoes": 741822,
+            "total_obitos": 134792,
+            "taxa_mortalidade_percentual": 18.17
+          }
+        ],
+        "actual_preview": [
+          {
+            "faixa_etaria": "00-17",
+            "total_internacoes": 2170240,
+            "total_obitos": 26963,
+            "taxa_mortalidade_percentual": 1.24
+          },
+          {
+            "faixa_etaria": "18-39",
+            "total_internacoes": 4215726,
+            "total_obitos": 33162,
+            "taxa_mortalidade_percentual": 0.79
+          },
+          {
+            "faixa_etaria": "40-59",
+            "total_internacoes": 2580265,
+            "total_obitos": 102437,
+            "taxa_mortalidade_percentual": 3.97
+          },
+          {
+            "faixa_etaria": "60-79",
+            "total_internacoes": 2477384,
+            "total_obitos": 226696,
+            "taxa_mortalidade_percentual": 9.15
+          },
+          {
+            "faixa_etaria": "80+",
+            "total_internacoes": 741822,
+            "total_obitos": 134792,
+            "taxa_mortalidade_percentual": 18.17
+          }
+        ]
+      },
+      "success": true,
+      "response": "A mortalidade por faixa etária em 2019 foi a seguinte:\n\n1. 00-17 anos: 2.963 óbitos, taxa de mortalidade de 1,24%.\n2. 18-39 anos: 33.162 óbitos, taxa de mortalidade de 0,79%.\n3. 40-59 anos: 102.437 óbitos, taxa de mortalidade de 3,97%.\n4. 60-79 anos: 226.696 óbitos, taxa de mortalidade de 9,15%.\n5. 80 anos ou mais: 134.792 óbitos, taxa de mortalidade de 18,17%.",
+      "sql": "SELECT CASE WHEN i.\"IDADE\" < 18 THEN '00-17' WHEN i.\"IDADE\" BETWEEN 18 AND 39 THEN '18-39' WHEN i.\"IDADE\" BETWEEN 40 AND 59 THEN '40-59' WHEN i.\"IDADE\" BETWEEN 60 AND 79 THEN '60-79' ELSE '80+' END AS faixa_etaria, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_obitos, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2) AS taxa_mortalidade_percentual FROM internacoes i WHERE i.\"IDADE\" IS NOT NULL AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2019 GROUP BY faixa_etaria ORDER BY faixa_etaria;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 16.56057119369507
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5189428329467773
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 4.82400369644165
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.16175436973571777
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.0003559589385986328,
+          "table_discovery": 0.5190179347991943,
+          "schema_analysis": 0.000774383544921875,
+          "reasoning": 8.624218463897705,
+          "sql_generation": 0.0007491111755371094,
+          "sql_validation": 4.824031829833984,
+          "sql_execution": 0.16185593605041504,
+          "completed": 2.428089141845703
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi a mortalidade por faixa etaria em 2019?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "rate",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "faixa_etaria",
+              "source": "internacoes.IDADE",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2019"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "faixa_etaria"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "faixa_etaria"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.3807325481661478,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "socioeconomico",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é calcular a taxa de mortalidade por faixa etária em 2019, utilizando a tabela de internações. A métrica 'taxa_mortalidade' foi escolhida para refletir a proporção de mortes em relação ao total de internações. A dimensão 'faixa_etaria' permite agrupar os resultados por faixa etária. O filtro para o ano de 2019 é necessário para restringir os dados ao período desejado. A estrutura da resposta é definida como uma tabela agrupada, com uma linha por faixa etária.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T105336_gen034",
+        "query_number": 4,
+        "orchestrator_execution_time": 16.57434582710266
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN035",
+      "persona": "medico_pesquisador",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "hard",
+      "question": "Qual foi a mortalidade por faixa etaria em 2020?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "mortalidade_faixa_etaria",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "faixa_etaria": "00-17",
+            "total_internacoes": 1561536,
+            "total_obitos": 24687,
+            "taxa_mortalidade_percentual": 1.58
+          },
+          {
+            "faixa_etaria": "18-39",
+            "total_internacoes": 3794162,
+            "total_obitos": 37866,
+            "taxa_mortalidade_percentual": 1.0
+          },
+          {
+            "faixa_etaria": "40-59",
+            "total_internacoes": 2272349,
+            "total_obitos": 123065,
+            "taxa_mortalidade_percentual": 5.42
+          },
+          {
+            "faixa_etaria": "60-79",
+            "total_internacoes": 2228997,
+            "total_obitos": 272092,
+            "taxa_mortalidade_percentual": 12.21
+          },
+          {
+            "faixa_etaria": "80+",
+            "total_internacoes": 674799,
+            "total_obitos": 148026,
+            "taxa_mortalidade_percentual": 21.94
+          }
+        ],
+        "actual_preview": [
+          {
+            "faixa_etaria": "00-17",
+            "total_internacoes": 1561536,
+            "total_obitos": 24687,
+            "taxa_mortalidade_percentual": 1.58
+          },
+          {
+            "faixa_etaria": "18-39",
+            "total_internacoes": 3794162,
+            "total_obitos": 37866,
+            "taxa_mortalidade_percentual": 1.0
+          },
+          {
+            "faixa_etaria": "40-59",
+            "total_internacoes": 2272349,
+            "total_obitos": 123065,
+            "taxa_mortalidade_percentual": 5.42
+          },
+          {
+            "faixa_etaria": "60-79",
+            "total_internacoes": 2228997,
+            "total_obitos": 272092,
+            "taxa_mortalidade_percentual": 12.21
+          },
+          {
+            "faixa_etaria": "80+",
+            "total_internacoes": 674799,
+            "total_obitos": 148026,
+            "taxa_mortalidade_percentual": 21.94
+          }
+        ]
+      },
+      "success": true,
+      "response": "A mortalidade por faixa etária em 2020 foi a seguinte:\n\n1. Faixa etária 00-17: 24.687 óbitos, taxa de mortalidade de 1,58%.\n2. Faixa etária 18-39: 37.866 óbitos, taxa de mortalidade de 1,0%.\n3. Faixa etária 40-59: 123.065 óbitos, taxa de mortalidade de 5,42%.\n4. Faixa etária 60-79: 272.092 óbitos, taxa de mortalidade de 12,21%.\n5. Faixa etária 80+: 148.026 óbitos, taxa de mortalidade de 21,94%.",
+      "sql": "SELECT CASE WHEN i.\"IDADE\" < 18 THEN '00-17' WHEN i.\"IDADE\" BETWEEN 18 AND 39 THEN '18-39' WHEN i.\"IDADE\" BETWEEN 40 AND 59 THEN '40-59' WHEN i.\"IDADE\" BETWEEN 60 AND 79 THEN '60-79' ELSE '80+' END AS faixa_etaria, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_obitos, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2) AS taxa_mortalidade_percentual FROM internacoes i WHERE i.\"IDADE\" IS NOT NULL AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 GROUP BY faixa_etaria ORDER BY faixa_etaria;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 15.151137113571167
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.4669075012207031
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.371506452560425
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.15062880516052246
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.000301361083984375,
+          "table_discovery": 0.46697211265563965,
+          "schema_analysis": 0.00044727325439453125,
+          "reasoning": 8.303906440734863,
+          "sql_generation": 0.0005004405975341797,
+          "sql_validation": 3.3715364933013916,
+          "sql_execution": 0.15073251724243164,
+          "completed": 2.8551290035247803
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi a mortalidade por faixa etaria em 2020?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "rate",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "faixa_etaria",
+              "source": "internacoes.IDADE",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "faixa_etaria"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "faixa_etaria"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.3753140445767098,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "socioeconomico",
+          "internacoes",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é calcular a taxa de mortalidade por faixa etária em 2020, utilizando a tabela de internações. A métrica 'taxa_mortalidade' foi escolhida para refletir a proporção de mortes em relação ao total de internações. A dimensão 'faixa_etaria' permite agrupar os resultados por faixa etária. O filtro para o ano de 2020 é necessário para restringir os dados ao período desejado. A estrutura da resposta é definida para retornar uma linha por grupo de faixa etária, sem necessidade de top N, e mantendo a integridade do denominador na taxa.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T105336_gen035",
+        "query_number": 5,
+        "orchestrator_execution_time": 15.171768188476562
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN036",
+      "persona": "medico_pesquisador",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "hard",
+      "question": "Qual foi a mortalidade por faixa etaria em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "mortalidade_faixa_etaria",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "faixa_etaria": "00-17",
+            "total_internacoes": 1730780,
+            "total_obitos": 25754,
+            "taxa_mortalidade_percentual": 1.49
+          },
+          {
+            "faixa_etaria": "18-39",
+            "total_internacoes": 3943524,
+            "total_obitos": 51661,
+            "taxa_mortalidade_percentual": 1.31
+          },
+          {
+            "faixa_etaria": "40-59",
+            "total_internacoes": 2648145,
+            "total_obitos": 182025,
+            "taxa_mortalidade_percentual": 6.87
+          },
+          {
+            "faixa_etaria": "60-79",
+            "total_internacoes": 2517260,
+            "total_obitos": 340144,
+            "taxa_mortalidade_percentual": 13.51
+          },
+          {
+            "faixa_etaria": "80+",
+            "total_internacoes": 726819,
+            "total_obitos": 165744,
+            "taxa_mortalidade_percentual": 22.8
+          }
+        ],
+        "actual_preview": [
+          {
+            "faixa_etaria": "00-17",
+            "total_internacoes": 1730780,
+            "total_obitos": 25754,
+            "taxa_mortalidade_percentual": 1.49
+          },
+          {
+            "faixa_etaria": "18-39",
+            "total_internacoes": 3943524,
+            "total_obitos": 51661,
+            "taxa_mortalidade_percentual": 1.31
+          },
+          {
+            "faixa_etaria": "40-59",
+            "total_internacoes": 2648145,
+            "total_obitos": 182025,
+            "taxa_mortalidade_percentual": 6.87
+          },
+          {
+            "faixa_etaria": "60-79",
+            "total_internacoes": 2517260,
+            "total_obitos": 340144,
+            "taxa_mortalidade_percentual": 13.51
+          },
+          {
+            "faixa_etaria": "80+",
+            "total_internacoes": 726819,
+            "total_obitos": 165744,
+            "taxa_mortalidade_percentual": 22.8
+          }
+        ]
+      },
+      "success": true,
+      "response": "A mortalidade por faixa etária em 2021 foi a seguinte:\n\n1. Faixa etária 00-17: 25.754 óbitos, taxa de mortalidade de 1,49%.\n2. Faixa etária 18-39: 51.661 óbitos, taxa de mortalidade de 1,31%.\n3. Faixa etária 40-59: 182.025 óbitos, taxa de mortalidade de 6,87%.\n4. Faixa etária 60-79: 340.144 óbitos, taxa de mortalidade de 13,51%.\n5. Faixa etária 80+: 165.744 óbitos, taxa de mortalidade de 22,8%.",
+      "sql": "SELECT CASE WHEN i.\"IDADE\" < 18 THEN '00-17' WHEN i.\"IDADE\" BETWEEN 18 AND 39 THEN '18-39' WHEN i.\"IDADE\" BETWEEN 40 AND 59 THEN '40-59' WHEN i.\"IDADE\" BETWEEN 60 AND 79 THEN '60-79' ELSE '80+' END AS faixa_etaria, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_obitos, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2) AS taxa_mortalidade_percentual FROM internacoes i WHERE i.\"IDADE\" IS NOT NULL AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 GROUP BY faixa_etaria ORDER BY faixa_etaria;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 26.08869242668152
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5249490737915039
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.351512908935547
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.1563739776611328
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.00025463104248046875,
+          "table_discovery": 0.5250153541564941,
+          "schema_analysis": 0.0006940364837646484,
+          "reasoning": 17.23593044281006,
+          "sql_generation": 0.0004634857177734375,
+          "sql_validation": 3.351607084274292,
+          "sql_execution": 0.15647244453430176,
+          "completed": 4.816757440567017
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi a mortalidade por faixa etaria em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "rate",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "faixa_etaria",
+              "source": "internacoes.IDADE",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "faixa_etaria"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "faixa_etaria"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.3742883636930463,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "socioeconomico",
+          "internacoes",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é calcular a taxa de mortalidade por faixa etária em 2021, utilizando a tabela de internações. A métrica 'taxa_mortalidade' foi escolhida para refletir a proporção de mortes em relação ao total de internações. A dimensão 'faixa_etaria' permite agrupar os resultados por faixa etária. O filtro para o ano de 2021 é necessário para restringir os dados ao período desejado. A estrutura da resposta é definida para retornar uma linha por grupo de faixa etária, sem necessidade de um top N específico.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T105336_gen036",
+        "query_number": 6,
+        "orchestrator_execution_time": 26.100717544555664
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN037",
+      "persona": "gestor_hospitalar",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "hard",
+      "question": "Quais hospitais tiveram maior taxa de mortalidade em 2020 considerando pelo menos 1000 internacoes?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "mortalidade_hospital_minimo",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "hospital": "FAF HOSPITAL DE CANCER III",
+            "total_internacoes": 3580,
+            "total_obitos": 1311,
+            "taxa_mortalidade_percentual": 36.62
+          },
+          {
+            "hospital": "SMS RIO HOSPITAL MUNICIPAL RONALDO GAZOLLA AP 33",
+            "total_internacoes": 7558,
+            "total_obitos": 2736,
+            "taxa_mortalidade_percentual": 36.2
+          },
+          {
+            "hospital": "HOSPITAL MUNICIPAL JORGE JULIO COSTA SANTOS",
+            "total_internacoes": 1181,
+            "total_obitos": 315,
+            "taxa_mortalidade_percentual": 26.67
+          },
+          {
+            "hospital": "HOSPITAL PEDRO I",
+            "total_internacoes": 2212,
+            "total_obitos": 525,
+            "taxa_mortalidade_percentual": 23.73
+          },
+          {
+            "hospital": "SECRETARIA ESTADUAL DE SAUDE DE MATO GROSSO",
+            "total_internacoes": 2011,
+            "total_obitos": 444,
+            "taxa_mortalidade_percentual": 22.08
+          }
+        ],
+        "actual_preview": [
+          {
+            "hospital": "FAF HOSPITAL DE CANCER III",
+            "total_internacoes": 3580,
+            "total_obitos": 1311,
+            "taxa_mortalidade_percentual": 36.62
+          },
+          {
+            "hospital": "SMS RIO HOSPITAL MUNICIPAL RONALDO GAZOLLA AP 33",
+            "total_internacoes": 7558,
+            "total_obitos": 2736,
+            "taxa_mortalidade_percentual": 36.2
+          },
+          {
+            "hospital": "HOSPITAL MUNICIPAL JORGE JULIO COSTA SANTOS",
+            "total_internacoes": 1181,
+            "total_obitos": 315,
+            "taxa_mortalidade_percentual": 26.67
+          },
+          {
+            "hospital": "HOSPITAL PEDRO I",
+            "total_internacoes": 2212,
+            "total_obitos": 525,
+            "taxa_mortalidade_percentual": 23.73
+          },
+          {
+            "hospital": "SECRETARIA ESTADUAL DE SAUDE DE MATO GROSSO",
+            "total_internacoes": 2011,
+            "total_obitos": 444,
+            "taxa_mortalidade_percentual": 22.08
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os hospitais com maior taxa de mortalidade em 2020, considerando pelo menos 1.000 internações, são:\n\n1. FAF HOSPITAL DE CANCER III: 3.580 internações, 1.311 óbitos, taxa de mortalidade de 36,62%.\n2. SMS RIO HOSPITAL MUNICIPAL RONALDO GAZOLLA AP 33: 7.558 internações, 2.736 óbitos, taxa de mortalidade de 36,20%.\n3. HOSPITAL MUNICIPAL JORGE JULIO COSTA SANTOS: 1.181 internações, 315 óbitos, taxa de mortalidade de 26,67%.\n4. HOSPITAL PEDRO I: 2.212 internações, 525 óbitos, taxa de mortalidade de 23,73%.\n5. SECRETARIA ESTADUAL DE SAUDE DE MATO GROSSO: 2.011 internações, 444 óbitos, taxa de mortalidade de 22,08%.\n6. HOSPITAL SAGRADO CORACAO DE JESUS: 2.096 internações, 461 óbitos, taxa de mortalidade de 21,99%.\n7. INSTITUTO DE DOENCAS TROPICAIS NATAN PORTELLA: 1.279 internações, 270 óbitos, taxa de mortalidade de 21,11%.\n8. SECRETARIA DA SAUDE DO ESTADO DO CEARA: 13.239 internações, 2.480 óbitos, taxa de mortalidade de 18,73%.\n9. FUNDACAO CENTRO DE CONTROLE DE ONCOLOGIA DO ESTADO DO AMAZON: 3.167 internações, 591 óbitos, taxa de mortalidade de 18,66%.\n10. HOSPITAL SANTA CATARINA SA: 1.977 internações, 365 óbitos, taxa de mortalidade de 18,46%.",
+      "sql": "SELECT h.\"NO_HOSPITAL\" AS hospital, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_obitos, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2) AS taxa_mortalidade_percentual FROM internacoes i JOIN hospital h ON i.\"CNES\" = h.\"CNES\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 GROUP BY h.\"NO_HOSPITAL\" HAVING COUNT(*) >= 1000 ORDER BY taxa_mortalidade_percentual DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 18.6893048286438
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5359761714935303
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.014828681945801
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.23382091522216797
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.00028967857360839844,
+          "table_discovery": 0.5360476970672607,
+          "schema_analysis": 0.0007488727569580078,
+          "reasoning": 6.041476488113403,
+          "sql_generation": 0.0007543563842773438,
+          "sql_validation": 3.0148675441741943,
+          "sql_execution": 0.23392319679260254,
+          "completed": 8.85827898979187
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais hospitais tiveram maior taxa de mortalidade em 2020 considerando pelo menos 1000 internacoes?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "hospital",
+              "source": "internacoes.CNES",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "minimum_group_count",
+              "values": [
+                "1000"
+              ],
+              "operator": ">"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "hospital"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "hospital"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.4782808064527355,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "socioeconomico",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os hospitais com base na taxa de mortalidade em 2020, considerando apenas aqueles com pelo menos 1000 internações. A métrica 'taxa_mortalidade' é calculada como a razão entre o número de mortes e o total de internações, preservando o escopo do denominador. As dimensões e filtros foram definidos para garantir que a análise se concentre nos hospitais relevantes e no ano especificado.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T105336_gen037",
+        "query_number": 7,
+        "orchestrator_execution_time": 18.703243732452393
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN038",
+      "persona": "gestor_hospitalar",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "hard",
+      "question": "Quais hospitais tiveram maior taxa de mortalidade em 2021 considerando pelo menos 1000 internacoes?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "mortalidade_hospital_minimo",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "hospital": "HOSPITAL SANTA CATARINA SA",
+            "total_internacoes": 1928,
+            "total_obitos": 930,
+            "taxa_mortalidade_percentual": 48.24
+          },
+          {
+            "hospital": "SMS RIO HOSPITAL MUNICIPAL RONALDO GAZOLLA AP 33",
+            "total_internacoes": 10542,
+            "total_obitos": 4312,
+            "taxa_mortalidade_percentual": 40.9
+          },
+          {
+            "hospital": "HOSPITAL PANAMERICANO LTDA",
+            "total_internacoes": 1661,
+            "total_obitos": 581,
+            "taxa_mortalidade_percentual": 34.98
+          },
+          {
+            "hospital": "FAF HOSPITAL DE CANCER III",
+            "total_internacoes": 3446,
+            "total_obitos": 1150,
+            "taxa_mortalidade_percentual": 33.37
+          },
+          {
+            "hospital": "SECRETARIA ESTADUAL DE SAUDE DE MATO GROSSO",
+            "total_internacoes": 3672,
+            "total_obitos": 1168,
+            "taxa_mortalidade_percentual": 31.81
+          }
+        ],
+        "actual_preview": [
+          {
+            "hospital": "HOSPITAL SANTA CATARINA SA",
+            "total_internacoes": 1928,
+            "total_obitos": 930,
+            "taxa_mortalidade_percentual": 48.24
+          },
+          {
+            "hospital": "SMS RIO HOSPITAL MUNICIPAL RONALDO GAZOLLA AP 33",
+            "total_internacoes": 10542,
+            "total_obitos": 4312,
+            "taxa_mortalidade_percentual": 40.9
+          },
+          {
+            "hospital": "HOSPITAL PANAMERICANO LTDA",
+            "total_internacoes": 1661,
+            "total_obitos": 581,
+            "taxa_mortalidade_percentual": 34.98
+          },
+          {
+            "hospital": "FAF HOSPITAL DE CANCER III",
+            "total_internacoes": 3446,
+            "total_obitos": 1150,
+            "taxa_mortalidade_percentual": 33.37
+          },
+          {
+            "hospital": "SECRETARIA ESTADUAL DE SAUDE DE MATO GROSSO",
+            "total_internacoes": 3672,
+            "total_obitos": 1168,
+            "taxa_mortalidade_percentual": 31.81
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os hospitais com maior taxa de mortalidade em 2021, considerando pelo menos 1.000 internações, são:\n\n1. HOSPITAL SANTA CATARINA SA: 48,24% (1.928 internações, 930 óbitos)\n2. SMS RIO HOSPITAL MUNICIPAL RONALDO GAZOLLA AP 33: 40,9% (10.542 internações, 4.312 óbitos)\n3. HOSPITAL PANAMERICANO LTDA: 34,98% (1.661 internações, 581 óbitos)\n4. FAF HOSPITAL DE CANCER III: 33,37% (3.446 internações, 1.150 óbitos)\n5. SECRETARIA ESTADUAL DE SAUDE DE MATO GROSSO: 31,81% (3.672 internações, 1.168 óbitos)\n6. HOSPITAL MUNICIPAL JORGE JULIO COSTA SANTOS: 29,2% (1.476 internações, 431 óbitos)\n7. HOSPITAL PEDRO I: 28,56% (3.481 internações, 994 óbitos)\n8. INSTITUTO DE DOENCAS TROPICAIS NATAN PORTELLA: 27,4% (1.613 internações, 442 óbitos)\n9. GASTRO SALUSTIANO HOSPITAL LTDA EPP: 26,74% (4.817 internações, 1.288 óbitos)\n10. HOSPITAL SAGRADO CORACAO DE JESUS: 24,88% (2.026 internações, 504 óbitos)",
+      "sql": "SELECT h.\"NO_HOSPITAL\" AS hospital, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_obitos, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2) AS taxa_mortalidade_percentual FROM internacoes i JOIN hospital h ON i.\"CNES\" = h.\"CNES\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 GROUP BY h.\"NO_HOSPITAL\" HAVING COUNT(*) >= 1000 ORDER BY taxa_mortalidade_percentual DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 18.22451639175415
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.49428582191467285
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.857689142227173
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.17730998992919922
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.00025916099548339844,
+          "table_discovery": 0.4943568706512451,
+          "schema_analysis": 0.00016736984252929688,
+          "reasoning": 6.550033807754517,
+          "sql_generation": 0.0007073879241943359,
+          "sql_validation": 2.857717514038086,
+          "sql_execution": 0.17741894721984863,
+          "completed": 8.140583038330078
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais hospitais tiveram maior taxa de mortalidade em 2021 considerando pelo menos 1000 internacoes?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "hospital",
+              "source": "internacoes.CNES",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "minimum_group_count",
+              "values": [
+                "1000"
+              ],
+              "operator": ">"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "hospital"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "hospital"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.47630467465332815,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "socioeconomico",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os hospitais com base na taxa de mortalidade em 2021, considerando apenas aqueles com pelo menos 1000 internações. A métrica 'taxa_mortalidade' é calculada como uma taxa, onde o numerador conta as mortes e o denominador considera todas as internações. As dimensões e filtros foram escolhidos para garantir que a análise se concentre nos hospitais relevantes e no ano especificado.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T105336_gen038",
+        "query_number": 8,
+        "orchestrator_execution_time": 18.2367103099823
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN039",
+      "persona": "gestor_hospitalar",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "hard",
+      "question": "Quais hospitais tiveram maior taxa de mortalidade em 2022 considerando pelo menos 1000 internacoes?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "mortalidade_hospital_minimo",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "hospital": "SMS RIO HOSPITAL MUNICIPAL RONALDO GAZOLLA AP 33",
+            "total_internacoes": 9045,
+            "total_obitos": 3498,
+            "taxa_mortalidade_percentual": 38.67
+          },
+          {
+            "hospital": "FAF HOSPITAL DE CANCER III",
+            "total_internacoes": 3001,
+            "total_obitos": 954,
+            "taxa_mortalidade_percentual": 31.79
+          },
+          {
+            "hospital": "ASSOCIACAO FEMININA DE PREVENCAO E COMBATE AO CANCER DE JF",
+            "total_internacoes": 1070,
+            "total_obitos": 268,
+            "taxa_mortalidade_percentual": 25.05
+          },
+          {
+            "hospital": "INSTITUTO DE DOENCAS TROPICAIS NATAN PORTELLA",
+            "total_internacoes": 1416,
+            "total_obitos": 340,
+            "taxa_mortalidade_percentual": 24.01
+          },
+          {
+            "hospital": "REAL SOCIEDADE PORTUGUESA DE BENEFICENCIA",
+            "total_internacoes": 1309,
+            "total_obitos": 266,
+            "taxa_mortalidade_percentual": 20.32
+          }
+        ],
+        "actual_preview": [
+          {
+            "hospital": "SMS RIO HOSPITAL MUNICIPAL RONALDO GAZOLLA AP 33",
+            "total_internacoes": 9045,
+            "total_obitos": 3498,
+            "taxa_mortalidade_percentual": 38.67
+          },
+          {
+            "hospital": "FAF HOSPITAL DE CANCER III",
+            "total_internacoes": 3001,
+            "total_obitos": 954,
+            "taxa_mortalidade_percentual": 31.79
+          },
+          {
+            "hospital": "ASSOCIACAO FEMININA DE PREVENCAO E COMBATE AO CANCER DE JF",
+            "total_internacoes": 1070,
+            "total_obitos": 268,
+            "taxa_mortalidade_percentual": 25.05
+          },
+          {
+            "hospital": "INSTITUTO DE DOENCAS TROPICAIS NATAN PORTELLA",
+            "total_internacoes": 1416,
+            "total_obitos": 340,
+            "taxa_mortalidade_percentual": 24.01
+          },
+          {
+            "hospital": "REAL SOCIEDADE PORTUGUESA DE BENEFICENCIA",
+            "total_internacoes": 1309,
+            "total_obitos": 266,
+            "taxa_mortalidade_percentual": 20.32
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os hospitais com maior taxa de mortalidade em 2022, considerando pelo menos 1.000 internações, são:\n\n1. SMS RIO HOSPITAL MUNICIPAL RONALDO GAZOLLA AP 33: 9.045 internações, 3.498 óbitos, taxa de mortalidade de 38,67%.\n2. FAF HOSPITAL DE CANCER III: 3.001 internações, 954 óbitos, taxa de mortalidade de 31,79%.\n3. ASSOCIAÇÃO FEMININA DE PREVENÇÃO E COMBATE AO CÂNCER DE JF: 1.070 internações, 268 óbitos, taxa de mortalidade de 25,05%.\n4. INSTITUTO DE DOENÇAS TROPICAIS NATAN PORTELLA: 1.416 internações, 340 óbitos, taxa de mortalidade de 24,01%.\n5. REAL SOCIEDADE PORTUGUESA DE BENEFICÊNCIA: 1.309 internações, 266 óbitos, taxa de mortalidade de 20,32%.\n6. IRMANDADE DE MISERICÓRDIA DE CAMPINAS: 1.571 internações, 315 óbitos, taxa de mortalidade de 20,05%.\n7. HOSPITAL SAGRADO CORAÇÃO DE JESUS: 3.095 internações, 614 óbitos, taxa de mortalidade de 19,84%.\n8. HOSPITAL MUNICIPAL JORGE JULIO COSTA SANTOS: 1.895 internações, 373 óbitos, taxa de mortalidade de 19,68%.\n9. INSTITUTO NACIONAL DE INFECTOLOGIA EVANDRO CHAGAS: 2.000 internações, 380 óbitos, taxa de mortalidade de 19,00%.\n10. HOSPITAL MUNICIPAL DR NELSON DE SÁ EARP: 1.062 internações, 194 óbitos, taxa de mortalidade de 18,27%.",
+      "sql": "SELECT h.\"NO_HOSPITAL\" AS hospital, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_obitos, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2) AS taxa_mortalidade_percentual FROM internacoes i JOIN hospital h ON i.\"CNES\" = h.\"CNES\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2022 GROUP BY h.\"NO_HOSPITAL\" HAVING COUNT(*) >= 1000 ORDER BY taxa_mortalidade_percentual DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 28.7978937625885
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 5.981691360473633
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.6254501342773438
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.18385863304138184
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.0002815723419189453,
+          "table_discovery": 5.981757402420044,
+          "schema_analysis": 0.0007393360137939453,
+          "reasoning": 8.124380350112915,
+          "sql_generation": 0.0007483959197998047,
+          "sql_validation": 3.625488042831421,
+          "sql_execution": 0.18396377563476562,
+          "completed": 10.878793001174927
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais hospitais tiveram maior taxa de mortalidade em 2022 considerando pelo menos 1000 internacoes?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "hospital",
+              "source": "internacoes.CNES",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2022"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "minimum_group_count",
+              "values": [
+                "1000"
+              ],
+              "operator": ">"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "hospital"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "hospital"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.48070964571505975,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "socioeconomico",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os hospitais com base na taxa de mortalidade em 2022, considerando apenas aqueles com pelo menos 1000 internações. A métrica 'taxa_mortalidade' é calculada como uma taxa, onde o numerador conta as mortes e o denominador considera todas as internações. As dimensões e filtros foram definidos para garantir que a análise seja feita corretamente dentro do escopo desejado.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T105336_gen039",
+        "query_number": 9,
+        "orchestrator_execution_time": 28.81081748008728
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN040",
+      "persona": "gestor_hospitalar",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "hard",
+      "question": "Quais hospitais tiveram maior taxa de mortalidade em 2023 considerando pelo menos 1000 internacoes?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "mortalidade_hospital_minimo",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "hospital": "ASSOCIACAO FEMININA DE PREVENCAO E COMBATE AO CANCER DE JF",
+            "total_internacoes": 1099,
+            "total_obitos": 315,
+            "taxa_mortalidade_percentual": 28.66
+          },
+          {
+            "hospital": "REAL SOCIEDADE PORTUGUESA DE BENEFICENCIA",
+            "total_internacoes": 1081,
+            "total_obitos": 264,
+            "taxa_mortalidade_percentual": 24.42
+          },
+          {
+            "hospital": "HOSPITAL SANTA CATARINA SA",
+            "total_internacoes": 1756,
+            "total_obitos": 373,
+            "taxa_mortalidade_percentual": 21.24
+          },
+          {
+            "hospital": "INSTITUTO DE DOENCAS TROPICAIS NATAN PORTELLA",
+            "total_internacoes": 1378,
+            "total_obitos": 288,
+            "taxa_mortalidade_percentual": 20.9
+          },
+          {
+            "hospital": "FUABC HOSPITAL DE ENSINO",
+            "total_internacoes": 2552,
+            "total_obitos": 511,
+            "taxa_mortalidade_percentual": 20.02
+          }
+        ],
+        "actual_preview": [
+          {
+            "hospital": "ASSOCIACAO FEMININA DE PREVENCAO E COMBATE AO CANCER DE JF",
+            "total_internacoes": 1099,
+            "total_obitos": 315,
+            "taxa_mortalidade_percentual": 28.66
+          },
+          {
+            "hospital": "REAL SOCIEDADE PORTUGUESA DE BENEFICENCIA",
+            "total_internacoes": 1081,
+            "total_obitos": 264,
+            "taxa_mortalidade_percentual": 24.42
+          },
+          {
+            "hospital": "HOSPITAL SANTA CATARINA SA",
+            "total_internacoes": 1756,
+            "total_obitos": 373,
+            "taxa_mortalidade_percentual": 21.24
+          },
+          {
+            "hospital": "INSTITUTO DE DOENCAS TROPICAIS NATAN PORTELLA",
+            "total_internacoes": 1378,
+            "total_obitos": 288,
+            "taxa_mortalidade_percentual": 20.9
+          },
+          {
+            "hospital": "FUABC HOSPITAL DE ENSINO",
+            "total_internacoes": 2552,
+            "total_obitos": 511,
+            "taxa_mortalidade_percentual": 20.02
+          }
+        ]
+      },
+      "success": true,
+      "response": "Os hospitais com maior taxa de mortalidade em 2023, considerando pelo menos 1.000 internações, são:\n\n1. ASSOCIAÇÃO FEMININA DE PREVENÇÃO E COMBATE AO CÂNCER DE JF: 28,66%\n2. REAL SOCIEDADE PORTUGUESA DE BENEFICÊNCIA: 24,42%\n3. HOSPITAL SANTA CATARINA SA: 21,24%\n4. INSTITUTO DE DOENÇAS TROPICAIS NATAN PORTELLA: 20,90%\n5. FUABC HOSPITAL DE ENSINO: 20,02%\n6. IRMANDADE DE MISERICÓRDIA DE CAMPINAS: 19,29%\n7. HOSPITAL SAGRADO CORAÇÃO DE JESUS: 17,70%\n8. HOSPITAL MUNICIPAL DR NELSON DE SA EARP: 15,89%\n9. HOSPITAL PEDRO I: 15,88%\n10. HOSPITAL MUNICIPAL JORGE JULIO COSTA SANTOS: 15,66%",
+      "sql": "SELECT h.\"NO_HOSPITAL\" AS hospital, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_obitos, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2) AS taxa_mortalidade_percentual FROM internacoes i JOIN hospital h ON i.\"CNES\" = h.\"CNES\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2023 GROUP BY h.\"NO_HOSPITAL\" HAVING COUNT(*) >= 1000 ORDER BY taxa_mortalidade_percentual DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 19.24345636367798
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.6770577430725098
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 4.633157730102539
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.181382417678833
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.00028634071350097656,
+          "table_discovery": 0.6771233081817627,
+          "schema_analysis": 0.0007336139678955078,
+          "reasoning": 9.401712417602539,
+          "sql_generation": 0.0007202625274658203,
+          "sql_validation": 4.633186340332031,
+          "sql_execution": 0.18148374557495117,
+          "completed": 4.3464882373809814
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais hospitais tiveram maior taxa de mortalidade em 2023 considerando pelo menos 1000 internacoes?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "hospital",
+              "source": "internacoes.CNES",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2023"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "minimum_group_count",
+              "values": [
+                "1000"
+              ],
+              "operator": ">"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "hospital"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "hospital"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.48548783087508035,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "socioeconomico",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os hospitais com base na taxa de mortalidade em 2023, considerando apenas aqueles com pelo menos 1000 internações. A métrica 'taxa_mortalidade' é calculada como uma taxa, onde o numerador conta as mortes e o denominador considera todas as internações. As dimensões e filtros foram definidos para garantir que a análise seja feita corretamente dentro do escopo especificado.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T105336_gen040",
+        "query_number": 10,
+        "orchestrator_execution_time": 19.255271911621094
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    }
+  ]
+}

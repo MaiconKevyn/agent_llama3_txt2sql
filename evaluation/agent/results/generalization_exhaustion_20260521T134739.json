@@ -1,0 +1,3754 @@
+{
+  "run_id": "generalization_exhaustion_20260521T134739",
+  "created_at": "2026-05-21T13:51:07",
+  "dry_run": false,
+  "summary": {
+    "status_counts": {
+      "passed": 5,
+      "failed": 5
+    },
+    "root_cause_counts": {
+      "response_grounding_error": 5
+    },
+    "severity_counts": {
+      "medium": 5
+    }
+  },
+  "items": [
+    {
+      "id": "GEN161",
+      "persona": "medico_pesquisador",
+      "category": "perfil_demografico",
+      "difficulty": "hard",
+      "question": "Qual foi a mortalidade por faixa etaria em 2019?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "perfil_faixa_etaria",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "faixa_etaria": "00-17",
+            "total_internacoes": 2170240,
+            "total_obitos": 26963,
+            "taxa_mortalidade_percentual": 1.24
+          },
+          {
+            "faixa_etaria": "18-39",
+            "total_internacoes": 4215726,
+            "total_obitos": 33162,
+            "taxa_mortalidade_percentual": 0.79
+          },
+          {
+            "faixa_etaria": "40-59",
+            "total_internacoes": 2580265,
+            "total_obitos": 102437,
+            "taxa_mortalidade_percentual": 3.97
+          },
+          {
+            "faixa_etaria": "60-79",
+            "total_internacoes": 2477384,
+            "total_obitos": 226696,
+            "taxa_mortalidade_percentual": 9.15
+          },
+          {
+            "faixa_etaria": "80+",
+            "total_internacoes": 741822,
+            "total_obitos": 134792,
+            "taxa_mortalidade_percentual": 18.17
+          }
+        ],
+        "actual_preview": [
+          {
+            "faixa_etaria": "00-17",
+            "total_internacoes": 2170240,
+            "total_obitos": 26963,
+            "taxa_mortalidade_percentual": 1.24
+          },
+          {
+            "faixa_etaria": "18-39",
+            "total_internacoes": 4215726,
+            "total_obitos": 33162,
+            "taxa_mortalidade_percentual": 0.79
+          },
+          {
+            "faixa_etaria": "40-59",
+            "total_internacoes": 2580265,
+            "total_obitos": 102437,
+            "taxa_mortalidade_percentual": 3.97
+          },
+          {
+            "faixa_etaria": "60-79",
+            "total_internacoes": 2477384,
+            "total_obitos": 226696,
+            "taxa_mortalidade_percentual": 9.15
+          },
+          {
+            "faixa_etaria": "80+",
+            "total_internacoes": 741822,
+            "total_obitos": 134792,
+            "taxa_mortalidade_percentual": 18.17
+          }
+        ]
+      },
+      "success": true,
+      "response": "A mortalidade por faixa etária em 2019 foi a seguinte:\n\n1. 00-17 anos: 2.963 óbitos, taxa de mortalidade de 1,24%.\n2. 18-39 anos: 33.162 óbitos, taxa de mortalidade de 0,79%.\n3. 40-59 anos: 102.437 óbitos, taxa de mortalidade de 3,97%.\n4. 60-79 anos: 226.696 óbitos, taxa de mortalidade de 9,15%.\n5. 80 anos ou mais: 134.792 óbitos, taxa de mortalidade de 18,17%.",
+      "sql": "SELECT CASE WHEN i.\"IDADE\" < 18 THEN '00-17' WHEN i.\"IDADE\" BETWEEN 18 AND 39 THEN '18-39' WHEN i.\"IDADE\" BETWEEN 40 AND 59 THEN '40-59' WHEN i.\"IDADE\" BETWEEN 60 AND 79 THEN '60-79' ELSE '80+' END AS faixa_etaria, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_obitos, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2) AS taxa_mortalidade_percentual FROM internacoes i WHERE i.\"IDADE\" IS NOT NULL AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2019 GROUP BY faixa_etaria ORDER BY faixa_etaria;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 13.839479684829712
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 1.3254623413085938
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 4.0589821338653564
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.3107430934906006
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.00026679039001464844,
+          "table_discovery": 1.3255441188812256,
+          "schema_analysis": 0.0008928775787353516,
+          "reasoning": 5.128343343734741,
+          "sql_generation": 0.0007367134094238281,
+          "sql_validation": 4.059014320373535,
+          "sql_execution": 0.31084680557250977,
+          "completed": 2.9949588775634766
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi a mortalidade por faixa etaria em 2019?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "rate",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "faixa_etaria",
+              "source": "internacoes.IDADE",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2019"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "faixa_etaria"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "faixa_etaria"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.3807325481661478,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "socioeconomico",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.95,
+          "reasoning": "A intenção é calcular a taxa de mortalidade por faixa etária em 2019, utilizando a tabela de internações. A métrica 'taxa_mortalidade' foi escolhida para refletir a proporção de mortes em relação ao total de internações. A dimensão 'faixa_etaria' permite agrupar os resultados por faixa etária. O filtro para o ano de 2019 é necessário para restringir os dados ao período desejado. A estrutura da resposta é definida como uma tabela agrupada, com uma linha por faixa etária.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T134739_gen161",
+        "query_number": 1,
+        "orchestrator_execution_time": 13.856728076934814
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN162",
+      "persona": "medico_pesquisador",
+      "category": "perfil_demografico",
+      "difficulty": "hard",
+      "question": "Qual foi a mortalidade por faixa etaria em 2020?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "perfil_faixa_etaria",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "faixa_etaria": "00-17",
+            "total_internacoes": 1561536,
+            "total_obitos": 24687,
+            "taxa_mortalidade_percentual": 1.58
+          },
+          {
+            "faixa_etaria": "18-39",
+            "total_internacoes": 3794162,
+            "total_obitos": 37866,
+            "taxa_mortalidade_percentual": 1.0
+          },
+          {
+            "faixa_etaria": "40-59",
+            "total_internacoes": 2272349,
+            "total_obitos": 123065,
+            "taxa_mortalidade_percentual": 5.42
+          },
+          {
+            "faixa_etaria": "60-79",
+            "total_internacoes": 2228997,
+            "total_obitos": 272092,
+            "taxa_mortalidade_percentual": 12.21
+          },
+          {
+            "faixa_etaria": "80+",
+            "total_internacoes": 674799,
+            "total_obitos": 148026,
+            "taxa_mortalidade_percentual": 21.94
+          }
+        ],
+        "actual_preview": [
+          {
+            "faixa_etaria": "00-17",
+            "total_internacoes": 1561536,
+            "total_obitos": 24687,
+            "taxa_mortalidade_percentual": 1.58
+          },
+          {
+            "faixa_etaria": "18-39",
+            "total_internacoes": 3794162,
+            "total_obitos": 37866,
+            "taxa_mortalidade_percentual": 1.0
+          },
+          {
+            "faixa_etaria": "40-59",
+            "total_internacoes": 2272349,
+            "total_obitos": 123065,
+            "taxa_mortalidade_percentual": 5.42
+          },
+          {
+            "faixa_etaria": "60-79",
+            "total_internacoes": 2228997,
+            "total_obitos": 272092,
+            "taxa_mortalidade_percentual": 12.21
+          },
+          {
+            "faixa_etaria": "80+",
+            "total_internacoes": 674799,
+            "total_obitos": 148026,
+            "taxa_mortalidade_percentual": 21.94
+          }
+        ]
+      },
+      "success": true,
+      "response": "A mortalidade por faixa etária em 2020 foi a seguinte:\n\n1. Faixa etária 00-17: 24.687 óbitos, taxa de mortalidade de 1,58%.\n2. Faixa etária 18-39: 37.866 óbitos, taxa de mortalidade de 1,0%.\n3. Faixa etária 40-59: 123.065 óbitos, taxa de mortalidade de 5,42%.\n4. Faixa etária 60-79: 272.092 óbitos, taxa de mortalidade de 12,21%.\n5. Faixa etária 80+: 148.026 óbitos, taxa de mortalidade de 21,94%.",
+      "sql": "SELECT CASE WHEN i.\"IDADE\" < 18 THEN '00-17' WHEN i.\"IDADE\" BETWEEN 18 AND 39 THEN '18-39' WHEN i.\"IDADE\" BETWEEN 40 AND 59 THEN '40-59' WHEN i.\"IDADE\" BETWEEN 60 AND 79 THEN '60-79' ELSE '80+' END AS faixa_etaria, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_obitos, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2) AS taxa_mortalidade_percentual FROM internacoes i WHERE i.\"IDADE\" IS NOT NULL AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 GROUP BY faixa_etaria ORDER BY faixa_etaria;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 18.65552520751953
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.4586799144744873
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 8.608482599258423
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.1486506462097168
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.0002799034118652344,
+          "table_discovery": 0.45874691009521484,
+          "schema_analysis": 0.0007359981536865234,
+          "reasoning": 6.285130262374878,
+          "sql_generation": 0.0006079673767089844,
+          "sql_validation": 8.608510732650757,
+          "sql_execution": 0.1487586498260498,
+          "completed": 3.1511659622192383
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi a mortalidade por faixa etaria em 2020?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "rate",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "faixa_etaria",
+              "source": "internacoes.IDADE",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "faixa_etaria"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "faixa_etaria"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.3753140445767098,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "socioeconomico",
+          "internacoes",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é calcular a taxa de mortalidade por faixa etária em 2020, utilizando a tabela de internações. A métrica 'taxa_mortalidade' foi escolhida para refletir a proporção de mortes em relação ao total de internações. A dimensão 'faixa_etaria' permite agrupar os resultados por faixa etária. O filtro para o ano de 2020 é necessário para restringir os dados ao período desejado. A estrutura da resposta é definida para retornar uma linha por grupo de faixa etária, sem necessidade de um escopo de top-N, já que o foco é a distribuição por faixa etária.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T134739_gen162",
+        "query_number": 2,
+        "orchestrator_execution_time": 18.667298793792725
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN163",
+      "persona": "medico_pesquisador",
+      "category": "perfil_demografico",
+      "difficulty": "hard",
+      "question": "Qual foi a mortalidade por faixa etaria em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "perfil_faixa_etaria",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "faixa_etaria": "00-17",
+            "total_internacoes": 1730780,
+            "total_obitos": 25754,
+            "taxa_mortalidade_percentual": 1.49
+          },
+          {
+            "faixa_etaria": "18-39",
+            "total_internacoes": 3943524,
+            "total_obitos": 51661,
+            "taxa_mortalidade_percentual": 1.31
+          },
+          {
+            "faixa_etaria": "40-59",
+            "total_internacoes": 2648145,
+            "total_obitos": 182025,
+            "taxa_mortalidade_percentual": 6.87
+          },
+          {
+            "faixa_etaria": "60-79",
+            "total_internacoes": 2517260,
+            "total_obitos": 340144,
+            "taxa_mortalidade_percentual": 13.51
+          },
+          {
+            "faixa_etaria": "80+",
+            "total_internacoes": 726819,
+            "total_obitos": 165744,
+            "taxa_mortalidade_percentual": 22.8
+          }
+        ],
+        "actual_preview": [
+          {
+            "faixa_etaria": "00-17",
+            "total_internacoes": 1730780,
+            "total_obitos": 25754,
+            "taxa_mortalidade_percentual": 1.49
+          },
+          {
+            "faixa_etaria": "18-39",
+            "total_internacoes": 3943524,
+            "total_obitos": 51661,
+            "taxa_mortalidade_percentual": 1.31
+          },
+          {
+            "faixa_etaria": "40-59",
+            "total_internacoes": 2648145,
+            "total_obitos": 182025,
+            "taxa_mortalidade_percentual": 6.87
+          },
+          {
+            "faixa_etaria": "60-79",
+            "total_internacoes": 2517260,
+            "total_obitos": 340144,
+            "taxa_mortalidade_percentual": 13.51
+          },
+          {
+            "faixa_etaria": "80+",
+            "total_internacoes": 726819,
+            "total_obitos": 165744,
+            "taxa_mortalidade_percentual": 22.8
+          }
+        ]
+      },
+      "success": true,
+      "response": "A mortalidade por faixa etária em 2021 foi a seguinte:\n\n1. Faixa etária 00-17: 25.754 óbitos (taxa de mortalidade: 1,49%)\n2. Faixa etária 18-39: 51.661 óbitos (taxa de mortalidade: 1,31%)\n3. Faixa etária 40-59: 182.025 óbitos (taxa de mortalidade: 6,87%)\n4. Faixa etária 60-79: 340.144 óbitos (taxa de mortalidade: 13,51%)\n5. Faixa etária 80+: 165.744 óbitos (taxa de mortalidade: 22,8%)",
+      "sql": "SELECT CASE WHEN i.\"IDADE\" < 18 THEN '00-17' WHEN i.\"IDADE\" BETWEEN 18 AND 39 THEN '18-39' WHEN i.\"IDADE\" BETWEEN 40 AND 59 THEN '40-59' WHEN i.\"IDADE\" BETWEEN 60 AND 79 THEN '60-79' ELSE '80+' END AS faixa_etaria, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_obitos, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2) AS taxa_mortalidade_percentual FROM internacoes i WHERE i.\"IDADE\" IS NOT NULL AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 GROUP BY faixa_etaria ORDER BY faixa_etaria;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 15.245183229446411
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.4908783435821533
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 4.159302234649658
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.15744256973266602
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.00031280517578125,
+          "table_discovery": 0.49094295501708984,
+          "schema_analysis": 0.0006325244903564453,
+          "reasoning": 7.088838815689087,
+          "sql_generation": 0.0005066394805908203,
+          "sql_validation": 4.159330368041992,
+          "sql_execution": 0.1575489044189453,
+          "completed": 3.3450570106506348
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi a mortalidade por faixa etaria em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "rate",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "faixa_etaria",
+              "source": "internacoes.IDADE",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "faixa_etaria"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "faixa_etaria"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.3742883636930463,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "socioeconomico",
+          "internacoes",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.95,
+          "reasoning": "A intenção é calcular a taxa de mortalidade por faixa etária em 2021, utilizando a tabela de internações. A métrica 'taxa_mortalidade' foi escolhida para refletir a proporção de mortes em relação ao total de internações, e a dimensão 'faixa_etaria' permite agrupar os resultados por faixa etária. O filtro para o ano de 2021 é necessário para restringir os dados ao período desejado.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T134739_gen163",
+        "query_number": 3,
+        "orchestrator_execution_time": 15.258805990219116
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN164",
+      "persona": "medico_pesquisador",
+      "category": "perfil_demografico",
+      "difficulty": "hard",
+      "question": "Qual foi a mortalidade por faixa etaria em 2022?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "perfil_faixa_etaria",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "faixa_etaria": "00-17",
+            "total_internacoes": 2072610,
+            "total_obitos": 26733,
+            "taxa_mortalidade_percentual": 1.29
+          },
+          {
+            "faixa_etaria": "18-39",
+            "total_internacoes": 3995908,
+            "total_obitos": 34711,
+            "taxa_mortalidade_percentual": 0.87
+          },
+          {
+            "faixa_etaria": "40-59",
+            "total_internacoes": 2710333,
+            "total_obitos": 110072,
+            "taxa_mortalidade_percentual": 4.06
+          },
+          {
+            "faixa_etaria": "60-79",
+            "total_internacoes": 2741868,
+            "total_obitos": 263861,
+            "taxa_mortalidade_percentual": 9.62
+          },
+          {
+            "faixa_etaria": "80+",
+            "total_internacoes": 843170,
+            "total_obitos": 163319,
+            "taxa_mortalidade_percentual": 19.37
+          }
+        ],
+        "actual_preview": [
+          {
+            "faixa_etaria": "00-17",
+            "total_internacoes": 2072610,
+            "total_obitos": 26733,
+            "taxa_mortalidade_percentual": 1.29
+          },
+          {
+            "faixa_etaria": "18-39",
+            "total_internacoes": 3995908,
+            "total_obitos": 34711,
+            "taxa_mortalidade_percentual": 0.87
+          },
+          {
+            "faixa_etaria": "40-59",
+            "total_internacoes": 2710333,
+            "total_obitos": 110072,
+            "taxa_mortalidade_percentual": 4.06
+          },
+          {
+            "faixa_etaria": "60-79",
+            "total_internacoes": 2741868,
+            "total_obitos": 263861,
+            "taxa_mortalidade_percentual": 9.62
+          },
+          {
+            "faixa_etaria": "80+",
+            "total_internacoes": 843170,
+            "total_obitos": 163319,
+            "taxa_mortalidade_percentual": 19.37
+          }
+        ]
+      },
+      "success": true,
+      "response": "A mortalidade por faixa etária em 2022 foi a seguinte:\n\n1. Faixa etária 00-17: 26.733 óbitos, taxa de mortalidade de 1,29%.\n2. Faixa etária 18-39: 34.711 óbitos, taxa de mortalidade de 0,87%.\n3. Faixa etária 40-59: 110.072 óbitos, taxa de mortalidade de 4,06%.\n4. Faixa etária 60-79: 263.861 óbitos, taxa de mortalidade de 9,62%.\n5. Faixa etária 80+: 163.319 óbitos, taxa de mortalidade de 19,37%.",
+      "sql": "SELECT CASE WHEN i.\"IDADE\" < 18 THEN '00-17' WHEN i.\"IDADE\" BETWEEN 18 AND 39 THEN '18-39' WHEN i.\"IDADE\" BETWEEN 40 AND 59 THEN '40-59' WHEN i.\"IDADE\" BETWEEN 60 AND 79 THEN '60-79' ELSE '80+' END AS faixa_etaria, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_obitos, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2) AS taxa_mortalidade_percentual FROM internacoes i WHERE i.\"IDADE\" IS NOT NULL AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2022 GROUP BY faixa_etaria ORDER BY faixa_etaria;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 14.007983922958374
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5189111232757568
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 5.043802738189697
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.1600172519683838
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.0002608299255371094,
+          "table_discovery": 0.5189762115478516,
+          "schema_analysis": 0.0006940364837646484,
+          "reasoning": 5.312106370925903,
+          "sql_generation": 0.0005300045013427734,
+          "sql_validation": 5.043830633163452,
+          "sql_execution": 0.16012120246887207,
+          "completed": 2.969899892807007
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi a mortalidade por faixa etaria em 2022?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "rate",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "faixa_etaria",
+              "source": "internacoes.IDADE",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2022"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "faixa_etaria"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "faixa_etaria"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.37773598832985766,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "socioeconomico",
+          "internacoes",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é calcular a taxa de mortalidade por faixa etária em 2022, utilizando a tabela de internações. A métrica 'taxa_mortalidade' foi escolhida para refletir a proporção de mortes em relação ao total de internações, e a dimensão 'faixa_etaria' permite agrupar os resultados por idade. O filtro para o ano de 2022 é necessário para restringir os dados ao período desejado.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T134739_gen164",
+        "query_number": 4,
+        "orchestrator_execution_time": 14.021000623703003
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN165",
+      "persona": "medico_pesquisador",
+      "category": "perfil_demografico",
+      "difficulty": "hard",
+      "question": "Qual foi a mortalidade por faixa etaria em 2023?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "perfil_faixa_etaria",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "faixa_etaria": "00-17",
+            "total_internacoes": 2091782,
+            "total_obitos": 24473,
+            "taxa_mortalidade_percentual": 1.17
+          },
+          {
+            "faixa_etaria": "18-39",
+            "total_internacoes": 3972285,
+            "total_obitos": 31049,
+            "taxa_mortalidade_percentual": 0.78
+          },
+          {
+            "faixa_etaria": "40-59",
+            "total_internacoes": 2795605,
+            "total_obitos": 101092,
+            "taxa_mortalidade_percentual": 3.62
+          },
+          {
+            "faixa_etaria": "60-79",
+            "total_internacoes": 2779115,
+            "total_obitos": 240609,
+            "taxa_mortalidade_percentual": 8.66
+          },
+          {
+            "faixa_etaria": "80+",
+            "total_internacoes": 811937,
+            "total_obitos": 144186,
+            "taxa_mortalidade_percentual": 17.76
+          }
+        ],
+        "actual_preview": [
+          {
+            "faixa_etaria": "00-17",
+            "total_internacoes": 2091782,
+            "total_obitos": 24473,
+            "taxa_mortalidade_percentual": 1.17
+          },
+          {
+            "faixa_etaria": "18-39",
+            "total_internacoes": 3972285,
+            "total_obitos": 31049,
+            "taxa_mortalidade_percentual": 0.78
+          },
+          {
+            "faixa_etaria": "40-59",
+            "total_internacoes": 2795605,
+            "total_obitos": 101092,
+            "taxa_mortalidade_percentual": 3.62
+          },
+          {
+            "faixa_etaria": "60-79",
+            "total_internacoes": 2779115,
+            "total_obitos": 240609,
+            "taxa_mortalidade_percentual": 8.66
+          },
+          {
+            "faixa_etaria": "80+",
+            "total_internacoes": 811937,
+            "total_obitos": 144186,
+            "taxa_mortalidade_percentual": 17.76
+          }
+        ]
+      },
+      "success": true,
+      "response": "A mortalidade por faixa etária em 2023 foi a seguinte:\n\n1. 00-17 anos: 2.473 óbitos (taxa de 1,17%)\n2. 18-39 anos: 31.049 óbitos (taxa de 0,78%)\n3. 40-59 anos: 101.092 óbitos (taxa de 3,62%)\n4. 60-79 anos: 240.609 óbitos (taxa de 8,66%)\n5. 80+ anos: 144.186 óbitos (taxa de 17,76%)",
+      "sql": "SELECT CASE WHEN i.\"IDADE\" < 18 THEN '00-17' WHEN i.\"IDADE\" BETWEEN 18 AND 39 THEN '18-39' WHEN i.\"IDADE\" BETWEEN 40 AND 59 THEN '40-59' WHEN i.\"IDADE\" BETWEEN 60 AND 79 THEN '60-79' ELSE '80+' END AS faixa_etaria, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_obitos, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2) AS taxa_mortalidade_percentual FROM internacoes i WHERE i.\"IDADE\" IS NOT NULL AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2023 GROUP BY faixa_etaria ORDER BY faixa_etaria;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 14.500460147857666
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.860508918762207
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 4.724234104156494
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.15924406051635742
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.00029015541076660156,
+          "table_discovery": 0.86057448387146,
+          "schema_analysis": 0.0005040168762207031,
+          "reasoning": 6.236876487731934,
+          "sql_generation": 0.0007090568542480469,
+          "sql_validation": 4.72426176071167,
+          "sql_execution": 0.15934967994689941,
+          "completed": 2.5160608291625977
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi a mortalidade por faixa etaria em 2023?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "rate",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "faixa_etaria",
+              "source": "internacoes.IDADE",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2023"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "faixa_etaria"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "faixa_etaria"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.370560730139176,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "socioeconomico",
+          "internacoes",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é calcular a taxa de mortalidade por faixa etária em 2023, utilizando a tabela de internações. A métrica 'taxa_mortalidade' foi escolhida para refletir a proporção de mortes em relação ao total de internações. A dimensão 'faixa_etaria' permite agrupar os resultados por faixa etária. O filtro para o ano de 2023 é necessário para restringir os dados ao período desejado. A estrutura da resposta é definida para retornar uma linha por grupo de faixa etária, sem necessidade de um escopo de top-N, já que o foco é na distribuição por faixa etária.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T134739_gen165",
+        "query_number": 5,
+        "orchestrator_execution_time": 14.512569904327393
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN166",
+      "persona": "auditor_dados",
+      "category": "perfil_demografico",
+      "difficulty": "medium",
+      "question": "Como os obitos hospitalares se distribuem por raca/cor informada em 2019?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "perfil_raca_cor_caveat",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "row_count:5!=6"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "raca_cor": "Branca",
+            "total_obitos": 196249
+          },
+          {
+            "raca_cor": "Parda",
+            "total_obitos": 174173
+          },
+          {
+            "raca_cor": "sem raca/cor mapeada",
+            "total_obitos": 116905
+          },
+          {
+            "raca_cor": "Preta",
+            "total_obitos": 24814
+          },
+          {
+            "raca_cor": "Amarela",
+            "total_obitos": 11214
+          }
+        ],
+        "actual_preview": [
+          {
+            "raca_cor": "Branca",
+            "total_mortes": 196249
+          },
+          {
+            "raca_cor": "Parda",
+            "total_mortes": 174173
+          },
+          {
+            "raca_cor": "Preta",
+            "total_mortes": 24814
+          },
+          {
+            "raca_cor": "Amarela",
+            "total_mortes": 11214
+          },
+          {
+            "raca_cor": "Indígena",
+            "total_mortes": 695
+          }
+        ]
+      },
+      "success": true,
+      "response": "Em 2019, os óbitos hospitalares se distribuíram da seguinte forma por raça/cor informada: \n\n1. Branca: 196.249\n2. Parda: 174.173\n3. Preta: 24.814\n4. Amarela: 11.214\n5. Indígena: 695",
+      "sql": "SELECT r.\"DESCRICAO\" AS raca_cor, COUNT(*) AS total_mortes FROM internacoes i JOIN raca_cor r ON i.\"RACA_COR\" = r.\"RACA_COR\" WHERE i.\"MORTE\" = true AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2019 AND i.\"RACA_COR\" IN (1, 2, 3, 4, 5) GROUP BY r.\"DESCRICAO\" ORDER BY total_mortes DESC;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 27.27035093307495
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.4442622661590576
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.704939126968384
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.14384889602661133
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "raca_cor",
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 12920,
+        "latency_by_component": {
+          "query_classification": 0.0002892017364501953,
+          "table_discovery": 0.4443366527557373,
+          "schema_analysis": 0.0006711483001708984,
+          "reasoning": 4.473312854766846,
+          "sql_generation": 17.576610565185547,
+          "sql_validation": 2.7049877643585205,
+          "sql_execution": 0.14395666122436523,
+          "completed": 1.924189567565918
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Como os obitos hospitalares se distribuem por raca/cor informada em 2019?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "distribution",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_mortes",
+              "expression_type": "count",
+              "required_filters": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "raca_cor",
+              "source": "internacoes.RACA_COR",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2019"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "raca_cor_identificada",
+              "values": [
+                "RACA_COR IN (1, 2, 3, 4, 5)"
+              ],
+              "operator": "semantic"
+            },
+            {
+              "field": "desfecho",
+              "values": [
+                "MORTE = true"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "raca_cor"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "raca_cor"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "categorical_lookup_label_required"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "raca_cor",
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.4626456741851221,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "raca_cor",
+          "internacoes",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "raca_cor",
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "raca_cor",
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "categorical_lookup_label_required"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A distribuição de óbitos hospitalares por raça/cor em 2019 foi escolhida como intenção de distribuição, com a métrica de contagem de mortes filtrada por ano e raça/cor identificada. A dimensão de raça/cor foi utilizada para agrupar os resultados, e a forma de resposta foi definida como uma tabela agrupada com uma linha por grupo.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query counts the number of hospital deaths grouped by the informed race/color for the year 2019. It joins the 'internacoes' table with the 'raca_cor' lookup table to get the descriptions of the race/color, while filtering for deaths and the specified year.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "categorical_lookup_label_required"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T134739_gen166",
+        "query_number": 6,
+        "orchestrator_execution_time": 27.283007621765137
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN167",
+      "persona": "auditor_dados",
+      "category": "perfil_demografico",
+      "difficulty": "medium",
+      "question": "Como os obitos hospitalares se distribuem por raca/cor informada em 2020?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "perfil_raca_cor_caveat",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "row_count:5!=6"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "raca_cor": "Branca",
+            "total_obitos": 217778
+          },
+          {
+            "raca_cor": "Parda",
+            "total_obitos": 203097
+          },
+          {
+            "raca_cor": "sem raca/cor mapeada",
+            "total_obitos": 136242
+          },
+          {
+            "raca_cor": "Preta",
+            "total_obitos": 32998
+          },
+          {
+            "raca_cor": "Amarela",
+            "total_obitos": 14715
+          }
+        ],
+        "actual_preview": [
+          {
+            "raca_cor": "Branca",
+            "total_mortes": 217778
+          },
+          {
+            "raca_cor": "Parda",
+            "total_mortes": 203097
+          },
+          {
+            "raca_cor": "Preta",
+            "total_mortes": 32998
+          },
+          {
+            "raca_cor": "Amarela",
+            "total_mortes": 14715
+          },
+          {
+            "raca_cor": "Indígena",
+            "total_mortes": 906
+          }
+        ]
+      },
+      "success": true,
+      "response": "Em 2020, os óbitos hospitalares se distribuíram da seguinte forma por raça/cor informada: \n\n1. Branca: 217.778\n2. Parda: 203.097\n3. Preta: 32.998\n4. Amarela: 14.715\n5. Indígena: 906",
+      "sql": "SELECT r.\"DESCRICAO\" AS raca_cor, COUNT(*) AS total_mortes FROM internacoes i JOIN raca_cor r ON i.\"RACA_COR\" = r.\"RACA_COR\" WHERE i.\"MORTE\" = true AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 GROUP BY r.\"DESCRICAO\" ORDER BY total_mortes DESC;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 24.276715517044067
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.49837350845336914
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.8657255172729492
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.10271239280700684
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "raca_cor",
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 12920,
+        "latency_by_component": {
+          "query_classification": 0.0002810955047607422,
+          "table_discovery": 0.49844861030578613,
+          "schema_analysis": 0.0007193088531494141,
+          "reasoning": 6.063462257385254,
+          "sql_generation": 14.171698331832886,
+          "sql_validation": 1.865753173828125,
+          "sql_execution": 0.10281848907470703,
+          "completed": 1.5716311931610107
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Como os obitos hospitalares se distribuem por raca/cor informada em 2020?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "distribution",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_mortes",
+              "expression_type": "count",
+              "required_filters": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "raca_cor",
+              "source": "internacoes.RACA_COR",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "raca_cor_identificada",
+              "values": [
+                "RACA_COR IN (1, 2, 3, 4, 5)"
+              ],
+              "operator": "semantic"
+            },
+            {
+              "field": "desfecho",
+              "values": [
+                "MORTE = true"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "raca_cor"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "raca_cor"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "categorical_lookup_label_required"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "raca_cor",
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.4604043398131597,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "raca_cor",
+          "internacoes",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "raca_cor",
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "raca_cor",
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "categorical_lookup_label_required"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A distribuição de óbitos hospitalares por raça/cor em 2020 requer a contagem de mortes (total_mortes) filtradas por ano e pela identificação da raça/cor. A dimensão 'raca_cor' é utilizada para agrupar os resultados, e a métrica é configurada para contar apenas os casos onde a morte ocorreu. O plano não inclui um escopo de top-N, pois a intenção é obter uma distribuição completa por grupo.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query counts the number of hospital deaths grouped by the informed race/color, filtering for the year 2020 and ensuring that only identified races (1 to 5) are included. A join with the raca_cor table is used to get the descriptions of the race/color.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "categorical_lookup_label_required"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T134739_gen167",
+        "query_number": 7,
+        "orchestrator_execution_time": 24.289045810699463
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN168",
+      "persona": "auditor_dados",
+      "category": "perfil_demografico",
+      "difficulty": "medium",
+      "question": "Como os obitos hospitalares se distribuem por raca/cor informada em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "perfil_raca_cor_caveat",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "row_count:5!=6"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "raca_cor": "Branca",
+            "total_obitos": 274666
+          },
+          {
+            "raca_cor": "Parda",
+            "total_obitos": 256163
+          },
+          {
+            "raca_cor": "sem raca/cor mapeada",
+            "total_obitos": 184463
+          },
+          {
+            "raca_cor": "Preta",
+            "total_obitos": 37457
+          },
+          {
+            "raca_cor": "Amarela",
+            "total_obitos": 11678
+          }
+        ],
+        "actual_preview": [
+          {
+            "raca_cor": "Branca",
+            "total_mortes": 274666
+          },
+          {
+            "raca_cor": "Parda",
+            "total_mortes": 256163
+          },
+          {
+            "raca_cor": "Preta",
+            "total_mortes": 37457
+          },
+          {
+            "raca_cor": "Amarela",
+            "total_mortes": 11678
+          },
+          {
+            "raca_cor": "Indígena",
+            "total_mortes": 901
+          }
+        ]
+      },
+      "success": true,
+      "response": "Em 2021, os óbitos hospitalares se distribuíram por raça/cor da seguinte forma: \n\n1. Branca: 274.666\n2. Parda: 256.163\n3. Preta: 37.457\n4. Amarela: 11.678\n5. Indígena: 901",
+      "sql": "SELECT r.\"DESCRICAO\" AS raca_cor, COUNT(*) AS total_mortes FROM internacoes i JOIN raca_cor r ON i.\"RACA_COR\" = r.\"RACA_COR\" WHERE i.\"MORTE\" = true AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND i.\"RACA_COR\" IN (1, 2, 3, 4, 5) GROUP BY r.\"DESCRICAO\" ORDER BY total_mortes DESC;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 25.675588846206665
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5564272403717041
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.9017293453216553
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.10643124580383301
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "raca_cor",
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 12920,
+        "latency_by_component": {
+          "query_classification": 0.00030875205993652344,
+          "table_discovery": 0.5565111637115479,
+          "schema_analysis": 0.0007116794586181641,
+          "reasoning": 4.925748109817505,
+          "sql_generation": 16.190779209136963,
+          "sql_validation": 1.9017589092254639,
+          "sql_execution": 0.1065373420715332,
+          "completed": 1.9911408424377441
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Como os obitos hospitalares se distribuem por raca/cor informada em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "distribution",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_mortes",
+              "expression_type": "count",
+              "required_filters": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "raca_cor",
+              "source": "internacoes.RACA_COR",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "raca_cor_identificada",
+              "values": [
+                "RACA_COR IN (1, 2, 3, 4, 5)"
+              ],
+              "operator": "semantic"
+            },
+            {
+              "field": "desfecho",
+              "values": [
+                "MORTE = true"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "raca_cor"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "raca_cor"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "categorical_lookup_label_required"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "raca_cor",
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.453268717152967,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "raca_cor",
+          "internacoes",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "raca_cor",
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "raca_cor",
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "categorical_lookup_label_required"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A distribuição de óbitos hospitalares por raça/cor em 2021 foi analisada, utilizando a contagem de mortes como métrica. A dimensão 'raca_cor' foi escolhida para agrupar os dados, e filtros foram aplicados para restringir os resultados ao ano de 2021 e às categorias de raça/cor identificadas. O plano garante que os dados sejam agrupados corretamente e que apenas os óbitos sejam contabilizados.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query counts the number of hospital deaths grouped by the informed race/color, filtering for the year 2021 and ensuring that only identified races (1 to 5) are included. It joins the 'internacoes' table with the 'raca_cor' lookup table to get the descriptions of the race/color.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "categorical_lookup_label_required"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T134739_gen168",
+        "query_number": 8,
+        "orchestrator_execution_time": 25.690897464752197
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN169",
+      "persona": "auditor_dados",
+      "category": "perfil_demografico",
+      "difficulty": "medium",
+      "question": "Como os obitos hospitalares se distribuem por raca/cor informada em 2022?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "perfil_raca_cor_caveat",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "row_count:5!=6"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "raca_cor": "Parda",
+            "total_obitos": 224194
+          },
+          {
+            "raca_cor": "Branca",
+            "total_obitos": 222463
+          },
+          {
+            "raca_cor": "sem raca/cor mapeada",
+            "total_obitos": 111861
+          },
+          {
+            "raca_cor": "Preta",
+            "total_obitos": 31623
+          },
+          {
+            "raca_cor": "Amarela",
+            "total_obitos": 7674
+          }
+        ],
+        "actual_preview": [
+          {
+            "raca_cor": "Parda",
+            "total_mortes": 224194
+          },
+          {
+            "raca_cor": "Branca",
+            "total_mortes": 222463
+          },
+          {
+            "raca_cor": "Preta",
+            "total_mortes": 31623
+          },
+          {
+            "raca_cor": "Amarela",
+            "total_mortes": 7674
+          },
+          {
+            "raca_cor": "Indígena",
+            "total_mortes": 881
+          }
+        ]
+      },
+      "success": true,
+      "response": "Em 2022, os óbitos hospitalares se distribuíram da seguinte forma por raça/cor informada: \n\n1. Parda: 224.194\n2. Branca: 222.463\n3. Preta: 31.623\n4. Amarela: 7.674\n5. Indígena: 881",
+      "sql": "SELECT r.\"DESCRICAO\" AS raca_cor, COUNT(*) AS total_mortes FROM internacoes i JOIN raca_cor r ON i.\"RACA_COR\" = r.\"RACA_COR\" WHERE i.\"MORTE\" = true AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2022 GROUP BY r.\"DESCRICAO\" ORDER BY total_mortes DESC;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 33.89333748817444
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 4.149557113647461
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.5436501502990723
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.10321331024169922
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "raca_cor",
+          "internacoes",
+          "hospital"
+        ],
+        "schema_context_length": 13362,
+        "latency_by_component": {
+          "query_classification": 0.0003199577331542969,
+          "table_discovery": 4.149634599685669,
+          "schema_analysis": 0.0008502006530761719,
+          "reasoning": 9.33387565612793,
+          "sql_generation": 17.209322929382324,
+          "sql_validation": 1.5436780452728271,
+          "sql_execution": 0.1033179759979248,
+          "completed": 1.5504627227783203
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Como os obitos hospitalares se distribuem por raca/cor informada em 2022?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "distribution",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_mortes",
+              "expression_type": "count",
+              "required_filters": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "raca_cor",
+              "source": "internacoes.RACA_COR",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2022"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "raca_cor_identificada",
+              "values": [
+                "RACA_COR IN (1, 2, 3, 4, 5)"
+              ],
+              "operator": "semantic"
+            },
+            {
+              "field": "desfecho",
+              "values": [
+                "MORTE = true"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "raca_cor"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "raca_cor"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "categorical_lookup_label_required"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "raca_cor",
+          "internacoes",
+          "hospital"
+        ],
+        "llamaindex_confidence": 0.4425123704516956,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "raca_cor",
+          "internacoes",
+          "hospital"
+        ],
+        "validated_selected_tables": [
+          "raca_cor",
+          "internacoes",
+          "hospital"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "raca_cor",
+          "internacoes",
+          "hospital"
+        ],
+        "semantic_constraints": [
+          "categorical_lookup_label_required"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A distribuição de óbitos hospitalares por raça/cor em 2022 requer a contagem de mortes (total_mortes) filtradas por ano e pela identificação da raça/cor. A dimensão 'raca_cor' é utilizada para agrupar os resultados, e a métrica é configurada para contar apenas os casos onde a morte ocorreu. O plano está estruturado para retornar uma tabela agrupada por raça/cor, com uma linha por grupo.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query counts the number of hospital deaths grouped by the race/color description, filtering for deaths in 2022 and ensuring only identified races are included by joining with the raca_cor table.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "categorical_lookup_label_required"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T134739_gen169",
+        "query_number": 9,
+        "orchestrator_execution_time": 33.90760540962219
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    },
+    {
+      "id": "GEN170",
+      "persona": "auditor_dados",
+      "category": "perfil_demografico",
+      "difficulty": "medium",
+      "question": "Como os obitos hospitalares se distribuem por raca/cor informada em 2023?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "perfil_raca_cor_caveat",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "row_count:5!=6"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "raca_cor": "Parda",
+            "total_obitos": 270488
+          },
+          {
+            "raca_cor": "Branca",
+            "total_obitos": 218359
+          },
+          {
+            "raca_cor": "Preta",
+            "total_obitos": 33523
+          },
+          {
+            "raca_cor": "sem raca/cor mapeada",
+            "total_obitos": 10619
+          },
+          {
+            "raca_cor": "Amarela",
+            "total_obitos": 7547
+          }
+        ],
+        "actual_preview": [
+          {
+            "raca_cor": "Parda",
+            "total_mortes": 270488
+          },
+          {
+            "raca_cor": "Branca",
+            "total_mortes": 218359
+          },
+          {
+            "raca_cor": "Preta",
+            "total_mortes": 33523
+          },
+          {
+            "raca_cor": "Amarela",
+            "total_mortes": 7547
+          },
+          {
+            "raca_cor": "Indígena",
+            "total_mortes": 873
+          }
+        ]
+      },
+      "success": true,
+      "response": "Em 2023, os óbitos hospitalares se distribuíram da seguinte forma por raça/cor informada: \n\n1. Parda: 270.488\n2. Branca: 218.359\n3. Preta: 33.523\n4. Amarela: 7.547\n5. Indígena: 873",
+      "sql": "SELECT r.\"DESCRICAO\" AS raca_cor, COUNT(*) AS total_mortes FROM internacoes i JOIN raca_cor r ON i.\"RACA_COR\" = r.\"RACA_COR\" WHERE i.\"MORTE\" = true AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2023 GROUP BY r.\"DESCRICAO\" ORDER BY total_mortes DESC;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 14.036583185195923
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.6568465232849121
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.6395602226257324
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.10316777229309082
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "raca_cor",
+          "internacoes",
+          "hospital"
+        ],
+        "schema_context_length": 13362,
+        "latency_by_component": {
+          "query_classification": 0.0003139972686767578,
+          "table_discovery": 0.6569259166717529,
+          "schema_analysis": 0.0008730888366699219,
+          "reasoning": 5.578592300415039,
+          "sql_generation": 3.81784987449646,
+          "sql_validation": 1.6395900249481201,
+          "sql_execution": 0.10330510139465332,
+          "completed": 2.237060070037842
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Como os obitos hospitalares se distribuem por raca/cor informada em 2023?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "distribution",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_mortes",
+              "expression_type": "count",
+              "required_filters": [
+                "MORTE = true"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "raca_cor",
+              "source": "internacoes.RACA_COR",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2023"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "raca_cor_identificada",
+              "values": [
+                "RACA_COR IN (1, 2, 3, 4, 5)"
+              ],
+              "operator": "semantic"
+            },
+            {
+              "field": "desfecho",
+              "values": [
+                "MORTE = true"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "raca_cor"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "raca_cor"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "categorical_lookup_label_required"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "raca_cor",
+          "internacoes",
+          "hospital"
+        ],
+        "llamaindex_confidence": 0.43758382833941395,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "raca_cor",
+          "internacoes",
+          "hospital"
+        ],
+        "validated_selected_tables": [
+          "raca_cor",
+          "internacoes",
+          "hospital"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "raca_cor",
+          "internacoes",
+          "hospital"
+        ],
+        "semantic_constraints": [
+          "categorical_lookup_label_required"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A distribuição de óbitos hospitalares por raça/cor em 2023 foi estruturada para contar o total de mortes, filtrando por ano e raça/cor identificada. A métrica de contagem foi escolhida para refletir a intenção de distribuição, e a dimensão de raça/cor foi utilizada para agrupar os resultados. A condição de desfecho foi aplicada para garantir que apenas os óbitos fossem contabilizados.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query counts the number of hospital deaths grouped by the informed race/color, filtering for the year 2023 and ensuring that only records with a valid race/color are included. The join with the raca_cor table allows for the retrieval of descriptive labels for the race/color categories.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "categorical_lookup_label_required"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T134739_gen170",
+        "query_number": 10,
+        "orchestrator_execution_time": 14.049293756484985
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    }
+  ]
+}

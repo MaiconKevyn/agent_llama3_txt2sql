@@ -18,11 +18,13 @@ _ALLOWED_DIMENSION_NAMES = {
     "estado_hospital",
     "municipio",
     "municipio_hospital",
+    "regiao_saude",
     "hospital",
     "especialidade",
     "cid_capitulo",
     "diagnostico",
     "procedimento",
+    "marca_uti",
     "contraceptivo",
     "sexo",
     "raca_cor",
@@ -101,7 +103,14 @@ def reconcile_semantic_plans(
     if len(dimensions) > len(heuristic.dimensions):
         accepted.append("dimensions")
 
-    filters = _merge_filters(heuristic.filters, candidate.filters)
+    filters = _merge_filters(
+        heuristic.filters,
+        candidate.filters,
+        forbid_residence_uf_relational_filter=(
+            "hospital_location_differs_from_residence_uf_required" in heuristic.constraints
+        ),
+        protected_metric_names={metric.name for metric in heuristic.metrics},
+    )
     if len(filters) > len(heuristic.filters):
         accepted.append("filters")
 
@@ -197,11 +206,27 @@ def _merge_dimensions(
 def _merge_filters(
     heuristic_filters: list[SemanticFilter],
     candidate_filters: list[SemanticFilter],
+    *,
+    forbid_residence_uf_relational_filter: bool = False,
+    protected_metric_names: set[str] | None = None,
 ) -> list[SemanticFilter]:
     heuristic_fields = {semantic_filter.field for semantic_filter in heuristic_filters}
     if "idade" in heuristic_fields:
         candidate_filters = [
             semantic_filter for semantic_filter in candidate_filters if semantic_filter.field != "idade"
+        ]
+    protected_metric_names = protected_metric_names or set()
+    if protected_metric_names & {"percentual_obitos_sem_raca_cor"}:
+        candidate_filters = [
+            semantic_filter
+            for semantic_filter in candidate_filters
+            if semantic_filter.field != "diagnostico_principal_descricao"
+        ]
+    if forbid_residence_uf_relational_filter:
+        candidate_filters = [
+            semantic_filter
+            for semantic_filter in candidate_filters
+            if not _is_residence_uf_relational_filter(semantic_filter)
         ]
 
     merged: dict[tuple[str, str, tuple[str, ...]], SemanticFilter] = {}
@@ -213,6 +238,15 @@ def _merge_filters(
         )
         merged.setdefault(key, semantic_filter)
     return list(merged.values())
+
+
+def _is_residence_uf_relational_filter(semantic_filter: SemanticFilter) -> bool:
+    values = {str(value).strip().lower() for value in semantic_filter.values}
+    return (
+        semantic_filter.field in {"estado", "sg_uf", "estado_residencia", "estado_hospital"}
+        and semantic_filter.operator.strip() in {"!=", "<>"}
+        and bool(values & {"uf_residencia", "uf residência", "uf residencia"})
+    )
 
 
 def _merge_answer_shape(
@@ -328,6 +362,7 @@ def _canonical_dimension_name(name: str) -> str:
         "codigo_cid": "diagnostico",
         "diagnostico_principal": "diagnostico",
         "diagnostico_secundario": "diagnostico",
+        "tipo_uti": "marca_uti",
     }
     return aliases.get(name, name)
 

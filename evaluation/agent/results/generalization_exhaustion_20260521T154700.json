@@ -1,0 +1,3803 @@
+{
+  "run_id": "generalization_exhaustion_20260521T154700",
+  "created_at": "2026-05-21T15:48:41",
+  "dry_run": false,
+  "summary": {
+    "status_counts": {
+      "passed": 10
+    },
+    "root_cause_counts": {},
+    "severity_counts": {}
+  },
+  "items": [
+    {
+      "id": "GEN281",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "O que os dados mostram sobre idade e pneumonia?",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "idade_condicao_pneumonia",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Sim. Há uma associação observada entre idade e o diagnóstico resolvido nos dados.\n\nEscopo usado: diagnóstico resolvido por consulta ao catálogo CID; denominador: todas as internações.\nResumo: 10.621.560 internações, 842.966 mortes nessas internações, idade média 37,07 e mediana 35.\n\n| Faixa etária | Internações | Taxa por 100 mil denominador | % dos casos |\n|---|---:|---:|---:|\n| 00-39 | 5.511.278 | 5.522,33 | 51,89% |\n| 40-49 | 575.331 | 3.037,14 | 5,42% |\n| 50-59 | 763.030 | 3.906,58 | 7,18% |\n| 60-69 | 995.642 | 5.114,74 | 9,37% |\n| 70-79 | 1.266.321 | 8.108,15 | 11,92% |\n| 80+ | 1.509.958 | 14.355,67 | 14,22% |\n\nLeitura objetiva: a taxa em >=50 anos foi 1,36x a taxa em <50 anos; a taxa em >=60 anos foi 1,67x a taxa em <60 anos; as idades com maior volume foram 0 anos (3.869.056), 10 anos (178.940), 11 anos (165.420).\n\nAtenção sobre qualidade dos dados: IDADE=0 contém 2.752.406 registros com NASC/DT_INTER indicando 1 ano ou mais.\nLimite: isto descreve associação observada nas internações, não causalidade individual.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    SELECT c.\"CID\" FROM cid c WHERE c.\"DESCRICAO\" ILIKE '%pneumonia%'\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), coorte AS (\n    SELECT i.\"IDADE\", i.\"MORTE\", i.\"NASC\", i.\"DT_INTER\"\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"IDADE\" IS NOT NULL\n), base_denominador AS (\n    SELECT i.\"IDADE\"\n    FROM internacoes i\n    WHERE i.\"IDADE\" IS NOT NULL\n), coorte_faixas AS (\n    SELECT\n        CASE\n            WHEN \"IDADE\" < 40 THEN '00-39'\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN '40-49'\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN '50-59'\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN '60-69'\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN '70-79'\n            ELSE '80+'\n        END AS faixa_etaria,\n        CASE\n            WHEN \"IDADE\" < 40 THEN 1\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN 2\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN 3\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN 4\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN 5\n            ELSE 6\n        END AS ordem,\n        \"MORTE\"\n    FROM coorte\n), denominador_faixas AS (\n    SELECT\n        CASE\n            WHEN \"IDADE\" < 40 THEN '00-39'\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN '40-49'\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN '50-59'\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN '60-69'\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN '70-79'\n            ELSE '80+'\n        END AS faixa_etaria,\n        CASE\n            WHEN \"IDADE\" < 40 THEN 1\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN 2\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN 3\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN 4\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN 5\n            ELSE 6\n        END AS ordem,\n        COUNT(*) AS total_denominador\n    FROM base_denominador\n    GROUP BY faixa_etaria, ordem\n), faixas_etarias AS (\n    SELECT\n        d.faixa_etaria,\n        d.ordem,\n        COUNT(c.faixa_etaria) AS total_internacoes,\n        d.total_denominador,\n        ROUND(COUNT(c.faixa_etaria) * 100000.0 / NULLIF(d.total_denominador, 0), 2)\n            AS taxa_por_100k_denominador,\n        ROUND(COUNT(c.faixa_etaria) * 100.0 / NULLIF((SELECT COUNT(*) FROM coorte), 0), 2)\n            AS percentual_casos\n    FROM denominador_faixas d\n    LEFT JOIN coorte_faixas c ON c.faixa_etaria = d.faixa_etaria\n    GROUP BY d.faixa_etaria, d.ordem, d.total_denominador\n), cortes_etarios AS (\n    SELECT\n        'maior_igual_50' AS corte,\n        SUM(CASE WHEN \"IDADE\" >= 50 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" >= 50) AS denominador\n    FROM coorte\n    UNION ALL\n    SELECT\n        'menor_50' AS corte,\n        SUM(CASE WHEN \"IDADE\" < 50 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" < 50) AS denominador\n    FROM coorte\n    UNION ALL\n    SELECT\n        'maior_igual_60' AS corte,\n        SUM(CASE WHEN \"IDADE\" >= 60 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" >= 60) AS denominador\n    FROM coorte\n    UNION ALL\n    SELECT\n        'menor_60' AS corte,\n        SUM(CASE WHEN \"IDADE\" < 60 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" < 60) AS denominador\n    FROM coorte\n), taxas_cortes AS (\n    SELECT corte, casos * 1.0 / NULLIF(denominador, 0) AS taxa\n    FROM cortes_etarios\n), top_idades AS (\n    SELECT \"IDADE\", COUNT(*) AS total_internacoes\n    FROM coorte\n    GROUP BY \"IDADE\"\n    ORDER BY total_internacoes DESC, \"IDADE\" ASC\n    LIMIT 3\n), qualidade_idade AS (\n    SELECT\n        SUM(CASE WHEN \"IDADE\" = 0 THEN 1 ELSE 0 END) AS idade_zero_total,\n        SUM(CASE\n            WHEN \"IDADE\" = 0\n             AND \"NASC\" IS NOT NULL\n             AND \"DT_INTER\" IS NOT NULL\n             AND date_diff('day', \"NASC\", \"DT_INTER\") >= 365\n            THEN 1 ELSE 0 END\n        ) AS idade_zero_inconsistente_nasc,\n        SUM(CASE\n            WHEN \"IDADE\" = 0\n             AND \"NASC\" IS NOT NULL\n             AND \"DT_INTER\" IS NOT NULL\n             AND date_diff('day', \"NASC\", \"DT_INTER\") BETWEEN 0 AND 364\n            THEN 1 ELSE 0 END\n        ) AS idade_zero_compativel_menor_1_ano\n    FROM coorte\n)\nSELECT\n    'age_diagnosis_association' AS analysis_type,\n    (SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos) AS resolved_concept,\n    (SELECT COUNT(*) FROM coorte) AS total_internacoes,\n    (SELECT SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) FROM coorte) AS total_mortes,\n    (SELECT ROUND(AVG(\"IDADE\"), 2) FROM coorte) AS idade_media,\n    (SELECT MEDIAN(\"IDADE\") FROM coorte) AS idade_mediana,\n    'todas as internacoes' AS denominador,\n    (SELECT STRING_AGG(\n        faixa_etaria || ':' || total_internacoes || ':' || total_denominador || ':' ||\n        taxa_por_100k_denominador || ':' || percentual_casos,\n        ' | ' ORDER BY ordem)\n     FROM faixas_etarias) AS faixas_etarias,\n    (SELECT STRING_AGG(\n        CAST(\"IDADE\" AS VARCHAR) || ':' || total_internacoes,\n        ' | ' ORDER BY total_internacoes DESC, \"IDADE\" ASC)\n     FROM top_idades) AS top_idades,\n    (SELECT ROUND(\n        (SELECT taxa FROM taxas_cortes WHERE corte = 'maior_igual_50') /\n        NULLIF((SELECT taxa FROM taxas_cortes WHERE corte = 'menor_50'), 0), 2))\n        AS rate_ratio_maior_igual_50_vs_menor_50,\n    (SELECT ROUND(\n        (SELECT taxa FROM taxas_cortes WHERE corte = 'maior_igual_60') /\n        NULLIF((SELECT taxa FROM taxas_cortes WHERE corte = 'menor_60'), 0), 2))\n        AS rate_ratio_maior_igual_60_vs_menor_60,\n    (SELECT idade_zero_total FROM qualidade_idade) AS idade_zero_total,\n    (SELECT idade_zero_inconsistente_nasc FROM qualidade_idade)\n        AS idade_zero_inconsistente_nasc,\n    (SELECT idade_zero_compativel_menor_1_ano FROM qualidade_idade)\n        AS idade_zero_compativel_menor_1_ano,\n    (SELECT\n        CASE\n            WHEN idade_zero_inconsistente_nasc > 0 THEN\n                'data_quality: IDADE=0 contem ' ||\n                CAST(idade_zero_inconsistente_nasc AS VARCHAR) ||\n                ' registros com NASC/DT_INTER indicando 1 ano ou mais'\n            ELSE NULL\n        END\n     FROM qualidade_idade) AS warnings FROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 11.60610055923462
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 1.158707857131958
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.1559593677520752
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 2.1145780086517334
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 1.134084939956665,
+          "table_discovery": 1.1587905883789062,
+          "schema_analysis": 0.0008952617645263672,
+          "reasoning": 7.017195701599121,
+          "sql_generation": 0.0007569789886474609,
+          "sql_validation": 0.1559915542602539,
+          "sql_execution": 2.114683151245117,
+          "completed": 0.0007579326629638672
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "O que os dados mostram sobre idade e pneumonia?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "association",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "diagnostico_principal_descricao",
+              "values": [
+                "pneumonia"
+              ],
+              "operator": "ILIKE"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "single_row",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [
+              "idade"
+            ],
+            "counted_entity": "internacao",
+            "forbidden_output_dimensions": [
+              "idade"
+            ]
+          },
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "age_diagnosis_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "diagnosis_filter_dimension_not_output",
+            "diagnosis_description_lookup_required"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.3176891223775189,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "socioeconomico",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "diagnosis_concept_resolution_required",
+          "age_diagnosis_association_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary",
+          "diagnosis_filter_dimension_not_output",
+          "diagnosis_description_lookup_required"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "association",
+        "analytic_template": "numeric_factor_by_condition",
+        "denominator_policy": "same_scope_without_target_condition_by_age_band",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "denominator",
+          "group_distribution",
+          "effect_summary",
+          "limitations"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [],
+          "diagnosis_prefixes": [],
+          "diagnosis_description_terms": [
+            "pneumonia"
+          ],
+          "labels": [],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A associação entre idade e pneumonia é analisada através da contagem de internações com diagnóstico principal de pneumonia, segmentada por idade. A métrica total conta as internações, enquanto a dimensão idade permite a análise por faixa etária. O plano requer um agrupamento por idade para entender a distribuição das internações por essa variável.",
+          "conflicts": [
+            "row_grain_mismatch: heuristic=single_scalar; llm=one_row_per_group",
+            "top_n_scope_mismatch: heuristic=none; llm=per_group"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": [
+            "answer_shape.row_grain",
+            "answer_shape.top_n_scope"
+          ]
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "age_diagnosis_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "diagnosis_filter_dimension_not_output",
+            "diagnosis_description_lookup_required"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T154700_gen281",
+        "query_number": 1,
+        "orchestrator_execution_time": 11.627736330032349
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN282",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "Compare pneumonia segundo idade, com denominador e caveats.",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "idade_condicao_pneumonia",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Sim. Há uma associação observada entre idade e o diagnóstico resolvido nos dados.\n\nEscopo usado: diagnóstico resolvido por consulta ao catálogo CID; denominador: todas as internações.\nResumo: 10.621.560 internações, 842.966 mortes nessas internações, idade média 37,07 e mediana 35.\n\n| Faixa etária | Internações | Taxa por 100 mil denominador | % dos casos |\n|---|---:|---:|---:|\n| 00-39 | 5.511.278 | 5.522,33 | 51,89% |\n| 40-49 | 575.331 | 3.037,14 | 5,42% |\n| 50-59 | 763.030 | 3.906,58 | 7,18% |\n| 60-69 | 995.642 | 5.114,74 | 9,37% |\n| 70-79 | 1.266.321 | 8.108,15 | 11,92% |\n| 80+ | 1.509.958 | 14.355,67 | 14,22% |\n\nLeitura objetiva: a taxa em >=50 anos foi 1,36x a taxa em <50 anos; a taxa em >=60 anos foi 1,67x a taxa em <60 anos; as idades com maior volume foram 0 anos (3.869.056), 10 anos (178.940), 11 anos (165.420).\n\nAtenção sobre qualidade dos dados: IDADE=0 contém 2.752.406 registros com NASC/DT_INTER indicando 1 ano ou mais.\nLimite: isto descreve associação observada nas internações, não causalidade individual.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    SELECT c.\"CID\" FROM cid c WHERE c.\"DESCRICAO\" ILIKE '%pneumonia%'\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), coorte AS (\n    SELECT i.\"IDADE\", i.\"MORTE\", i.\"NASC\", i.\"DT_INTER\"\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"IDADE\" IS NOT NULL\n), base_denominador AS (\n    SELECT i.\"IDADE\"\n    FROM internacoes i\n    WHERE i.\"IDADE\" IS NOT NULL\n), coorte_faixas AS (\n    SELECT\n        CASE\n            WHEN \"IDADE\" < 40 THEN '00-39'\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN '40-49'\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN '50-59'\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN '60-69'\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN '70-79'\n            ELSE '80+'\n        END AS faixa_etaria,\n        CASE\n            WHEN \"IDADE\" < 40 THEN 1\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN 2\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN 3\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN 4\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN 5\n            ELSE 6\n        END AS ordem,\n        \"MORTE\"\n    FROM coorte\n), denominador_faixas AS (\n    SELECT\n        CASE\n            WHEN \"IDADE\" < 40 THEN '00-39'\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN '40-49'\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN '50-59'\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN '60-69'\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN '70-79'\n            ELSE '80+'\n        END AS faixa_etaria,\n        CASE\n            WHEN \"IDADE\" < 40 THEN 1\n            WHEN \"IDADE\" BETWEEN 40 AND 49 THEN 2\n            WHEN \"IDADE\" BETWEEN 50 AND 59 THEN 3\n            WHEN \"IDADE\" BETWEEN 60 AND 69 THEN 4\n            WHEN \"IDADE\" BETWEEN 70 AND 79 THEN 5\n            ELSE 6\n        END AS ordem,\n        COUNT(*) AS total_denominador\n    FROM base_denominador\n    GROUP BY faixa_etaria, ordem\n), faixas_etarias AS (\n    SELECT\n        d.faixa_etaria,\n        d.ordem,\n        COUNT(c.faixa_etaria) AS total_internacoes,\n        d.total_denominador,\n        ROUND(COUNT(c.faixa_etaria) * 100000.0 / NULLIF(d.total_denominador, 0), 2)\n            AS taxa_por_100k_denominador,\n        ROUND(COUNT(c.faixa_etaria) * 100.0 / NULLIF((SELECT COUNT(*) FROM coorte), 0), 2)\n            AS percentual_casos\n    FROM denominador_faixas d\n    LEFT JOIN coorte_faixas c ON c.faixa_etaria = d.faixa_etaria\n    GROUP BY d.faixa_etaria, d.ordem, d.total_denominador\n), cortes_etarios AS (\n    SELECT\n        'maior_igual_50' AS corte,\n        SUM(CASE WHEN \"IDADE\" >= 50 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" >= 50) AS denominador\n    FROM coorte\n    UNION ALL\n    SELECT\n        'menor_50' AS corte,\n        SUM(CASE WHEN \"IDADE\" < 50 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" < 50) AS denominador\n    FROM coorte\n    UNION ALL\n    SELECT\n        'maior_igual_60' AS corte,\n        SUM(CASE WHEN \"IDADE\" >= 60 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" >= 60) AS denominador\n    FROM coorte\n    UNION ALL\n    SELECT\n        'menor_60' AS corte,\n        SUM(CASE WHEN \"IDADE\" < 60 THEN 1 ELSE 0 END) AS casos,\n        (SELECT COUNT(*) FROM base_denominador WHERE \"IDADE\" < 60) AS denominador\n    FROM coorte\n), taxas_cortes AS (\n    SELECT corte, casos * 1.0 / NULLIF(denominador, 0) AS taxa\n    FROM cortes_etarios\n), top_idades AS (\n    SELECT \"IDADE\", COUNT(*) AS total_internacoes\n    FROM coorte\n    GROUP BY \"IDADE\"\n    ORDER BY total_internacoes DESC, \"IDADE\" ASC\n    LIMIT 3\n), qualidade_idade AS (\n    SELECT\n        SUM(CASE WHEN \"IDADE\" = 0 THEN 1 ELSE 0 END) AS idade_zero_total,\n        SUM(CASE\n            WHEN \"IDADE\" = 0\n             AND \"NASC\" IS NOT NULL\n             AND \"DT_INTER\" IS NOT NULL\n             AND date_diff('day', \"NASC\", \"DT_INTER\") >= 365\n            THEN 1 ELSE 0 END\n        ) AS idade_zero_inconsistente_nasc,\n        SUM(CASE\n            WHEN \"IDADE\" = 0\n             AND \"NASC\" IS NOT NULL\n             AND \"DT_INTER\" IS NOT NULL\n             AND date_diff('day', \"NASC\", \"DT_INTER\") BETWEEN 0 AND 364\n            THEN 1 ELSE 0 END\n        ) AS idade_zero_compativel_menor_1_ano\n    FROM coorte\n)\nSELECT\n    'age_diagnosis_association' AS analysis_type,\n    (SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos) AS resolved_concept,\n    (SELECT COUNT(*) FROM coorte) AS total_internacoes,\n    (SELECT SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) FROM coorte) AS total_mortes,\n    (SELECT ROUND(AVG(\"IDADE\"), 2) FROM coorte) AS idade_media,\n    (SELECT MEDIAN(\"IDADE\") FROM coorte) AS idade_mediana,\n    'todas as internacoes' AS denominador,\n    (SELECT STRING_AGG(\n        faixa_etaria || ':' || total_internacoes || ':' || total_denominador || ':' ||\n        taxa_por_100k_denominador || ':' || percentual_casos,\n        ' | ' ORDER BY ordem)\n     FROM faixas_etarias) AS faixas_etarias,\n    (SELECT STRING_AGG(\n        CAST(\"IDADE\" AS VARCHAR) || ':' || total_internacoes,\n        ' | ' ORDER BY total_internacoes DESC, \"IDADE\" ASC)\n     FROM top_idades) AS top_idades,\n    (SELECT ROUND(\n        (SELECT taxa FROM taxas_cortes WHERE corte = 'maior_igual_50') /\n        NULLIF((SELECT taxa FROM taxas_cortes WHERE corte = 'menor_50'), 0), 2))\n        AS rate_ratio_maior_igual_50_vs_menor_50,\n    (SELECT ROUND(\n        (SELECT taxa FROM taxas_cortes WHERE corte = 'maior_igual_60') /\n        NULLIF((SELECT taxa FROM taxas_cortes WHERE corte = 'menor_60'), 0), 2))\n        AS rate_ratio_maior_igual_60_vs_menor_60,\n    (SELECT idade_zero_total FROM qualidade_idade) AS idade_zero_total,\n    (SELECT idade_zero_inconsistente_nasc FROM qualidade_idade)\n        AS idade_zero_inconsistente_nasc,\n    (SELECT idade_zero_compativel_menor_1_ano FROM qualidade_idade)\n        AS idade_zero_compativel_menor_1_ano,\n    (SELECT\n        CASE\n            WHEN idade_zero_inconsistente_nasc > 0 THEN\n                'data_quality: IDADE=0 contem ' ||\n                CAST(idade_zero_inconsistente_nasc AS VARCHAR) ||\n                ' registros com NASC/DT_INTER indicando 1 ano ou mais'\n            ELSE NULL\n        END\n     FROM qualidade_idade) AS warnings FROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 18.754292964935303
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.44416165351867676
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.1494443416595459
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 1.8487391471862793
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "cid",
+          "internacoes"
+        ],
+        "schema_context_length": 12667,
+        "latency_by_component": {
+          "query_classification": 0.7948048114776611,
+          "table_discovery": 0.44423866271972656,
+          "schema_analysis": 0.0006988048553466797,
+          "reasoning": 15.492128133773804,
+          "sql_generation": 0.0007424354553222656,
+          "sql_validation": 0.1494736671447754,
+          "sql_execution": 1.8488445281982422,
+          "completed": 0.0006539821624755859
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Compare pneumonia segundo idade, com denominador e caveats.",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "association",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            },
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "diagnostico_principal_descricao",
+              "values": [
+                "pneumonia"
+              ],
+              "operator": "ILIKE"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "single_row",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [
+              "idade"
+            ],
+            "counted_entity": "internacao",
+            "forbidden_output_dimensions": [
+              "idade"
+            ]
+          },
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "age_diagnosis_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "diagnosis_filter_dimension_not_output",
+            "diagnosis_description_lookup_required"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.4200532034420236,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "diagnosis_concept_resolution_required",
+          "age_diagnosis_association_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary",
+          "diagnosis_filter_dimension_not_output",
+          "diagnosis_description_lookup_required"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "association",
+        "analytic_template": "numeric_factor_by_condition",
+        "denominator_policy": "same_scope_without_target_condition_by_age_band",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "denominator",
+          "group_distribution",
+          "effect_summary",
+          "limitations"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [],
+          "diagnosis_prefixes": [],
+          "diagnosis_description_terms": [
+            "pneumonia"
+          ],
+          "labels": [],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A comparação de pneumonia segundo idade requer métricas que contemplem tanto o total de internações por pneumonia quanto o total geral de internações, permitindo calcular taxas. A dimensão 'idade' é utilizada para agrupar os dados, e as métricas são configuradas para contar os casos de pneumonia e o total de internações, além de calcular as taxas correspondentes. As restrições e políticas de nulidade garantem que a análise seja robusta e atenda aos requisitos analíticos.",
+          "conflicts": [
+            "intent_mismatch: heuristic=association; llm=comparison",
+            "unknown_metric_ignored: total_pneumonia",
+            "unknown_metric_ignored: rate_pneumonia",
+            "unknown_metric_ignored: rate_total",
+            "metric_mismatch: heuristic=['total']; llm=['rate_pneumonia', 'rate_total', 'total_internacoes', 'total_pneumonia']",
+            "row_grain_mismatch: heuristic=single_scalar; llm=one_row_per_group",
+            "top_n_scope_mismatch: heuristic=none; llm=per_group"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": [
+            "intent",
+            "answer_shape.row_grain",
+            "answer_shape.top_n_scope"
+          ]
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "diagnosis_concept_resolution_required",
+            "age_diagnosis_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "diagnosis_filter_dimension_not_output",
+            "diagnosis_description_lookup_required"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T154700_gen282",
+        "query_number": 2,
+        "orchestrator_execution_time": 18.771251440048218
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN283",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "Existe relacao entre sexo e mortalidade hospitalar nas internacoes?",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "sexo_mortalidade",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Sim. Há diferença observada em mortalidade hospitalar (MORTE=true) em diagnostico informado quando as internações são agrupadas por sexo.\n\nEscopo usado: internações agrupadas por sexo no diagnostico resolvido; denominador por grupo: internações do próprio grupo.\nResumo: 0 internações no denominador analisado e - mortes hospitalares.\n\nLeitura objetiva: maior taxa em - (-%) e menor em - (-%); razão entre maior e menor taxa: -x.\nLimite: isto descreve associação observada nas internações, não causalidade individual.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    SELECT c.\"CID\" FROM cid c WHERE c.\"DESCRICAO\" ILIKE '%mortalidade hospitalar%'\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), coorte AS (\n    SELECT\n        CASE WHEN i.\"SEXO\" = 1 THEN 'Masculino' WHEN i.\"SEXO\" = 3 THEN 'Feminino' ELSE 'Sexo ignorado/outro' END AS grupo_label,\n        CASE i.\"SEXO\" WHEN 1 THEN 1 WHEN 3 THEN 2 ELSE 9 END AS ordem,\n        CASE i.\"SEXO\" WHEN 1 THEN 1 WHEN 3 THEN 2 ELSE 9 END AS sexo,\n        i.\"MORTE\"\n    FROM internacoes i\n    \n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    \n), grupos AS (\n    SELECT\n        grupo_label AS grupo,\n        ordem,\n        COUNT(*) AS total_internacoes,\n        SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes,\n        ROUND(SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2)\n            AS taxa_mortalidade_percentual\n    FROM coorte\n    GROUP BY grupo_label, ordem, sexo\n), extremos AS (\n    SELECT\n        (SELECT grupo FROM grupos ORDER BY taxa_mortalidade_percentual DESC, total_internacoes DESC LIMIT 1)\n            AS maior_grupo,\n        (SELECT taxa_mortalidade_percentual FROM grupos ORDER BY taxa_mortalidade_percentual DESC, total_internacoes DESC LIMIT 1)\n            AS maior_taxa,\n        (SELECT grupo FROM grupos ORDER BY taxa_mortalidade_percentual ASC, total_internacoes DESC LIMIT 1)\n            AS menor_grupo,\n        (SELECT taxa_mortalidade_percentual FROM grupos ORDER BY taxa_mortalidade_percentual ASC, total_internacoes DESC LIMIT 1)\n            AS menor_taxa\n), excluidos AS (\n    SELECT COUNT(*) AS total_excluidos\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"SEXO\" IS NULL OR i.\"SEXO\" NOT IN (1, 3)\n)\nSELECT\n    'categorical_outcome_association' AS analysis_type,\n    'sexo' AS factor_name,\n    'mortalidade hospitalar (MORTE=true) em ' || COALESCE((SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos), 'diagnostico informado') AS outcome,\n    (SELECT COUNT(*) FROM coorte) AS total_internacoes,\n    (SELECT SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) FROM coorte) AS total_mortes,\n    'internacoes agrupadas por sexo no diagnostico resolvido' AS denominador,\n    (SELECT STRING_AGG(\n        grupo || ':' || total_internacoes || ':' || total_mortes || ':' ||\n        taxa_mortalidade_percentual,\n        ' | ' ORDER BY ordem)\n     FROM grupos) AS group_distribution,\n    (SELECT maior_grupo FROM extremos) AS highest_group,\n    (SELECT maior_taxa FROM extremos) AS highest_rate,\n    (SELECT menor_grupo FROM extremos) AS lowest_group,\n    (SELECT menor_taxa FROM extremos) AS lowest_rate,\n    (SELECT ROUND(maior_taxa / NULLIF(menor_taxa, 0), 2) FROM extremos)\n        AS rate_ratio_highest_vs_lowest,\n    (SELECT CASE\n        WHEN total_excluidos > 0 THEN\n            'data_scope: ' || CAST(total_excluidos AS VARCHAR) ||\n            ' registros ficaram fora do denominador por categoria ausente/invalida'\n        ELSE NULL\n     END FROM excluidos) AS warnings\nFROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 6.976539134979248
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5468111038208008
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.09408044815063477
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.16167116165161133
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "schema_context_length": 16512,
+        "latency_by_component": {
+          "query_classification": 0.0002532005310058594,
+          "table_discovery": 0.5468864440917969,
+          "schema_analysis": 0.0006997585296630859,
+          "reasoning": 6.1694347858428955,
+          "sql_generation": 0.0005421638488769531,
+          "sql_validation": 0.09410929679870605,
+          "sql_execution": 0.1617753505706787,
+          "completed": 0.00031566619873046875
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Existe relacao entre sexo e mortalidade hospitalar nas internacoes?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "association",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            },
+            {
+              "name": "total_mortes",
+              "expression_type": "count",
+              "numerator_condition": "MORTE = true",
+              "required_filters": []
+            },
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters_per_category",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "sexo",
+              "source": "internacoes.SEXO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "diagnostico_principal_descricao",
+              "values": [
+                "mortalidade hospitalar"
+              ],
+              "operator": "ILIKE"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "sexo"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "sexo"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "analytic_response_required",
+            "categorical_outcome_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope",
+            "diagnosis_filter_dimension_not_output",
+            "sex_label_output_required",
+            "diagnosis_description_lookup_required",
+            "death_cause_description_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.4723746780177665,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "internacao_procedimento"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "categorical_outcome_association_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary",
+          "rate_denominator_must_preserve_full_scope",
+          "diagnosis_filter_dimension_not_output",
+          "sex_label_output_required",
+          "diagnosis_description_lookup_required",
+          "death_cause_description_requires_diag_princ_with_morte"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "association",
+        "analytic_template": "categorical_factor_by_outcome",
+        "denominator_policy": "all_rows_matching_non_outcome_filters_per_category",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "denominator",
+          "group_distribution",
+          "effect_summary",
+          "limitations"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [],
+          "diagnosis_prefixes": [],
+          "diagnosis_description_terms": [
+            "mortalidade hospitalar"
+          ],
+          "labels": [],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A análise busca entender a relação entre sexo e mortalidade hospitalar, utilizando contagens de internações e mortes, além de calcular a taxa de mortalidade. As dimensões e métricas foram escolhidas para permitir uma comparação clara entre os sexos, enquanto os filtros garantem que apenas as internações relacionadas à mortalidade hospitalar sejam consideradas.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "categorical_outcome_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope",
+            "diagnosis_filter_dimension_not_output",
+            "sex_label_output_required",
+            "diagnosis_description_lookup_required",
+            "death_cause_description_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T154700_gen283",
+        "query_number": 3,
+        "orchestrator_execution_time": 6.990736246109009
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN284",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "O que os dados mostram sobre sexo e mortalidade hospitalar?",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "sexo_mortalidade",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Sim. Há diferença observada em mortalidade hospitalar (MORTE=true) em diagnostico informado quando as internações são agrupadas por sexo.\n\nEscopo usado: internações agrupadas por sexo no diagnostico resolvido; denominador por grupo: internações do próprio grupo.\nResumo: 0 internações no denominador analisado e - mortes hospitalares.\n\nLeitura objetiva: maior taxa em - (-%) e menor em - (-%); razão entre maior e menor taxa: -x.\nLimite: isto descreve associação observada nas internações, não causalidade individual.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    SELECT c.\"CID\" FROM cid c WHERE c.\"DESCRICAO\" ILIKE '%mortalidade hospitalar%'\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), coorte AS (\n    SELECT\n        CASE WHEN i.\"SEXO\" = 1 THEN 'Masculino' WHEN i.\"SEXO\" = 3 THEN 'Feminino' ELSE 'Sexo ignorado/outro' END AS grupo_label,\n        CASE i.\"SEXO\" WHEN 1 THEN 1 WHEN 3 THEN 2 ELSE 9 END AS ordem,\n        CASE i.\"SEXO\" WHEN 1 THEN 1 WHEN 3 THEN 2 ELSE 9 END AS sexo,\n        i.\"MORTE\"\n    FROM internacoes i\n    \n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    \n), grupos AS (\n    SELECT\n        grupo_label AS grupo,\n        ordem,\n        COUNT(*) AS total_internacoes,\n        SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes,\n        ROUND(SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2)\n            AS taxa_mortalidade_percentual\n    FROM coorte\n    GROUP BY grupo_label, ordem, sexo\n), extremos AS (\n    SELECT\n        (SELECT grupo FROM grupos ORDER BY taxa_mortalidade_percentual DESC, total_internacoes DESC LIMIT 1)\n            AS maior_grupo,\n        (SELECT taxa_mortalidade_percentual FROM grupos ORDER BY taxa_mortalidade_percentual DESC, total_internacoes DESC LIMIT 1)\n            AS maior_taxa,\n        (SELECT grupo FROM grupos ORDER BY taxa_mortalidade_percentual ASC, total_internacoes DESC LIMIT 1)\n            AS menor_grupo,\n        (SELECT taxa_mortalidade_percentual FROM grupos ORDER BY taxa_mortalidade_percentual ASC, total_internacoes DESC LIMIT 1)\n            AS menor_taxa\n), excluidos AS (\n    SELECT COUNT(*) AS total_excluidos\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"SEXO\" IS NULL OR i.\"SEXO\" NOT IN (1, 3)\n)\nSELECT\n    'categorical_outcome_association' AS analysis_type,\n    'sexo' AS factor_name,\n    'mortalidade hospitalar (MORTE=true) em ' || COALESCE((SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos), 'diagnostico informado') AS outcome,\n    (SELECT COUNT(*) FROM coorte) AS total_internacoes,\n    (SELECT SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) FROM coorte) AS total_mortes,\n    'internacoes agrupadas por sexo no diagnostico resolvido' AS denominador,\n    (SELECT STRING_AGG(\n        grupo || ':' || total_internacoes || ':' || total_mortes || ':' ||\n        taxa_mortalidade_percentual,\n        ' | ' ORDER BY ordem)\n     FROM grupos) AS group_distribution,\n    (SELECT maior_grupo FROM extremos) AS highest_group,\n    (SELECT maior_taxa FROM extremos) AS highest_rate,\n    (SELECT menor_grupo FROM extremos) AS lowest_group,\n    (SELECT menor_taxa FROM extremos) AS lowest_rate,\n    (SELECT ROUND(maior_taxa / NULLIF(menor_taxa, 0), 2) FROM extremos)\n        AS rate_ratio_highest_vs_lowest,\n    (SELECT CASE\n        WHEN total_excluidos > 0 THEN\n            'data_scope: ' || CAST(total_excluidos AS VARCHAR) ||\n            ' registros ficaram fora do denominador por categoria ausente/invalida'\n        ELSE NULL\n     END FROM excluidos) AS warnings\nFROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 8.728601694107056
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.4894845485687256
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.09293794631958008
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.1144711971282959
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid",
+          "hospital"
+        ],
+        "schema_context_length": 18207,
+        "latency_by_component": {
+          "query_classification": 0.7348260879516602,
+          "table_discovery": 0.4895503520965576,
+          "schema_analysis": 0.00080108642578125,
+          "reasoning": 7.292906284332275,
+          "sql_generation": 0.0005052089691162109,
+          "sql_validation": 0.09296536445617676,
+          "sql_execution": 0.11457276344299316,
+          "completed": 0.0003132820129394531
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "O que os dados mostram sobre sexo e mortalidade hospitalar?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "association",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            },
+            {
+              "name": "total_mortes",
+              "expression_type": "count",
+              "numerator_condition": "MORTE = true",
+              "required_filters": []
+            },
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters_per_category",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "sexo",
+              "source": "internacoes.SEXO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "diagnostico_principal_descricao",
+              "values": [
+                "mortalidade hospitalar"
+              ],
+              "operator": "ILIKE"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "sexo"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "sexo"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "analytic_response_required",
+            "categorical_outcome_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope",
+            "diagnosis_filter_dimension_not_output",
+            "sex_label_output_required",
+            "diagnosis_description_lookup_required",
+            "death_cause_description_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid",
+          "hospital"
+        ],
+        "llamaindex_confidence": 0.44139792546602563,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "socioeconomico",
+          "cid",
+          "hospital"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid",
+          "hospital"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid",
+          "hospital"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "categorical_outcome_association_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary",
+          "rate_denominator_must_preserve_full_scope",
+          "diagnosis_filter_dimension_not_output",
+          "sex_label_output_required",
+          "diagnosis_description_lookup_required",
+          "death_cause_description_requires_diag_princ_with_morte"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "association",
+        "analytic_template": "categorical_factor_by_outcome",
+        "denominator_policy": "all_rows_matching_non_outcome_filters_per_category",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "denominator",
+          "group_distribution",
+          "effect_summary",
+          "limitations"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [],
+          "diagnosis_prefixes": [],
+          "diagnosis_description_terms": [
+            "mortalidade hospitalar"
+          ],
+          "labels": [],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A análise busca entender a relação entre sexo e mortalidade hospitalar, utilizando contagens de internações e mortes, além de calcular a taxa de mortalidade. As dimensões e métricas foram escolhidas para permitir uma comparação clara entre os sexos, enquanto os filtros garantem que apenas os dados relevantes para mortalidade hospitalar sejam considerados.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "categorical_outcome_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope",
+            "diagnosis_filter_dimension_not_output",
+            "sex_label_output_required",
+            "diagnosis_description_lookup_required",
+            "death_cause_description_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T154700_gen284",
+        "query_number": 4,
+        "orchestrator_execution_time": 8.743886470794678
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN285",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "Compare mortalidade hospitalar segundo sexo, com denominador e caveats.",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "sexo_mortalidade",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Sim. Há diferença observada em mortalidade hospitalar (MORTE=true) em diagnostico informado quando as internações são agrupadas por sexo.\n\nEscopo usado: internações agrupadas por sexo no diagnostico resolvido; denominador por grupo: internações do próprio grupo.\nResumo: 0 internações no denominador analisado e - mortes hospitalares.\n\nLeitura objetiva: maior taxa em - (-%) e menor em - (-%); razão entre maior e menor taxa: -x.\nLimite: isto descreve associação observada nas internações, não causalidade individual.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    SELECT c.\"CID\" FROM cid c WHERE c.\"DESCRICAO\" ILIKE '%mortalidade hospitalar%'\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), coorte AS (\n    SELECT\n        CASE WHEN i.\"SEXO\" = 1 THEN 'Masculino' WHEN i.\"SEXO\" = 3 THEN 'Feminino' ELSE 'Sexo ignorado/outro' END AS grupo_label,\n        CASE i.\"SEXO\" WHEN 1 THEN 1 WHEN 3 THEN 2 ELSE 9 END AS ordem,\n        CASE i.\"SEXO\" WHEN 1 THEN 1 WHEN 3 THEN 2 ELSE 9 END AS sexo,\n        i.\"MORTE\"\n    FROM internacoes i\n    \n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    \n), grupos AS (\n    SELECT\n        grupo_label AS grupo,\n        ordem,\n        COUNT(*) AS total_internacoes,\n        SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes,\n        ROUND(SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2)\n            AS taxa_mortalidade_percentual\n    FROM coorte\n    GROUP BY grupo_label, ordem, sexo\n), extremos AS (\n    SELECT\n        (SELECT grupo FROM grupos ORDER BY taxa_mortalidade_percentual DESC, total_internacoes DESC LIMIT 1)\n            AS maior_grupo,\n        (SELECT taxa_mortalidade_percentual FROM grupos ORDER BY taxa_mortalidade_percentual DESC, total_internacoes DESC LIMIT 1)\n            AS maior_taxa,\n        (SELECT grupo FROM grupos ORDER BY taxa_mortalidade_percentual ASC, total_internacoes DESC LIMIT 1)\n            AS menor_grupo,\n        (SELECT taxa_mortalidade_percentual FROM grupos ORDER BY taxa_mortalidade_percentual ASC, total_internacoes DESC LIMIT 1)\n            AS menor_taxa\n), excluidos AS (\n    SELECT COUNT(*) AS total_excluidos\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"SEXO\" IS NULL OR i.\"SEXO\" NOT IN (1, 3)\n)\nSELECT\n    'categorical_outcome_association' AS analysis_type,\n    'sexo' AS factor_name,\n    'mortalidade hospitalar (MORTE=true) em ' || COALESCE((SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos), 'diagnostico informado') AS outcome,\n    (SELECT COUNT(*) FROM coorte) AS total_internacoes,\n    (SELECT SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) FROM coorte) AS total_mortes,\n    'internacoes agrupadas por sexo no diagnostico resolvido' AS denominador,\n    (SELECT STRING_AGG(\n        grupo || ':' || total_internacoes || ':' || total_mortes || ':' ||\n        taxa_mortalidade_percentual,\n        ' | ' ORDER BY ordem)\n     FROM grupos) AS group_distribution,\n    (SELECT maior_grupo FROM extremos) AS highest_group,\n    (SELECT maior_taxa FROM extremos) AS highest_rate,\n    (SELECT menor_grupo FROM extremos) AS lowest_group,\n    (SELECT menor_taxa FROM extremos) AS lowest_rate,\n    (SELECT ROUND(maior_taxa / NULLIF(menor_taxa, 0), 2) FROM extremos)\n        AS rate_ratio_highest_vs_lowest,\n    (SELECT CASE\n        WHEN total_excluidos > 0 THEN\n            'data_scope: ' || CAST(total_excluidos AS VARCHAR) ||\n            ' registros ficaram fora do denominador por categoria ausente/invalida'\n        ELSE NULL\n     END FROM excluidos) AS warnings\nFROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 9.421809196472168
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5231764316558838
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.09128117561340332
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.11458683013916016
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid",
+          "hospital"
+        ],
+        "schema_context_length": 18207,
+        "latency_by_component": {
+          "query_classification": 0.00025177001953125,
+          "table_discovery": 0.5232419967651367,
+          "schema_analysis": 0.0008535385131835938,
+          "reasoning": 8.68776822090149,
+          "sql_generation": 0.0005140304565429688,
+          "sql_validation": 0.09130740165710449,
+          "sql_execution": 0.11469244956970215,
+          "completed": 0.00031065940856933594
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Compare mortalidade hospitalar segundo sexo, com denominador e caveats.",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "association",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            },
+            {
+              "name": "total_mortes",
+              "expression_type": "count",
+              "numerator_condition": "MORTE = true",
+              "required_filters": []
+            },
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters_per_category",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "sexo",
+              "source": "internacoes.SEXO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "diagnostico_principal_descricao",
+              "values": [
+                "mortalidade hospitalar"
+              ],
+              "operator": "ILIKE"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "sexo"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "sexo"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "analytic_response_required",
+            "categorical_outcome_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope",
+            "diagnosis_filter_dimension_not_output",
+            "sex_label_output_required",
+            "diagnosis_description_lookup_required",
+            "death_cause_description_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid",
+          "hospital"
+        ],
+        "llamaindex_confidence": 0.5183288290466356,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "socioeconomico",
+          "hospital"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid",
+          "hospital"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid",
+          "hospital"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "categorical_outcome_association_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary",
+          "rate_denominator_must_preserve_full_scope",
+          "diagnosis_filter_dimension_not_output",
+          "sex_label_output_required",
+          "diagnosis_description_lookup_required",
+          "death_cause_description_requires_diag_princ_with_morte"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "association",
+        "analytic_template": "categorical_factor_by_outcome",
+        "denominator_policy": "all_rows_matching_non_outcome_filters_per_category",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "denominator",
+          "group_distribution",
+          "effect_summary",
+          "limitations"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [],
+          "diagnosis_prefixes": [],
+          "diagnosis_description_terms": [
+            "mortalidade hospitalar"
+          ],
+          "labels": [],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "O plano semântico foi estruturado para comparar a mortalidade hospitalar segundo o sexo, utilizando métricas de contagem para total de internações e total de mortes, além da taxa de mortalidade. As dimensões foram definidas para agrupar os resultados por sexo, e um filtro foi aplicado para considerar apenas os registros relacionados à mortalidade hospitalar. As restrições garantem que a análise seja realizada de forma adequada, preservando o escopo do denominador e assegurando que as condições de desfecho sejam corretamente aplicadas.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "categorical_outcome_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope",
+            "diagnosis_filter_dimension_not_output",
+            "sex_label_output_required",
+            "diagnosis_description_lookup_required",
+            "death_cause_description_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T154700_gen285",
+        "query_number": 5,
+        "orchestrator_execution_time": 9.444968223571777
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN286",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "Existe relacao entre raca/cor e mortalidade hospitalar nas internacoes?",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "raca_mortalidade_caveat",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Sim. Há diferença observada em mortalidade hospitalar (MORTE=true) em diagnostico informado quando as internações são agrupadas por raça/cor.\n\nEscopo usado: internações com raça/cor identificada no diagnostico resolvido; denominador por grupo: internações do próprio grupo.\nResumo: 0 internações no denominador analisado e - mortes hospitalares.\n\nLeitura objetiva: maior taxa em - (-%) e menor em - (-%); razão entre maior e menor taxa: -x.\nLimite: isto descreve associação observada nas internações, não causalidade individual.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    SELECT c.\"CID\" FROM cid c WHERE c.\"DESCRICAO\" ILIKE '%mortalidade hospitalar%'\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), coorte AS (\n    SELECT\n        rc.\"DESCRICAO\" AS grupo_label,\n        CASE WHEN i.\"RACA_COR\" IN (1, 2, 3, 4, 5) THEN i.\"RACA_COR\" ELSE 9 END AS ordem,\n        CASE WHEN i.\"RACA_COR\" IN (1, 2, 3, 4, 5) THEN i.\"RACA_COR\" ELSE 9 END AS raca_cor,\n        i.\"MORTE\"\n    FROM internacoes i\n    JOIN raca_cor rc ON i.\"RACA_COR\" = rc.\"RACA_COR\"\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"RACA_COR\" IN (1, 2, 3, 4, 5)\n), grupos AS (\n    SELECT\n        grupo_label AS grupo,\n        ordem,\n        COUNT(*) AS total_internacoes,\n        SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes,\n        ROUND(SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2)\n            AS taxa_mortalidade_percentual\n    FROM coorte\n    GROUP BY grupo_label, ordem, raca_cor\n), extremos AS (\n    SELECT\n        (SELECT grupo FROM grupos ORDER BY taxa_mortalidade_percentual DESC, total_internacoes DESC LIMIT 1)\n            AS maior_grupo,\n        (SELECT taxa_mortalidade_percentual FROM grupos ORDER BY taxa_mortalidade_percentual DESC, total_internacoes DESC LIMIT 1)\n            AS maior_taxa,\n        (SELECT grupo FROM grupos ORDER BY taxa_mortalidade_percentual ASC, total_internacoes DESC LIMIT 1)\n            AS menor_grupo,\n        (SELECT taxa_mortalidade_percentual FROM grupos ORDER BY taxa_mortalidade_percentual ASC, total_internacoes DESC LIMIT 1)\n            AS menor_taxa\n), excluidos AS (\n    SELECT COUNT(*) AS total_excluidos\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"RACA_COR\" IS NULL OR i.\"RACA_COR\" NOT IN (1, 2, 3, 4, 5)\n)\nSELECT\n    'categorical_outcome_association' AS analysis_type,\n    'raca_cor' AS factor_name,\n    'mortalidade hospitalar (MORTE=true) em ' || COALESCE((SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos), 'diagnostico informado') AS outcome,\n    (SELECT COUNT(*) FROM coorte) AS total_internacoes,\n    (SELECT SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) FROM coorte) AS total_mortes,\n    'internacoes com raca/cor identificada no diagnostico resolvido' AS denominador,\n    (SELECT STRING_AGG(\n        grupo || ':' || total_internacoes || ':' || total_mortes || ':' ||\n        taxa_mortalidade_percentual,\n        ' | ' ORDER BY ordem)\n     FROM grupos) AS group_distribution,\n    (SELECT maior_grupo FROM extremos) AS highest_group,\n    (SELECT maior_taxa FROM extremos) AS highest_rate,\n    (SELECT menor_grupo FROM extremos) AS lowest_group,\n    (SELECT menor_taxa FROM extremos) AS lowest_rate,\n    (SELECT ROUND(maior_taxa / NULLIF(menor_taxa, 0), 2) FROM extremos)\n        AS rate_ratio_highest_vs_lowest,\n    (SELECT CASE\n        WHEN total_excluidos > 0 THEN\n            'data_scope: ' || CAST(total_excluidos AS VARCHAR) ||\n            ' registros ficaram fora do denominador por categoria ausente/invalida'\n        ELSE NULL\n     END FROM excluidos) AS warnings\nFROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 8.48457956314087
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.4366936683654785
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.09683465957641602
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.027546167373657227
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "raca_cor",
+          "cid"
+        ],
+        "schema_context_length": 12920,
+        "latency_by_component": {
+          "query_classification": 0.00027108192443847656,
+          "table_discovery": 0.43680620193481445,
+          "schema_analysis": 0.0005965232849121094,
+          "reasoning": 7.918182373046875,
+          "sql_generation": 0.0005142688751220703,
+          "sql_validation": 0.0968625545501709,
+          "sql_execution": 0.027622461318969727,
+          "completed": 0.0003154277801513672
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Existe relacao entre raca/cor e mortalidade hospitalar nas internacoes?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "association",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            },
+            {
+              "name": "total_mortes",
+              "expression_type": "count",
+              "numerator_condition": "MORTE = true",
+              "required_filters": []
+            },
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters_per_category",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "raca_cor",
+              "source": "internacoes.RACA_COR",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "diagnostico_principal_descricao",
+              "values": [
+                "mortalidade hospitalar"
+              ],
+              "operator": "ILIKE"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "raca_cor"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "raca_cor"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "analytic_response_required",
+            "categorical_outcome_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope",
+            "diagnosis_filter_dimension_not_output",
+            "categorical_lookup_label_required",
+            "diagnosis_description_lookup_required",
+            "death_cause_description_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "raca_cor",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.5059258224665792,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "raca_cor",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "raca_cor",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "raca_cor",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "categorical_outcome_association_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary",
+          "rate_denominator_must_preserve_full_scope",
+          "diagnosis_filter_dimension_not_output",
+          "categorical_lookup_label_required",
+          "diagnosis_description_lookup_required",
+          "death_cause_description_requires_diag_princ_with_morte"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "association",
+        "analytic_template": "categorical_factor_by_outcome",
+        "denominator_policy": "all_rows_matching_non_outcome_filters_per_category",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "denominator",
+          "group_distribution",
+          "effect_summary",
+          "limitations"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [],
+          "diagnosis_prefixes": [],
+          "diagnosis_description_terms": [
+            "mortalidade hospitalar"
+          ],
+          "labels": [],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A análise busca entender a relação entre raça/cor e mortalidade hospitalar, utilizando contagens de internações e mortes, além da taxa de mortalidade. As dimensões e métricas foram escolhidas para permitir uma comparação clara entre os grupos raciais e a mortalidade, enquanto os filtros garantem que apenas as internações relacionadas à mortalidade hospitalar sejam consideradas.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "categorical_outcome_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope",
+            "diagnosis_filter_dimension_not_output",
+            "categorical_lookup_label_required",
+            "diagnosis_description_lookup_required",
+            "death_cause_description_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T154700_gen286",
+        "query_number": 6,
+        "orchestrator_execution_time": 8.498530626296997
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN287",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "O que os dados mostram sobre raca/cor e mortalidade hospitalar?",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "raca_mortalidade_caveat",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Sim. Há diferença observada em mortalidade hospitalar (MORTE=true) em diagnostico informado quando as internações são agrupadas por raça/cor.\n\nEscopo usado: internações com raça/cor identificada no diagnostico resolvido; denominador por grupo: internações do próprio grupo.\nResumo: 0 internações no denominador analisado e - mortes hospitalares.\n\nLeitura objetiva: maior taxa em - (-%) e menor em - (-%); razão entre maior e menor taxa: -x.\nLimite: isto descreve associação observada nas internações, não causalidade individual.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    SELECT c.\"CID\" FROM cid c WHERE c.\"DESCRICAO\" ILIKE '%mortalidade hospitalar%'\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), coorte AS (\n    SELECT\n        rc.\"DESCRICAO\" AS grupo_label,\n        CASE WHEN i.\"RACA_COR\" IN (1, 2, 3, 4, 5) THEN i.\"RACA_COR\" ELSE 9 END AS ordem,\n        CASE WHEN i.\"RACA_COR\" IN (1, 2, 3, 4, 5) THEN i.\"RACA_COR\" ELSE 9 END AS raca_cor,\n        i.\"MORTE\"\n    FROM internacoes i\n    JOIN raca_cor rc ON i.\"RACA_COR\" = rc.\"RACA_COR\"\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"RACA_COR\" IN (1, 2, 3, 4, 5)\n), grupos AS (\n    SELECT\n        grupo_label AS grupo,\n        ordem,\n        COUNT(*) AS total_internacoes,\n        SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes,\n        ROUND(SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2)\n            AS taxa_mortalidade_percentual\n    FROM coorte\n    GROUP BY grupo_label, ordem, raca_cor\n), extremos AS (\n    SELECT\n        (SELECT grupo FROM grupos ORDER BY taxa_mortalidade_percentual DESC, total_internacoes DESC LIMIT 1)\n            AS maior_grupo,\n        (SELECT taxa_mortalidade_percentual FROM grupos ORDER BY taxa_mortalidade_percentual DESC, total_internacoes DESC LIMIT 1)\n            AS maior_taxa,\n        (SELECT grupo FROM grupos ORDER BY taxa_mortalidade_percentual ASC, total_internacoes DESC LIMIT 1)\n            AS menor_grupo,\n        (SELECT taxa_mortalidade_percentual FROM grupos ORDER BY taxa_mortalidade_percentual ASC, total_internacoes DESC LIMIT 1)\n            AS menor_taxa\n), excluidos AS (\n    SELECT COUNT(*) AS total_excluidos\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"RACA_COR\" IS NULL OR i.\"RACA_COR\" NOT IN (1, 2, 3, 4, 5)\n)\nSELECT\n    'categorical_outcome_association' AS analysis_type,\n    'raca_cor' AS factor_name,\n    'mortalidade hospitalar (MORTE=true) em ' || COALESCE((SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos), 'diagnostico informado') AS outcome,\n    (SELECT COUNT(*) FROM coorte) AS total_internacoes,\n    (SELECT SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) FROM coorte) AS total_mortes,\n    'internacoes com raca/cor identificada no diagnostico resolvido' AS denominador,\n    (SELECT STRING_AGG(\n        grupo || ':' || total_internacoes || ':' || total_mortes || ':' ||\n        taxa_mortalidade_percentual,\n        ' | ' ORDER BY ordem)\n     FROM grupos) AS group_distribution,\n    (SELECT maior_grupo FROM extremos) AS highest_group,\n    (SELECT maior_taxa FROM extremos) AS highest_rate,\n    (SELECT menor_grupo FROM extremos) AS lowest_group,\n    (SELECT menor_taxa FROM extremos) AS lowest_rate,\n    (SELECT ROUND(maior_taxa / NULLIF(menor_taxa, 0), 2) FROM extremos)\n        AS rate_ratio_highest_vs_lowest,\n    (SELECT CASE\n        WHEN total_excluidos > 0 THEN\n            'data_scope: ' || CAST(total_excluidos AS VARCHAR) ||\n            ' registros ficaram fora do denominador por categoria ausente/invalida'\n        ELSE NULL\n     END FROM excluidos) AS warnings\nFROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 8.88304591178894
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.47307920455932617
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.09813880920410156
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.027537822723388672
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "raca_cor",
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 16887,
+        "latency_by_component": {
+          "query_classification": 1.0416133403778076,
+          "table_discovery": 0.4731457233428955,
+          "schema_analysis": 0.0007288455963134766,
+          "reasoning": 7.236859321594238,
+          "sql_generation": 0.0007381439208984375,
+          "sql_validation": 0.09816598892211914,
+          "sql_execution": 0.027613162994384766,
+          "completed": 0.00038242340087890625
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "O que os dados mostram sobre raca/cor e mortalidade hospitalar?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "association",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            },
+            {
+              "name": "total_mortes",
+              "expression_type": "count",
+              "numerator_condition": "MORTE = true",
+              "required_filters": []
+            },
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters_per_category",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "raca_cor",
+              "source": "internacoes.RACA_COR",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "diagnostico_principal_descricao",
+              "values": [
+                "mortalidade hospitalar"
+              ],
+              "operator": "ILIKE"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "raca_cor"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "raca_cor"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "analytic_response_required",
+            "categorical_outcome_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope",
+            "diagnosis_filter_dimension_not_output",
+            "categorical_lookup_label_required",
+            "diagnosis_description_lookup_required",
+            "death_cause_description_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "raca_cor",
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.46760473379073303,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "raca_cor",
+          "internacoes",
+          "cid",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "raca_cor",
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "raca_cor",
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "categorical_outcome_association_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary",
+          "rate_denominator_must_preserve_full_scope",
+          "diagnosis_filter_dimension_not_output",
+          "categorical_lookup_label_required",
+          "diagnosis_description_lookup_required",
+          "death_cause_description_requires_diag_princ_with_morte"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "association",
+        "analytic_template": "categorical_factor_by_outcome",
+        "denominator_policy": "all_rows_matching_non_outcome_filters_per_category",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "denominator",
+          "group_distribution",
+          "effect_summary",
+          "limitations"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [],
+          "diagnosis_prefixes": [],
+          "diagnosis_description_terms": [
+            "mortalidade hospitalar"
+          ],
+          "labels": [],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A análise busca entender a associação entre raça/cor e mortalidade hospitalar, utilizando a tabela de internações como base. As métricas incluem o total de internações, o total de mortes e a taxa de mortalidade, com a condição de que a morte seja verdadeira para o cálculo da taxa. A dimensão de raça/cor é utilizada para agrupar os dados, e um filtro é aplicado para focar nas internações relacionadas à mortalidade hospitalar. O formato da resposta é uma tabela agrupada por raça/cor, com uma linha por grupo.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "categorical_outcome_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope",
+            "diagnosis_filter_dimension_not_output",
+            "categorical_lookup_label_required",
+            "diagnosis_description_lookup_required",
+            "death_cause_description_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T154700_gen287",
+        "query_number": 7,
+        "orchestrator_execution_time": 8.897570371627808
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN288",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "Compare mortalidade hospitalar segundo raca/cor, com denominador e caveats.",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "raca_mortalidade_caveat",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Sim. Há diferença observada em mortalidade hospitalar (MORTE=true) em diagnostico informado quando as internações são agrupadas por raça/cor.\n\nEscopo usado: internações com raça/cor identificada no diagnostico resolvido; denominador por grupo: internações do próprio grupo.\nResumo: 0 internações no denominador analisado e - mortes hospitalares.\n\nLeitura objetiva: maior taxa em - (-%) e menor em - (-%); razão entre maior e menor taxa: -x.\nLimite: isto descreve associação observada nas internações, não causalidade individual.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    SELECT c.\"CID\" FROM cid c WHERE c.\"DESCRICAO\" ILIKE '%mortalidade hospitalar%'\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), coorte AS (\n    SELECT\n        rc.\"DESCRICAO\" AS grupo_label,\n        CASE WHEN i.\"RACA_COR\" IN (1, 2, 3, 4, 5) THEN i.\"RACA_COR\" ELSE 9 END AS ordem,\n        CASE WHEN i.\"RACA_COR\" IN (1, 2, 3, 4, 5) THEN i.\"RACA_COR\" ELSE 9 END AS raca_cor,\n        i.\"MORTE\"\n    FROM internacoes i\n    JOIN raca_cor rc ON i.\"RACA_COR\" = rc.\"RACA_COR\"\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"RACA_COR\" IN (1, 2, 3, 4, 5)\n), grupos AS (\n    SELECT\n        grupo_label AS grupo,\n        ordem,\n        COUNT(*) AS total_internacoes,\n        SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes,\n        ROUND(SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2)\n            AS taxa_mortalidade_percentual\n    FROM coorte\n    GROUP BY grupo_label, ordem, raca_cor\n), extremos AS (\n    SELECT\n        (SELECT grupo FROM grupos ORDER BY taxa_mortalidade_percentual DESC, total_internacoes DESC LIMIT 1)\n            AS maior_grupo,\n        (SELECT taxa_mortalidade_percentual FROM grupos ORDER BY taxa_mortalidade_percentual DESC, total_internacoes DESC LIMIT 1)\n            AS maior_taxa,\n        (SELECT grupo FROM grupos ORDER BY taxa_mortalidade_percentual ASC, total_internacoes DESC LIMIT 1)\n            AS menor_grupo,\n        (SELECT taxa_mortalidade_percentual FROM grupos ORDER BY taxa_mortalidade_percentual ASC, total_internacoes DESC LIMIT 1)\n            AS menor_taxa\n), excluidos AS (\n    SELECT COUNT(*) AS total_excluidos\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"RACA_COR\" IS NULL OR i.\"RACA_COR\" NOT IN (1, 2, 3, 4, 5)\n)\nSELECT\n    'categorical_outcome_association' AS analysis_type,\n    'raca_cor' AS factor_name,\n    'mortalidade hospitalar (MORTE=true) em ' || COALESCE((SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos), 'diagnostico informado') AS outcome,\n    (SELECT COUNT(*) FROM coorte) AS total_internacoes,\n    (SELECT SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) FROM coorte) AS total_mortes,\n    'internacoes com raca/cor identificada no diagnostico resolvido' AS denominador,\n    (SELECT STRING_AGG(\n        grupo || ':' || total_internacoes || ':' || total_mortes || ':' ||\n        taxa_mortalidade_percentual,\n        ' | ' ORDER BY ordem)\n     FROM grupos) AS group_distribution,\n    (SELECT maior_grupo FROM extremos) AS highest_group,\n    (SELECT maior_taxa FROM extremos) AS highest_rate,\n    (SELECT menor_grupo FROM extremos) AS lowest_group,\n    (SELECT menor_taxa FROM extremos) AS lowest_rate,\n    (SELECT ROUND(maior_taxa / NULLIF(menor_taxa, 0), 2) FROM extremos)\n        AS rate_ratio_highest_vs_lowest,\n    (SELECT CASE\n        WHEN total_excluidos > 0 THEN\n            'data_scope: ' || CAST(total_excluidos AS VARCHAR) ||\n            ' registros ficaram fora do denominador por categoria ausente/invalida'\n        ELSE NULL\n     END FROM excluidos) AS warnings\nFROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 7.539808988571167
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.7887983322143555
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.09853672981262207
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.027062654495239258
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "raca_cor",
+          "cid"
+        ],
+        "schema_context_length": 12920,
+        "latency_by_component": {
+          "query_classification": 0.00025081634521484375,
+          "table_discovery": 0.7888758182525635,
+          "schema_analysis": 0.0005738735198974609,
+          "reasoning": 6.61993932723999,
+          "sql_generation": 0.00084686279296875,
+          "sql_validation": 0.09857344627380371,
+          "sql_execution": 0.027138471603393555,
+          "completed": 0.00028824806213378906
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Compare mortalidade hospitalar segundo raca/cor, com denominador e caveats.",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "association",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            },
+            {
+              "name": "total_mortes",
+              "expression_type": "count",
+              "numerator_condition": "MORTE = true",
+              "required_filters": []
+            },
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters_per_category",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "raca_cor",
+              "source": "internacoes.RACA_COR",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "diagnostico_principal_descricao",
+              "values": [
+                "mortalidade hospitalar"
+              ],
+              "operator": "ILIKE"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "raca_cor"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "raca_cor"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "analytic_response_required",
+            "categorical_outcome_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope",
+            "diagnosis_filter_dimension_not_output",
+            "categorical_lookup_label_required",
+            "diagnosis_description_lookup_required",
+            "death_cause_description_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "raca_cor",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.5240459836782941,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "raca_cor",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "raca_cor",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "raca_cor",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "categorical_outcome_association_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary",
+          "rate_denominator_must_preserve_full_scope",
+          "diagnosis_filter_dimension_not_output",
+          "categorical_lookup_label_required",
+          "diagnosis_description_lookup_required",
+          "death_cause_description_requires_diag_princ_with_morte"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "association",
+        "analytic_template": "categorical_factor_by_outcome",
+        "denominator_policy": "all_rows_matching_non_outcome_filters_per_category",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "denominator",
+          "group_distribution",
+          "effect_summary",
+          "limitations"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [],
+          "diagnosis_prefixes": [],
+          "diagnosis_description_terms": [
+            "mortalidade hospitalar"
+          ],
+          "labels": [],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "O plano foi estruturado para comparar a mortalidade hospitalar segundo raça/cor, utilizando as métricas de total de internações, total de mortes e taxa de mortalidade. As dimensões foram definidas para agrupar por raça/cor, e um filtro foi aplicado para focar nas internações relacionadas à mortalidade hospitalar. As condições de desfecho foram respeitadas para garantir que a taxa de mortalidade mantenha o denominador completo, conforme as regras do catálogo semântico.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "categorical_outcome_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope",
+            "diagnosis_filter_dimension_not_output",
+            "categorical_lookup_label_required",
+            "diagnosis_description_lookup_required",
+            "death_cause_description_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T154700_gen288",
+        "query_number": 8,
+        "orchestrator_execution_time": 7.554572105407715
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN289",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "Existe relacao entre instrucao e mortalidade hospitalar nas internacoes?",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "instrucao_mortalidade_caveat",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Sim. Há diferença observada em mortalidade hospitalar (MORTE=true) em diagnostico informado quando as internações são agrupadas por instrução.\n\nEscopo usado: internações com instrucao valida no diagnostico resolvido; denominador por grupo: internações do próprio grupo.\nResumo: 0 internações no denominador analisado e - mortes hospitalares.\n\nLeitura objetiva: maior taxa em - (-%) e menor em - (-%); razão entre maior e menor taxa: -x.\nLimite: isto descreve associação observada nas internações, não causalidade individual.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    SELECT c.\"CID\" FROM cid c WHERE c.\"DESCRICAO\" ILIKE '%mortalidade hospitalar%'\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), coorte AS (\n    SELECT\n        inst.\"DESCRICAO\" AS grupo_label,\n        CAST(i.\"INSTRU\" AS INTEGER) AS ordem,\n        CAST(i.\"INSTRU\" AS INTEGER) AS instrucao,\n        i.\"MORTE\"\n    FROM internacoes i\n    JOIN instrucao inst ON i.\"INSTRU\" = inst.\"INSTRU\"\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"INSTRU\" IS NOT NULL AND i.\"INSTRU\" != 0\n), grupos AS (\n    SELECT\n        grupo_label AS grupo,\n        ordem,\n        COUNT(*) AS total_internacoes,\n        SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes,\n        ROUND(SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2)\n            AS taxa_mortalidade_percentual\n    FROM coorte\n    GROUP BY grupo_label, ordem, instrucao\n), extremos AS (\n    SELECT\n        (SELECT grupo FROM grupos ORDER BY taxa_mortalidade_percentual DESC, total_internacoes DESC LIMIT 1)\n            AS maior_grupo,\n        (SELECT taxa_mortalidade_percentual FROM grupos ORDER BY taxa_mortalidade_percentual DESC, total_internacoes DESC LIMIT 1)\n            AS maior_taxa,\n        (SELECT grupo FROM grupos ORDER BY taxa_mortalidade_percentual ASC, total_internacoes DESC LIMIT 1)\n            AS menor_grupo,\n        (SELECT taxa_mortalidade_percentual FROM grupos ORDER BY taxa_mortalidade_percentual ASC, total_internacoes DESC LIMIT 1)\n            AS menor_taxa\n), excluidos AS (\n    SELECT COUNT(*) AS total_excluidos\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"INSTRU\" IS NULL OR i.\"INSTRU\" = 0\n)\nSELECT\n    'categorical_outcome_association' AS analysis_type,\n    'instrucao' AS factor_name,\n    'mortalidade hospitalar (MORTE=true) em ' || COALESCE((SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos), 'diagnostico informado') AS outcome,\n    (SELECT COUNT(*) FROM coorte) AS total_internacoes,\n    (SELECT SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) FROM coorte) AS total_mortes,\n    'internacoes com instrucao valida no diagnostico resolvido' AS denominador,\n    (SELECT STRING_AGG(\n        grupo || ':' || total_internacoes || ':' || total_mortes || ':' ||\n        taxa_mortalidade_percentual,\n        ' | ' ORDER BY ordem)\n     FROM grupos) AS group_distribution,\n    (SELECT maior_grupo FROM extremos) AS highest_group,\n    (SELECT maior_taxa FROM extremos) AS highest_rate,\n    (SELECT menor_grupo FROM extremos) AS lowest_group,\n    (SELECT menor_taxa FROM extremos) AS lowest_rate,\n    (SELECT ROUND(maior_taxa / NULLIF(menor_taxa, 0), 2) FROM extremos)\n        AS rate_ratio_highest_vs_lowest,\n    (SELECT CASE\n        WHEN total_excluidos > 0 THEN\n            'data_scope: ' || CAST(total_excluidos AS VARCHAR) ||\n            ' registros ficaram fora do denominador por categoria ausente/invalida'\n        ELSE NULL\n     END FROM excluidos) AS warnings\nFROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 8.297980546951294
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.4765298366546631
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.0940854549407959
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.031720876693725586
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "instrucao",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "schema_context_length": 18443,
+        "latency_by_component": {
+          "query_classification": 0.00023674964904785156,
+          "table_discovery": 0.4765958786010742,
+          "schema_analysis": 0.0003848075866699219,
+          "reasoning": 7.690884113311768,
+          "sql_generation": 0.0004901885986328125,
+          "sql_validation": 0.09411334991455078,
+          "sql_execution": 0.031852006912231445,
+          "completed": 0.0003077983856201172
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Existe relacao entre instrucao e mortalidade hospitalar nas internacoes?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "association",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            },
+            {
+              "name": "total_mortes",
+              "expression_type": "count",
+              "numerator_condition": "MORTE = true",
+              "required_filters": []
+            },
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters_per_category",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "instrucao",
+              "source": "instrucao.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "diagnostico_principal_descricao",
+              "values": [
+                "mortalidade hospitalar"
+              ],
+              "operator": "ILIKE"
+            },
+            {
+              "field": "instrucao_valid",
+              "values": [
+                "INSTRU IS NOT NULL",
+                "INSTRU != 0"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "instrucao"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "instrucao"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "analytic_response_required",
+            "categorical_outcome_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope",
+            "diagnosis_filter_dimension_not_output",
+            "domain_instrucao_valid_required",
+            "diagnosis_description_lookup_required",
+            "death_cause_description_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "instrucao",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.46860996384584636,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "instrucao",
+          "internacao_procedimento"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "instrucao",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "instrucao",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "categorical_outcome_association_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary",
+          "rate_denominator_must_preserve_full_scope",
+          "diagnosis_filter_dimension_not_output",
+          "domain_instrucao_valid_required",
+          "diagnosis_description_lookup_required",
+          "death_cause_description_requires_diag_princ_with_morte"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "association",
+        "analytic_template": "categorical_factor_by_outcome",
+        "denominator_policy": "all_rows_matching_non_outcome_filters_per_category",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "denominator",
+          "group_distribution",
+          "effect_summary",
+          "limitations"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [],
+          "diagnosis_prefixes": [],
+          "diagnosis_description_terms": [
+            "mortalidade hospitalar"
+          ],
+          "labels": [],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.95,
+          "reasoning": "A análise busca entender a relação entre o nível de instrução e a mortalidade hospitalar nas internações. As métricas selecionadas incluem o total de internações, o total de mortes e a taxa de mortalidade, todas agrupadas por nível de instrução. Filtros são aplicados para garantir que apenas internações com diagnóstico de mortalidade hospitalar sejam consideradas, e que os registros de instrução sejam válidos. O plano assegura que a taxa de mortalidade mantenha o denominador completo, conforme as regras do catálogo semântico.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "categorical_outcome_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope",
+            "diagnosis_filter_dimension_not_output",
+            "domain_instrucao_valid_required",
+            "diagnosis_description_lookup_required",
+            "death_cause_description_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T154700_gen289",
+        "query_number": 9,
+        "orchestrator_execution_time": 8.311970710754395
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN290",
+      "persona": "medico_pesquisador",
+      "category": "pergunta_cientifica_associativa",
+      "difficulty": "hard",
+      "question": "O que os dados mostram sobre instrucao e mortalidade hospitalar?",
+      "expected_behavior": "answer_with_analytic_template",
+      "anti_overfit_family": "instrucao_mortalidade_caveat",
+      "status": "passed",
+      "judge": {
+        "score": 1.0,
+        "passed": {
+          "concept_resolution": true,
+          "cohort_scope": true,
+          "denominator_present": true,
+          "group_distribution_present": true,
+          "comparative_metric_present": true,
+          "faithful_final_answer": true,
+          "no_causal_overclaim": true,
+          "no_sample_only": true
+        },
+        "missing": []
+      },
+      "success": true,
+      "response": "Sim. Há diferença observada em mortalidade hospitalar (MORTE=true) em diagnostico informado quando as internações são agrupadas por instrução.\n\nEscopo usado: internações com instrucao valida no diagnostico resolvido; denominador por grupo: internações do próprio grupo.\nResumo: 0 internações no denominador analisado e - mortes hospitalares.\n\nLeitura objetiva: maior taxa em - (-%) e menor em - (-%); razão entre maior e menor taxa: -x.\nLimite: isto descreve associação observada nas internações, não causalidade individual.",
+      "sql": "WITH diagnosticos_alvo(\"CID\") AS (\n    SELECT c.\"CID\" FROM cid c WHERE c.\"DESCRICAO\" ILIKE '%mortalidade hospitalar%'\n), diagnosticos_resolvidos AS (\n    SELECT d.\"CID\", COALESCE(c.\"DESCRICAO\", '') AS \"DESCRICAO\"\n    FROM diagnosticos_alvo d\n    LEFT JOIN cid c ON c.\"CID\" = d.\"CID\"\n), coorte AS (\n    SELECT\n        inst.\"DESCRICAO\" AS grupo_label,\n        CAST(i.\"INSTRU\" AS INTEGER) AS ordem,\n        CAST(i.\"INSTRU\" AS INTEGER) AS instrucao,\n        i.\"MORTE\"\n    FROM internacoes i\n    JOIN instrucao inst ON i.\"INSTRU\" = inst.\"INSTRU\"\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"INSTRU\" IS NOT NULL AND i.\"INSTRU\" != 0\n), grupos AS (\n    SELECT\n        grupo_label AS grupo,\n        ordem,\n        COUNT(*) AS total_internacoes,\n        SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes,\n        ROUND(SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2)\n            AS taxa_mortalidade_percentual\n    FROM coorte\n    GROUP BY grupo_label, ordem, instrucao\n), extremos AS (\n    SELECT\n        (SELECT grupo FROM grupos ORDER BY taxa_mortalidade_percentual DESC, total_internacoes DESC LIMIT 1)\n            AS maior_grupo,\n        (SELECT taxa_mortalidade_percentual FROM grupos ORDER BY taxa_mortalidade_percentual DESC, total_internacoes DESC LIMIT 1)\n            AS maior_taxa,\n        (SELECT grupo FROM grupos ORDER BY taxa_mortalidade_percentual ASC, total_internacoes DESC LIMIT 1)\n            AS menor_grupo,\n        (SELECT taxa_mortalidade_percentual FROM grupos ORDER BY taxa_mortalidade_percentual ASC, total_internacoes DESC LIMIT 1)\n            AS menor_taxa\n), excluidos AS (\n    SELECT COUNT(*) AS total_excluidos\n    FROM internacoes i\n    JOIN diagnosticos_alvo d ON i.\"DIAG_PRINC\" = d.\"CID\"\n    WHERE i.\"INSTRU\" IS NULL OR i.\"INSTRU\" = 0\n)\nSELECT\n    'categorical_outcome_association' AS analysis_type,\n    'instrucao' AS factor_name,\n    'mortalidade hospitalar (MORTE=true) em ' || COALESCE((SELECT STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\") FROM diagnosticos_resolvidos), 'diagnostico informado') AS outcome,\n    (SELECT COUNT(*) FROM coorte) AS total_internacoes,\n    (SELECT SUM(CASE WHEN \"MORTE\" = true THEN 1 ELSE 0 END) FROM coorte) AS total_mortes,\n    'internacoes com instrucao valida no diagnostico resolvido' AS denominador,\n    (SELECT STRING_AGG(\n        grupo || ':' || total_internacoes || ':' || total_mortes || ':' ||\n        taxa_mortalidade_percentual,\n        ' | ' ORDER BY ordem)\n     FROM grupos) AS group_distribution,\n    (SELECT maior_grupo FROM extremos) AS highest_group,\n    (SELECT maior_taxa FROM extremos) AS highest_rate,\n    (SELECT menor_grupo FROM extremos) AS lowest_group,\n    (SELECT menor_taxa FROM extremos) AS lowest_rate,\n    (SELECT ROUND(maior_taxa / NULLIF(menor_taxa, 0), 2) FROM extremos)\n        AS rate_ratio_highest_vs_lowest,\n    (SELECT CASE\n        WHEN total_excluidos > 0 THEN\n            'data_scope: ' || CAST(total_excluidos AS VARCHAR) ||\n            ' registros ficaram fora do denominador por categoria ausente/invalida'\n        ELSE NULL\n     END FROM excluidos) AS warnings\nFROM (SELECT 1) AS analytic_singleton;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 8.456883192062378
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.47043895721435547
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 0.09174633026123047
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.029984474182128906
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "instrucao",
+          "cid"
+        ],
+        "schema_context_length": 17179,
+        "latency_by_component": {
+          "query_classification": 1.149345874786377,
+          "table_discovery": 0.4705021381378174,
+          "schema_analysis": 0.0004904270172119141,
+          "reasoning": 6.710162162780762,
+          "sql_generation": 0.0008082389831542969,
+          "sql_validation": 0.09177470207214355,
+          "sql_execution": 0.030096769332885742,
+          "completed": 0.0002903938293457031
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "O que os dados mostram sobre instrucao e mortalidade hospitalar?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "association",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            },
+            {
+              "name": "total_mortes",
+              "expression_type": "count",
+              "numerator_condition": "MORTE = true",
+              "required_filters": []
+            },
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters_per_category",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "instrucao",
+              "source": "instrucao.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "diagnostico_principal_descricao",
+              "values": [
+                "mortalidade hospitalar"
+              ],
+              "operator": "ILIKE"
+            },
+            {
+              "field": "instrucao_valid",
+              "values": [
+                "INSTRU IS NOT NULL",
+                "INSTRU != 0"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "instrucao"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "instrucao"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "analytic_response_required",
+            "categorical_outcome_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope",
+            "diagnosis_filter_dimension_not_output",
+            "domain_instrucao_valid_required",
+            "diagnosis_description_lookup_required",
+            "death_cause_description_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "instrucao",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.45329090939217104,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "instrucao",
+          "socioeconomico",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "instrucao",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "instrucao",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "analytic_response_required",
+          "categorical_outcome_association_required",
+          "analytic_response_requires_denominator",
+          "analytic_response_requires_group_distribution",
+          "analytic_response_requires_effect_summary",
+          "rate_denominator_must_preserve_full_scope",
+          "diagnosis_filter_dimension_not_output",
+          "domain_instrucao_valid_required",
+          "diagnosis_description_lookup_required",
+          "death_cause_description_requires_diag_princ_with_morte"
+        ],
+        "semantic_null_policy": [],
+        "analytic_intent": "association",
+        "analytic_template": "categorical_factor_by_outcome",
+        "denominator_policy": "all_rows_matching_non_outcome_filters_per_category",
+        "analytic_sections_present": [
+          "direct_answer",
+          "scope",
+          "denominator",
+          "group_distribution",
+          "effect_summary",
+          "limitations"
+        ],
+        "concept_resolution": {
+          "diagnosis_codes": [],
+          "diagnosis_prefixes": [],
+          "diagnosis_description_terms": [
+            "mortalidade hospitalar"
+          ],
+          "labels": [],
+          "resolved": true
+        },
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A análise busca entender a associação entre o nível de instrução e a mortalidade hospitalar, utilizando contagens de internações e mortes, além da taxa de mortalidade. As dimensões e filtros foram escolhidos para garantir que apenas dados relevantes e válidos sejam considerados, respeitando as regras do domínio.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic analytic SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "analytic_response_required",
+            "categorical_outcome_association_required",
+            "analytic_response_requires_denominator",
+            "analytic_response_requires_group_distribution",
+            "analytic_response_requires_effect_summary",
+            "rate_denominator_must_preserve_full_scope",
+            "diagnosis_filter_dimension_not_output",
+            "domain_instrucao_valid_required",
+            "diagnosis_description_lookup_required",
+            "death_cause_description_requires_diag_princ_with_morte"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T154700_gen290",
+        "query_number": 10,
+        "orchestrator_execution_time": 8.479461669921875
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    }
+  ]
+}

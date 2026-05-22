@@ -1,0 +1,3513 @@
+{
+  "run_id": "generalization_exhaustion_20260521T131240",
+  "created_at": "2026-05-21T13:15:08",
+  "dry_run": false,
+  "summary": {
+    "status_counts": {
+      "passed": 10
+    },
+    "root_cause_counts": {},
+    "severity_counts": {}
+  },
+  "items": [
+    {
+      "id": "GEN131",
+      "persona": "gestor_hospitalar",
+      "category": "custos_permanencia",
+      "difficulty": "hard",
+      "question": "Quais hospitais tiveram maior custo por dia de internacao em 2023 com pelo menos 1000 internacoes?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "custo_por_dia_hospital",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [],
+        "actual_preview": []
+      },
+      "success": true,
+      "response": "Nenhum resultado encontrado para sua consulta.",
+      "sql": "SELECT h.\"NO_HOSPITAL\" AS hospital, COUNT(*) AS total_internacoes, ROUND(SUM(i.\"VAL_TOT\") / NULLIF(SUM(i.\"DIAS_PERM\"), 0), 2) AS custo_medio_por_dia FROM internacoes i JOIN hospital h ON i.\"CNES\" = h.\"CNES\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2023 AND i.\"DIAS_PERM\" > 0 GROUP BY h.\"NO_HOSPITAL\" HAVING COUNT(*) >= 1000 ORDER BY custo_medio_por_dia DESC NULLS LAST LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 11.693232536315918
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 1.465900182723999
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.549551010131836
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.03551650047302246
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "internacao_procedimento",
+          "hospital",
+          "procedimentos"
+        ],
+        "schema_context_length": 19471,
+        "latency_by_component": {
+          "query_classification": 0.0002715587615966797,
+          "table_discovery": 1.465980052947998,
+          "schema_analysis": 0.0008962154388427734,
+          "reasoning": 6.621794700622559,
+          "sql_generation": 0.0008885860443115234,
+          "sql_validation": 3.549583911895752,
+          "sql_execution": 0.03561735153198242,
+          "completed": 4.792213439941406e-05
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais hospitais tiveram maior custo por dia de internacao em 2023 com pelo menos 1000 internacoes?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "custo_por_dia",
+              "expression_type": "ratio",
+              "required_filters": [
+                "SUM(VAL_TOT)",
+                "SUM(DIAS_PERM)"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "hospital",
+              "source": "internacoes.CNES",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2023"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "minimum_group_count",
+              "values": [
+                "1000"
+              ],
+              "operator": ">"
+            },
+            {
+              "field": "internacoes",
+              "values": [
+                "1000"
+              ],
+              "operator": ">"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "hospital"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "hospital"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "cost_per_day_highest_requested"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "hospital",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.45963535896831514,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "hospital"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "hospital",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "hospital",
+          "procedimentos"
+        ],
+        "semantic_constraints": [
+          "cost_per_day_highest_requested"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os hospitais com base no custo por dia de internação em 2023, considerando apenas aqueles com pelo menos 1000 internações. A métrica 'custo_por_dia' é calculada como a razão entre o total de valores e o total de dias de permanência. As dimensões incluem o hospital, e os filtros garantem que apenas os dados de 2023 e hospitais com mais de 1000 internações sejam considerados.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics",
+            "filters"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "cost_per_day_highest_requested"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T131240_gen131",
+        "query_number": 1,
+        "orchestrator_execution_time": 11.71250033378601
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN132",
+      "persona": "gestor_hospitalar",
+      "category": "custos_permanencia",
+      "difficulty": "medium",
+      "question": "Qual foi o valor total de UTI por UF em 2020?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "custo_uti_uf",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "uf_residencia": "SP",
+            "valor_uti_total": 1200299531.73
+          },
+          {
+            "uf_residencia": "MG",
+            "valor_uti_total": 617050312.38
+          },
+          {
+            "uf_residencia": "PR",
+            "valor_uti_total": 429074601.38
+          },
+          {
+            "uf_residencia": "RS",
+            "valor_uti_total": 357046874.72
+          },
+          {
+            "uf_residencia": "RJ",
+            "valor_uti_total": 272403897.95
+          }
+        ],
+        "actual_preview": [
+          {
+            "uf_residencia": "SP",
+            "valor_uti_total": 1200299531.73
+          },
+          {
+            "uf_residencia": "MG",
+            "valor_uti_total": 617050312.38
+          },
+          {
+            "uf_residencia": "PR",
+            "valor_uti_total": 429074601.38
+          },
+          {
+            "uf_residencia": "RS",
+            "valor_uti_total": 357046874.72
+          },
+          {
+            "uf_residencia": "RJ",
+            "valor_uti_total": 272403897.95
+          }
+        ]
+      },
+      "success": true,
+      "response": "Em 2020, o valor total de UTI por UF foi:\n\n1. SP: R$ 1.200.299.531,73\n2. MG: R$ 617.050.312,38\n3. PR: R$ 429.074.601,38\n4. RS: R$ 357.046.874,72\n5. RJ: R$ 272.403.897,95\n6. BA: R$ 259.153.831,36\n7. SC: R$ 233.538.094,29\n8. PE: R$ 224.698.097,92\n9. CE: R$ 161.547.119,14\n10. GO: R$ 158.552.610,11\n11. ES: R$ 134.099.861,27\n12. PA: R$ 105.134.586,15\n13. MA: R$ 92.771.351,21\n14. MS: R$ 76.162.795,09\n15. MT: R$ 72.875.937,79\n16. RN: R$ 71.859.207,58\n17. PB: R$ 64.569.641,56\n18. AM: R$ 63.387.292,94\n19. PI: R$ 58.112.795,55\n20. DF: R$ 50.415.795,58\n21. AL: R$ 49.801.094,10\n22. SE: R$ 44.797.682,54\n23. RO: R$ 34.202.523,30\n24. TO: R$ 28.238.027,79\n25. AC: R$ 10.668.881,61\n26. RR: R$ 8.965.977,26\n27. AP: R$ 4.349.568,48",
+      "sql": "SELECT mu.\"SG_UF\" AS \"uf_residencia\", ROUND(SUM(i.\"VAL_UTI\"), 2) AS \"valor_uti_total\" FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 GROUP BY mu.\"SG_UF\" ORDER BY \"valor_uti_total\" DESC;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 15.729575395584106
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.48355913162231445
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.9875867366790771
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.35617566108703613
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid",
+          "municipios"
+        ],
+        "schema_context_length": 19335,
+        "latency_by_component": {
+          "query_classification": 0.0002377033233642578,
+          "table_discovery": 0.4836258888244629,
+          "schema_analysis": 0.0005614757537841797,
+          "reasoning": 6.185490131378174,
+          "sql_generation": 0.0009875297546386719,
+          "sql_validation": 1.9876163005828857,
+          "sql_execution": 0.3562796115875244,
+          "completed": 6.700101375579834
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi o valor total de UTI por UF em 2020?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "count",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "valor_total_uti",
+              "expression_type": "sum",
+              "required_filters": [
+                "SUM(VAL_UTI)",
+                "VAL_UTI > 0"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "uti",
+              "values": [
+                "VAL_UTI > 0"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid",
+          "municipios"
+        ],
+        "llamaindex_confidence": 0.37429851272128684,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "socioeconomico",
+          "municipios"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid",
+          "municipios"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid",
+          "municipios"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é calcular o valor total de UTI por UF em 2020, utilizando a soma dos valores de UTI (VAL_UTI) filtrados por ano e agrupados por estado. A métrica e dimensões foram escolhidas para refletir essa necessidade de agregação por estado.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T131240_gen132",
+        "query_number": 2,
+        "orchestrator_execution_time": 15.741210460662842
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN133",
+      "persona": "gestor_hospitalar",
+      "category": "custos_permanencia",
+      "difficulty": "medium",
+      "question": "Qual foi o valor total de UTI por UF em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "custo_uti_uf",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "uf_residencia": "SP",
+            "valor_uti_total": 2041631398.61
+          },
+          {
+            "uf_residencia": "MG",
+            "valor_uti_total": 1061869592.12
+          },
+          {
+            "uf_residencia": "PR",
+            "valor_uti_total": 752139295.76
+          },
+          {
+            "uf_residencia": "RS",
+            "valor_uti_total": 592681845.57
+          },
+          {
+            "uf_residencia": "RJ",
+            "valor_uti_total": 537906707.51
+          }
+        ],
+        "actual_preview": [
+          {
+            "uf_residencia": "SP",
+            "valor_uti_total": 2041631398.61
+          },
+          {
+            "uf_residencia": "MG",
+            "valor_uti_total": 1061869592.12
+          },
+          {
+            "uf_residencia": "PR",
+            "valor_uti_total": 752139295.76
+          },
+          {
+            "uf_residencia": "RS",
+            "valor_uti_total": 592681845.57
+          },
+          {
+            "uf_residencia": "RJ",
+            "valor_uti_total": 537906707.51
+          }
+        ]
+      },
+      "success": true,
+      "response": "Em 2021, o valor total de UTI por UF foi:\n\n1. SP: R$ 2.041.631.398,61\n2. MG: R$ 1.061.869.592,12\n3. PR: R$ 752.139.295,76\n4. RS: R$ 592.681.845,57\n5. RJ: R$ 537.906.707,51\n6. BA: R$ 466.485.290,80\n7. PE: R$ 445.515.158,97\n8. SC: R$ 409.465.650,63\n9. GO: R$ 312.422.576,13\n10. CE: R$ 298.644.155,45\n11. ES: R$ 231.994.441,82\n12. MT: R$ 160.195.329,15\n13. MA: R$ 158.299.641,17\n14. MS: R$ 137.637.403,69\n15. PB: R$ 130.927.321,89\n16. PA: R$ 128.588.780,93\n17. RN: R$ 120.937.619,27\n18. AL: R$ 96.160.651,34\n19. PI: R$ 91.486.716,84\n20. AM: R$ 90.123.677,98\n21. DF: R$ 79.081.946,97\n22. SE: R$ 69.097.403,77\n23. RO: R$ 64.482.539,62\n24. TO: R$ 42.408.206,43\n25. AC: R$ 16.343.060,99\n26. AP: R$ 13.081.210,54\n27. RR: R$ 11.355.367,37",
+      "sql": "SELECT mu.\"SG_UF\" AS \"uf_residencia\", ROUND(SUM(i.\"VAL_UTI\"), 2) AS \"valor_uti_total\" FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 GROUP BY mu.\"SG_UF\" ORDER BY \"valor_uti_total\" DESC;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 20.231451749801636
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5614848136901855
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.7766637802124023
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.1963961124420166
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid",
+          "marca_uti"
+        ],
+        "schema_context_length": 16118,
+        "latency_by_component": {
+          "query_classification": 0.00032210350036621094,
+          "table_discovery": 0.5615525245666504,
+          "schema_analysis": 0.0007917881011962891,
+          "reasoning": 5.431987762451172,
+          "sql_generation": 0.0007512569427490234,
+          "sql_validation": 1.7766971588134766,
+          "sql_execution": 0.1965031623840332,
+          "completed": 12.260600805282593
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi o valor total de UTI por UF em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "count",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "valor_total_uti",
+              "expression_type": "sum",
+              "required_filters": [
+                "SUM(VAL_UTI)",
+                "VAL_UTI > 0"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "uti",
+              "values": [
+                "VAL_UTI > 0"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid",
+          "marca_uti"
+        ],
+        "llamaindex_confidence": 0.37291225530356903,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "marca_uti",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid",
+          "marca_uti"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid",
+          "marca_uti"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é contar o valor total de UTI por UF em 2021, utilizando a soma dos valores de UTI (VAL_UTI) filtrados por ano e por valores positivos. As dimensões e métricas foram definidas para agrupar os resultados por estado.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T131240_gen133",
+        "query_number": 3,
+        "orchestrator_execution_time": 20.245673179626465
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN134",
+      "persona": "gestor_hospitalar",
+      "category": "custos_permanencia",
+      "difficulty": "medium",
+      "question": "Qual foi o valor total de UTI por UF em 2022?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "custo_uti_uf",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "uf_residencia": "SP",
+            "valor_uti_total": 1243013006.85
+          },
+          {
+            "uf_residencia": "MG",
+            "valor_uti_total": 713954341.61
+          },
+          {
+            "uf_residencia": "PR",
+            "valor_uti_total": 455321115.49
+          },
+          {
+            "uf_residencia": "RJ",
+            "valor_uti_total": 375703272.91
+          },
+          {
+            "uf_residencia": "RS",
+            "valor_uti_total": 332440288.97
+          }
+        ],
+        "actual_preview": [
+          {
+            "uf_residencia": "SP",
+            "valor_uti_total": 1243013006.85
+          },
+          {
+            "uf_residencia": "MG",
+            "valor_uti_total": 713954341.61
+          },
+          {
+            "uf_residencia": "PR",
+            "valor_uti_total": 455321115.49
+          },
+          {
+            "uf_residencia": "RJ",
+            "valor_uti_total": 375703272.91
+          },
+          {
+            "uf_residencia": "RS",
+            "valor_uti_total": 332440288.97
+          }
+        ]
+      },
+      "success": true,
+      "response": "O valor total de UTI por UF em 2022 foi:\n\n1. SP: R$ 1.243.013.006,85\n2. MG: R$ 713.954.341,61\n3. PR: R$ 455.321.115,49\n4. RJ: R$ 375.703.272,91\n5. RS: R$ 332.440.288,97\n6. BA: R$ 271.916.506,63\n7. PE: R$ 242.847.728,18\n8. SC: R$ 213.191.303,42\n9. CE: R$ 179.030.143,16\n10. GO: R$ 155.328.653,65\n11. ES: R$ 138.565.373,86\n12. PA: R$ 133.847.646,85\n13. MA: R$ 107.545.499,72\n14. PB: R$ 85.298.266,56\n15. MS: R$ 84.266.688,61\n16. MT: R$ 77.520.380,71\n17. RN: R$ 74.375.830,04\n18. AM: R$ 65.861.471,20\n19. DF: R$ 63.159.876,40\n20. AL: R$ 53.316.987,22\n21. PI: R$ 52.699.906,99\n22. SE: R$ 49.060.226,21\n23. RO: R$ 37.199.649,19\n24. TO: R$ 25.273.194,56\n25. RR: R$ 12.491.658,75\n26. AC: R$ 10.052.779,20\n27. AP: R$ 6.389.661,37",
+      "sql": "SELECT mu.\"SG_UF\" AS \"uf_residencia\", ROUND(SUM(i.\"VAL_UTI\"), 2) AS \"valor_uti_total\" FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2022 GROUP BY mu.\"SG_UF\" ORDER BY \"valor_uti_total\" DESC;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 17.742815017700195
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5527253150939941
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.5892527103424072
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.20060324668884277
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid",
+          "marca_uti"
+        ],
+        "schema_context_length": 16118,
+        "latency_by_component": {
+          "query_classification": 0.0003235340118408203,
+          "table_discovery": 0.552800178527832,
+          "schema_analysis": 0.0008487701416015625,
+          "reasoning": 5.351703882217407,
+          "sql_generation": 0.0007138252258300781,
+          "sql_validation": 3.5892796516418457,
+          "sql_execution": 0.20070528984069824,
+          "completed": 8.044609546661377
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi o valor total de UTI por UF em 2022?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "count",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "valor_total_uti",
+              "expression_type": "sum",
+              "required_filters": [
+                "SUM(VAL_UTI)",
+                "VAL_UTI > 0"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2022"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "uti",
+              "values": [
+                "VAL_UTI > 0"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid",
+          "marca_uti"
+        ],
+        "llamaindex_confidence": 0.37645772782296927,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "socioeconomico",
+          "marca_uti"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid",
+          "marca_uti"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid",
+          "marca_uti"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é contar o valor total de UTI por UF em 2022, utilizando a soma dos valores de UTI (VAL_UTI) filtrados para valores positivos. As dimensões e filtros foram definidos para agrupar os resultados por estado e restringir os dados ao ano de 2022.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T131240_gen134",
+        "query_number": 4,
+        "orchestrator_execution_time": 17.75663948059082
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN135",
+      "persona": "gestor_hospitalar",
+      "category": "custos_permanencia",
+      "difficulty": "medium",
+      "question": "Qual foi o valor total de UTI por UF em 2023?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "custo_uti_uf",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "uf_residencia": "SP",
+            "valor_uti_total": 1131401281.67
+          },
+          {
+            "uf_residencia": "MG",
+            "valor_uti_total": 644267300.05
+          },
+          {
+            "uf_residencia": "PR",
+            "valor_uti_total": 432727904.94
+          },
+          {
+            "uf_residencia": "RJ",
+            "valor_uti_total": 342178888.25
+          },
+          {
+            "uf_residencia": "RS",
+            "valor_uti_total": 286581475.18
+          }
+        ],
+        "actual_preview": [
+          {
+            "uf_residencia": "SP",
+            "valor_uti_total": 1131401281.67
+          },
+          {
+            "uf_residencia": "MG",
+            "valor_uti_total": 644267300.05
+          },
+          {
+            "uf_residencia": "PR",
+            "valor_uti_total": 432727904.94
+          },
+          {
+            "uf_residencia": "RJ",
+            "valor_uti_total": 342178888.25
+          },
+          {
+            "uf_residencia": "RS",
+            "valor_uti_total": 286581475.18
+          }
+        ]
+      },
+      "success": true,
+      "response": "O valor total de UTI por UF em 2023 é:\n\n1. SP: R$ 1.131.401.281,67\n2. MG: R$ 644.267.300,05\n3. PR: R$ 432.727.904,94\n4. RJ: R$ 342.178.888,25\n5. RS: R$ 286.581.475,18\n6. BA: R$ 235.144.825,30\n7. PE: R$ 210.157.104,70\n8. SC: R$ 192.345.350,80\n9. CE: R$ 163.291.191,74\n10. GO: R$ 153.112.698,21\n11. ES: R$ 133.021.864,05\n12. PA: R$ 127.927.733,17\n13. MA: R$ 106.257.293,03\n14. PB: R$ 74.789.761,26\n15. MT: R$ 71.876.399,89\n16. MS: R$ 67.280.050,33\n17. DF: R$ 64.259.461,50\n18. RN: R$ 63.945.838,12\n19. AL: R$ 57.334.571,26\n20. AM: R$ 56.130.157,63\n21. PI: R$ 48.396.843,42\n22. SE: R$ 40.269.185,75\n23. RO: R$ 36.156.983,69\n24. TO: R$ 22.984.329,04\n25. RR: R$ 11.441.261,00\n26. AC: R$ 10.298.493,26\n27. AP: R$ 6.472.733,52",
+      "sql": "SELECT mu.\"SG_UF\" AS \"uf_residencia\", ROUND(SUM(i.\"VAL_UTI\"), 2) AS \"valor_uti_total\" FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2023 GROUP BY mu.\"SG_UF\" ORDER BY \"valor_uti_total\" DESC;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 16.393996000289917
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.7713758945465088
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.7889623641967773
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.2011725902557373
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid",
+          "marca_uti"
+        ],
+        "schema_context_length": 11919,
+        "latency_by_component": {
+          "query_classification": 0.00028824806213378906,
+          "table_discovery": 0.7714543342590332,
+          "schema_analysis": 0.0005261898040771484,
+          "reasoning": 5.312121868133545,
+          "sql_generation": 0.0007731914520263672,
+          "sql_validation": 1.7889902591705322,
+          "sql_execution": 0.20127487182617188,
+          "completed": 8.316549062728882
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi o valor total de UTI por UF em 2023?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "count",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "valor_total_uti",
+              "expression_type": "sum",
+              "required_filters": [
+                "SUM(VAL_UTI)",
+                "VAL_UTI > 0"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2023"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "uti",
+              "values": [
+                "VAL_UTI > 0"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid",
+          "marca_uti"
+        ],
+        "llamaindex_confidence": 0.3714671387439113,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "marca_uti"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid",
+          "marca_uti"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid",
+          "marca_uti"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é calcular o valor total de UTI por UF em 2023, utilizando a soma dos valores de UTI (VAL_UTI) filtrados para o ano de 2023 e considerando apenas os registros onde VAL_UTI é maior que zero. As dimensões e métricas foram definidas para agrupar os resultados por estado.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T131240_gen135",
+        "query_number": 5,
+        "orchestrator_execution_time": 16.408445119857788
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN136",
+      "persona": "gestor_hospitalar",
+      "category": "custos_permanencia",
+      "difficulty": "medium",
+      "question": "Qual foi a permanencia media por especialidade em 2020?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "permanencia_especialidade",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "especialidade": "CARDIOLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "BUCO MAXILO FACIAL",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "OTORRINOLARINGOLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "OBSTETRICIA CIRURGICA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "ENDOCRINOLOGIA",
+            "permanencia_media": 0.0
+          }
+        ],
+        "actual_preview": [
+          {
+            "especialidade": "ENDOCRINOLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "NEUROCIRURGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "OBSTETRICIA CIRURGICA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "GASTROENTEROLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "GINECOLOGIA",
+            "permanencia_media": 0.0
+          }
+        ]
+      },
+      "success": true,
+      "response": "A permanência média por especialidade em 2020 foi de 0,0 dias para todas as especialidades analisadas.",
+      "sql": "SELECT e.\"DESCRICAO\" AS especialidade, ROUND(AVG(i.\"DIAS_PERM\"), 2) AS permanencia_media FROM internacoes i JOIN especialidade e ON i.\"ESPEC\" = e.\"ESPEC\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 GROUP BY e.\"DESCRICAO\" ORDER BY permanencia_media DESC NULLS LAST LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 11.20245885848999
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 1.185436725616455
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.6570837497711182
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.15288805961608887
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "schema_context_length": 13017,
+        "latency_by_component": {
+          "query_classification": 0.00027489662170410156,
+          "table_discovery": 1.185518741607666,
+          "schema_analysis": 0.0007486343383789062,
+          "reasoning": 6.992144823074341,
+          "sql_generation": 0.0006854534149169922,
+          "sql_validation": 1.6571111679077148,
+          "sql_execution": 0.15299201011657715,
+          "completed": 1.2110741138458252
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi a permanencia media por especialidade em 2020?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "distribution",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "media_dias_permanencia",
+              "expression_type": "avg",
+              "required_filters": [
+                "AVG(DIAS_PERM)"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "especialidade",
+              "source": "especialidade.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "especialidade"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "especialidade"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.41692847459939736,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "validated_selected_tables": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é calcular a permanência média por especialidade em 2020, o que requer a média dos dias de permanência agrupada por especialidade. A métrica escolhida é a média de dias de permanência, e a dimensão é a especialidade. O filtro aplicado é para o ano de 2020, e a estrutura da resposta deve ser uma tabela agrupada por especialidade, com uma linha por grupo.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T131240_gen136",
+        "query_number": 6,
+        "orchestrator_execution_time": 11.214818239212036
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN137",
+      "persona": "gestor_hospitalar",
+      "category": "custos_permanencia",
+      "difficulty": "medium",
+      "question": "Qual foi a permanencia media por especialidade em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "permanencia_especialidade",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "especialidade": "CARDIOLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "BUCO MAXILO FACIAL",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "GINECOLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "GASTROENTEROLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "ONCOLOGIA",
+            "permanencia_media": 0.0
+          }
+        ],
+        "actual_preview": [
+          {
+            "especialidade": "CARDIOLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "OTORRINOLARINGOLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "ORTOPEDIATRAUMATOLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "BUCO MAXILO FACIAL",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "CIRURGICO/DIAGNOSTICO/TERAPEUTICO",
+            "permanencia_media": 0.0
+          }
+        ]
+      },
+      "success": true,
+      "response": "A permanência média por especialidade em 2021 foi de 0,0 dias para todas as especialidades listadas: \n\n1. Cardiologia\n2. Otorrinolaringologia\n3. Ortopediatraumatologia\n4. Neurocirurgia\n5. Endocrinologia\n6. Saúde Mental\n7. Nefrologiaurologia\n8. Buco Maxilo Facial\n9. Cirúrgico/Diagnóstico/Terapêutico\n10. Ginecologia",
+      "sql": "SELECT e.\"DESCRICAO\" AS especialidade, ROUND(AVG(i.\"DIAS_PERM\"), 2) AS permanencia_media FROM internacoes i JOIN especialidade e ON i.\"ESPEC\" = e.\"ESPEC\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 GROUP BY e.\"DESCRICAO\" ORDER BY permanencia_media DESC NULLS LAST LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 11.918663024902344
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5280697345733643
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.033217668533325
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.13103961944580078
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "schema_context_length": 13017,
+        "latency_by_component": {
+          "query_classification": 0.0002880096435546875,
+          "table_discovery": 0.5281553268432617,
+          "schema_analysis": 0.0004837512969970703,
+          "reasoning": 6.643719434738159,
+          "sql_generation": 0.0005519390106201172,
+          "sql_validation": 2.0332446098327637,
+          "sql_execution": 0.13114237785339355,
+          "completed": 2.5793936252593994
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi a permanencia media por especialidade em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "distribution",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "media_dias_permanencia",
+              "expression_type": "avg",
+              "required_filters": [
+                "AVG(DIAS_PERM)"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "especialidade",
+              "source": "especialidade.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "especialidade"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "especialidade"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.41755270117695775,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "validated_selected_tables": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é calcular a permanência média por especialidade em 2021, o que requer a média dos dias de permanência agrupada por especialidade. A métrica escolhida é a média de dias de permanência, e a dimensão é a especialidade. O filtro aplicado é para o ano de 2021, garantindo que os dados sejam relevantes para o período solicitado.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T131240_gen137",
+        "query_number": 7,
+        "orchestrator_execution_time": 11.931432008743286
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN138",
+      "persona": "gestor_hospitalar",
+      "category": "custos_permanencia",
+      "difficulty": "medium",
+      "question": "Qual foi a permanencia media por especialidade em 2022?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "permanencia_especialidade",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "especialidade": "CARDIOLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "BUCO MAXILO FACIAL",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "SAUDE MENTAL",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "NEFROLOGIAUROLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "OBSTETRICIA CIRURGICA",
+            "permanencia_media": 0.0
+          }
+        ],
+        "actual_preview": [
+          {
+            "especialidade": "OTORRINOLARINGOLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "CARDIOLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "SAUDE MENTAL",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "NEFROLOGIAUROLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "ORTOPEDIATRAUMATOLOGIA",
+            "permanencia_media": 0.0
+          }
+        ]
+      },
+      "success": true,
+      "response": "A permanência média por especialidade em 2022 foi de 0,0 dias para todas as especialidades listadas: \n\n1. Cardiologia\n2. Obstetrícia Cirúrgica\n3. Ortopedia/Traumatologia\n4. Buco Maxilo Facial\n5. Cirúrgico/Diagnóstico/Terapêutico\n6. Saúde Mental\n7. Nefrologia/Urologia\n8. Otorrinolaringologia\n9. Neurocirurgia\n10. Endocrinologia",
+      "sql": "SELECT e.\"DESCRICAO\" AS especialidade, ROUND(AVG(i.\"DIAS_PERM\"), 2) AS permanencia_media FROM internacoes i JOIN especialidade e ON i.\"ESPEC\" = e.\"ESPEC\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2022 GROUP BY e.\"DESCRICAO\" ORDER BY permanencia_media DESC NULLS LAST LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 15.643746137619019
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.527803897857666
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 7.0275492668151855
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.1306307315826416
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "schema_context_length": 13017,
+        "latency_by_component": {
+          "query_classification": 0.00032711029052734375,
+          "table_discovery": 0.5278799533843994,
+          "schema_analysis": 0.0007860660552978516,
+          "reasoning": 5.053551435470581,
+          "sql_generation": 0.0007228851318359375,
+          "sql_validation": 7.027575731277466,
+          "sql_execution": 0.13073039054870605,
+          "completed": 2.900473117828369
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi a permanencia media por especialidade em 2022?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "distribution",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "media_dias_permanencia",
+              "expression_type": "avg",
+              "required_filters": [
+                "AVG(DIAS_PERM)"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "especialidade",
+              "source": "especialidade.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2022"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "especialidade"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "especialidade"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.4170917403384147,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "validated_selected_tables": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é calcular a permanência média por especialidade em 2022, o que requer a média dos dias de permanência agrupada por especialidade. A métrica escolhida é a média de dias de permanência, e a dimensão é a especialidade. O filtro aplicado é para o ano de 2022, e a forma de resposta é uma tabela agrupada por especialidade, com uma linha por grupo.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T131240_gen138",
+        "query_number": 8,
+        "orchestrator_execution_time": 15.65760350227356
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN139",
+      "persona": "gestor_hospitalar",
+      "category": "custos_permanencia",
+      "difficulty": "medium",
+      "question": "Qual foi a permanencia media por especialidade em 2023?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "permanencia_especialidade",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "especialidade": "CARDIOLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "CIRURGICO/DIAGNOSTICO/TERAPEUTICO",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "BUCO MAXILO FACIAL",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "OTORRINOLARINGOLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "ORTOPEDIATRAUMATOLOGIA",
+            "permanencia_media": 0.0
+          }
+        ],
+        "actual_preview": [
+          {
+            "especialidade": "CARDIOLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "OTORRINOLARINGOLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "CIRURGICO/DIAGNOSTICO/TERAPEUTICO",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "ORTOPEDIATRAUMATOLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "OBSTETRICIA CIRURGICA",
+            "permanencia_media": 0.0
+          }
+        ]
+      },
+      "success": true,
+      "response": "A permanência média por especialidade em 2023 foi de 0,0 dias para todas as especialidades analisadas.",
+      "sql": "SELECT e.\"DESCRICAO\" AS especialidade, ROUND(AVG(i.\"DIAS_PERM\"), 2) AS permanencia_media FROM internacoes i JOIN especialidade e ON i.\"ESPEC\" = e.\"ESPEC\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2023 GROUP BY e.\"DESCRICAO\" ORDER BY permanencia_media DESC NULLS LAST LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 10.844950199127197
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5286133289337158
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.376279354095459
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.1332707405090332
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "schema_context_length": 13017,
+        "latency_by_component": {
+          "query_classification": 0.0002911090850830078,
+          "table_discovery": 0.5286886692047119,
+          "schema_analysis": 0.0007834434509277344,
+          "reasoning": 6.782546758651733,
+          "sql_generation": 0.00048160552978515625,
+          "sql_validation": 2.376307249069214,
+          "sql_execution": 0.13337230682373047,
+          "completed": 1.0207240581512451
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi a permanencia media por especialidade em 2023?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "distribution",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "media_dias_permanencia",
+              "expression_type": "avg",
+              "required_filters": [
+                "AVG(DIAS_PERM)"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "especialidade",
+              "source": "especialidade.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2023"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "especialidade"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "especialidade"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.4143167816572142,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "validated_selected_tables": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é calcular a permanência média por especialidade em 2023, o que requer a média dos dias de permanência agrupada por especialidade. A métrica escolhida é a média de dias de permanência, e a dimensão é a especialidade. O filtro aplicado é para o ano de 2023, garantindo que os dados sejam relevantes para o período solicitado.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T131240_gen139",
+        "query_number": 9,
+        "orchestrator_execution_time": 10.857284545898438
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "GEN140",
+      "persona": "pessoa_comum",
+      "category": "uti",
+      "difficulty": "easy",
+      "question": "Quantas internacoes tiveram uso de UTI em 2019?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "uso_uti_volume",
+      "status": "passed",
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "internacoes_com_uti": 12185437
+          }
+        ],
+        "actual_preview": [
+          {
+            "internacoes_com_uti": 12185437
+          }
+        ]
+      },
+      "success": true,
+      "response": "Foram 12.185.437 internações com uso de UTI em 2019.",
+      "sql": "SELECT COUNT(*) AS internacoes_com_uti FROM internacoes i WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2019 AND (i.\"MARCA_UTI\" IS NOT NULL OR i.\"UTI_INT_TO\" > 0);",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 10.46683931350708
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.7395360469818115
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.3029253482818604
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.10885429382324219
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "schema_context_length": 20360,
+        "latency_by_component": {
+          "query_classification": 1.0241212844848633,
+          "table_discovery": 0.7396011352539062,
+          "schema_analysis": 0.0007488727569580078,
+          "reasoning": 6.175249099731445,
+          "sql_generation": 0.0007252693176269531,
+          "sql_validation": 1.3029565811157227,
+          "sql_execution": 0.10895752906799316,
+          "completed": 1.1129961013793945
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quantas internacoes tiveram uso de UTI em 2019?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "count",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2019"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "uti",
+              "values": [
+                "VAL_UTI > 0"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.44613832353790056,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A contagem de internações com uso de UTI em 2019 requer a filtragem por ano e a condição de que o uso de UTI seja maior que zero. A métrica de contagem foi escolhida para refletir a intenção de saber quantas internações ocorreram sob essas condições.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic scalar SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260521T131240_gen140",
+        "query_number": 10,
+        "orchestrator_execution_time": 10.479193210601807
+      },
+      "error": null,
+      "root_cause": null,
+      "severity": null
+    }
+  ]
+}

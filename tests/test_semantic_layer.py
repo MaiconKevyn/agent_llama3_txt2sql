@@ -1,3 +1,5 @@
+import pytest
+
 from src.agent.plan_gate import plan_gate_node
 from src.agent.sql_generation import _build_deterministic_scalar_sql
 from src.agent.state_helpers import create_initial_messages_state
@@ -55,6 +57,42 @@ def test_clinical_concept_resolver_maps_pulmonary_diseases_to_respiratory_cid_pr
     assert concept.labels == ["CID J00-J99 - Doencas do aparelho respiratorio"]
 
 
+def test_semantic_plan_maps_broad_clinical_chapters_to_cid_prefixes():
+    neoplasias = build_semantic_plan("Quantas internacoes por neoplasias ocorreram em 2021?")
+    cardiovasculares = build_semantic_plan(
+        "Quantas internacoes por doencas cardiovasculares ocorreram em 2021?"
+    )
+
+    assert any(
+        filter_.field == "diagnostico_principal_prefix" and filter_.values == ["C%"]
+        for filter_ in neoplasias.filters
+    )
+    assert not any(
+        filter_.field == "diagnostico_principal_descricao" for filter_ in neoplasias.filters
+    )
+    assert any(
+        filter_.field == "diagnostico_principal_prefix" and filter_.values == ["I%"]
+        for filter_ in cardiovasculares.filters
+    )
+    assert not any(
+        filter_.field == "diagnostico_principal_descricao"
+        for filter_ in cardiovasculares.filters
+    )
+
+
+def test_semantic_plan_trims_condition_count_trailing_verb():
+    plan = build_semantic_plan("Quantas internacoes por hipertensao ocorreram em 2021?")
+
+    assert any(
+        filter_.field == "diagnostico_principal_descricao" and filter_.values == ["hipertens"]
+        for filter_ in plan.filters
+    )
+    assert all(
+        "ocorreram" not in " ".join(str(value) for value in filter_.values)
+        for filter_ in plan.filters
+    )
+
+
 def test_semantic_plan_detects_age_diagnosis_association():
     plan = build_semantic_plan("Existe relação entre idade e câncer de próstata?")
 
@@ -80,11 +118,205 @@ def test_semantic_plan_detects_age_respiratory_disease_association():
     assert not any(filter_.field == "sexo" for filter_ in plan.filters)
 
 
+@pytest.mark.parametrize(
+    "question",
+    [
+        "O que os dados mostram sobre idade e covid?",
+        "Compare diabetes segundo idade, com denominador e caveats.",
+        "O que os dados mostram sobre idade e doencas respiratorias?",
+    ],
+)
+def test_semantic_plan_detects_age_condition_analysis_natural_phrasings(question):
+    plan = build_semantic_plan(question)
+
+    assert plan.intent == "association"
+    assert "age_diagnosis_association_required" in plan.constraints
+    assert "analytic_response_required" in plan.constraints
+    assert plan.answer_shape.row_grain == "single_scalar"
+    assert any(
+        filter_.field
+        in {
+            "diagnostico_principal_codigo",
+            "diagnostico_principal_prefix",
+            "diagnostico_principal_descricao",
+        }
+        for filter_ in plan.filters
+    )
+
+
+@pytest.mark.parametrize(
+    ("question", "expected_dimension", "expected_intent"),
+    [
+        (
+            "O que os dados mostram sobre UF de residencia e covid?",
+            "estado",
+            "comparison",
+        ),
+        (
+            "Compare doencas respiratorias segundo UF de residencia, com denominador e caveats.",
+            "estado",
+            "comparison",
+        ),
+        (
+            "O que os dados mostram sobre ano e doencas respiratorias?",
+            "ano",
+            "trend",
+        ),
+        (
+            "Compare doencas respiratorias segundo ano, com denominador e caveats.",
+            "ano",
+            "trend",
+        ),
+    ],
+)
+def test_semantic_plan_detects_geo_and_temporal_condition_analysis_phrasings(
+    question,
+    expected_dimension,
+    expected_intent,
+):
+    plan = build_semantic_plan(question)
+
+    assert plan.intent == expected_intent
+    assert "analytic_response_required" in plan.constraints
+    assert "diagnosis_concept_resolution_required" in plan.constraints
+    assert expected_dimension in plan.answer_shape.required_dimensions
+    assert any(
+        filter_.field
+        in {
+            "diagnostico_principal_codigo",
+            "diagnostico_principal_prefix",
+            "diagnostico_principal_descricao",
+        }
+        for filter_ in plan.filters
+    )
+
+
 def test_semantic_plan_keeps_scalar_age_average_as_scalar_not_association():
     plan = build_semantic_plan("Qual a idade média dos pacientes internados?")
 
     assert plan.intent != "association"
     assert "age_diagnosis_association_required" not in plan.constraints
+
+
+def test_semantic_plan_maps_age_average_to_age_metric_not_cost_average():
+    plan = build_semantic_plan(
+        "Qual foi a idade media dos pacientes internados por doencas respiratorias em 2021?"
+    )
+
+    assert ("idade_media", "avg") in [
+        (metric.name, metric.expression_type) for metric in plan.metrics
+    ]
+    assert not any(metric.name == "media" for metric in plan.metrics)
+    assert any(
+        filter_.field == "diagnostico_principal_prefix" and filter_.values == ["J%"]
+        for filter_ in plan.filters
+    )
+    assert plan.answer_shape.row_grain == "single_scalar"
+
+
+def test_semantic_plan_extracts_condition_from_internados_por_phrase():
+    plan = build_semantic_plan(
+        "Qual foi a idade media dos pacientes internados por covid em 2021?"
+    )
+
+    assert any(
+        filter_.field == "diagnostico_principal_codigo"
+        and filter_.values == ["B342", "B972"]
+        for filter_ in plan.filters
+    )
+
+
+def test_semantic_plan_treats_instruction_coverage_as_scalar_completeness():
+    plan = build_semantic_plan(
+        "Qual e a cobertura de instrucao preenchida nas internacoes de 2020?"
+    )
+
+    assert ("instrucao_cobertura_mapeada", "rate") in [
+        (metric.name, metric.expression_type) for metric in plan.metrics
+    ]
+    assert plan.answer_shape.row_grain == "single_scalar"
+    assert plan.answer_shape.required_dimensions == []
+    assert any(filter_.field == "ano" and filter_.values == ["2020"] for filter_ in plan.filters)
+
+
+def test_semantic_plan_lists_all_ufs_for_socioeconomic_indicator_ranking():
+    plan = build_semantic_plan(
+        "Quais UFs tiveram maior leitos SUS por 1000 habitantes em 2021?"
+    )
+
+    assert plan.answer_shape.top_n is None
+    assert plan.answer_shape.top_n_scope == "none"
+    assert plan.answer_shape.row_grain == "one_row_per_group"
+    assert plan.answer_shape.required_dimensions == ["estado"]
+    assert ("leitos_sus_1000", "ratio") in [
+        (metric.name, metric.expression_type) for metric in plan.metrics
+    ]
+
+
+def test_semantic_plan_detects_missing_primary_diagnosis_quality_count():
+    plan = build_semantic_plan(
+        "Quantas internacoes tiveram diagnostico principal ausente ou em branco em 2021?"
+    )
+
+    assert plan.answer_shape.row_grain == "single_scalar"
+    assert ("internacoes_sem_diag_princ", "count") in [
+        (metric.name, metric.expression_type) for metric in plan.metrics
+    ]
+    assert any(filter_.field == "ano" and filter_.values == ["2021"] for filter_ in plan.filters)
+
+
+def test_semantic_plan_treats_missing_cid_lookup_as_fact_quality_count():
+    plan = build_semantic_plan(
+        "Quantos diagnosticos principais de 2021 nao existem no catalogo CID?"
+    )
+
+    assert plan.base_grain == "internacao"
+    assert plan.answer_shape.row_grain == "single_scalar"
+    assert plan.answer_shape.required_dimensions == []
+    assert ("diagnosticos_sem_lookup", "count") in [
+        (metric.name, metric.expression_type) for metric in plan.metrics
+    ]
+    assert "catalog_cardinality_must_use_reference_table" not in plan.constraints
+
+
+def test_semantic_plan_treats_missing_residence_municipality_as_fact_quality_count():
+    plan = build_semantic_plan(
+        "Quantas internacoes de 2021 tem municipio de residencia sem cadastro territorial?"
+    )
+
+    assert plan.base_grain == "internacao"
+    assert plan.answer_shape.row_grain == "single_scalar"
+    assert plan.answer_shape.required_dimensions == []
+    assert ("municipios_residencia_sem_lookup", "count") in [
+        (metric.name, metric.expression_type) for metric in plan.metrics
+    ]
+    assert "catalog_cardinality_must_use_reference_table" not in plan.constraints
+
+
+def test_semantic_plan_treats_missing_race_color_death_mapping_as_data_quality_rate():
+    plan = build_semantic_plan(
+        "Qual percentual dos obitos de 2021 esta sem informacao de raca/cor mapeada?"
+    )
+
+    assert plan.answer_shape.row_grain == "single_scalar"
+    assert ("percentual_obitos_sem_raca_cor", "rate") in [
+        (metric.name, metric.expression_type) for metric in plan.metrics
+    ]
+    assert not any(
+        filter_.field == "diagnostico_principal_descricao" for filter_ in plan.filters
+    )
+
+
+def test_semantic_plan_detects_discharge_before_admission_quality_count():
+    plan = build_semantic_plan(
+        "Existem internacoes com data de saida anterior a data de entrada em 2021?"
+    )
+
+    assert plan.answer_shape.row_grain == "single_scalar"
+    assert ("altas_antes_da_internacao", "count") in [
+        (metric.name, metric.expression_type) for metric in plan.metrics
+    ]
+    assert any(filter_.field == "ano" and filter_.values == ["2021"] for filter_ in plan.filters)
 
 
 def test_semantic_validator_rejects_simple_age_grouping_for_analytic_association():
@@ -375,6 +607,21 @@ def test_semantic_plan_treats_principal_death_cause_as_top_one_with_year_filter(
     assert plan.intent == "ranking"
     assert plan.answer_shape.row_grain == "top_n_global"
     assert plan.answer_shape.top_n == 1
+    assert plan.answer_shape.top_n_scope == "global"
+    assert plan.answer_shape.required_dimensions == ["diagnostico"]
+    assert "death_cause_requires_diag_princ_with_morte" in plan.constraints
+    assert any(filter_.field == "ano" and filter_.values == ["2021"] for filter_ in plan.filters)
+    assert any(filter_.field == "desfecho" for filter_ in plan.filters)
+
+
+def test_semantic_plan_defaults_plural_principais_diagnoses_to_top_ten():
+    plan = build_semantic_plan(
+        "Quais diagnosticos principais concentraram mais obitos hospitalares em 2021?"
+    )
+
+    assert plan.intent == "ranking"
+    assert plan.answer_shape.row_grain == "top_n_global"
+    assert plan.answer_shape.top_n == 10
     assert plan.answer_shape.top_n_scope == "global"
     assert plan.answer_shape.required_dimensions == ["diagnostico"]
     assert "death_cause_requires_diag_princ_with_morte" in plan.constraints
@@ -1735,6 +1982,28 @@ def test_semantic_plan_treats_patient_categorical_attribute_as_distribution():
     assert any(filter_.field == "instrucao_valid" for filter_ in plan.filters)
 
 
+def test_semantic_plan_detects_uti_marker_distribution():
+    plan = build_semantic_plan(
+        "Como as internacoes com UTI se distribuem por marca de UTI em 2021?"
+    )
+
+    assert plan.intent == "distribution"
+    assert plan.answer_shape.row_grain == "one_row_per_group"
+    assert plan.answer_shape.required_dimensions == ["marca_uti"]
+    assert any(filter_.field == "uti" for filter_ in plan.filters)
+    assert any(filter_.field == "ano" and filter_.values == ["2021"] for filter_ in plan.filters)
+
+
+def test_semantic_plan_maps_uti_total_spending_to_value_metric():
+    plan = build_semantic_plan("Qual foi o gasto total de UTI em 2021?")
+
+    assert plan.intent == "unknown"
+    assert plan.answer_shape.row_grain == "single_scalar"
+    assert [metric.name for metric in plan.metrics] == ["valor_total_uti"]
+    assert plan.metrics[0].expression_type == "sum"
+    assert any(filter_.field == "ano" and filter_.values == ["2021"] for filter_ in plan.filters)
+
+
 def test_semantic_plan_supports_population_value_metric():
     plan = build_semantic_plan(
         "Quantos habitantes tem o município que tem a maior população segundo dados do IBGE?"
@@ -1886,9 +2155,16 @@ def test_semantic_plan_flags_schema_unavailable_metrics():
         ("Qual foi a cobertura vacinal dos internados?", "vacina"),
         ("Qual antibiótico foi usado em pneumonia?", "medicacao"),
         ("Qual o resultado dos exames laboratoriais?", "exames_laboratoriais"),
+        ("Existe relacao entre resultado de hemograma e mortalidade hospitalar?", "exames_laboratoriais"),
         ("Compare internações em área rural e urbana em 2021.", "area_rural_urbana"),
+        ("Quais bairros de residencia aparecem com mais internacoes?", "bairro"),
+        ("Compare renda individual do paciente entre MA e RS.", "renda_individual"),
+        ("Existe relacao entre plano de saude do paciente e mortalidade?", "plano_saude"),
         ("Qual a sobrevida após alta?", "sobrevida_pos_alta"),
         ("Qual a reinternação em 30 dias?", "reinternacao"),
+        ("Qual o tempo ate consulta ambulatorial depois da internacao?", "consulta_ambulatorial"),
+        ("Qual foi o resultado de imagem dos pacientes com pneumonia?", "resultado_imagem"),
+        ("Compare pressao arterial na admissao entre MA e RS.", "sinais_vitais"),
     ]
 
     for question, metric_name in cases:
@@ -1932,9 +2208,11 @@ def test_semantic_plan_marks_time_to_death_duckdb_date_diff_contract():
 def test_semantic_plan_treats_cid_chapter_list_as_grouped_output():
     plan = build_semantic_plan("Quais capítulos CID concentraram mais internações em 2021?")
 
-    assert plan.answer_shape.row_grain == "one_row_per_group"
+    assert plan.answer_shape.row_grain == "top_n_global"
+    assert plan.answer_shape.top_n == 10
     assert "cid_capitulo" in plan.answer_shape.required_dimensions
     assert plan.answer_shape.requires_group_by is True
+    assert plan.dimensions[0].source == "cid.DS_CAPITULO"
 
 
 def test_semantic_validator_rejects_epoch_date_part_interval_for_duckdb():
@@ -2122,6 +2400,93 @@ def test_semantic_plan_detects_rate_without_outcome_filter():
     assert "rate_denominator_must_preserve_full_scope" in plan.constraints
     assert not any(f.field == "desfecho" for f in plan.filters)
     assert "faixa_etaria" not in plan.answer_shape.required_dimensions
+
+
+def test_semantic_plan_mortality_rate_by_municipality_chart_defaults_to_readable_top10():
+    plan = build_semantic_plan(
+        "Quais sao os municipios com maior taxa de mortalidade? Mostre em grafico."
+    )
+
+    dimension_names = {dimension.name for dimension in plan.dimensions}
+    constraint_names = set(plan.constraints)
+    metric_names = {metric.name for metric in plan.metrics}
+
+    assert plan.intent == "ranking"
+    assert plan.answer_shape.top_n == 10
+    assert plan.answer_shape.top_n_scope == "global"
+    assert "municipio" in dimension_names
+    assert "municipio" in plan.answer_shape.required_dimensions
+    assert "taxa_mortalidade" in metric_names
+    assert "sex_label_output_required" not in constraint_names
+    assert "sexo" not in plan.answer_shape.required_dimensions
+
+
+def test_semantic_plan_mortality_rate_by_health_region_requires_grouping():
+    plan = build_semantic_plan(
+        "Mostre a taxa de mortalidade por regiao de saude em grafico de barras."
+    )
+
+    assert plan.intent == "rate"
+    assert plan.answer_shape.required_dimensions == ["regiao_saude"]
+    assert plan.answer_shape.requires_group_by is True
+
+
+def test_semantic_plan_recent_available_period_adds_one_year_window():
+    plan = build_semantic_plan(
+        "Visualize a mortalidade hospitalar por municipio no periodo mais recente disponivel."
+    )
+
+    assert plan.intent == "rate"
+    assert any(
+        filter_.field == "recent_years_available" and filter_.values == ["1"]
+        for filter_ in plan.filters
+    )
+    assert plan.answer_shape.required_dimensions == ["municipio"]
+    assert "ano" not in plan.answer_shape.required_dimensions
+
+
+def test_semantic_plan_singular_mortality_extreme_remains_top_one():
+    plan = build_semantic_plan("Qual municipio tem a maior taxa de mortalidade?")
+
+    assert plan.intent == "ranking"
+    assert plan.answer_shape.top_n == 1
+    assert plan.answer_shape.required_dimensions == ["municipio"]
+
+
+def test_semantic_validator_accepts_municipality_mortality_top10_rank_for_chart():
+    plan = build_semantic_plan(
+        "Quais sao os municipios com maior taxa de mortalidade? Mostre em grafico."
+    )
+    sql = """
+        WITH municipio_taxa AS (
+            SELECT mu."NO_MUNICIPIO" AS municipio,
+                   COUNT(*) AS total_internacoes,
+                   SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) AS total_mortes,
+                   ROUND(
+                       SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*),
+                       2
+                   ) AS taxa_mortalidade
+            FROM internacoes i
+            JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+            GROUP BY mu."NO_MUNICIPIO"
+        ),
+        ranked_municipios AS (
+            SELECT municipio,
+                   total_internacoes,
+                   total_mortes,
+                   taxa_mortalidade,
+                   ROW_NUMBER() OVER (ORDER BY taxa_mortalidade DESC) AS rank
+            FROM municipio_taxa
+        )
+        SELECT municipio, total_internacoes, total_mortes, taxa_mortalidade
+        FROM ranked_municipios
+        WHERE rank <= 10;
+    """
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert valid is True
+    assert message is None
 
 
 def test_semantic_plan_does_not_confuse_mortalidade_with_idade_dimension():
@@ -2735,6 +3100,124 @@ def test_semantic_plan_adds_month_dimension_for_monthly_chart():
     assert plan.answer_shape.requires_group_by is True
 
 
+def test_semantic_plan_detects_monthly_evolution_without_chart_wording():
+    plan = build_semantic_plan("Como evoluíram mensalmente as internações em MA em 2020?")
+
+    assert plan.intent == "trend"
+    assert plan.answer_shape.row_grain == "time_series"
+    assert plan.answer_shape.required_dimensions == ["mes"]
+    assert plan.answer_shape.requires_group_by is True
+    assert any(filter_.field == "estado" and filter_.values == ["MA"] for filter_ in plan.filters)
+    assert any(filter_.field == "ano" and filter_.values == ["2020"] for filter_ in plan.filters)
+
+
+def test_semantic_validator_accepts_monthly_evolution_for_state_and_year():
+    plan = build_semantic_plan("Como evoluíram mensalmente as internações em MA em 2020?")
+    sql = """
+        SELECT EXTRACT(MONTH FROM i."DT_INTER") AS mes,
+               COUNT(*) AS total_internacoes
+        FROM internacoes i
+        JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"
+        WHERE mu."SG_UF" = 'MA'
+          AND EXTRACT(YEAR FROM i."DT_INTER") = 2020
+        GROUP BY mes
+        ORDER BY mes
+    """
+
+    passed, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert passed, message
+
+
+def test_semantic_plan_keeps_monthly_diagnosis_trend_at_month_grain():
+    plan = build_semantic_plan(
+        "Qual foi a evolucao mensal de internacoes por covid em 2021?"
+    )
+
+    assert plan.intent == "trend"
+    assert plan.answer_shape.row_grain == "time_series"
+    assert plan.answer_shape.required_dimensions == ["mes"]
+    assert any(filter_.field == "ano" and filter_.values == ["2021"] for filter_ in plan.filters)
+    assert any(
+        filter_.field == "diagnostico_principal_codigo" for filter_ in plan.filters
+    )
+
+
+def test_semantic_plan_treats_respiratory_monthly_trend_as_filter_not_breakdown():
+    plan = build_semantic_plan(
+        "Qual foi a evolucao mensal de internacoes por doencas respiratorias em 2021?"
+    )
+
+    assert plan.intent == "trend"
+    assert plan.answer_shape.row_grain == "time_series"
+    assert plan.answer_shape.required_dimensions == ["mes"]
+    assert "diagnostico" not in plan.answer_shape.required_dimensions
+    assert any(
+        filter_.field == "diagnostico_principal_prefix" and filter_.values == ["J%"]
+        for filter_ in plan.filters
+    )
+
+
+def test_semantic_plan_treats_respiratory_procedure_ranking_as_diagnosis_filter():
+    plan = build_semantic_plan(
+        "Quais procedimentos apareceram com mais frequencia em internacoes por doencas respiratorias em 2021?"
+    )
+
+    assert plan.answer_shape.row_grain == "top_n_global"
+    assert plan.answer_shape.required_dimensions == ["procedimento"]
+    assert "diagnostico" not in plan.answer_shape.required_dimensions
+    assert "diagnostico" in plan.answer_shape.filter_dimensions
+    assert "diagnosis_filter_dimension_not_output" in plan.constraints
+    assert any(
+        filter_.field == "diagnostico_principal_prefix" and filter_.values == ["J%"]
+        for filter_ in plan.filters
+    )
+
+
+def test_semantic_plan_treats_respiratory_average_cost_as_diagnosis_filter():
+    plan = build_semantic_plan(
+        "Qual foi o custo medio de internacao por doencas respiratorias em 2021?"
+    )
+
+    assert plan.answer_shape.row_grain == "single_scalar"
+    assert plan.answer_shape.required_dimensions == []
+    assert "diagnosis_filter_dimension_not_output" in plan.constraints
+    assert any(
+        filter_.field == "diagnostico_principal_prefix" and filter_.values == ["J%"]
+        for filter_ in plan.filters
+    )
+
+
+def test_semantic_plan_extracts_singular_hospitalization_diagnosis_filter():
+    plan = build_semantic_plan("Qual foi o custo medio de internacao por covid em 2021?")
+
+    assert plan.answer_shape.row_grain == "single_scalar"
+    assert any(
+        filter_.field == "diagnostico_principal_codigo"
+        and set(filter_.values) == {"B342", "B972"}
+        for filter_ in plan.filters
+    )
+
+
+def test_semantic_validator_accepts_monthly_diagnosis_filter_trend():
+    plan = build_semantic_plan(
+        "Qual foi a evolucao mensal de internacoes por doencas respiratorias em 2021?"
+    )
+    sql = """
+        SELECT EXTRACT(MONTH FROM i."DT_INTER") AS mes,
+               COUNT(*) AS total_internacoes
+        FROM internacoes i
+        WHERE i."DIAG_PRINC" LIKE 'J%'
+          AND EXTRACT(YEAR FROM i."DT_INTER") = 2021
+        GROUP BY mes
+        ORDER BY mes
+    """
+
+    passed, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert passed, message
+
+
 def test_goalv2_validator_rejects_scalar_for_top_n_municipality():
     plan = build_semantic_plan(
         "Quais os cinco municípios com mais internações obstétricas registradas?"
@@ -3239,3 +3722,80 @@ def test_goalv2_validator_accepts_side_by_side_pivot_even_if_llm_keeps_state_dim
     passed, message = validate_sql_against_semantic_plan(plan, sql)
 
     assert passed, message
+
+
+def test_semantic_plan_marks_hospitalization_outside_residence_uf_as_relational_constraint():
+    plan = build_semantic_plan(
+        "Quantas internacoes ocorreram fora da UF de residencia do paciente em 2020?"
+    )
+
+    assert "hospital_location_differs_from_residence_uf_required" in plan.constraints
+    assert not any(
+        semantic_filter.field == "estado"
+        and semantic_filter.operator == "!="
+        and semantic_filter.values == ["UF_residencia"]
+        for semantic_filter in plan.filters
+    )
+
+
+def test_deterministic_scalar_sql_counts_hospitalizations_outside_residence_uf():
+    plan = build_semantic_plan(
+        "Quantas internacoes ocorreram fora da UF de residencia do paciente em 2020?"
+    )
+
+    sql = _build_deterministic_scalar_sql(plan)
+
+    assert sql == (
+        'SELECT COUNT(*) AS internacoes_fora_uf_residencia FROM internacoes i'
+        ' JOIN municipios mr ON i."MUNIC_RES" = mr."CO_MUNICIPIO_6D"'
+        ' JOIN hospital h ON i."CNES" = h."CNES"'
+        ' JOIN municipios mh ON h."MUNIC_MOV" = mh."CO_MUNICIPIO_6D"'
+        ' WHERE EXTRACT(YEAR FROM i."DT_INTER") = 2020'
+        ' AND mr."SG_UF" <> mh."SG_UF";'
+    )
+
+
+def test_semantic_validator_rejects_residence_uf_self_comparison_for_outside_uf():
+    plan = build_semantic_plan(
+        "Quantas internacoes ocorreram fora da UF de residencia do paciente em 2020?"
+    )
+    tautological_sql = (
+        'SELECT COUNT(*) AS total_internacoes FROM internacoes i'
+        ' JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"'
+        ' WHERE EXTRACT(YEAR FROM i."DT_INTER") = 2020'
+        ' AND mu."SG_UF" != (SELECT mu2."SG_UF" FROM municipios mu2'
+        ' WHERE mu2."CO_MUNICIPIO_6D" = i."MUNIC_RES");'
+    )
+    correct_sql = (
+        'SELECT COUNT(*) AS internacoes_fora_uf_residencia FROM internacoes i'
+        ' JOIN municipios mr ON i."MUNIC_RES" = mr."CO_MUNICIPIO_6D"'
+        ' JOIN hospital h ON i."CNES" = h."CNES"'
+        ' JOIN municipios mh ON h."MUNIC_MOV" = mh."CO_MUNICIPIO_6D"'
+        ' WHERE EXTRACT(YEAR FROM i."DT_INTER") = 2020'
+        ' AND mr."SG_UF" <> mh."SG_UF";'
+    )
+
+    bad_valid, bad_message = validate_sql_against_semantic_plan(plan, tautological_sql)
+    good_valid, good_message = validate_sql_against_semantic_plan(plan, correct_sql)
+
+    assert bad_valid is False
+    assert "hospital/care location" in (bad_message or "") or "residence UF" in (
+        bad_message or ""
+    )
+    assert good_valid is True
+    assert good_message is None
+
+
+def test_semantic_plan_maps_cesarean_births_to_procedure_name_filter():
+    plan = build_semantic_plan(
+        "Qual foi a quantidade de partos cesareos por UF de residencia em 2022?"
+    )
+
+    assert any(
+        semantic_filter.field == "procedimento_nome"
+        and semantic_filter.operator == "ILIKE"
+        and semantic_filter.values == ["CESAR"]
+        for semantic_filter in plan.filters
+    )
+    assert not any(semantic_filter.field == "obstetrico" for semantic_filter in plan.filters)
+    assert plan.base_grain == "procedimento_ocorrencia"

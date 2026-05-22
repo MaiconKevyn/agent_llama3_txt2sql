@@ -402,7 +402,15 @@ def build_pregeneration_hints(selected_tables: list[str], user_query: str) -> st
             "❌ Não aplique NTILE diretamente nas linhas brutas de internações."
         )
 
-    socio_terms = ["população", "populacao", "mortalidade infantil", "médicos", "medicos", "leitos"]
+    socio_terms = [
+        "população",
+        "populacao",
+        "mortalidade infantil",
+        "pib per capita",
+        "médicos",
+        "medicos",
+        "leitos",
+    ]
     if sum(1 for term in socio_terms if term in q_lower) >= 2:
         hints.append(
             "🏛️ SOCIOECONOMIC MULTI-COLUMN ALERT: socioeconomico é wide-format "

@@ -1209,7 +1209,69 @@ def _build_idhm_mortality_cohort_sql(
 def _build_socioeconomic_multi_metric_sql(
     semantic_plan: SemanticPlan | dict | None,
 ) -> str | None:
-    return None
+    if not semantic_plan:
+        return None
+    plan = (
+        semantic_plan
+        if isinstance(semantic_plan, SemanticPlan)
+        else SemanticPlan.model_validate(semantic_plan)
+    )
+    metric_names = {metric.name for metric in plan.metrics}
+    metric_specs = {
+        "mortalidade_infantil_1ano": (
+            'AVG(s."VL_MORT_INFANTIL")',
+            "mortalidade_infantil",
+            's."VL_MORT_INFANTIL" IS NOT NULL',
+        ),
+        "pib_per_capita": (
+            'AVG(s."VL_PIB_PERCAPITA")',
+            "pib_per_capita",
+            's."VL_PIB_PERCAPITA" IS NOT NULL',
+        ),
+        "populacao_total": (
+            'SUM(s."QT_POPULACAO")',
+            "populacao",
+            's."QT_POPULACAO" IS NOT NULL',
+        ),
+        "leitos_sus_total": (
+            'SUM(s."QT_LEITOS_SUS")',
+            "leitos_sus",
+            's."QT_LEITOS_SUS" IS NOT NULL',
+        ),
+        "medicos_total": (
+            'SUM(s."QT_MEDICOS")',
+            "medicos",
+            's."QT_MEDICOS" IS NOT NULL',
+        ),
+    }
+    selected = [
+        (metric_name, *metric_specs[metric_name])
+        for metric_name in metric_specs
+        if metric_name in metric_names
+    ]
+    if len(selected) < 2:
+        return None
+
+    group_by_state = any(
+        dimension in set(plan.answer_shape.required_dimensions)
+        for dimension in {"estado", "SG_UF", "estado_socioeconomico"}
+    )
+    entity_select = 'mu."SG_UF" AS estado' if group_by_state else 'mu."NO_MUNICIPIO" AS municipio'
+    entity_group = 'mu."SG_UF"' if group_by_state else 'mu."NO_MUNICIPIO"'
+    metric_selects = [f"{expression} AS {alias}" for _name, expression, alias, _where in selected]
+    where_conditions = [where for _name, _expression, _alias, where in selected]
+    where_clause = " AND ".join(where_conditions)
+    order_alias = selected[0][2]
+    return (
+        f"SELECT {entity_select}, "
+        + ", ".join(metric_selects)
+        + " FROM socioeconomico s"
+        + ' JOIN municipios mu ON s."CO_MUNICIPIO_6D" = mu."CO_MUNICIPIO_6D"'
+        + f" WHERE {where_clause}"
+        + f" GROUP BY {entity_group}"
+        + f" ORDER BY {order_alias} DESC"
+        + " LIMIT 100;"
+    )
 
 
 def _build_mortality_rate_time_series_sql(
@@ -1366,7 +1428,8 @@ def _select_item_matches_dimension(select_item: str, dimension: str) -> bool:
         "cid_capitulo": [r"\bcap[ií]tulo\b", r"\bcapitulo_cid\b", r"\bcid_capitulo\b", r"\bsubstr\s*\("],
         "diagnostico": [r"\bdescricao\b", r"\bdiag_princ\b", r"\bcid\b"],
         "procedimento": [r"\bnome_proc\b", r"\bproc_rea\b", r"\bprocedimento\b"],
-        "sexo": [r"\bsexo\b"],
+        "marca_uti": [r"\bmarca_uti\b", r"\btipo_uti\b", r"\bdescri[cç][aã]o\b"],
+        "sexo": [r"\bsexo\b", r"\bdescri[cç][aã]o\b"],
         "raca_cor": [r"\braca_cor\b", r"\bra[cç]a\b", r"\bcor\b"],
         "instrucao": [r"\binstru\b", r"\binstrucao\b", r"\binstru[cç][aã]o\b"],
         "idade": [r"\bidade\b"],
@@ -1403,12 +1466,14 @@ def _sql_mentions_output_dimension(sql: str, dimension: str) -> bool:
         "estado_hospital": [r"\bsg_uf\b", r"\bestado\b"],
         "municipio": [r"\bno_municipio\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
         "municipio_hospital": [r"\bno_municipio\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
+        "regiao_saude": [r"\bno_regiao_saude\b", r"\bregiao_saude\b", r"\bregi[aã]o\s+de\s+sa[uú]de\b"],
         "hospital": [r"\bcnes\b", r"\bhospital\b"],
         "especialidade": [r"\bespecialidade\b", r"\bespec\b", r"\bdescri[cç][aã]o\b"],
         "cid_capitulo": [r"\bcap[ií]tulo\b", r"\bcapitulo_cid\b", r"\bcid_capitulo\b", r"\bsubstr\s*\("],
         "diagnostico": [r"\bdiag_princ\b", r"\bcid\b", r"\bdescri[cç][aã]o\b"],
         "procedimento": [r"\bproc_rea\b", r"\bnome_proc\b", r"\bprocedimento\b"],
-        "sexo": [r"\bsexo\b"],
+        "marca_uti": [r"\bmarca_uti\b", r"\btipo_uti\b", r"\bdescri[cç][aã]o\b"],
+        "sexo": [r"\bsexo\b", r"\bdescri[cç][aã]o\b"],
         "raca_cor": [r"\braca_cor\b", r"\bra[cç]a\b", r"\bcor\b"],
         "instrucao": [r"\binstru\b", r"\binstrucao\b", r"\binstru[cç][aã]o\b"],
         "idade": [r"\bidade\b"],
@@ -2361,6 +2426,7 @@ def repair_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             or "socioeconomico" in error_message.lower()
             or "socioeconomic total metrics" in error_message.lower()
             or "state-level mortality rate" in error_message.lower()
+            or "requires grouping by municipio" in error_message.lower()
         ):
             deterministic_sql = _build_socioeconomic_multi_metric_sql(
                 state.get("semantic_plan"),

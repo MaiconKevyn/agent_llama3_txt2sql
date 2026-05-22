@@ -199,3 +199,24 @@ def test_debug_query_response_keeps_chart_payload(monkeypatch):
     assert response.debug is not None
     assert response.chart["requested"] is True
     assert response.chart["spec"]["chart_type"] == "line"
+
+
+def test_process_query_exception_hides_raw_internal_error(monkeypatch):
+    import asyncio
+
+    from src.interfaces.api import main as api_main
+
+    class BrokenOrchestrator:
+        def process_query(self, *args, **kwargs):
+            raise RuntimeError("SEMANTIC PLAN ERROR: raw internal detail")
+
+    monkeypatch.setattr(api_main, "_orchestrator", BrokenOrchestrator())
+
+    response = asyncio.run(
+        api_main.process_query(api_main.QueryRequest(query="gere um grafico", session_id="s1"))
+    )
+
+    assert response.success is False
+    assert "SEMANTIC PLAN ERROR" not in response.answer
+    assert "raw internal detail" not in response.answer
+    assert response.metadata["error_type"] == "RuntimeError"

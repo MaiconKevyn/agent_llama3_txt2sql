@@ -1,0 +1,391 @@
+{
+  "run_id": "generalization_exhaustion_20260521T094549",
+  "created_at": "2026-05-21T09:45:49",
+  "dry_run": false,
+  "summary": {
+    "status_counts": {
+      "failed": 1
+    },
+    "root_cause_counts": {
+      "response_grounding_error": 1
+    },
+    "severity_counts": {
+      "medium": 1
+    }
+  },
+  "items": [
+    {
+      "id": "GEN001",
+      "persona": "epidemiologista",
+      "category": "mortalidade_hospitalar",
+      "difficulty": "medium",
+      "question": "Qual foi a taxa de mortalidade hospitalar por UF de residencia em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "mortalidade_por_geografia",
+      "status": "failed",
+      "judge": {
+        "passed": false,
+        "missing": [
+          "missing_column:uf_residencia",
+          "missing_column:total_obitos",
+          "missing_column:taxa_mortalidade_percentual"
+        ],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "uf_residencia": "RJ",
+            "total_internacoes": 742018,
+            "total_obitos": 71548,
+            "taxa_mortalidade_percentual": 9.64
+          },
+          {
+            "uf_residencia": "SP",
+            "total_internacoes": 2313226,
+            "total_obitos": 181772,
+            "taxa_mortalidade_percentual": 7.86
+          },
+          {
+            "uf_residencia": "RS",
+            "total_internacoes": 719533,
+            "total_obitos": 56416,
+            "taxa_mortalidade_percentual": 7.84
+          },
+          {
+            "uf_residencia": "PB",
+            "total_internacoes": 186351,
+            "total_obitos": 13198,
+            "taxa_mortalidade_percentual": 7.08
+          },
+          {
+            "uf_residencia": "PR",
+            "total_internacoes": 775718,
+            "total_obitos": 54800,
+            "taxa_mortalidade_percentual": 7.06
+          }
+        ],
+        "actual_preview": [
+          {
+            "estado_residencia": "AC",
+            "total_internacoes": 47545,
+            "total_mortes": 2230,
+            "taxa_mortalidade": 4.69
+          },
+          {
+            "estado_residencia": "AL",
+            "total_internacoes": 163984,
+            "total_mortes": 9481,
+            "taxa_mortalidade": 5.78
+          },
+          {
+            "estado_residencia": "AM",
+            "total_internacoes": 215288,
+            "total_mortes": 11727,
+            "taxa_mortalidade": 5.45
+          },
+          {
+            "estado_residencia": "AP",
+            "total_internacoes": 37665,
+            "total_mortes": 1625,
+            "taxa_mortalidade": 4.31
+          },
+          {
+            "estado_residencia": "BA",
+            "total_internacoes": 767965,
+            "total_mortes": 40454,
+            "taxa_mortalidade": 5.27
+          }
+        ]
+      },
+      "success": true,
+      "response": "A taxa de mortalidade hospitalar por UF de residência em 2021 foi a seguinte:\n\n1. AC: 4,69%\n2. AL: 5,78%\n3. AM: 5,45%\n4. AP: 4,31%\n5. BA: 5,27%\n6. CE: 5,68%\n7. DF: 4,72%\n8. ES: 5,64%\n9. GO: 5,96%\n10. MA: 3,88%\n11. MG: 6,99%\n12. MS: 6,78%\n13. MT: 5,80%\n14. PA: 3,79%\n15. PB: 7,08%\n16. PE: 6,23%\n17. PI: 4,71%\n18. PR: 7,06%\n19. RJ: 9,64%\n20. RN: 5,49%\n21. RO: 4,87%\n22. RR: 5,24%\n23. RS: 7,84%\n24. SC: 6,57%\n25. SE: 6,71%\n26. SP: 7,86%\n27. TO: 4,89%",
+      "sql": "SELECT mu.\"SG_UF\" AS estado_residencia, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_mortes, ROUND(SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS taxa_mortalidade FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 GROUP BY mu.\"SG_UF\" ORDER BY mu.\"SG_UF\";",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5714285714285714,
+          "phases_completed": 8,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 36.36172819137573
+        },
+        "phases_completed": [
+          "initialization",
+          "query_classification",
+          "table_discovery",
+          "schema_analysis",
+          "reasoning",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 2.2311644554138184
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.6898539066314697
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.6585648059844971
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes"
+        ],
+        "schema_context_length": 11400,
+        "latency_by_component": {
+          "query_classification": 0.000316619873046875,
+          "table_discovery": 2.2312467098236084,
+          "schema_analysis": 0.0004723072052001953,
+          "reasoning": 8.339996576309204,
+          "sql_generation": 16.262749195098877,
+          "sql_validation": 3.6898865699768066,
+          "sql_execution": 0.658682107925415,
+          "completed": 5.16164755821228
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi a taxa de mortalidade hospitalar por UF de residencia em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "rate",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "taxa_mortalidade",
+              "expression_type": "rate",
+              "numerator_condition": "MORTE = true",
+              "denominator_scope": "all_rows_matching_non_outcome_filters",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.41919604632017093,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes"
+        ],
+        "semantic_constraints": [
+          "rate_denominator_must_preserve_full_scope"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A taxa de mortalidade hospitalar é calculada como a razão entre o número de mortes e o total de internações, por estado de residência, no ano de 2021. A métrica 'taxa_mortalidade' foi escolhida para refletir essa taxa, e a dimensão 'estado_residencia' permite agrupar os resultados por UF. O filtro para o ano de 2021 é necessário para restringir os dados ao período solicitado.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query calculates the hospital mortality rate by state (UF) of residence for the year 2021. It joins the 'internacoes' table with the 'municipios' table to get the state information, filters for the year 2021, and groups the results by state to compute the total number of hospitalizations, total deaths, and the mortality rate.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "rate_denominator_must_preserve_full_scope"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_gen001",
+        "query_number": 1,
+        "orchestrator_execution_time": 36.379777669906616
+      },
+      "error": null,
+      "root_cause": "response_grounding_error",
+      "severity": "medium"
+    }
+  ]
+}

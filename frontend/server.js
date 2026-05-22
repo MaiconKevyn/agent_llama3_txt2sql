@@ -20,6 +20,27 @@ const API_CONFIG = require('./config/api');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
+const SAFE_AGENT_ERROR_MESSAGE = 'Nao foi possivel processar sua consulta com seguranca. Tente refinar o recorte ou pedir o grafico de outra forma.';
+const INTERNAL_AGENT_ERROR_PATTERNS = [
+    /SEMANTIC PLAN ERROR/i,
+    /CHART PLAN ERROR/i,
+    /Binder Error/i,
+    /Catalog Error/i,
+    /Parser Error/i,
+    /Traceback/i,
+    /sqlalchemy/i,
+    /duckdb/i,
+    /KeyError/i,
+    /ValueError/i,
+    /Internal Server Error/i
+];
+
+function sanitizeAgentError(message) {
+    if (!message) return message;
+    return INTERNAL_AGENT_ERROR_PATTERNS.some((pattern) => pattern.test(message))
+        ? SAFE_AGENT_ERROR_MESSAGE
+        : message;
+}
 
 // Security Middleware - Enhanced Chrome compatibility
 app.use(helmet({
@@ -182,9 +203,9 @@ app.post('/api/query', async (req, res) => {
         res.json({
             success: Boolean(response.success),
             status: response.status,
-            response: response.response || response.answer,
-            answer: response.answer || response.response,
-            error_message: response.error_message || (!response.success ? response.answer || response.response : null),
+            response: sanitizeAgentError(response.response || response.answer),
+            answer: sanitizeAgentError(response.answer || response.response),
+            error_message: sanitizeAgentError(response.error_message || (!response.success ? response.answer || response.response : null)),
             sql_query: response.sql_query || response.sql || null,
             sql: response.sql || response.sql_query || null,
             chart: response.chart || null,
@@ -202,7 +223,7 @@ app.post('/api/query', async (req, res) => {
 
         res.status(500).json({
             success: false,
-            error_message: error.message || 'Internal server error',
+            error_message: sanitizeAgentError(error.message || 'Internal server error') || SAFE_AGENT_ERROR_MESSAGE,
             execution_time: executionTime,
             timestamp: new Date().toISOString()
         });
