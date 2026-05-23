@@ -10,7 +10,8 @@ from langchain_openai import ChatOpenAI
 
 from ..application.config.simple_config import ApplicationConfig
 from ..utils.logging_config import get_llm_manager_logger
-from ..utils.sql_safety import is_select_only, sanitize_sql_for_execution
+from ..utils.sql_safety import sanitize_sql_for_execution
+from .execution_contracts import validate_sql_execution_contract
 from .runtime_budget import record_llm_call
 
 logger = get_llm_manager_logger()
@@ -254,12 +255,12 @@ Answer in Portuguese, be concise.
                 "row_count": 0,
             }
 
-        ok, reason = is_select_only(sql_query)
-        if not ok:
+        execution_contract = validate_sql_execution_contract(sql_query)
+        if not execution_contract.allowed:
             return {
                 "success": False,
                 "results": [],
-                "error": f"SQL execution blocked: {reason}",
+                "error": execution_contract.error_message,
                 "row_count": 0,
             }
 

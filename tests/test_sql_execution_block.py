@@ -44,6 +44,18 @@ def test_llm_manager_execute_sql_query_blocks_non_select():
     assert "blocked" in result.get("error", "").lower()
 
 
+def test_execution_contract_reuses_select_only_policy():
+    from src.agent.execution_contracts import validate_sql_execution_contract
+
+    blocked = validate_sql_execution_contract("DELETE FROM t;")
+    allowed = validate_sql_execution_contract("SELECT * FROM t;")
+
+    assert blocked.allowed is False
+    assert "blocked" in blocked.error_message.lower()
+    assert allowed.allowed is True
+    assert allowed.error_message == ""
+
+
 def test_parse_tool_result_rows_expands_stringified_tuple_list():
     from src.agent.execution import _parse_tool_result_rows
 

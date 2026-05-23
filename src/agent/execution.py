@@ -10,8 +10,8 @@ from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from ..semantic.plan_schema import SemanticPlan
 from ..semantic.sql_inspector import SQLInspector
 from ..utils.logging_config import get_nodes_logger
-from ..utils.sql_safety import is_select_only
 from .analytic_sql import build_analytic_sql_package as _build_analytic_sql_package
+from .execution_contracts import validate_sql_execution_contract
 from .llm_manager import get_llm_manager
 from .plan_auditor import audit_result_contract
 from .schema_node import _refresh_schema_context, _should_refresh_schema
@@ -1588,9 +1588,9 @@ def execute_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             raise ValueError("No validated SQL query to execute")
 
         # Block non-SELECT/unsafe SQL before touching the LLM manager or DB
-        ok, reason = is_select_only(validated_sql)
-        if not ok:
-            error_message = f"SQL execution blocked: {reason}"
+        execution_contract = validate_sql_execution_contract(validated_sql)
+        if not execution_contract.allowed:
+            error_message = execution_contract.error_message
             state = add_error(
                 state,
                 error_message,
