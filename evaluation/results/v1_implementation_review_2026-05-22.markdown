@@ -597,9 +597,14 @@ Correção adicional aplicada após a auditoria:
 - A UI de chat agora apresenta feedback progressivo durante consultas longas, com mensagens de etapa para preparação, seleção de tabelas/contexto, validação de SQL/contratos, execução DuckDB e finalização da resposta.
 - `frontend/tests/format-message-content.test.js` cobre a presença desse contrato visual.
 - `.gitignore` foi ajustado para manter `docs/` local-only por padrão, mas permitir versionamento explícito de `docs/adrs/*.md`.
+- A modularização foi avançada por extração vertical da família CID:
+  - `src/semantic/cid_rules.py` concentra regras semânticas CID.
+  - `src/semantic/concepts/` concentra conceitos clínicos versionados.
+  - `src/agent/cid_catalog_sql.py` concentra templates SQL determinísticos de catálogo CID.
+  - `tests/test_cid_catalog_semantics.py` cobre diretamente o novo módulo de SQL do catálogo CID.
 
 Pendências restantes passam a ser de release/higiene, não de gate funcional automatizado:
 
 1. Fatiar o workspace em commits revisáveis.
 2. Decidir se os muitos artefatos intermediários de benchmark devem ser removidos, ignorados ou mantidos como histórico local.
-3. Modularizar os god-files em um marco posterior, pois os gates funcionais v1 já passaram.
+3. Continuar a redução dos god-files em marcos posteriores, pois a v1 já tem extrações verticais testadas e os gates funcionais passaram.

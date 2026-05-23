@@ -1,3 +1,4 @@
+from src.agent.cid_catalog_sql import build_deterministic_cid_catalog_sql
 from src.agent.sql_generation import (
     _build_deterministic_grouped_sql,
     _build_deterministic_scalar_sql,
@@ -14,6 +15,17 @@ def test_cid_group_count_uses_group_catalog_column():
 
     assert plan.base_grain == "cid_catalog"
     assert sql == 'SELECT COUNT(DISTINCT "DS_GRUPO") AS total_grupos_cid FROM cid;'
+
+
+def test_cid_catalog_sql_template_is_isolated_from_main_sql_generator():
+    plan = build_semantic_plan("Quais codigos CID relacionados a pneumonia existem na base?")
+
+    sql = build_deterministic_cid_catalog_sql(plan)
+
+    assert sql is not None
+    assert 'FROM cid' in sql
+    assert "\"CID\" LIKE 'J12%'" in sql
+    assert "\"CID\" LIKE 'J18%'" in sql
 
 
 def test_cid_restriction_catalog_groups_by_restrsexo():
