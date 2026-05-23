@@ -603,8 +603,14 @@ Correção adicional aplicada após a auditoria:
   - `src/agent/cid_catalog_sql.py` concentra templates SQL determinísticos de catálogo CID.
   - `tests/test_cid_catalog_semantics.py` cobre diretamente o novo módulo de SQL do catálogo CID.
 
-Pendências restantes passam a ser de release/higiene, não de gate funcional automatizado:
+Estado final de release local:
 
-1. Fatiar o workspace em commits revisáveis.
-2. Decidir se os muitos artefatos intermediários de benchmark devem ser removidos, ignorados ou mantidos como histórico local.
-3. Continuar a redução dos god-files em marcos posteriores, pois a v1 já tem extrações verticais testadas e os gates funcionais passaram.
+- Workspace limpo após commits.
+- Commits publicados em `origin/llamaindex_dev`.
+- ADRs versionáveis em `docs/adrs/*.md`.
+- Release threshold versionável em `evaluation/results/release_v1/threshold_check_20260522T205851.markdown`.
+
+Pendência de evolução pós-v1:
+
+1. Continuar a redução dos god-files em marcos posteriores, pois a v1 já tem extrações verticais testadas e os gates funcionais passaram.
+2. Avaliar se artefatos intermediários de benchmark devem continuar versionados ou se futuros runs devem versionar apenas artefatos finais.
