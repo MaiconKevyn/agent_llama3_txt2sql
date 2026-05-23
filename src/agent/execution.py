@@ -10,8 +10,13 @@ from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from ..semantic.plan_schema import SemanticPlan
 from ..semantic.sql_inspector import SQLInspector
 from ..utils.logging_config import get_nodes_logger
-from ..utils.sql_safety import is_select_only
 from .analytic_sql import build_analytic_sql_package as _build_analytic_sql_package
+from .execution_contracts import (
+    validate_post_execution_contract as _validate_post_execution_contract,
+)
+from .execution_contracts import (
+    validate_sql_execution_contract,
+)
 from .llm_manager import get_llm_manager
 from .plan_auditor import audit_result_contract
 from .schema_node import _refresh_schema_context, _should_refresh_schema
@@ -159,7 +164,7 @@ def _sql_literal(value: str) -> str:
 
 def _sql_description_filter(alias: str, terms: list[str]) -> str:
     clauses = [
-        f'{alias}."DESCRICAO" ILIKE \'%{_sql_literal(term)}%\''
+        f"{alias}.\"DESCRICAO\" ILIKE '%{_sql_literal(term)}%'"
         for term in terms
         if str(term).strip()
     ]
@@ -235,7 +240,7 @@ def _build_diagnosis_description_lookup_sql(
     prefix_filter = ""
     if prefixes:
         prefix_filter = " OR ".join(
-            f'c."CID" LIKE \'{_sql_literal(prefix)}\'' for prefix in prefixes
+            f"c.\"CID\" LIKE '{_sql_literal(prefix)}'" for prefix in prefixes
         )
     target_filters = [item for item in [code_filter, prefix_filter, description_filter] if item]
     if not target_filters:
@@ -251,7 +256,7 @@ def _build_diagnosis_description_lookup_sql(
         " (SELECT COUNT(*) FROM internacoes i"
         ' WHERE i."DIAG_PRINC" IN (SELECT "CID" FROM diagnosticos_alvo)'
         f"{year_filter}) AS total_internacoes,"
-        " STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\")"
+        ' STRING_AGG("CID" || \' - \' || "DESCRICAO", \' | \' ORDER BY "CID")'
         " AS diagnosticos_encontrados"
         " FROM diagnosticos_alvo;"
     )
@@ -684,7 +689,7 @@ def _build_population_rate_by_state_sql(
         ' SELECT mu."SG_UF" AS estado, SUM(s."QT_POPULACAO") AS populacao'
         " FROM socioeconomico s"
         ' JOIN municipios mu ON s."CO_MUNICIPIO_6D" = mu."CO_MUNICIPIO_6D"'
-        f" WHERE s.\"QT_POPULACAO\" IS NOT NULL{socioeconomic_year_filter}{state_filter}"
+        f' WHERE s."QT_POPULACAO" IS NOT NULL{socioeconomic_year_filter}{state_filter}'
         ' GROUP BY mu."SG_UF"'
         ") "
         "SELECT ipe.estado, ipe.total_internacoes, ppe.populacao,"
@@ -711,7 +716,7 @@ def _build_time_to_death_sql(
 
     year_filter = _year_where_clause(plan, "i")
     return (
-        "SELECT ROUND(AVG(date_diff('day', i.\"DT_INTER\", i.\"DT_SAIDA\")), 2)"
+        'SELECT ROUND(AVG(date_diff(\'day\', i."DT_INTER", i."DT_SAIDA")), 2)'
         " AS tempo_medio_dias_ate_obito"
         " FROM internacoes i"
         ' WHERE i."MORTE" = true'
@@ -1426,8 +1431,19 @@ def _select_item_matches_dimension(select_item: str, dimension: str) -> bool:
         "municipio_hospital": [r"\bnome\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
         "hospital": [r"\bcnes\b"],
         "especialidade": [r"\bespecialidade\b", r"\bdescri[cç][aã]o\b", r"\bespec\b"],
-        "cid_capitulo": [r"\bcap[ií]tulo\b", r"\bcapitulo_cid\b", r"\bcid_capitulo\b", r"\bds_capitulo\b", r"\bsubstr\s*\("],
-        "cid_categoria": [r"\bcategoria\b", r"\bcategoria_cid\b", r"\bcid_categoria\b", r"\bds_categoria\b"],
+        "cid_capitulo": [
+            r"\bcap[ií]tulo\b",
+            r"\bcapitulo_cid\b",
+            r"\bcid_capitulo\b",
+            r"\bds_capitulo\b",
+            r"\bsubstr\s*\(",
+        ],
+        "cid_categoria": [
+            r"\bcategoria\b",
+            r"\bcategoria_cid\b",
+            r"\bcid_categoria\b",
+            r"\bds_categoria\b",
+        ],
         "cid_grupo": [r"\bgrupo\b", r"\bgrupo_cid\b", r"\bcid_grupo\b", r"\bds_grupo\b"],
         "cid_restrsexo": [r"\brestr(?:icao|ição|icoes|ições)?_?sexo\b", r"\brestrsexo\b"],
         "cid_codigo": [r"\bcid\b"],
@@ -1465,83 +1481,6 @@ def _parse_tool_result_rows(tool_result_str: str) -> list[dict]:
     return [{"result": line.strip()} for line in text.split("\n") if line.strip()]
 
 
-def _sql_mentions_output_dimension(sql: str, dimension: str) -> bool:
-    text = sql.lower()
-    patterns = {
-        "estado": [r"\bsg_uf\b", r"\bestado\b"],
-        "estado_hospital": [r"\bsg_uf\b", r"\bestado\b"],
-        "municipio": [r"\bno_municipio\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
-        "municipio_hospital": [r"\bno_municipio\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
-        "regiao_saude": [r"\bno_regiao_saude\b", r"\bregiao_saude\b", r"\bregi[aã]o\s+de\s+sa[uú]de\b"],
-        "hospital": [r"\bcnes\b", r"\bhospital\b"],
-        "especialidade": [r"\bespecialidade\b", r"\bespec\b", r"\bdescri[cç][aã]o\b"],
-        "cid_capitulo": [r"\bcap[ií]tulo\b", r"\bcapitulo_cid\b", r"\bcid_capitulo\b", r"\bds_capitulo\b", r"\bsubstr\s*\("],
-        "cid_categoria": [r"\bcategoria\b", r"\bcategoria_cid\b", r"\bcid_categoria\b", r"\bds_categoria\b"],
-        "cid_grupo": [r"\bgrupo\b", r"\bgrupo_cid\b", r"\bcid_grupo\b", r"\bds_grupo\b"],
-        "cid_restrsexo": [r"\brestr(?:icao|ição|icoes|ições)?_?sexo\b", r"\brestrsexo\b"],
-        "cid_codigo": [r"\bcid\b"],
-        "cid_descricao": [r"\bdescri[cç][aã]o\b", r"\bdescricao\b"],
-        "diagnostico": [r"\bdiag_princ\b", r"\bcid\b", r"\bdescri[cç][aã]o\b"],
-        "procedimento": [r"\bproc_rea\b", r"\bnome_proc\b", r"\bprocedimento\b"],
-        "marca_uti": [r"\bmarca_uti\b", r"\btipo_uti\b", r"\bdescri[cç][aã]o\b"],
-        "sexo": [r"\bsexo\b", r"\bdescri[cç][aã]o\b"],
-        "raca_cor": [r"\braca_cor\b", r"\bra[cç]a\b", r"\bcor\b"],
-        "instrucao": [r"\binstru\b", r"\binstrucao\b", r"\binstru[cç][aã]o\b"],
-        "idade": [r"\bidade\b"],
-        "faixa_etaria": [r"\bfaixa\b", r"\bidade\b"],
-        "ano": [r"\bano\b", r"\bextract\s*\(\s*year\b"],
-        "mes": [r"\bmes\b", r"\bextract\s*\(\s*month\b"],
-        "trimestre": [r"\btrimestre\b", r"\bextract\s*\(\s*quarter\b"],
-        "dia_semana": [r"\bdia_semana\b", r"\bdayofweek\b", r"\bisodow\b"],
-    }
-    return any(re.search(pattern, text, re.I) for pattern in patterns.get(dimension, []))
-
-
-def _validate_post_execution_contract(
-    semantic_plan: SemanticPlan | dict | None,
-    sql: str,
-    *,
-    results: list[dict],
-    row_count: int,
-) -> tuple[bool, str | None]:
-    if not semantic_plan or not sql:
-        return True, None
-    plan = (
-        semantic_plan
-        if isinstance(semantic_plan, SemanticPlan)
-        else SemanticPlan.model_validate(semantic_plan)
-    )
-    unsupported = [
-        ambiguity.removeprefix("unsupported_metric:")
-        for ambiguity in plan.ambiguities
-        if ambiguity.startswith("unsupported_metric:")
-    ]
-    if unsupported:
-        return False, (
-            "POST EXECUTION CONTRACT ERROR: query used unavailable schema metric(s): "
-            + ", ".join(sorted(unsupported))
-        )
-
-    required_dimensions = plan.answer_shape.required_dimensions
-    if required_dimensions and plan.answer_shape.row_grain != "single_scalar":
-        missing_dimensions = [
-            dimension
-            for dimension in required_dimensions
-            if not _sql_mentions_output_dimension(sql, dimension)
-        ]
-        if missing_dimensions:
-            return False, (
-                "POST EXECUTION CONTRACT ERROR: successful SQL is missing requested output "
-                f"dimension(s): {', '.join(missing_dimensions)}."
-            )
-        if row_count <= 1 and not results and plan.answer_shape.expected_row_count == "one_per_group":
-            return False, (
-                "POST EXECUTION CONTRACT ERROR: grouped query returned no rows, so it did not "
-                "materialize the requested output dimensions."
-            )
-    return True, None
-
-
 def execute_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
     """
     Execute SQL Node - Using SQLDatabaseToolkit query tool
@@ -1558,9 +1497,9 @@ def execute_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             raise ValueError("No validated SQL query to execute")
 
         # Block non-SELECT/unsafe SQL before touching the LLM manager or DB
-        ok, reason = is_select_only(validated_sql)
-        if not ok:
-            error_message = f"SQL execution blocked: {reason}"
+        execution_contract = validate_sql_execution_contract(validated_sql)
+        if not execution_contract.allowed:
+            error_message = execution_contract.error_message
             state = add_error(
                 state,
                 error_message,
@@ -1736,7 +1675,9 @@ def execute_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             metadata = state.get("response_metadata", {}) or {}
             metadata["post_execution_contract_error"] = post_execution_message
             state["response_metadata"] = metadata
-            state = add_ai_message(state, post_execution_message or "Post-execution contract failed")
+            state = add_ai_message(
+                state, post_execution_message or "Post-execution contract failed"
+            )
             execution_time = time.time() - start_time
             state = update_phase(state, ExecutionPhase.SQL_EXECUTION, execution_time)
             return state

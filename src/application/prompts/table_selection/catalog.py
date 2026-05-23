@@ -2,20 +2,20 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, Iterable, List
+from typing import Any
 
 import yaml
 
 from ...config.table_descriptions import TABLE_DESCRIPTIONS
 
-
 CATALOG_PATH = Path(__file__).with_name("variants.yml")
 
 
 @lru_cache(maxsize=1)
-def load_table_selection_catalog() -> Dict[str, Any]:
+def load_table_selection_catalog() -> dict[str, Any]:
     with CATALOG_PATH.open("r", encoding="utf-8") as handle:
         data = yaml.safe_load(handle)
     if not isinstance(data, dict):
@@ -23,17 +23,17 @@ def load_table_selection_catalog() -> Dict[str, Any]:
     return data
 
 
-def get_available_description_variants() -> List[str]:
+def get_available_description_variants() -> list[str]:
     catalog = load_table_selection_catalog()
     return list(catalog.get("description_variants", {}).keys())
 
 
-def get_available_prompt_variants() -> List[str]:
+def get_available_prompt_variants() -> list[str]:
     catalog = load_table_selection_catalog()
     return list(catalog.get("prompt_variants", {}).keys())
 
 
-def get_available_table_selection_presets() -> List[str]:
+def get_available_table_selection_presets() -> list[str]:
     catalog = load_table_selection_catalog()
     return list(catalog.get("presets", {}).keys())
 
@@ -44,7 +44,7 @@ def resolve_table_selection_strategy(
     mode: str | None = None,
     description_variant: str | None = None,
     prompt_variant: str | None = None,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     catalog = load_table_selection_catalog()
     presets = catalog.get("presets", {})
     selected_preset = preset_name or "llm_best"
@@ -67,8 +67,8 @@ def _join_items(values: Iterable[str]) -> str:
 def _resolve_source_value(
     source: str,
     table_name: str,
-    desc: Dict[str, Any],
-    metadata: Dict[str, Any],
+    desc: dict[str, Any],
+    metadata: dict[str, Any],
 ) -> Any:
     if source == "join_hint":
         relationships = desc.get("relationships", [])
@@ -83,16 +83,16 @@ def _resolve_source_value(
 
 
 def render_table_description_lines(
-    available_tables: List[str],
+    available_tables: list[str],
     description_variant: str,
-) -> List[str]:
+) -> list[str]:
     catalog = load_table_selection_catalog()
     variant_cfg = catalog.get("description_variants", {}).get(description_variant)
     if not variant_cfg:
         raise ValueError(f"Unknown table description variant: {description_variant}")
 
     metadata = catalog.get("metadata", {})
-    lines: List[str] = []
+    lines: list[str] = []
 
     for table_name in available_tables:
         desc = TABLE_DESCRIPTIONS.get(table_name)
@@ -101,7 +101,7 @@ def render_table_description_lines(
             continue
 
         title = desc.get("title", table_name)
-        context: Dict[str, Any] = {
+        context: dict[str, Any] = {
             "table_name": table_name,
             "title": title,
             "role_hint": metadata.get("role_hints", {}).get(table_name, title),
@@ -133,7 +133,7 @@ def render_table_description_lines(
 
 def render_table_selection_prompt(
     user_query: str,
-    available_tables: List[str],
+    available_tables: list[str],
     description_variant: str,
     prompt_variant: str,
 ) -> str:

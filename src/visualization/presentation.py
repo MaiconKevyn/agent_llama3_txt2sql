@@ -6,7 +6,6 @@ from typing import Any
 
 from .schema import ChartPresentation, ChartSpec, ValueFormat
 
-
 LABELS = {
     "ano": "Ano",
     "mes": "Mes",
@@ -88,8 +87,7 @@ def _infer_value_format(metric: str | None) -> ValueFormat:
     if any(token in normalized for token in ["taxa", "percent", "proporcao", "ratio"]):
         return "percent"
     if any(
-        token in normalized
-        for token in ["valor", "receita", "custo", "val_", "valtot", "val_tot"]
+        token in normalized for token in ["valor", "receita", "custo", "val_", "valtot", "val_tot"]
     ):
         return "currency_brl"
     if any(token in normalized for token in ["media", "idade", "permanencia"]):
@@ -138,8 +136,7 @@ def _build_summary(spec: ChartSpec, value_format: ValueFormat) -> str | None:
         return None
     leader = max(numeric_rows, key=lambda row: row.get(spec.y) or 0)
     return (
-        f"{leader.get(spec.x)} lidera com "
-        f"{format_chart_value(leader.get(spec.y), value_format)}."
+        f"{leader.get(spec.x)} lidera com {format_chart_value(leader.get(spec.y), value_format)}."
     )
 
 

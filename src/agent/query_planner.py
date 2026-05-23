@@ -2,15 +2,14 @@
 
 import json
 import time
-from typing import Dict, List
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from ..utils.logging_config import get_nodes_logger
 from .llm_manager import get_llm_manager
 from .plan_gate import MULTI_ELIGIBLE_PLAN_TYPES, _build_single_plan
-from .state_models import ExecutionPhase, MessagesStateTXT2SQL, QueryPlan, SubQuery
 from .state_helpers import add_ai_message, update_phase
-from ..utils.logging_config import get_nodes_logger
+from .state_models import ExecutionPhase, MessagesStateTXT2SQL, QueryPlan, SubQuery
 
 logger = get_nodes_logger()
 
@@ -101,8 +100,8 @@ def _strip_json_fences(response_text: str) -> str:
     return response_text.strip()
 
 
-def _build_subqueries(sqs_data: List[Dict], user_query: str) -> List[SubQuery]:
-    sub_queries: List[SubQuery] = []
+def _build_subqueries(sqs_data: list[dict], user_query: str) -> list[SubQuery]:
+    sub_queries: list[SubQuery] = []
     for i, sq in enumerate(sqs_data[:4]):
         sub_queries.append(
             SubQuery(
@@ -120,7 +119,7 @@ def _build_subqueries(sqs_data: List[Dict], user_query: str) -> List[SubQuery]:
     return sub_queries
 
 
-def _normalize_query_plan(plan_data: Dict, user_query: str, gate_plan_type: str) -> QueryPlan:
+def _normalize_query_plan(plan_data: dict, user_query: str, gate_plan_type: str) -> QueryPlan:
     strategy = plan_data.get("strategy", "single")
     if strategy != "multi" or gate_plan_type not in MULTI_ELIGIBLE_PLAN_TYPES:
         return _build_single_plan(
@@ -177,7 +176,8 @@ def _normalize_query_plan(plan_data: Dict, user_query: str, gate_plan_type: str)
         required_constraints=plan_data.get("required_constraints", []) or [],
         expected_output_shape=expected_output_shape,
         verifier_checks=plan_data.get("verifier_checks", []) or list(_DEFAULT_VERIFIER_CHECKS),
-        fallback_policy=plan_data.get("fallback_policy", {}) or {
+        fallback_policy=plan_data.get("fallback_policy", {})
+        or {
             "on_shape_mismatch": "rerun_single",
             "on_unsupported_merge": "rerun_single",
             "on_missing_output_nodes": "rerun_single",
@@ -220,10 +220,12 @@ def query_planner_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             "Produce a structured multi-query plan for this allowed plan_type only."
         )
 
-        response = llm_manager.invoke_chat([
-            SystemMessage(content=_SYSTEM_PROMPT),
-            HumanMessage(content=human_prompt),
-        ])
+        response = llm_manager.invoke_chat(
+            [
+                SystemMessage(content=_SYSTEM_PROMPT),
+                HumanMessage(content=human_prompt),
+            ]
+        )
         response_text = response.content if hasattr(response, "content") else str(response)
         plan_data = json.loads(_strip_json_fences(response_text))
 
@@ -234,17 +236,20 @@ def query_planner_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         state["is_multi_query"] = query_plan.strategy == "multi"
         state["execution_mode"] = "multi" if state["is_multi_query"] else "single"
 
-        logger.info("Query planner decided", extra={
-            "strategy": query_plan.strategy,
-            "plan_type": query_plan.plan_type,
-            "merge_strategy": query_plan.merge_strategy,
-            "n_sub_queries": len(query_plan.sub_queries),
-        })
+        logger.info(
+            "Query planner decided",
+            extra={
+                "strategy": query_plan.strategy,
+                "plan_type": query_plan.plan_type,
+                "merge_strategy": query_plan.merge_strategy,
+                "n_sub_queries": len(query_plan.sub_queries),
+            },
+        )
 
         state = add_ai_message(
             state,
             f"Query plan: {query_plan.strategy}/{query_plan.plan_type} com "
-            f"{len(query_plan.sub_queries)} sub-consultas e merge {query_plan.merge_strategy}."
+            f"{len(query_plan.sub_queries)} sub-consultas e merge {query_plan.merge_strategy}.",
         )
         state = update_phase(state, ExecutionPhase.REASONING, time.time() - start_time)
         return state

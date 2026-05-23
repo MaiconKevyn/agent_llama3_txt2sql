@@ -14,9 +14,9 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from sqlalchemy import create_engine, text
 
@@ -67,6 +67,7 @@ class QueryRequest(BaseModel):
     include_sql: bool = True
     session_id: str | None = None
     debug: bool = False
+    chart_from_last_result: bool = False
     table_context: "TableContext | None" = None
 
 
@@ -682,7 +683,9 @@ def _build_database_table_detail(
     normalized_limit = _normalize_query_limit(sample_limit)
     with engine.connect() as connection:
         if not _table_exists(connection, schema_name, table_name):
-            raise HTTPException(status_code=404, detail=f"Tabela nao encontrada: {schema_name}.{table_name}")
+            raise HTTPException(
+                status_code=404, detail=f"Tabela nao encontrada: {schema_name}.{table_name}"
+            )
 
         column_result = connection.execute(
             text(
@@ -811,10 +814,10 @@ async def process_query(request: QueryRequest):
                 user_query=effective_query,
             )
         else:
-            result = _orchestrator.process_query(
-                effective_query,
-                session_id=request.session_id,
-            )
+            orchestrator_kwargs: dict[str, Any] = {"session_id": request.session_id}
+            if request.chart_from_last_result:
+                orchestrator_kwargs["chart_from_last_result"] = True
+            result = _orchestrator.process_query(effective_query, **orchestrator_kwargs)
         if table_context_metadata:
             metadata = result.get("metadata", {}) or {}
             metadata.update(table_context_metadata)

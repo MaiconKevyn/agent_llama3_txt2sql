@@ -168,7 +168,9 @@ def _cartesian(spec: ChartSpec, *, chart_type: str, area: bool = False) -> dict[
         if chart_type == "bar":
             series["barMaxWidth"] = 26 if horizontal_bar else 34
             if not per_item_color:
-                series["itemStyle"] = {"borderRadius": [0, 5, 5, 0] if horizontal_bar else [5, 5, 0, 0]}
+                series["itemStyle"] = {
+                    "borderRadius": [0, 5, 5, 0] if horizontal_bar else [5, 5, 0, 0]
+                }
         if chart_type == "line":
             series["smooth"] = True
             series["symbolSize"] = 7

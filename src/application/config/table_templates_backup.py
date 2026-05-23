@@ -1,6 +1,3 @@
-from typing import List, Dict, Optional
-
-
 # PostgreSQL-specific templates for all 15 SIH-RS tables
 TABLE_TEMPLATES = {
     "internacoes": """
@@ -273,7 +270,6 @@ TABLE_TEMPLATES = {
         ORDER BY taxa_mortalidade DESC
         LIMIT 10;
 """,
-
     "mortes": """
         MORTES TABLE RULES - DEATH RECORDS DURING HOSPITALIZATION:
 
@@ -368,7 +364,6 @@ TABLE_TEMPLATES = {
         ORDER BY total_deaths DESC
         LIMIT 10;
 """,
-
     "cid10": """
          CID10 TABLE RULES - ICD-10 DISEASE CODES (REFERENCE TABLE):
         
@@ -402,7 +397,6 @@ TABLE_TEMPLATES = {
         WHERE "CD_DESCRICAO" ILIKE ANY(ARRAY['%cardi%','%cardí%','%miocard%','%vascular%','%arterial%','%circulat%']);
     
 """,
-
     "hospital": """
          HOSPITAL TABLE RULES - HEALTHCARE FACILITIES:
 
@@ -440,7 +434,6 @@ TABLE_TEMPLATES = {
         GROUP BY h."CNES" 
         HAVING COUNT(i."N_AIH") > 1000;
 """,
-
     "municipios": """
         MUNICIPIOS TABLE RULES - BRAZILIAN MUNICIPALITIES:
         
@@ -479,7 +472,6 @@ TABLE_TEMPLATES = {
         GROUP BY "estado" 
         ORDER BY total_cities DESC;
 """,
-
     "dado_ibge": """
          DADO_IBGE TABLE RULES - MUNICIPALITY SOCIOECONOMIC DATA:
         
@@ -521,7 +513,6 @@ TABLE_TEMPLATES = {
         WHERE "ideb_anos_iniciais_ensino_fundamental" IS NOT NULL
         ORDER BY "ideb_anos_iniciais_ensino_fundamental" DESC LIMIT 10;
 """,
-
     "uti_detalhes": """
          UTI_DETALHES TABLE RULES - INTENSIVE CARE UNIT DATA:
         
@@ -559,7 +550,6 @@ TABLE_TEMPLATES = {
         FROM uti_detalhes u 
         JOIN mortes m ON u."N_AIH" = m."N_AIH";
 """,
-
     "procedimentos": """
          PROCEDIMENTOS TABLE RULES - MEDICAL PROCEDURES REFERENCE:
 
@@ -630,7 +620,6 @@ TABLE_TEMPLATES = {
         - ❌ COUNT(DISTINCT code_col) together with GROUP BY code_col (returns 1 per group)
         - ✅ COUNT(*) with GROUP BY code_col for frequency rankings
 """,
-
     "obstetricos": """
         OBSTETRICOS TABLE RULES - OBSTETRIC/MATERNITY DATA:
         
@@ -680,7 +669,6 @@ TABLE_TEMPLATES = {
         FROM obstetricos o
         JOIN uti_detalhes u ON o."N_AIH" = u."N_AIH";
 """,
-
     "condicoes_especificas": """
          CONDICOES_ESPECIFICAS TABLE RULES - SPECIAL MEDICAL CONDITIONS:
         
@@ -716,7 +704,6 @@ TABLE_TEMPLATES = {
         JOIN hospital h ON i."CNES" = h."CNES"
         GROUP BY h."NATUREZA";
 """,
-
     "instrucao": """
         INSTRUCAO TABLE RULES - EDUCATION LEVEL DATA:
         
@@ -760,7 +747,6 @@ TABLE_TEMPLATES = {
         GROUP BY ins."INSTRU"
         ORDER BY avg_cost DESC;
 """,
-
     "vincprev": """
         VINCPREV TABLE RULES - SOCIAL SECURITY LINKAGE:
         
@@ -793,7 +779,6 @@ TABLE_TEMPLATES = {
         LEFT JOIN mortes m ON v."N_AIH" = m."N_AIH"
         GROUP BY v."VINCPREV";
 """,
-
     "cbor": """
         CBOR TABLE RULES - PROFESSIONAL OCCUPATION CLASSIFICATION:
         
@@ -831,7 +816,6 @@ TABLE_TEMPLATES = {
         FROM cbor c
         JOIN uti_detalhes u ON c."N_AIH" = u."N_AIH";
 """,
-
     "infehosp": """
         INFEHOSP TABLE RULES - HOSPITAL INFECTIONS:
         
@@ -855,7 +839,6 @@ TABLE_TEMPLATES = {
         -- This query will return no results
         SELECT * FROM infehosp LIMIT 10;
 """,
-
     "diagnosticos_secundarios": """
          DIAGNOSTICOS_SECUNDARIOS TABLE RULES - SECONDARY DIAGNOSES:
         
@@ -880,7 +863,7 @@ TABLE_TEMPLATES = {
         -- For actual secondary diagnoses, use internacoes table
         SELECT COUNT(*) FROM internacoes 
         WHERE "DIAG_SECUN" IS NOT NULL AND "DIAG_SECUN" != '';
-"""
+""",
 }
 
 
@@ -907,23 +890,23 @@ USER QUERY: {user_query}
 Generate the PostgreSQL query:"""
 
 
-def build_table_specific_prompt(selected_tables: List[str]) -> str:
+def build_table_specific_prompt(selected_tables: list[str]) -> str:
     """
     Builds dynamic prompt based on selected tables for PostgreSQL SIH-RS database
-    
+
     Args:
         selected_tables: List of selected table names
-        
+
     Returns:
         String with specific rules for selected tables
     """
     if not selected_tables:
         return "No specific table rules available."
-    
+
     rules = []
     rules.append(" POSTGRESQL TABLE-SPECIFIC RULES AND EXAMPLES:")
     rules.append("=" * 60)
-    
+
     for table in selected_tables:
         if table in TABLE_TEMPLATES:
             rules.append(f"\n{TABLE_TEMPLATES[table]}")
@@ -937,44 +920,44 @@ def build_table_specific_prompt(selected_tables: List[str]) -> str:
         - Consider NULL values in WHERE clauses
         - Use PostgreSQL-specific functions when appropriate
         """)
-    
+
     # NOTE: Multi-table JOIN rules are handled by build_multi_table_prompt() only
-    # Removing the multi-table logic here prevents duplication when build_multi_table_prompt() 
+    # Removing the multi-table logic here prevents duplication when build_multi_table_prompt()
     # calls this function and then adds MULTI_TABLE_RULES separately
-    
+
     return "\n".join(rules)
 
 
-def get_table_template(table_name: str) -> Optional[str]:
+def get_table_template(table_name: str) -> str | None:
     """
     Gets specific template for a table
-    
+
     Args:
         table_name: Name of the table
-        
+
     Returns:
         Table template or None if doesn't exist
     """
     return TABLE_TEMPLATES.get(table_name)
 
 
-def get_available_templates() -> List[str]:
+def get_available_templates() -> list[str]:
     """
     Returns list of tables with available templates
-    
+
     Returns:
         List of table names with templates
     """
     return list(TABLE_TEMPLATES.keys())
 
 
-def validate_template_coverage(tables: List[str]) -> Dict[str, bool]:
+def validate_template_coverage(tables: list[str]) -> dict[str, bool]:
     """
     Validates if tables have available templates
-    
+
     Args:
         tables: List of table names
-        
+
     Returns:
         Dictionary mapping table -> has_template
     """
@@ -1042,22 +1025,22 @@ LIMIT 3;
 """
 
 
-def build_multi_table_prompt(selected_tables: List[str]) -> str:
+def build_multi_table_prompt(selected_tables: list[str]) -> str:
     """
     Builds prompt for queries involving multiple tables
-    
+
     Args:
         selected_tables: List of selected tables
-        
+
     Returns:
         Prompt with multi-table rules
     """
     if len(selected_tables) <= 1:
         return build_table_specific_prompt(selected_tables)
-    
+
     # If multiple tables, add JOIN rules
     single_table_rules = build_table_specific_prompt(selected_tables)
-    
+
     return f"""
 {single_table_rules}
 
@@ -1074,21 +1057,21 @@ TEMPLATE_CONFIG = {
     "enable_multi_table_rules": True,
     "postgresql_mode": True,
     "quote_columns": True,
-    "include_performance_hints": True
+    "include_performance_hints": True,
 }
 
 
-def get_template_stats() -> Dict[str, int]:
+def get_template_stats() -> dict[str, int]:
     """
     Gets statistics about template coverage
-    
+
     Returns:
         Dictionary with template statistics
     """
     return {
         "total_templates": len(TABLE_TEMPLATES),
         "populated_tables": 13,  # Tables with data
-        "empty_tables": 2,       # infehosp, diagnosticos_secundarios
-        "reference_tables": 5,   # cid10, hospital, municipios, dado_ibge, procedimentos
-        "transaction_tables": 10 # internacoes, mortes, uti_detalhes, etc.
+        "empty_tables": 2,  # infehosp, diagnosticos_secundarios
+        "reference_tables": 5,  # cid10, hospital, municipios, dado_ibge, procedimentos
+        "transaction_tables": 10,  # internacoes, mortes, uti_detalhes, etc.
     }

@@ -1,0 +1,1088 @@
+{
+  "run_id": "generalization_exhaustion_20260522T205151",
+  "created_at": "2026-05-22T20:52:14",
+  "dry_run": false,
+  "summary": {
+    "status_counts": {
+      "passed": 2
+    },
+    "scored_total": 2,
+    "score": 1.0,
+    "category_scores": {
+      "visualizacao": {
+        "passed": 2,
+        "total": 2,
+        "score": 1.0
+      }
+    },
+    "answerability_counts": {
+      "answerable": 2
+    },
+    "root_cause_counts": {},
+    "severity_counts": {}
+  },
+  "items": [
+    {
+      "id": "V1_VIS_003",
+      "persona": "epidemiologista",
+      "category": "visualizacao",
+      "difficulty": "medium",
+      "question": "Como evoluiram mensalmente as internacoes em MA em 2020? Gere um grafico de linha.",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "visualizacao_serie_temporal",
+      "status": "passed",
+      "evaluation_passed": true,
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "mes": 1,
+            "total_internacoes": 38622
+          },
+          {
+            "mes": 2,
+            "total_internacoes": 36070
+          },
+          {
+            "mes": 3,
+            "total_internacoes": 35179
+          },
+          {
+            "mes": 4,
+            "total_internacoes": 25607
+          },
+          {
+            "mes": 5,
+            "total_internacoes": 28605
+          }
+        ],
+        "actual_preview": [
+          {
+            "mes": 1,
+            "total_internacoes": 38622
+          },
+          {
+            "mes": 2,
+            "total_internacoes": 36070
+          },
+          {
+            "mes": 3,
+            "total_internacoes": 35179
+          },
+          {
+            "mes": 4,
+            "total_internacoes": 25607
+          },
+          {
+            "mes": 5,
+            "total_internacoes": 28605
+          }
+        ]
+      },
+      "success": true,
+      "technical_success": true,
+      "answerability": "answerable",
+      "response": "Resultados:\n1. Mes: 1; Total de internacoes: 38.622\n2. Mes: 2; Total de internacoes: 36.070\n3. Mes: 3; Total de internacoes: 35.179\n4. Mes: 4; Total de internacoes: 25.607\n5. Mes: 5; Total de internacoes: 28.605\n6. Mes: 6; Total de internacoes: 30.065\n7. Mes: 7; Total de internacoes: 32.424\n8. Mes: 8; Total de internacoes: 33.340\n9. Mes: 9; Total de internacoes: 33.651\n10. Mes: 10; Total de internacoes: 35.720\n... amostra parcial: mostrando 10 de 12 registros.\n\nObservacoes de escopo: DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro. DQ010 (high): Internacoes com municipio de residencia sem correspondencia afeta 1.270.397 registros. Municipios orfaos prejudicam analises territoriais. DQ016 (high): municipios.SG_UF contem valores que nao sao UFs brasileiras afeta 18 registros. Valores numericos em SG_UF fazem perguntas sobre UFs retornarem 38 categorias em vez das 27 UFs validas.",
+      "sql": "SELECT EXTRACT(MONTH FROM i.\"DT_INTER\") AS mes, COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"DT_INTER\" IS NOT NULL AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 AND mu.\"SG_UF\" IN ('MA') GROUP BY EXTRACT(MONTH FROM i.\"DT_INTER\") ORDER BY mes ASC;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.95,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5,
+          "phases_completed": 7,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 12.269729852676392
+        },
+        "phases_completed": [
+          "initialization",
+          "reasoning",
+          "table_discovery",
+          "schema_analysis",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 1.3471803665161133
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.6303374767303467
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.30518102645874023
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes"
+        ],
+        "schema_context_length": 11400,
+        "latency_by_component": {
+          "query_classification": 0.0002994537353515625,
+          "table_discovery": 1.3472628593444824,
+          "schema_analysis": 0.0010416507720947266,
+          "reasoning": 6.957940101623535,
+          "sql_generation": 0.0007412433624267578,
+          "sql_validation": 3.6303703784942627,
+          "sql_execution": 0.3052830696105957,
+          "completed": 0.0012826919555664062
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Como evoluiram mensalmente as internacoes em MA em 2020? Gere um grafico de linha.",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "trend",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "mes",
+              "source": "EXTRACT(MONTH FROM internacoes.\"DT_INTER\")",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "estado",
+              "values": [
+                "MA"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "time_series",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "mes"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "time_series",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "mes"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": [
+            "profile_temporal_coverage: internacoes.DT_INTER ranges from 2008-01-01 to 2023-12-31",
+            "profile_cardinality: mes uses high-cardinality identifier internacoes.DT_INTER"
+          ]
+        },
+        "intent_plan": {
+          "user_question": "Como evoluiram mensalmente as internacoes em MA em 2020? Gere um grafico de linha.",
+          "persona_hint": "common_user",
+          "primary_task": "trend",
+          "presentation": "chart",
+          "metric_slots": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "cohort_slots": [],
+          "concept_slots": [],
+          "temporal_scope": {
+            "type": "year",
+            "n": null,
+            "start_year": 2020,
+            "end_year": 2020,
+            "date_column": "DT_INTER"
+          },
+          "grouping_slots": [
+            {
+              "name": "ano"
+            }
+          ],
+          "requested_tools": [],
+          "uncertainty": [],
+          "requires_clarification": false
+        },
+        "tool_plan": [
+          {
+            "name": "inspect_schema",
+            "reason": "confirm available tables and columns before SQL compilation"
+          },
+          {
+            "name": "resolve_temporal_scope",
+            "reason": "normalize requested time window"
+          },
+          {
+            "name": "resolve_join_policy",
+            "reason": "validate joins required by dimensions and concepts"
+          },
+          {
+            "name": "compile_sql",
+            "reason": "compile the resolved domain plan to SQL"
+          },
+          {
+            "name": "execute_sql",
+            "reason": "execute validated SQL against the database"
+          },
+          {
+            "name": "validate_result_contract",
+            "reason": "check result shape and metric semantics"
+          },
+          {
+            "name": "build_chart",
+            "reason": "render a chart-compatible result"
+          }
+        ],
+        "plan_audit": {
+          "passed": true,
+          "errors": [],
+          "resolved_concepts": []
+        },
+        "result_audit": {
+          "passed": true,
+          "errors": [],
+          "warnings": [
+            {
+              "layer": "result_contract",
+              "code": "unlabeled_tuple_result",
+              "message": "Result parser returned positional tuples; column count matches chart contract."
+            }
+          ]
+        },
+        "structured_error": null,
+        "answerability": "answerable",
+        "technical_success": true,
+        "domain_caveats": [
+          "DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro.",
+          "DQ010 (high): Internacoes com municipio de residencia sem correspondencia afeta 1.270.397 registros. Municipios orfaos prejudicam analises territoriais.",
+          "DQ016 (high): municipios.SG_UF contem valores que nao sao UFs brasileiras afeta 18 registros. Valores numericos em SG_UF fazem perguntas sobre UFs retornarem 38 categorias em vez das 27 UFs validas."
+        ],
+        "visualization_intent": {
+          "requested": true,
+          "source": "explicit_current_query",
+          "uses_last_result": false,
+          "chart_hint": "line",
+          "reason": "Usuario pediu explicitamente grafico do tipo line"
+        },
+        "chart_plan": {
+          "requested": true,
+          "chart_type": "line",
+          "metric": "total_internacoes",
+          "metric_expression": "COUNT rows",
+          "x_dimension": "mes",
+          "series_dimension": null,
+          "y_column": "total_internacoes",
+          "grain": "mes",
+          "expected_result_shape": "time_metric",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [
+            "mes",
+            "total_internacoes"
+          ],
+          "sql_shape_guidance": "Return one row per mes with columns: mes, total_internacoes.",
+          "reason": "structured chart parameters extracted before SQL generation"
+        },
+        "chart_spec": {
+          "chartable": true,
+          "chart_type": "line",
+          "title": "total internacoes por mes",
+          "x": "mes",
+          "y": "total_internacoes",
+          "series": null,
+          "encoding": {
+            "x_type": "temporal",
+            "y_type": "quantitative"
+          },
+          "data": [
+            {
+              "mes": 1,
+              "total_internacoes": 38622
+            },
+            {
+              "mes": 2,
+              "total_internacoes": 36070
+            },
+            {
+              "mes": 3,
+              "total_internacoes": 35179
+            },
+            {
+              "mes": 4,
+              "total_internacoes": 25607
+            },
+            {
+              "mes": 5,
+              "total_internacoes": 28605
+            },
+            {
+              "mes": 6,
+              "total_internacoes": 30065
+            },
+            {
+              "mes": 7,
+              "total_internacoes": 32424
+            },
+            {
+              "mes": 8,
+              "total_internacoes": 33340
+            },
+            {
+              "mes": 9,
+              "total_internacoes": 33651
+            },
+            {
+              "mes": 10,
+              "total_internacoes": 35720
+            },
+            {
+              "mes": 11,
+              "total_internacoes": 34094
+            },
+            {
+              "mes": 12,
+              "total_internacoes": 31790
+            }
+          ],
+          "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+          "warnings": [],
+          "presentation": {
+            "title": "Total de internacoes por mes",
+            "subtitle": "Serie temporal",
+            "x_label": "Mes",
+            "y_label": "Total de internacoes",
+            "series_label": null,
+            "value_format": "integer",
+            "sort_order": "as_returned",
+            "footnote": null,
+            "summary": "1 lidera com 38.622."
+          }
+        },
+        "intent_planning": {
+          "duration_seconds": 0.0048,
+          "primary_task": "trend",
+          "presentation": "chart",
+          "tools": [
+            "inspect_schema",
+            "resolve_temporal_scope",
+            "resolve_join_policy",
+            "compile_sql",
+            "execute_sql",
+            "validate_result_contract",
+            "build_chart"
+          ]
+        },
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.42881935593071024,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "socioeconomico",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A análise da evolução mensal das internações em MA em 2020 requer a contagem total de internações agrupadas por mês. O filtro por estado e ano garante que os dados sejam específicos para MA e para o ano de 2020. A estrutura de resposta é configurada para um gráfico de linha, representando a série temporal das internações ao longo dos meses.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic chart SQL generated from the semantic and chart plans.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": true,
+            "chart_type": "line",
+            "metric": "total_internacoes",
+            "metric_expression": "COUNT rows",
+            "x_dimension": "mes",
+            "series_dimension": null,
+            "y_column": "total_internacoes",
+            "grain": "mes",
+            "expected_result_shape": "time_metric",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [
+              "mes",
+              "total_internacoes"
+            ],
+            "sql_shape_guidance": "Return one row per mes with columns: mes, total_internacoes.",
+            "reason": "structured chart parameters extracted before SQL generation"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260522T205151_v1_vis_003",
+        "query_number": 1,
+        "orchestrator_execution_time": 12.293176174163818
+      },
+      "error": null,
+      "latency_seconds": 12.293176174163818,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "V1_VIS_004",
+      "persona": "epidemiologista",
+      "category": "visualizacao",
+      "difficulty": "medium",
+      "question": "Como evoluiram mensalmente as internacoes em RS em 2020? Gere um grafico de linha.",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "visualizacao_serie_temporal",
+      "status": "passed",
+      "evaluation_passed": true,
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "mes": 1,
+            "total_internacoes": 64921
+          },
+          {
+            "mes": 2,
+            "total_internacoes": 58242
+          },
+          {
+            "mes": 3,
+            "total_internacoes": 56967
+          },
+          {
+            "mes": 4,
+            "total_internacoes": 44750
+          },
+          {
+            "mes": 5,
+            "total_internacoes": 50531
+          }
+        ],
+        "actual_preview": [
+          {
+            "mes": 1,
+            "total_internacoes": 64921
+          },
+          {
+            "mes": 2,
+            "total_internacoes": 58242
+          },
+          {
+            "mes": 3,
+            "total_internacoes": 56967
+          },
+          {
+            "mes": 4,
+            "total_internacoes": 44750
+          },
+          {
+            "mes": 5,
+            "total_internacoes": 50531
+          }
+        ]
+      },
+      "success": true,
+      "technical_success": true,
+      "answerability": "answerable",
+      "response": "Resultados:\n1. Mes: 1; Total de internacoes: 64.921\n2. Mes: 2; Total de internacoes: 58.242\n3. Mes: 3; Total de internacoes: 56.967\n4. Mes: 4; Total de internacoes: 44.750\n5. Mes: 5; Total de internacoes: 50.531\n6. Mes: 6; Total de internacoes: 52.503\n7. Mes: 7; Total de internacoes: 53.130\n8. Mes: 8; Total de internacoes: 53.789\n9. Mes: 9; Total de internacoes: 55.450\n10. Mes: 10; Total de internacoes: 58.827\n... amostra parcial: mostrando 10 de 12 registros.\n\nObservacoes de escopo: DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro. DQ010 (high): Internacoes com municipio de residencia sem correspondencia afeta 1.270.397 registros. Municipios orfaos prejudicam analises territoriais. DQ016 (high): municipios.SG_UF contem valores que nao sao UFs brasileiras afeta 18 registros. Valores numericos em SG_UF fazem perguntas sobre UFs retornarem 38 categorias em vez das 27 UFs validas.",
+      "sql": "SELECT EXTRACT(MONTH FROM i.\"DT_INTER\") AS mes, COUNT(*) AS total_internacoes FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE i.\"DT_INTER\" IS NOT NULL AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 AND mu.\"SG_UF\" IN ('RS') GROUP BY EXTRACT(MONTH FROM i.\"DT_INTER\") ORDER BY mes ASC;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.95,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5,
+          "phases_completed": 7,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 7.181314706802368
+        },
+        "phases_completed": [
+          "initialization",
+          "reasoning",
+          "table_discovery",
+          "schema_analysis",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5496766567230225
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.6477458477020264
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.07284188270568848
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes"
+        ],
+        "schema_context_length": 11400,
+        "latency_by_component": {
+          "query_classification": 0.00029659271240234375,
+          "table_discovery": 0.549741268157959,
+          "schema_analysis": 0.0007543563842773438,
+          "reasoning": 4.893446207046509,
+          "sql_generation": 0.0008752346038818359,
+          "sql_validation": 1.6477746963500977,
+          "sql_execution": 0.07294917106628418,
+          "completed": 0.0002777576446533203
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Como evoluiram mensalmente as internacoes em RS em 2020? Gere um grafico de linha.",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "trend",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "mes",
+              "source": "EXTRACT(MONTH FROM internacoes.\"DT_INTER\")",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "estado",
+              "values": [
+                "RS"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "time_series",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "mes"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "time_series",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "mes"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": [
+            "profile_temporal_coverage: internacoes.DT_INTER ranges from 2008-01-01 to 2023-12-31",
+            "profile_cardinality: mes uses high-cardinality identifier internacoes.DT_INTER"
+          ]
+        },
+        "intent_plan": {
+          "user_question": "Como evoluiram mensalmente as internacoes em RS em 2020? Gere um grafico de linha.",
+          "persona_hint": "common_user",
+          "primary_task": "trend",
+          "presentation": "chart",
+          "metric_slots": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "cohort_slots": [],
+          "concept_slots": [],
+          "temporal_scope": {
+            "type": "year",
+            "n": null,
+            "start_year": 2020,
+            "end_year": 2020,
+            "date_column": "DT_INTER"
+          },
+          "grouping_slots": [
+            {
+              "name": "ano"
+            }
+          ],
+          "requested_tools": [],
+          "uncertainty": [],
+          "requires_clarification": false
+        },
+        "tool_plan": [
+          {
+            "name": "inspect_schema",
+            "reason": "confirm available tables and columns before SQL compilation"
+          },
+          {
+            "name": "resolve_temporal_scope",
+            "reason": "normalize requested time window"
+          },
+          {
+            "name": "resolve_join_policy",
+            "reason": "validate joins required by dimensions and concepts"
+          },
+          {
+            "name": "compile_sql",
+            "reason": "compile the resolved domain plan to SQL"
+          },
+          {
+            "name": "execute_sql",
+            "reason": "execute validated SQL against the database"
+          },
+          {
+            "name": "validate_result_contract",
+            "reason": "check result shape and metric semantics"
+          },
+          {
+            "name": "build_chart",
+            "reason": "render a chart-compatible result"
+          }
+        ],
+        "plan_audit": {
+          "passed": true,
+          "errors": [],
+          "resolved_concepts": []
+        },
+        "result_audit": {
+          "passed": true,
+          "errors": [],
+          "warnings": [
+            {
+              "layer": "result_contract",
+              "code": "unlabeled_tuple_result",
+              "message": "Result parser returned positional tuples; column count matches chart contract."
+            }
+          ]
+        },
+        "structured_error": null,
+        "answerability": "answerable",
+        "technical_success": true,
+        "domain_caveats": [
+          "DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro.",
+          "DQ010 (high): Internacoes com municipio de residencia sem correspondencia afeta 1.270.397 registros. Municipios orfaos prejudicam analises territoriais.",
+          "DQ016 (high): municipios.SG_UF contem valores que nao sao UFs brasileiras afeta 18 registros. Valores numericos em SG_UF fazem perguntas sobre UFs retornarem 38 categorias em vez das 27 UFs validas."
+        ],
+        "visualization_intent": {
+          "requested": true,
+          "source": "explicit_current_query",
+          "uses_last_result": false,
+          "chart_hint": "line",
+          "reason": "Usuario pediu explicitamente grafico do tipo line"
+        },
+        "chart_plan": {
+          "requested": true,
+          "chart_type": "line",
+          "metric": "total_internacoes",
+          "metric_expression": "COUNT rows",
+          "x_dimension": "mes",
+          "series_dimension": null,
+          "y_column": "total_internacoes",
+          "grain": "mes",
+          "expected_result_shape": "time_metric",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [
+            "mes",
+            "total_internacoes"
+          ],
+          "sql_shape_guidance": "Return one row per mes with columns: mes, total_internacoes.",
+          "reason": "structured chart parameters extracted before SQL generation"
+        },
+        "chart_spec": {
+          "chartable": true,
+          "chart_type": "line",
+          "title": "total internacoes por mes",
+          "x": "mes",
+          "y": "total_internacoes",
+          "series": null,
+          "encoding": {
+            "x_type": "temporal",
+            "y_type": "quantitative"
+          },
+          "data": [
+            {
+              "mes": 1,
+              "total_internacoes": 64921
+            },
+            {
+              "mes": 2,
+              "total_internacoes": 58242
+            },
+            {
+              "mes": 3,
+              "total_internacoes": 56967
+            },
+            {
+              "mes": 4,
+              "total_internacoes": 44750
+            },
+            {
+              "mes": 5,
+              "total_internacoes": 50531
+            },
+            {
+              "mes": 6,
+              "total_internacoes": 52503
+            },
+            {
+              "mes": 7,
+              "total_internacoes": 53130
+            },
+            {
+              "mes": 8,
+              "total_internacoes": 53789
+            },
+            {
+              "mes": 9,
+              "total_internacoes": 55450
+            },
+            {
+              "mes": 10,
+              "total_internacoes": 58827
+            },
+            {
+              "mes": 11,
+              "total_internacoes": 59283
+            },
+            {
+              "mes": 12,
+              "total_internacoes": 56354
+            }
+          ],
+          "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+          "warnings": [],
+          "presentation": {
+            "title": "Total de internacoes por mes",
+            "subtitle": "Serie temporal",
+            "x_label": "Mes",
+            "y_label": "Total de internacoes",
+            "series_label": null,
+            "value_format": "integer",
+            "sort_order": "as_returned",
+            "footnote": null,
+            "summary": "1 lidera com 64.921."
+          }
+        },
+        "intent_planning": {
+          "duration_seconds": 0.0017,
+          "primary_task": "trend",
+          "presentation": "chart",
+          "tools": [
+            "inspect_schema",
+            "resolve_temporal_scope",
+            "resolve_join_policy",
+            "compile_sql",
+            "execute_sql",
+            "validate_result_contract",
+            "build_chart"
+          ]
+        },
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.40699114198307346,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "socioeconomico",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A análise busca entender a evolução mensal das internações no estado do Rio Grande do Sul em 2020, utilizando a contagem total de internações como métrica. A dimensão 'mes' é extraída da data de internação para permitir a agregação mensal. Os filtros garantem que apenas os dados de 2020 e do estado do RS sejam considerados, e a estrutura de resposta é configurada para um gráfico de linha, adequado para representar tendências ao longo do tempo.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic chart SQL generated from the semantic and chart plans.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": true,
+            "chart_type": "line",
+            "metric": "total_internacoes",
+            "metric_expression": "COUNT rows",
+            "x_dimension": "mes",
+            "series_dimension": null,
+            "y_column": "total_internacoes",
+            "grain": "mes",
+            "expected_result_shape": "time_metric",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [
+              "mes",
+              "total_internacoes"
+            ],
+            "sql_shape_guidance": "Return one row per mes with columns: mes, total_internacoes.",
+            "reason": "structured chart parameters extracted before SQL generation"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260522T205151_v1_vis_004",
+        "query_number": 2,
+        "orchestrator_execution_time": 7.1996009349823
+      },
+      "error": null,
+      "latency_seconds": 7.1996009349823,
+      "root_cause": null,
+      "severity": null
+    }
+  ]
+}

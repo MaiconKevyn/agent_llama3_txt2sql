@@ -1,0 +1,4419 @@
+{
+  "run_id": "generalization_exhaustion_20260522T201252",
+  "created_at": "2026-05-22T20:15:05",
+  "dry_run": false,
+  "summary": {
+    "status_counts": {
+      "passed": 10
+    },
+    "scored_total": 10,
+    "score": 1.0,
+    "category_scores": {
+      "diagnosticos_cid": {
+        "passed": 10,
+        "total": 10,
+        "score": 1.0
+      }
+    },
+    "answerability_counts": {
+      "answerable": 10
+    },
+    "root_cause_counts": {},
+    "severity_counts": {}
+  },
+  "items": [
+    {
+      "id": "V1_CID_001",
+      "persona": "medico_pesquisador",
+      "category": "diagnosticos_cid",
+      "difficulty": "medium",
+      "question": "Quais foram os 10 diagnosticos principais mais frequentes em 2018?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "diagnostico_principal_ranking",
+      "status": "passed",
+      "evaluation_passed": true,
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "diagnostico": "Parto espontaneo cefalico",
+            "total_internacoes": 807423
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_internacoes": 263515
+          },
+          {
+            "diagnostico": "Parto unico espontaneo NE",
+            "total_internacoes": 200669
+          },
+          {
+            "diagnostico": "Infecc do trato urinario de localiz NE",
+            "total_internacoes": 179357
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_internacoes": 157203
+          }
+        ],
+        "actual_preview": [
+          {
+            "diagnostico": "Parto espontaneo cefalico",
+            "total": 807423
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total": 263515
+          },
+          {
+            "diagnostico": "Parto unico espontaneo NE",
+            "total": 200669
+          },
+          {
+            "diagnostico": "Infecc do trato urinario de localiz NE",
+            "total": 179357
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total": 157203
+          }
+        ]
+      },
+      "success": true,
+      "technical_success": true,
+      "answerability": "answerable",
+      "response": "Resultados:\n1. Diagnostico: Parto espontaneo cefalico; Total: 807.423\n2. Diagnostico: Pneumonia NE; Total: 263.515\n3. Diagnostico: Parto unico espontaneo NE; Total: 200.669\n4. Diagnostico: Infecc do trato urinario de localiz NE; Total: 179.357\n5. Diagnostico: Acid vasc cerebr NE como hemorrag isquemico; Total: 157.203\n6. Diagnostico: Diarreia e gastroenterite orig infecc presum; Total: 118.446\n7. Diagnostico: Insuf cardiaca congestiva; Total: 114.336\n8. Diagnostico: Hernia inguinal unilat NE s/obstr gangrena; Total: 104.152\n9. Diagnostico: Pneumonia bacter NE; Total: 101.775\n10. Diagnostico: Broncopneumonia NE; Total: 101.191\n\nObservacoes de escopo: DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro. DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo.",
+      "sql": "SELECT c.\"DESCRICAO\" AS diagnostico, COUNT(*) AS total FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM \"DT_INTER\") = 2018 GROUP BY c.\"DESCRICAO\" ORDER BY total DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5,
+          "phases_completed": 7,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 11.55162763595581
+        },
+        "phases_completed": [
+          "initialization",
+          "reasoning",
+          "table_discovery",
+          "schema_analysis",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 1.4926106929779053
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.779444694519043
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.47145557403564453
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "cid",
+          "internacoes"
+        ],
+        "schema_context_length": 12667,
+        "latency_by_component": {
+          "query_classification": 0.0002808570861816406,
+          "table_discovery": 1.4926965236663818,
+          "schema_analysis": 0.00058746337890625,
+          "reasoning": 5.2592933177948,
+          "sql_generation": 2.518571376800537,
+          "sql_validation": 1.779477834701538,
+          "sql_execution": 0.4715576171875,
+          "completed": 0.0011866092681884766
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais foram os 10 diagnosticos principais mais frequentes em 2018?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "requested_metric",
+              "expression_type": "unknown",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "diagnostico",
+              "source": "cid.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2018"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "diagnostico"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "diagnostico"
+            ],
+            "filter_dimensions": [],
+            "counted_entity": "diagnostico",
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "intent_plan": {
+          "user_question": "Quais foram os 10 diagnosticos principais mais frequentes em 2018?",
+          "persona_hint": "common_user",
+          "primary_task": "ranking",
+          "presentation": "text",
+          "metric_slots": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "cohort_slots": [],
+          "concept_slots": [],
+          "temporal_scope": {
+            "type": "year",
+            "n": null,
+            "start_year": 2018,
+            "end_year": 2018,
+            "date_column": "DT_INTER"
+          },
+          "grouping_slots": [],
+          "requested_tools": [],
+          "uncertainty": [],
+          "requires_clarification": false
+        },
+        "tool_plan": [
+          {
+            "name": "inspect_schema",
+            "reason": "confirm available tables and columns before SQL compilation"
+          },
+          {
+            "name": "resolve_temporal_scope",
+            "reason": "normalize requested time window"
+          },
+          {
+            "name": "compile_sql",
+            "reason": "compile the resolved domain plan to SQL"
+          },
+          {
+            "name": "execute_sql",
+            "reason": "execute validated SQL against the database"
+          },
+          {
+            "name": "validate_result_contract",
+            "reason": "check result shape and metric semantics"
+          }
+        ],
+        "plan_audit": {
+          "passed": true,
+          "errors": [],
+          "resolved_concepts": []
+        },
+        "result_audit": {
+          "passed": true,
+          "errors": [],
+          "warnings": []
+        },
+        "structured_error": null,
+        "answerability": "answerable",
+        "technical_success": true,
+        "domain_caveats": [
+          "DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro.",
+          "DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo."
+        ],
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "intent_planning": {
+          "duration_seconds": 0.0047,
+          "primary_task": "ranking",
+          "presentation": "text",
+          "tools": [
+            "inspect_schema",
+            "resolve_temporal_scope",
+            "compile_sql",
+            "execute_sql",
+            "validate_result_contract"
+          ]
+        },
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.47725370906068604,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os diagnósticos mais frequentes em 2018, utilizando a tabela de internações e a descrição dos diagnósticos. A métrica escolhida é a contagem de diagnósticos, agrupada pela descrição do CID. O filtro aplicado é para o ano de 2018, e a resposta deve retornar os 10 diagnósticos mais frequentes.",
+          "conflicts": [
+            "unknown_metric_ignored: frequencia_diagnostico"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query counts the occurrences of each primary diagnosis in 2018 by joining the 'internacoes' table with the 'cid' table to get the diagnosis descriptions. It filters for the year 2018 and groups the results by diagnosis description, ordering them by frequency to return the top 10.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260522T201252_v1_cid_001",
+        "query_number": 1,
+        "orchestrator_execution_time": 11.57522201538086
+      },
+      "error": null,
+      "latency_seconds": 11.57522201538086,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "V1_CID_002",
+      "persona": "medico_pesquisador",
+      "category": "diagnosticos_cid",
+      "difficulty": "medium",
+      "question": "Quais foram os 10 diagnosticos principais mais frequentes em 2019?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "diagnostico_principal_ranking",
+      "status": "passed",
+      "evaluation_passed": true,
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "diagnostico": "Parto espontaneo cefalico",
+            "total_internacoes": 787459
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total_internacoes": 266105
+          },
+          {
+            "diagnostico": "Parto unico espontaneo NE",
+            "total_internacoes": 192357
+          },
+          {
+            "diagnostico": "Infecc do trato urinario de localiz NE",
+            "total_internacoes": 188896
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_internacoes": 163384
+          }
+        ],
+        "actual_preview": [
+          {
+            "diagnostico": "Parto espontaneo cefalico",
+            "total": 787459
+          },
+          {
+            "diagnostico": "Pneumonia NE",
+            "total": 266105
+          },
+          {
+            "diagnostico": "Parto unico espontaneo NE",
+            "total": 192357
+          },
+          {
+            "diagnostico": "Infecc do trato urinario de localiz NE",
+            "total": 188896
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total": 163384
+          }
+        ]
+      },
+      "success": true,
+      "technical_success": true,
+      "answerability": "answerable",
+      "response": "Resultados:\n1. Diagnostico: Parto espontaneo cefalico; Total: 787.459\n2. Diagnostico: Pneumonia NE; Total: 266.105\n3. Diagnostico: Parto unico espontaneo NE; Total: 192.357\n4. Diagnostico: Infecc do trato urinario de localiz NE; Total: 188.896\n5. Diagnostico: Acid vasc cerebr NE como hemorrag isquemico; Total: 163.384\n6. Diagnostico: Diarreia e gastroenterite orig infecc presum; Total: 117.269\n7. Diagnostico: Insuf cardiaca congestiva; Total: 115.268\n8. Diagnostico: Pneumonia bacter NE; Total: 111.692\n9. Diagnostico: Esterilizacao; Total: 109.680\n10. Diagnostico: Hernia inguinal unilat NE s/obstr gangrena; Total: 106.669\n\nObservacoes de escopo: DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro. DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo.",
+      "sql": "SELECT c.\"DESCRICAO\" AS diagnostico, COUNT(*) AS total FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2019 GROUP BY c.\"DESCRICAO\" ORDER BY total DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5,
+          "phases_completed": 7,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 13.846302270889282
+        },
+        "phases_completed": [
+          "initialization",
+          "reasoning",
+          "table_discovery",
+          "schema_analysis",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 1.2454185485839844
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.7415211200714111
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.39352917671203613
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "cid",
+          "internacoes"
+        ],
+        "schema_context_length": 12667,
+        "latency_by_component": {
+          "query_classification": 0.00026988983154296875,
+          "table_discovery": 1.2454948425292969,
+          "schema_analysis": 0.0007297992706298828,
+          "reasoning": 8.078064203262329,
+          "sql_generation": 2.3700876235961914,
+          "sql_validation": 1.7415554523468018,
+          "sql_execution": 0.3936314582824707,
+          "completed": 0.000263214111328125
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais foram os 10 diagnosticos principais mais frequentes em 2019?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "requested_metric",
+              "expression_type": "unknown",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "diagnostico",
+              "source": "cid.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2019"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "diagnostico"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "diagnostico"
+            ],
+            "filter_dimensions": [],
+            "counted_entity": "diagnostico",
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "intent_plan": {
+          "user_question": "Quais foram os 10 diagnosticos principais mais frequentes em 2019?",
+          "persona_hint": "common_user",
+          "primary_task": "ranking",
+          "presentation": "text",
+          "metric_slots": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "cohort_slots": [],
+          "concept_slots": [],
+          "temporal_scope": {
+            "type": "year",
+            "n": null,
+            "start_year": 2019,
+            "end_year": 2019,
+            "date_column": "DT_INTER"
+          },
+          "grouping_slots": [],
+          "requested_tools": [],
+          "uncertainty": [],
+          "requires_clarification": false
+        },
+        "tool_plan": [
+          {
+            "name": "inspect_schema",
+            "reason": "confirm available tables and columns before SQL compilation"
+          },
+          {
+            "name": "resolve_temporal_scope",
+            "reason": "normalize requested time window"
+          },
+          {
+            "name": "compile_sql",
+            "reason": "compile the resolved domain plan to SQL"
+          },
+          {
+            "name": "execute_sql",
+            "reason": "execute validated SQL against the database"
+          },
+          {
+            "name": "validate_result_contract",
+            "reason": "check result shape and metric semantics"
+          }
+        ],
+        "plan_audit": {
+          "passed": true,
+          "errors": [],
+          "resolved_concepts": []
+        },
+        "result_audit": {
+          "passed": true,
+          "errors": [],
+          "warnings": []
+        },
+        "structured_error": null,
+        "answerability": "answerable",
+        "technical_success": true,
+        "domain_caveats": [
+          "DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro.",
+          "DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo."
+        ],
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "intent_planning": {
+          "duration_seconds": 0.0021,
+          "primary_task": "ranking",
+          "presentation": "text",
+          "tools": [
+            "inspect_schema",
+            "resolve_temporal_scope",
+            "compile_sql",
+            "execute_sql",
+            "validate_result_contract"
+          ]
+        },
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.4753207969000899,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é identificar os 10 diagnósticos mais frequentes em 2019, utilizando a tabela de internações e a descrição dos diagnósticos da tabela CID. A métrica escolhida é a contagem de diagnósticos, agrupada pela descrição do diagnóstico. O filtro aplicado é para o ano de 2019, e a forma de resposta é um ranking dos 10 principais diagnósticos.",
+          "conflicts": [
+            "unknown_metric_ignored: frequencia_diagnostico"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query counts the occurrences of each primary diagnosis in 2019 by joining the 'internacoes' table with the 'cid' table to get the diagnosis descriptions. It filters for the year 2019 and groups by diagnosis description, ordering the results by frequency to return the top 10 diagnoses.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260522T201252_v1_cid_002",
+        "query_number": 2,
+        "orchestrator_execution_time": 13.865077495574951
+      },
+      "error": null,
+      "latency_seconds": 13.865077495574951,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "V1_CID_003",
+      "persona": "epidemiologista",
+      "category": "diagnosticos_cid",
+      "difficulty": "medium",
+      "question": "Quais capitulos CID concentraram mais internacoes em 2018?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "cid_capitulo_ranking",
+      "status": "passed",
+      "evaluation_passed": true,
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "capitulo_cid": "XV. Gravidez, parto e puerpério",
+            "total_internacoes": 2481810
+          },
+          {
+            "capitulo_cid": "XIX. Lesões, envenenamento e outras consequências de causas externas",
+            "total_internacoes": 1193323
+          },
+          {
+            "capitulo_cid": "X. Doenças do aparelho respiratório",
+            "total_internacoes": 1180369
+          },
+          {
+            "capitulo_cid": "XI. Doenças do aparelho digestivo",
+            "total_internacoes": 1170242
+          },
+          {
+            "capitulo_cid": "IX. Doenças do aparelho circulatório",
+            "total_internacoes": 1155560
+          }
+        ],
+        "actual_preview": [
+          {
+            "capitulo_cid": "XV. Gravidez, parto e puerpério",
+            "total_internacoes": 2481810
+          },
+          {
+            "capitulo_cid": "XIX. Lesões, envenenamento e outras consequências de causas externas",
+            "total_internacoes": 1193323
+          },
+          {
+            "capitulo_cid": "X. Doenças do aparelho respiratório",
+            "total_internacoes": 1180369
+          },
+          {
+            "capitulo_cid": "XI. Doenças do aparelho digestivo",
+            "total_internacoes": 1170242
+          },
+          {
+            "capitulo_cid": "IX. Doenças do aparelho circulatório",
+            "total_internacoes": 1155560
+          }
+        ]
+      },
+      "success": true,
+      "technical_success": true,
+      "answerability": "answerable",
+      "response": "Resultados:\n1. Capitulo CID: XV. Gravidez, parto e puerpério; Total de internacoes: 2.481.810\n2. Capitulo CID: XIX. Lesões, envenenamento e outras consequências de causas externas; Total de internacoes: 1.193.323\n3. Capitulo CID: X. Doenças do aparelho respiratório; Total de internacoes: 1.180.369\n4. Capitulo CID: XI. Doenças do aparelho digestivo; Total de internacoes: 1.170.242\n5. Capitulo CID: IX. Doenças do aparelho circulatório; Total de internacoes: 1.155.560\n6. Capitulo CID: XIV. Doenças do aparelho geniturinário; Total de internacoes: 840.643\n7. Capitulo CID: II. Neoplasias [tumores]; Total de internacoes: 837.814\n8. Capitulo CID: I. Algumas doenças infecciosas e parasitárias; Total de internacoes: 754.202\n9. Capitulo CID: XVI. Algumas afecções originadas no período perinatal; Total de internacoes: 296.420\n10. Capitulo CID: XII. Doenças da pele e do tecido subcutâneo; Total de internacoes: 265.771\n\nObservacoes de escopo: DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro. DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo.",
+      "sql": "SELECT c.\"DS_CAPITULO\" AS capitulo_cid, COUNT(*) AS total_internacoes FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2018 AND c.\"DS_CAPITULO\" IS NOT NULL AND TRIM(c.\"DS_CAPITULO\") <> '' AND c.\"DS_CAPITULO\" NOT IN ('Nao preenchido', 'Nao informado') GROUP BY c.\"DS_CAPITULO\" ORDER BY \"total_internacoes\" DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5,
+          "phases_completed": 7,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 7.693104028701782
+        },
+        "phases_completed": [
+          "initialization",
+          "reasoning",
+          "table_discovery",
+          "schema_analysis",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.43332576751708984
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.8968629837036133
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.3725705146789551
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "cid",
+          "internacoes"
+        ],
+        "schema_context_length": 12667,
+        "latency_by_component": {
+          "query_classification": 0.000324249267578125,
+          "table_discovery": 0.4334125518798828,
+          "schema_analysis": 0.0006871223449707031,
+          "reasoning": 3.972048282623291,
+          "sql_generation": 0.0006868839263916016,
+          "sql_validation": 2.896892786026001,
+          "sql_execution": 0.3726773262023926,
+          "completed": 0.00029087066650390625
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais capitulos CID concentraram mais internacoes em 2018?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "cid_capitulo",
+              "source": "cid.DS_CAPITULO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2018"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "cid_capitulo"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "cid_capitulo"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "intent_plan": {
+          "user_question": "Quais capitulos CID concentraram mais internacoes em 2018?",
+          "persona_hint": "common_user",
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "metric_slots": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "cohort_slots": [],
+          "concept_slots": [],
+          "temporal_scope": {
+            "type": "year",
+            "n": null,
+            "start_year": 2018,
+            "end_year": 2018,
+            "date_column": "DT_INTER"
+          },
+          "grouping_slots": [],
+          "requested_tools": [],
+          "uncertainty": [],
+          "requires_clarification": false
+        },
+        "tool_plan": [
+          {
+            "name": "inspect_schema",
+            "reason": "confirm available tables and columns before SQL compilation"
+          },
+          {
+            "name": "resolve_temporal_scope",
+            "reason": "normalize requested time window"
+          },
+          {
+            "name": "compile_sql",
+            "reason": "compile the resolved domain plan to SQL"
+          },
+          {
+            "name": "execute_sql",
+            "reason": "execute validated SQL against the database"
+          },
+          {
+            "name": "validate_result_contract",
+            "reason": "check result shape and metric semantics"
+          }
+        ],
+        "plan_audit": {
+          "passed": true,
+          "errors": [],
+          "resolved_concepts": []
+        },
+        "result_audit": {
+          "passed": true,
+          "errors": [],
+          "warnings": []
+        },
+        "structured_error": null,
+        "answerability": "answerable",
+        "technical_success": true,
+        "domain_caveats": [
+          "DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro.",
+          "DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo."
+        ],
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "intent_planning": {
+          "duration_seconds": 0.0028,
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "tools": [
+            "inspect_schema",
+            "resolve_temporal_scope",
+            "compile_sql",
+            "execute_sql",
+            "validate_result_contract"
+          ]
+        },
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.4497937248478357,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os capítulos CID com base no número total de internações em 2018. A métrica utilizada é a contagem total de internações, agrupada por capítulo CID. O filtro aplicado é para o ano de 2018, e a resposta deve retornar os 10 capítulos com mais internações, sem incluir registros desconhecidos.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260522T201252_v1_cid_003",
+        "query_number": 3,
+        "orchestrator_execution_time": 7.712909936904907
+      },
+      "error": null,
+      "latency_seconds": 7.712909936904907,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "V1_CID_004",
+      "persona": "epidemiologista",
+      "category": "diagnosticos_cid",
+      "difficulty": "medium",
+      "question": "Quais capitulos CID concentraram mais internacoes em 2019?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "cid_capitulo_ranking",
+      "status": "passed",
+      "evaluation_passed": true,
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "capitulo_cid": "XV. Gravidez, parto e puerpério",
+            "total_internacoes": 2446396
+          },
+          {
+            "capitulo_cid": "XIX. Lesões, envenenamento e outras consequências de causas externas",
+            "total_internacoes": 1238969
+          },
+          {
+            "capitulo_cid": "XI. Doenças do aparelho digestivo",
+            "total_internacoes": 1213057
+          },
+          {
+            "capitulo_cid": "X. Doenças do aparelho respiratório",
+            "total_internacoes": 1190791
+          },
+          {
+            "capitulo_cid": "IX. Doenças do aparelho circulatório",
+            "total_internacoes": 1180508
+          }
+        ],
+        "actual_preview": [
+          {
+            "capitulo_cid": "XV. Gravidez, parto e puerpério",
+            "total_internacoes": 2446396
+          },
+          {
+            "capitulo_cid": "XIX. Lesões, envenenamento e outras consequências de causas externas",
+            "total_internacoes": 1238969
+          },
+          {
+            "capitulo_cid": "XI. Doenças do aparelho digestivo",
+            "total_internacoes": 1213057
+          },
+          {
+            "capitulo_cid": "X. Doenças do aparelho respiratório",
+            "total_internacoes": 1190791
+          },
+          {
+            "capitulo_cid": "IX. Doenças do aparelho circulatório",
+            "total_internacoes": 1180508
+          }
+        ]
+      },
+      "success": true,
+      "technical_success": true,
+      "answerability": "answerable",
+      "response": "Resultados:\n1. Capitulo CID: XV. Gravidez, parto e puerpério; Total de internacoes: 2.446.396\n2. Capitulo CID: XIX. Lesões, envenenamento e outras consequências de causas externas; Total de internacoes: 1.238.969\n3. Capitulo CID: XI. Doenças do aparelho digestivo; Total de internacoes: 1.213.057\n4. Capitulo CID: X. Doenças do aparelho respiratório; Total de internacoes: 1.190.791\n5. Capitulo CID: IX. Doenças do aparelho circulatório; Total de internacoes: 1.180.508\n6. Capitulo CID: II. Neoplasias [tumores]; Total de internacoes: 886.757\n7. Capitulo CID: XIV. Doenças do aparelho geniturinário; Total de internacoes: 874.684\n8. Capitulo CID: I. Algumas doenças infecciosas e parasitárias; Total de internacoes: 808.752\n9. Capitulo CID: XVI. Algumas afecções originadas no período perinatal; Total de internacoes: 306.230\n10. Capitulo CID: XII. Doenças da pele e do tecido subcutâneo; Total de internacoes: 283.950\n\nObservacoes de escopo: DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro. DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo.",
+      "sql": "SELECT c.\"DS_CAPITULO\" AS capitulo_cid, COUNT(*) AS total_internacoes FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2019 AND c.\"DS_CAPITULO\" IS NOT NULL AND TRIM(c.\"DS_CAPITULO\") <> '' AND c.\"DS_CAPITULO\" NOT IN ('Nao preenchido', 'Nao informado') GROUP BY c.\"DS_CAPITULO\" ORDER BY \"total_internacoes\" DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5,
+          "phases_completed": 7,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 8.357670545578003
+        },
+        "phases_completed": [
+          "initialization",
+          "reasoning",
+          "table_discovery",
+          "schema_analysis",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.45877742767333984
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.9008982181549072
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.3735988140106201
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "cid",
+          "internacoes"
+        ],
+        "schema_context_length": 12667,
+        "latency_by_component": {
+          "query_classification": 0.00032019615173339844,
+          "table_discovery": 0.45885229110717773,
+          "schema_analysis": 0.0006082057952880859,
+          "reasoning": 5.605054140090942,
+          "sql_generation": 0.0011014938354492188,
+          "sql_validation": 1.9009273052215576,
+          "sql_execution": 0.3737034797668457,
+          "completed": 0.00029158592224121094
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais capitulos CID concentraram mais internacoes em 2019?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "cid_capitulo",
+              "source": "cid.DS_CAPITULO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2019"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "cid_capitulo"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "cid_capitulo"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "intent_plan": {
+          "user_question": "Quais capitulos CID concentraram mais internacoes em 2019?",
+          "persona_hint": "common_user",
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "metric_slots": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "cohort_slots": [],
+          "concept_slots": [],
+          "temporal_scope": {
+            "type": "year",
+            "n": null,
+            "start_year": 2019,
+            "end_year": 2019,
+            "date_column": "DT_INTER"
+          },
+          "grouping_slots": [],
+          "requested_tools": [],
+          "uncertainty": [],
+          "requires_clarification": false
+        },
+        "tool_plan": [
+          {
+            "name": "inspect_schema",
+            "reason": "confirm available tables and columns before SQL compilation"
+          },
+          {
+            "name": "resolve_temporal_scope",
+            "reason": "normalize requested time window"
+          },
+          {
+            "name": "compile_sql",
+            "reason": "compile the resolved domain plan to SQL"
+          },
+          {
+            "name": "execute_sql",
+            "reason": "execute validated SQL against the database"
+          },
+          {
+            "name": "validate_result_contract",
+            "reason": "check result shape and metric semantics"
+          }
+        ],
+        "plan_audit": {
+          "passed": true,
+          "errors": [],
+          "resolved_concepts": []
+        },
+        "result_audit": {
+          "passed": true,
+          "errors": [],
+          "warnings": []
+        },
+        "structured_error": null,
+        "answerability": "answerable",
+        "technical_success": true,
+        "domain_caveats": [
+          "DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro.",
+          "DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo."
+        ],
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "intent_planning": {
+          "duration_seconds": 0.002,
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "tools": [
+            "inspect_schema",
+            "resolve_temporal_scope",
+            "compile_sql",
+            "execute_sql",
+            "validate_result_contract"
+          ]
+        },
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.45559556703528914,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "validated_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os capítulos CID com base no número total de internações em 2019. A métrica escolhida é a contagem total de internações, agrupada por capítulo CID. O filtro aplicado é para o ano de 2019, e a resposta deve retornar os 10 capítulos com mais internações, o que justifica o uso de um ranking global.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260522T201252_v1_cid_004",
+        "query_number": 4,
+        "orchestrator_execution_time": 8.384151458740234
+      },
+      "error": null,
+      "latency_seconds": 8.384151458740234,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "V1_CID_005",
+      "persona": "medico_pesquisador",
+      "category": "diagnosticos_cid",
+      "difficulty": "hard",
+      "question": "Quais diagnosticos principais foram mais frequentes em MA em 2020?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "diagnostico_por_uf",
+      "status": "passed",
+      "evaluation_passed": true,
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "diagnostico": "Parto espontaneo cefalico",
+            "total_internacoes": 31144
+          },
+          {
+            "diagnostico": "Infecc p/coronavirus NE",
+            "total_internacoes": 21123
+          },
+          {
+            "diagnostico": "Parto unico espontaneo NE",
+            "total_internacoes": 12784
+          },
+          {
+            "diagnostico": "Diarreia e gastroenterite orig infecc presum",
+            "total_internacoes": 10299
+          },
+          {
+            "diagnostico": "Parto p/cesariana NE",
+            "total_internacoes": 9156
+          }
+        ],
+        "actual_preview": [
+          {
+            "diagnostico": "Parto espontaneo cefalico",
+            "total": 31144
+          },
+          {
+            "diagnostico": "Infecc p/coronavirus NE",
+            "total": 21123
+          },
+          {
+            "diagnostico": "Parto unico espontaneo NE",
+            "total": 12784
+          },
+          {
+            "diagnostico": "Diarreia e gastroenterite orig infecc presum",
+            "total": 10299
+          },
+          {
+            "diagnostico": "Parto p/cesariana NE",
+            "total": 9156
+          }
+        ]
+      },
+      "success": true,
+      "technical_success": true,
+      "answerability": "answerable",
+      "response": "Resultados:\n1. Diagnostico: Parto espontaneo cefalico; Total: 31.144\n2. Diagnostico: Infecc p/coronavirus NE; Total: 21.123\n3. Diagnostico: Parto unico espontaneo NE; Total: 12.784\n4. Diagnostico: Diarreia e gastroenterite orig infecc presum; Total: 10.299\n5. Diagnostico: Parto p/cesariana NE; Total: 9.156\n6. Diagnostico: Obstr trab parto dev desprop feto-pelvica NE; Total: 6.918\n7. Diagnostico: Pneumonia NE; Total: 6.743\n8. Diagnostico: Outr infecc intestinais espec; Total: 6.591\n9. Diagnostico: Hipertensao essencial; Total: 6.176\n10. Diagnostico: Infecc intestinal bacter NE; Total: 6.153\n\nObservacoes de escopo: DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro. DQ010 (high): Internacoes com municipio de residencia sem correspondencia afeta 1.270.397 registros. Municipios orfaos prejudicam analises territoriais. DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo. DQ016 (high): municipios.SG_UF contem valores que nao sao UFs brasileiras afeta 18 registros. Valores numericos em SG_UF fazem perguntas sobre UFs retornarem 38 categorias em vez das 27 UFs validas.",
+      "sql": "SELECT c.\"DESCRICAO\" AS diagnostico, COUNT(*) AS total FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE mu.\"SG_UF\" = 'MA' AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 GROUP BY c.\"DESCRICAO\" ORDER BY total DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5,
+          "phases_completed": 7,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 21.696748971939087
+        },
+        "phases_completed": [
+          "initialization",
+          "reasoning",
+          "table_discovery",
+          "schema_analysis",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5185720920562744
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.0589401721954346
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.1970655918121338
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "cid",
+          "internacoes"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.0002593994140625,
+          "table_discovery": 0.5186398029327393,
+          "schema_analysis": 0.0007398128509521484,
+          "reasoning": 15.984081983566284,
+          "sql_generation": 2.919426202774048,
+          "sql_validation": 2.0589687824249268,
+          "sql_execution": 0.19716858863830566,
+          "completed": 0.00026488304138183594
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais diagnosticos principais foram mais frequentes em MA em 2020?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "requested_metric",
+              "expression_type": "unknown",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "diagnostico",
+              "source": "cid.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "estado",
+              "values": [
+                "MA"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "diagnostico"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "diagnostico"
+            ],
+            "filter_dimensions": [],
+            "counted_entity": "internacao",
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "intent_plan": {
+          "user_question": "Quais diagnosticos principais foram mais frequentes em MA em 2020?",
+          "persona_hint": "common_user",
+          "primary_task": "ranking",
+          "presentation": "text",
+          "metric_slots": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "cohort_slots": [],
+          "concept_slots": [],
+          "temporal_scope": {
+            "type": "year",
+            "n": null,
+            "start_year": 2020,
+            "end_year": 2020,
+            "date_column": "DT_INTER"
+          },
+          "grouping_slots": [],
+          "requested_tools": [],
+          "uncertainty": [],
+          "requires_clarification": false
+        },
+        "tool_plan": [
+          {
+            "name": "inspect_schema",
+            "reason": "confirm available tables and columns before SQL compilation"
+          },
+          {
+            "name": "resolve_temporal_scope",
+            "reason": "normalize requested time window"
+          },
+          {
+            "name": "compile_sql",
+            "reason": "compile the resolved domain plan to SQL"
+          },
+          {
+            "name": "execute_sql",
+            "reason": "execute validated SQL against the database"
+          },
+          {
+            "name": "validate_result_contract",
+            "reason": "check result shape and metric semantics"
+          }
+        ],
+        "plan_audit": {
+          "passed": true,
+          "errors": [],
+          "resolved_concepts": []
+        },
+        "result_audit": {
+          "passed": true,
+          "errors": [],
+          "warnings": []
+        },
+        "structured_error": null,
+        "answerability": "answerable",
+        "technical_success": true,
+        "domain_caveats": [
+          "DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro.",
+          "DQ010 (high): Internacoes com municipio de residencia sem correspondencia afeta 1.270.397 registros. Municipios orfaos prejudicam analises territoriais.",
+          "DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo.",
+          "DQ016 (high): municipios.SG_UF contem valores que nao sao UFs brasileiras afeta 18 registros. Valores numericos em SG_UF fazem perguntas sobre UFs retornarem 38 categorias em vez das 27 UFs validas."
+        ],
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "intent_planning": {
+          "duration_seconds": 0.002,
+          "primary_task": "ranking",
+          "presentation": "text",
+          "tools": [
+            "inspect_schema",
+            "resolve_temporal_scope",
+            "compile_sql",
+            "execute_sql",
+            "validate_result_contract"
+          ]
+        },
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.42368277773907614,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "cid",
+          "internacoes",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "cid",
+          "internacoes"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os diagnósticos mais frequentes em internações no estado do Maranhão (MA) no ano de 2020. A métrica escolhida é a contagem de internações por diagnóstico, agrupada pela descrição do CID. O filtro é aplicado para restringir os dados ao estado e ano especificados. A forma de resposta é a lista dos 10 diagnósticos mais frequentes.",
+          "conflicts": [
+            "unknown_metric_ignored: frequencia_diagnosticos"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query joins the 'internacoes' table with 'municipios' to filter by the state of Maranhão (MA) and with 'cid' to get the descriptions of the primary diagnoses. It filters for the year 2020 and groups by the diagnosis description to count occurrences, ordering by the count to get the most frequent diagnoses.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260522T201252_v1_cid_005",
+        "query_number": 5,
+        "orchestrator_execution_time": 21.715867042541504
+      },
+      "error": null,
+      "latency_seconds": 21.715867042541504,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "V1_CID_006",
+      "persona": "medico_pesquisador",
+      "category": "diagnosticos_cid",
+      "difficulty": "hard",
+      "question": "Quais diagnosticos principais foram mais frequentes em RS em 2020?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "diagnostico_por_uf",
+      "status": "passed",
+      "evaluation_passed": true,
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "diagnostico": "Infecc p/coronavirus NE",
+            "total_internacoes": 30681
+          },
+          {
+            "diagnostico": "Parto espontaneo cefalico",
+            "total_internacoes": 30501
+          },
+          {
+            "diagnostico": "Sindr de dependencia",
+            "total_internacoes": 10086
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_internacoes": 9836
+          },
+          {
+            "diagnostico": "Parto p/cesariana eletiva",
+            "total_internacoes": 8973
+          }
+        ],
+        "actual_preview": [
+          {
+            "diagnostico": "Infecc p/coronavirus NE",
+            "total_internacoes": 30681
+          },
+          {
+            "diagnostico": "Parto espontaneo cefalico",
+            "total_internacoes": 30501
+          },
+          {
+            "diagnostico": "Sindr de dependencia",
+            "total_internacoes": 10086
+          },
+          {
+            "diagnostico": "Acid vasc cerebr NE como hemorrag isquemico",
+            "total_internacoes": 9836
+          },
+          {
+            "diagnostico": "Parto p/cesariana eletiva",
+            "total_internacoes": 8973
+          }
+        ]
+      },
+      "success": true,
+      "technical_success": true,
+      "answerability": "answerable",
+      "response": "Resultados:\n1. Diagnostico: Infecc p/coronavirus NE; Total de internacoes: 30.681\n2. Diagnostico: Parto espontaneo cefalico; Total de internacoes: 30.501\n3. Diagnostico: Sindr de dependencia; Total de internacoes: 10.086\n4. Diagnostico: Acid vasc cerebr NE como hemorrag isquemico; Total de internacoes: 9.836\n5. Diagnostico: Parto p/cesariana eletiva; Total de internacoes: 8.973\n6. Diagnostico: Pneumonia NE; Total de internacoes: 8.734\n7. Diagnostico: Septicemia NE; Total de internacoes: 8.627\n8. Diagnostico: Infecc bacter NE; Total de internacoes: 8.305\n9. Diagnostico: Insuf cardiaca congestiva; Total de internacoes: 7.988\n10. Diagnostico: Apendicite aguda SOE; Total de internacoes: 7.398\n\nObservacoes de escopo: DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro. DQ010 (high): Internacoes com municipio de residencia sem correspondencia afeta 1.270.397 registros. Municipios orfaos prejudicam analises territoriais. DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo. DQ016 (high): municipios.SG_UF contem valores que nao sao UFs brasileiras afeta 18 registros. Valores numericos em SG_UF fazem perguntas sobre UFs retornarem 38 categorias em vez das 27 UFs validas.",
+      "sql": "SELECT c.\"DESCRICAO\" AS diagnostico, COUNT(*) AS total_internacoes FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE mu.\"SG_UF\" = 'RS' AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 GROUP BY c.\"DESCRICAO\" ORDER BY total_internacoes DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5,
+          "phases_completed": 7,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 10.86081337928772
+        },
+        "phases_completed": [
+          "initialization",
+          "reasoning",
+          "table_discovery",
+          "schema_analysis",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.4896047115325928
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.5052876472473145
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.11922216415405273
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.0003104209899902344,
+          "table_discovery": 0.4896726608276367,
+          "schema_analysis": 0.0006070137023925781,
+          "reasoning": 4.827704429626465,
+          "sql_generation": 2.8987390995025635,
+          "sql_validation": 2.5053160190582275,
+          "sql_execution": 0.11932539939880371,
+          "completed": 0.000270843505859375
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais diagnosticos principais foram mais frequentes em RS em 2020?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "requested_metric",
+              "expression_type": "unknown",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "diagnostico",
+              "source": "cid.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "estado",
+              "values": [
+                "RS"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "diagnostico"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "diagnostico"
+            ],
+            "filter_dimensions": [],
+            "counted_entity": "internacao",
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "intent_plan": {
+          "user_question": "Quais diagnosticos principais foram mais frequentes em RS em 2020?",
+          "persona_hint": "common_user",
+          "primary_task": "ranking",
+          "presentation": "text",
+          "metric_slots": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "cohort_slots": [],
+          "concept_slots": [],
+          "temporal_scope": {
+            "type": "year",
+            "n": null,
+            "start_year": 2020,
+            "end_year": 2020,
+            "date_column": "DT_INTER"
+          },
+          "grouping_slots": [],
+          "requested_tools": [],
+          "uncertainty": [],
+          "requires_clarification": false
+        },
+        "tool_plan": [
+          {
+            "name": "inspect_schema",
+            "reason": "confirm available tables and columns before SQL compilation"
+          },
+          {
+            "name": "resolve_temporal_scope",
+            "reason": "normalize requested time window"
+          },
+          {
+            "name": "compile_sql",
+            "reason": "compile the resolved domain plan to SQL"
+          },
+          {
+            "name": "execute_sql",
+            "reason": "execute validated SQL against the database"
+          },
+          {
+            "name": "validate_result_contract",
+            "reason": "check result shape and metric semantics"
+          }
+        ],
+        "plan_audit": {
+          "passed": true,
+          "errors": [],
+          "resolved_concepts": []
+        },
+        "result_audit": {
+          "passed": true,
+          "errors": [],
+          "warnings": []
+        },
+        "structured_error": null,
+        "answerability": "answerable",
+        "technical_success": true,
+        "domain_caveats": [
+          "DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro.",
+          "DQ010 (high): Internacoes com municipio de residencia sem correspondencia afeta 1.270.397 registros. Municipios orfaos prejudicam analises territoriais.",
+          "DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo.",
+          "DQ016 (high): municipios.SG_UF contem valores que nao sao UFs brasileiras afeta 18 registros. Valores numericos em SG_UF fazem perguntas sobre UFs retornarem 38 categorias em vez das 27 UFs validas."
+        ],
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "intent_planning": {
+          "duration_seconds": 0.0017,
+          "primary_task": "ranking",
+          "presentation": "text",
+          "tools": [
+            "inspect_schema",
+            "resolve_temporal_scope",
+            "compile_sql",
+            "execute_sql",
+            "validate_result_contract"
+          ]
+        },
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.44637153565997817,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "socioeconomico",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os diagnósticos mais frequentes em internações no estado do Rio Grande do Sul (RS) no ano de 2020. A métrica escolhida é a contagem de internações, agrupada por diagnóstico, que é representado pela descrição do CID. O filtro é aplicado para restringir os dados ao estado e ao ano especificados. A forma de resposta é definida para retornar os 10 diagnósticos mais frequentes.",
+          "conflicts": [
+            "unknown_metric_ignored: frequencia_diagnosticos"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "The query joins the internacoes table with the cid table to get the descriptions of the primary diagnoses and with the municipios table to filter by the state of Rio Grande do Sul (RS) for the year 2020. It groups the results by diagnosis description and counts the number of hospitalizations for each diagnosis, ordering the results to show the top 10 most frequent diagnoses.",
+        "sql_generation_source": "current_structured_output",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260522T201252_v1_cid_006",
+        "query_number": 6,
+        "orchestrator_execution_time": 10.879152536392212
+      },
+      "error": null,
+      "latency_seconds": 10.879152536392212,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "V1_CID_007",
+      "persona": "pessoa_comum",
+      "category": "diagnosticos_cid",
+      "difficulty": "medium",
+      "question": "Quantas internacoes por doencas respiratorias ocorreram em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "condicao_respiratoria",
+      "status": "passed",
+      "evaluation_passed": true,
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "total_internacoes": 803361
+          }
+        ],
+        "actual_preview": [
+          {
+            "total_internacoes": 803361
+          }
+        ]
+      },
+      "success": true,
+      "technical_success": true,
+      "answerability": "answerable",
+      "response": "Total de internacoes: 803.361.\n\nObservacoes de escopo: Causas respiratorias foram operacionalizadas como CID J00-J99. DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro. DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo.",
+      "sql": "SELECT COUNT(*) AS total_internacoes FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND (i.\"DIAG_PRINC\" LIKE 'J%') AND (c.\"CID\" LIKE 'J%' OR c.\"DESCRICAO\" ILIKE '%doenca respiratoria%' OR c.\"DS_CATEGORIA\" ILIKE '%doenca respiratoria%' OR c.\"DS_GRUPO\" ILIKE '%doenca respiratoria%' OR c.\"DS_CAPITULO\" ILIKE '%doenca respiratoria%' OR c.\"DESCRICAO\" ILIKE '%doenca pulmonar%' OR c.\"DS_CATEGORIA\" ILIKE '%doenca pulmonar%' OR c.\"DS_GRUPO\" ILIKE '%doenca pulmonar%' OR c.\"DS_CAPITULO\" ILIKE '%doenca pulmonar%');",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5,
+          "phases_completed": 7,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 12.3421151638031
+        },
+        "phases_completed": [
+          "initialization",
+          "reasoning",
+          "table_discovery",
+          "schema_analysis",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.47337889671325684
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 4.645778656005859
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.2538180351257324
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 12667,
+        "latency_by_component": {
+          "query_classification": 1.1794815063476562,
+          "table_discovery": 0.47345471382141113,
+          "schema_analysis": 0.0007500648498535156,
+          "reasoning": 5.771438121795654,
+          "sql_generation": 0.0006496906280517578,
+          "sql_validation": 4.645807266235352,
+          "sql_execution": 0.2539219856262207,
+          "completed": 0.00025773048400878906
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quantas internacoes por doencas respiratorias ocorreram em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "count",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "diagnostico_principal_prefix",
+              "values": [
+                "J%"
+              ],
+              "operator": "LIKE"
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "values": [
+                "CID J00-J99 - Doencas do aparelho respiratorio"
+              ],
+              "operator": "metadata"
+            },
+            {
+              "field": "diagnostico_conceito_termo_expandido",
+              "values": [
+                "doenca respiratoria",
+                "doenca pulmonar",
+                "cid j"
+              ],
+              "operator": "metadata"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [
+              "diagnostico"
+            ],
+            "forbidden_output_dimensions": [
+              "diagnostico"
+            ]
+          },
+          "constraints": [
+            "diagnosis_filter_dimension_not_output"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "intent_plan": {
+          "user_question": "Quantas internacoes por doencas respiratorias ocorreram em 2021?",
+          "persona_hint": "common_user",
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "metric_slots": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "cohort_slots": [],
+          "concept_slots": [
+            {
+              "name": "clinical_concept",
+              "concept_type": "clinical",
+              "filters": [
+                {
+                  "field": "diagnostico_principal_prefix",
+                  "values": [
+                    "J%"
+                  ],
+                  "operator": "LIKE"
+                },
+                {
+                  "field": "diagnostico_conceito_label",
+                  "values": [
+                    "CID J00-J99 - Doencas do aparelho respiratorio"
+                  ],
+                  "operator": "metadata"
+                }
+              ]
+            }
+          ],
+          "temporal_scope": {
+            "type": "year",
+            "n": null,
+            "start_year": 2021,
+            "end_year": 2021,
+            "date_column": "DT_INTER"
+          },
+          "grouping_slots": [],
+          "requested_tools": [],
+          "uncertainty": [],
+          "requires_clarification": false
+        },
+        "tool_plan": [
+          {
+            "name": "inspect_schema",
+            "reason": "confirm available tables and columns before SQL compilation"
+          },
+          {
+            "name": "resolve_concepts",
+            "reason": "normalize clinical, population, or operational concepts"
+          },
+          {
+            "name": "resolve_temporal_scope",
+            "reason": "normalize requested time window"
+          },
+          {
+            "name": "resolve_join_policy",
+            "reason": "validate joins required by dimensions and concepts"
+          },
+          {
+            "name": "compile_sql",
+            "reason": "compile the resolved domain plan to SQL"
+          },
+          {
+            "name": "execute_sql",
+            "reason": "execute validated SQL against the database"
+          },
+          {
+            "name": "validate_result_contract",
+            "reason": "check result shape and metric semantics"
+          }
+        ],
+        "plan_audit": {
+          "passed": true,
+          "errors": [],
+          "resolved_concepts": [
+            "respiratory_cid"
+          ]
+        },
+        "result_audit": {
+          "passed": true,
+          "errors": [],
+          "warnings": []
+        },
+        "structured_error": null,
+        "answerability": "answerable",
+        "technical_success": true,
+        "domain_caveats": [
+          "Causas respiratorias foram operacionalizadas como CID J00-J99.",
+          "DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro.",
+          "DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo."
+        ],
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "intent_planning": {
+          "duration_seconds": 0.0017,
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "tools": [
+            "inspect_schema",
+            "resolve_concepts",
+            "resolve_temporal_scope",
+            "resolve_join_policy",
+            "compile_sql",
+            "execute_sql",
+            "validate_result_contract"
+          ]
+        },
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.359721808590709,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "diagnosis_filter_dimension_not_output"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A contagem de internações por doenças respiratórias em 2021 requer a filtragem pelo ano e pelo prefixo do diagnóstico, que indica doenças do aparelho respiratório. Não são necessárias dimensões adicionais, pois o foco é apenas na contagem total.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic scalar SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "diagnosis_filter_dimension_not_output"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260522T201252_v1_cid_007",
+        "query_number": 7,
+        "orchestrator_execution_time": 12.360405921936035
+      },
+      "error": null,
+      "latency_seconds": 12.360405921936035,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "V1_CID_008",
+      "persona": "pessoa_comum",
+      "category": "diagnosticos_cid",
+      "difficulty": "medium",
+      "question": "Quantas internacoes por covid ocorreram em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "condicao_covid",
+      "status": "passed",
+      "evaluation_passed": true,
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "total_internacoes": 1153020
+          }
+        ],
+        "actual_preview": [
+          {
+            "total_internacoes": 1153020
+          }
+        ]
+      },
+      "success": true,
+      "technical_success": true,
+      "answerability": "answerable",
+      "response": "Total de internacoes: 1.153.020.\n\nObservacoes de escopo: DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro. DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo.",
+      "sql": "SELECT COUNT(*) AS total_internacoes FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND i.\"DIAG_PRINC\" IN ('B342', 'B972') AND (c.\"CID\" IN ('B342', 'B972') OR c.\"DESCRICAO\" ILIKE '%covid%' OR c.\"DS_CATEGORIA\" ILIKE '%covid%' OR c.\"DS_GRUPO\" ILIKE '%covid%' OR c.\"DS_CAPITULO\" ILIKE '%covid%' OR c.\"DESCRICAO\" ILIKE '%coronavirus%' OR c.\"DS_CATEGORIA\" ILIKE '%coronavirus%' OR c.\"DS_GRUPO\" ILIKE '%coronavirus%' OR c.\"DS_CAPITULO\" ILIKE '%coronavirus%');",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5,
+          "phases_completed": 7,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 11.462464809417725
+        },
+        "phases_completed": [
+          "initialization",
+          "reasoning",
+          "table_discovery",
+          "schema_analysis",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5690176486968994
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 4.917254686355591
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.265977144241333
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.8166298866271973,
+          "table_discovery": 0.569082498550415,
+          "schema_analysis": 0.00069427490234375,
+          "reasoning": 4.869188547134399,
+          "sql_generation": 0.0008733272552490234,
+          "sql_validation": 4.917283296585083,
+          "sql_execution": 0.26609086990356445,
+          "completed": 0.0002605915069580078
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quantas internacoes por covid ocorreram em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "count",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "diagnostico_principal_codigo",
+              "values": [
+                "B342",
+                "B972"
+              ],
+              "operator": "IN"
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "values": [
+                "B342 - Infecc p/coronavirus NE",
+                "B972 - Coronavirus como causa de doenc class outr cap"
+              ],
+              "operator": "metadata"
+            },
+            {
+              "field": "diagnostico_conceito_termo_expandido",
+              "values": [
+                "covid",
+                "coronavirus"
+              ],
+              "operator": "metadata"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "diagnosis_filter_dimension_not_output"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "intent_plan": {
+          "user_question": "Quantas internacoes por covid ocorreram em 2021?",
+          "persona_hint": "common_user",
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "metric_slots": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "cohort_slots": [],
+          "concept_slots": [
+            {
+              "name": "clinical_concept",
+              "concept_type": "clinical",
+              "filters": [
+                {
+                  "field": "diagnostico_principal_codigo",
+                  "values": [
+                    "B342",
+                    "B972"
+                  ],
+                  "operator": "IN"
+                },
+                {
+                  "field": "diagnostico_conceito_label",
+                  "values": [
+                    "B342 - Infecc p/coronavirus NE",
+                    "B972 - Coronavirus como causa de doenc class outr cap"
+                  ],
+                  "operator": "metadata"
+                }
+              ]
+            }
+          ],
+          "temporal_scope": {
+            "type": "year",
+            "n": null,
+            "start_year": 2021,
+            "end_year": 2021,
+            "date_column": "DT_INTER"
+          },
+          "grouping_slots": [],
+          "requested_tools": [],
+          "uncertainty": [],
+          "requires_clarification": false
+        },
+        "tool_plan": [
+          {
+            "name": "inspect_schema",
+            "reason": "confirm available tables and columns before SQL compilation"
+          },
+          {
+            "name": "resolve_concepts",
+            "reason": "normalize clinical, population, or operational concepts"
+          },
+          {
+            "name": "resolve_temporal_scope",
+            "reason": "normalize requested time window"
+          },
+          {
+            "name": "resolve_join_policy",
+            "reason": "validate joins required by dimensions and concepts"
+          },
+          {
+            "name": "compile_sql",
+            "reason": "compile the resolved domain plan to SQL"
+          },
+          {
+            "name": "execute_sql",
+            "reason": "execute validated SQL against the database"
+          },
+          {
+            "name": "validate_result_contract",
+            "reason": "check result shape and metric semantics"
+          }
+        ],
+        "plan_audit": {
+          "passed": true,
+          "errors": [],
+          "resolved_concepts": []
+        },
+        "result_audit": {
+          "passed": true,
+          "errors": [],
+          "warnings": []
+        },
+        "structured_error": null,
+        "answerability": "answerable",
+        "technical_success": true,
+        "domain_caveats": [
+          "DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro.",
+          "DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo."
+        ],
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "intent_planning": {
+          "duration_seconds": 0.0015,
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "tools": [
+            "inspect_schema",
+            "resolve_concepts",
+            "resolve_temporal_scope",
+            "resolve_join_policy",
+            "compile_sql",
+            "execute_sql",
+            "validate_result_contract"
+          ]
+        },
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.35892101612215904,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "diagnosis_filter_dimension_not_output"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A contagem de internações por COVID-19 em 2021 requer a filtragem pelo ano e pelos códigos de diagnóstico relacionados ao coronavírus. A métrica de contagem é apropriada para obter o total de internações. Não há dimensões adicionais necessárias para esta consulta específica.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic scalar SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "diagnosis_filter_dimension_not_output"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260522T201252_v1_cid_008",
+        "query_number": 8,
+        "orchestrator_execution_time": 11.480634689331055
+      },
+      "error": null,
+      "latency_seconds": 11.480634689331055,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "V1_CID_009",
+      "persona": "pessoa_comum",
+      "category": "diagnosticos_cid",
+      "difficulty": "medium",
+      "question": "Quantas internacoes por diabetes ocorreram em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "condicao_diabetes",
+      "status": "passed",
+      "evaluation_passed": true,
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "total_internacoes": 129482
+          }
+        ],
+        "actual_preview": [
+          {
+            "total_internacoes": 129482
+          }
+        ]
+      },
+      "success": true,
+      "technical_success": true,
+      "answerability": "answerable",
+      "response": "Total de internacoes: 129.482.\n\nObservacoes de escopo: DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro. DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo.",
+      "sql": "SELECT COUNT(*) AS total_internacoes FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND (i.\"DIAG_PRINC\" LIKE 'E10%' OR i.\"DIAG_PRINC\" LIKE 'E11%' OR i.\"DIAG_PRINC\" LIKE 'E12%' OR i.\"DIAG_PRINC\" LIKE 'E13%' OR i.\"DIAG_PRINC\" LIKE 'E14%') AND (c.\"CID\" LIKE 'E10%' OR c.\"CID\" LIKE 'E11%' OR c.\"CID\" LIKE 'E12%' OR c.\"CID\" LIKE 'E13%' OR c.\"CID\" LIKE 'E14%' OR c.\"DESCRICAO\" ILIKE '%diabetes%' OR c.\"DS_CATEGORIA\" ILIKE '%diabetes%' OR c.\"DS_GRUPO\" ILIKE '%diabetes%' OR c.\"DS_CAPITULO\" ILIKE '%diabetes%' OR c.\"DESCRICAO\" ILIKE '%diabetes mellitus%' OR c.\"DS_CATEGORIA\" ILIKE '%diabetes mellitus%' OR c.\"DS_GRUPO\" ILIKE '%diabetes mellitus%' OR c.\"DS_CAPITULO\" ILIKE '%diabetes mellitus%');",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5,
+          "phases_completed": 7,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 13.089334964752197
+        },
+        "phases_completed": [
+          "initialization",
+          "reasoning",
+          "table_discovery",
+          "schema_analysis",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.45330119132995605
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 5.756363153457642
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.43092989921569824
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "schema_context_length": 20360,
+        "latency_by_component": {
+          "query_classification": 1.4689319133758545,
+          "table_discovery": 0.4533665180206299,
+          "schema_analysis": 0.0006525516510009766,
+          "reasoning": 4.955404996871948,
+          "sql_generation": 0.0008792877197265625,
+          "sql_validation": 5.756390571594238,
+          "sql_execution": 0.4310317039489746,
+          "completed": 0.0002665519714355469
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quantas internacoes por diabetes ocorreram em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "count",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "diagnostico_principal_prefix",
+              "values": [
+                "E10%",
+                "E11%",
+                "E12%",
+                "E13%",
+                "E14%"
+              ],
+              "operator": "LIKE_ANY"
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "values": [
+                "CID E10-E14 - Diabetes mellitus"
+              ],
+              "operator": "metadata"
+            },
+            {
+              "field": "diagnostico_conceito_termo_expandido",
+              "values": [
+                "diabetes",
+                "diabetes mellitus"
+              ],
+              "operator": "metadata"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "diagnosis_filter_dimension_not_output"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "intent_plan": {
+          "user_question": "Quantas internacoes por diabetes ocorreram em 2021?",
+          "persona_hint": "common_user",
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "metric_slots": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "cohort_slots": [],
+          "concept_slots": [
+            {
+              "name": "clinical_concept",
+              "concept_type": "clinical",
+              "filters": [
+                {
+                  "field": "diagnostico_principal_prefix",
+                  "values": [
+                    "E10%",
+                    "E11%",
+                    "E12%",
+                    "E13%",
+                    "E14%"
+                  ],
+                  "operator": "LIKE_ANY"
+                },
+                {
+                  "field": "diagnostico_conceito_label",
+                  "values": [
+                    "CID E10-E14 - Diabetes mellitus"
+                  ],
+                  "operator": "metadata"
+                }
+              ]
+            }
+          ],
+          "temporal_scope": {
+            "type": "year",
+            "n": null,
+            "start_year": 2021,
+            "end_year": 2021,
+            "date_column": "DT_INTER"
+          },
+          "grouping_slots": [],
+          "requested_tools": [],
+          "uncertainty": [],
+          "requires_clarification": false
+        },
+        "tool_plan": [
+          {
+            "name": "inspect_schema",
+            "reason": "confirm available tables and columns before SQL compilation"
+          },
+          {
+            "name": "resolve_concepts",
+            "reason": "normalize clinical, population, or operational concepts"
+          },
+          {
+            "name": "resolve_temporal_scope",
+            "reason": "normalize requested time window"
+          },
+          {
+            "name": "resolve_join_policy",
+            "reason": "validate joins required by dimensions and concepts"
+          },
+          {
+            "name": "compile_sql",
+            "reason": "compile the resolved domain plan to SQL"
+          },
+          {
+            "name": "execute_sql",
+            "reason": "execute validated SQL against the database"
+          },
+          {
+            "name": "validate_result_contract",
+            "reason": "check result shape and metric semantics"
+          }
+        ],
+        "plan_audit": {
+          "passed": true,
+          "errors": [],
+          "resolved_concepts": []
+        },
+        "result_audit": {
+          "passed": true,
+          "errors": [],
+          "warnings": []
+        },
+        "structured_error": null,
+        "answerability": "answerable",
+        "technical_success": true,
+        "domain_caveats": [
+          "DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro.",
+          "DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo."
+        ],
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "intent_planning": {
+          "duration_seconds": 0.0016,
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "tools": [
+            "inspect_schema",
+            "resolve_concepts",
+            "resolve_temporal_scope",
+            "resolve_join_policy",
+            "compile_sql",
+            "execute_sql",
+            "validate_result_contract"
+          ]
+        },
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.38675049555955815,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "semantic_constraints": [
+          "diagnosis_filter_dimension_not_output"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A contagem de internações por diabetes em 2021 requer a filtragem pelo ano e pelos códigos CID relacionados ao diabetes. A métrica de contagem é apropriada para obter o total de internações. Não há dimensões adicionais necessárias para esta consulta específica.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic scalar SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "diagnosis_filter_dimension_not_output"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260522T201252_v1_cid_009",
+        "query_number": 9,
+        "orchestrator_execution_time": 13.108479022979736
+      },
+      "error": null,
+      "latency_seconds": 13.108479022979736,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "V1_CID_010",
+      "persona": "pessoa_comum",
+      "category": "diagnosticos_cid",
+      "difficulty": "medium",
+      "question": "Quantas internacoes por pneumonia ocorreram em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "condicao_pneumonia",
+      "status": "passed",
+      "evaluation_passed": true,
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "total_internacoes": 376222
+          }
+        ],
+        "actual_preview": [
+          {
+            "total_internacoes": 376222
+          }
+        ]
+      },
+      "success": true,
+      "technical_success": true,
+      "answerability": "answerable",
+      "response": "Total de internacoes: 376.222.\n\nObservacoes de escopo: DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro. DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo.",
+      "sql": "SELECT COUNT(*) AS total_internacoes FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND (i.\"DIAG_PRINC\" LIKE 'J12%' OR i.\"DIAG_PRINC\" LIKE 'J13%' OR i.\"DIAG_PRINC\" LIKE 'J14%' OR i.\"DIAG_PRINC\" LIKE 'J15%' OR i.\"DIAG_PRINC\" LIKE 'J16%' OR i.\"DIAG_PRINC\" LIKE 'J17%' OR i.\"DIAG_PRINC\" LIKE 'J18%') AND (c.\"CID\" LIKE 'J12%' OR c.\"CID\" LIKE 'J13%' OR c.\"CID\" LIKE 'J14%' OR c.\"CID\" LIKE 'J15%' OR c.\"CID\" LIKE 'J16%' OR c.\"CID\" LIKE 'J17%' OR c.\"CID\" LIKE 'J18%' OR c.\"DESCRICAO\" ILIKE '%pneumonia%' OR c.\"DS_CATEGORIA\" ILIKE '%pneumonia%' OR c.\"DS_GRUPO\" ILIKE '%pneumonia%' OR c.\"DS_CAPITULO\" ILIKE '%pneumonia%' OR c.\"DESCRICAO\" ILIKE '%pneumonite%' OR c.\"DS_CATEGORIA\" ILIKE '%pneumonite%' OR c.\"DS_GRUPO\" ILIKE '%pneumonite%' OR c.\"DS_CAPITULO\" ILIKE '%pneumonite%');",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.6,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5,
+          "phases_completed": 7,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 12.102155208587646
+        },
+        "phases_completed": [
+          "initialization",
+          "reasoning",
+          "table_discovery",
+          "schema_analysis",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.4481799602508545
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 4.799408912658691
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.6003551483154297
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "schema_context_length": 20360,
+        "latency_by_component": {
+          "query_classification": 0.8656389713287354,
+          "table_discovery": 0.4482452869415283,
+          "schema_analysis": 0.0006976127624511719,
+          "reasoning": 5.365228652954102,
+          "sql_generation": 0.00036406517028808594,
+          "sql_validation": 4.799438238143921,
+          "sql_execution": 0.6004571914672852,
+          "completed": 0.00027060508728027344
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quantas internacoes por pneumonia ocorreram em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "count",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "total",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "diagnostico_principal_prefix",
+              "values": [
+                "J12%",
+                "J13%",
+                "J14%",
+                "J15%",
+                "J16%",
+                "J17%",
+                "J18%"
+              ],
+              "operator": "LIKE_ANY"
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "values": [
+                "CID J12-J18 - Pneumonias"
+              ],
+              "operator": "metadata"
+            },
+            {
+              "field": "diagnostico_conceito_termo_expandido",
+              "values": [
+                "pneumonia",
+                "pneumonite"
+              ],
+              "operator": "metadata"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "diagnosis_filter_dimension_not_output"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "intent_plan": {
+          "user_question": "Quantas internacoes por pneumonia ocorreram em 2021?",
+          "persona_hint": "common_user",
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "metric_slots": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "cohort_slots": [],
+          "concept_slots": [
+            {
+              "name": "clinical_concept",
+              "concept_type": "clinical",
+              "filters": [
+                {
+                  "field": "diagnostico_principal_prefix",
+                  "values": [
+                    "J12%",
+                    "J13%",
+                    "J14%",
+                    "J15%",
+                    "J16%",
+                    "J17%",
+                    "J18%"
+                  ],
+                  "operator": "LIKE_ANY"
+                },
+                {
+                  "field": "diagnostico_conceito_label",
+                  "values": [
+                    "CID J12-J18 - Pneumonias"
+                  ],
+                  "operator": "metadata"
+                }
+              ]
+            }
+          ],
+          "temporal_scope": {
+            "type": "year",
+            "n": null,
+            "start_year": 2021,
+            "end_year": 2021,
+            "date_column": "DT_INTER"
+          },
+          "grouping_slots": [],
+          "requested_tools": [],
+          "uncertainty": [],
+          "requires_clarification": false
+        },
+        "tool_plan": [
+          {
+            "name": "inspect_schema",
+            "reason": "confirm available tables and columns before SQL compilation"
+          },
+          {
+            "name": "resolve_concepts",
+            "reason": "normalize clinical, population, or operational concepts"
+          },
+          {
+            "name": "resolve_temporal_scope",
+            "reason": "normalize requested time window"
+          },
+          {
+            "name": "resolve_join_policy",
+            "reason": "validate joins required by dimensions and concepts"
+          },
+          {
+            "name": "compile_sql",
+            "reason": "compile the resolved domain plan to SQL"
+          },
+          {
+            "name": "execute_sql",
+            "reason": "execute validated SQL against the database"
+          },
+          {
+            "name": "validate_result_contract",
+            "reason": "check result shape and metric semantics"
+          }
+        ],
+        "plan_audit": {
+          "passed": true,
+          "errors": [],
+          "resolved_concepts": []
+        },
+        "result_audit": {
+          "passed": true,
+          "errors": [],
+          "warnings": []
+        },
+        "structured_error": null,
+        "answerability": "answerable",
+        "technical_success": true,
+        "domain_caveats": [
+          "DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro.",
+          "DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo."
+        ],
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "intent_planning": {
+          "duration_seconds": 0.0016,
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "tools": [
+            "inspect_schema",
+            "resolve_concepts",
+            "resolve_temporal_scope",
+            "resolve_join_policy",
+            "compile_sql",
+            "execute_sql",
+            "validate_result_contract"
+          ]
+        },
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.342247445739365,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "semantic_constraints": [
+          "diagnosis_filter_dimension_not_output"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A contagem de internações por pneumonia em 2021 requer a filtragem por ano e diagnósticos relacionados a pneumonia, utilizando métricas de contagem. Não há dimensões adicionais necessárias para a contagem, e a resposta deve ser um único valor escalar.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic scalar SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "diagnosis_filter_dimension_not_output"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260522T201252_v1_cid_010",
+        "query_number": 10,
+        "orchestrator_execution_time": 12.130069017410278
+      },
+      "error": null,
+      "latency_seconds": 12.130069017410278,
+      "root_cause": null,
+      "severity": null
+    }
+  ]
+}

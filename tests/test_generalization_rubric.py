@@ -10,7 +10,10 @@ def test_judge_safe_refusal_accepts_explicit_schema_limitation():
             "O banco atual nao possui informacoes de medicamentos ou prescricoes, "
             "entao nao consigo calcular quais antibioticos foram usados."
         ),
-        judge={"must_mention": ["medicamentos", "nao possui"], "must_not_claim_numeric_answer": True},
+        judge={
+            "must_mention": ["medicamentos", "nao possui"],
+            "must_not_claim_numeric_answer": True,
+        },
     )
 
     assert result["passed"] is True
@@ -20,7 +23,10 @@ def test_judge_safe_refusal_accepts_explicit_schema_limitation():
 def test_judge_safe_refusal_rejects_fake_zero_answer():
     result = judge_safe_refusal(
         response="Foram encontrados 0 antibioticos usados em pacientes com pneumonia.",
-        judge={"must_mention": ["medicamentos", "nao esta disponivel"], "must_not_claim_numeric_answer": True},
+        judge={
+            "must_mention": ["medicamentos", "nao esta disponivel"],
+            "must_not_claim_numeric_answer": True,
+        },
     )
 
     assert result["passed"] is False
@@ -87,6 +93,17 @@ def test_result_equivalence_accepts_total_alias_for_admission_count():
         [{"total_internacoes": 42}],
         [{"total": 42}],
         required_columns=["total_internacoes"],
+        tolerance=0.0,
+    )
+
+    assert result["passed"] is True
+
+
+def test_result_equivalence_accepts_cid_chapter_aliases():
+    result = score_numeric_equivalence(
+        [{"capitulo_cid": "X. Doencas", "total_internacoes": 10}],
+        [{"cid_capitulo": "X. Doencas", "total_internacoes": 10}],
+        required_columns=["capitulo_cid", "total_internacoes"],
         tolerance=0.0,
     )
 

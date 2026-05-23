@@ -1,5 +1,4 @@
 import re
-from typing import Tuple
 
 
 def _strip_sql_comments(sql: str) -> str:
@@ -32,7 +31,7 @@ def _strip_string_literals(sql: str) -> str:
     return s
 
 
-def is_select_only(sql: str) -> Tuple[bool, str]:
+def is_select_only(sql: str) -> tuple[bool, str]:
     """
     Check if the SQL statement is read-only (SELECT/CTE only).
 
@@ -64,9 +63,7 @@ def is_select_only(sql: str) -> Tuple[bool, str]:
     lowered = _strip_string_literals(tmp).lower().lstrip()
 
     # Disallowed keywords (word boundary to avoid matching column/table names)
-    disallowed = (
-        r"\b(insert|update|delete|merge|create|alter|drop|truncate|grant|revoke|copy|call|do|vacuum|analyze|comment|replace|attach|detach|pragma|refresh|cluster|reindex|checkpoint|checkpointing)\b"
-    )
+    disallowed = r"\b(insert|update|delete|merge|create|alter|drop|truncate|grant|revoke|copy|call|do|vacuum|analyze|comment|replace|attach|detach|pragma|refresh|cluster|reindex|checkpoint|checkpointing)\b"
     if re.search(disallowed, lowered):
         return False, "Apenas consultas de leitura (SELECT) são permitidas"
 

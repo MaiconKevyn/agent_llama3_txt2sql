@@ -19,7 +19,7 @@ from src.agent.routing import (
     route_after_sql_generation,
     route_after_sql_validation,
 )
-from src.agent.state_helpers import create_initial_messages_state
+from src.agent.state_helpers import create_initial_messages_state, state_to_legacy_format
 from src.agent.state_models import QueryRoute
 from src.application.config.simple_config import OrchestratorConfig
 
@@ -86,6 +86,9 @@ def test_plan_gate_routes_unsupported_schema_metric_to_clarification():
 
     clarified_state = clarification_node(new_state)
     assert clarified_state["final_response"] == new_state["clarification_question"]
+    legacy = state_to_legacy_format(clarified_state)
+    assert legacy["technical_success"] is True
+    assert legacy["answerability"] == "unanswerable_schema"
 
     assert (
         route_after_plan_gate(
@@ -112,12 +115,103 @@ def test_plan_gate_routes_unsupported_schema_metric_to_clarification():
 
 
 @pytest.mark.parametrize(
+    ("question", "expected_metadata", "expected_terms"),
+    [
+        (
+            "Quais municipios tiveram mais internacoes em 2020?",
+            "geography_residence_vs_hospital",
+            ["residencia", "hospital"],
+        ),
+        (
+            "Qual a mortalidade por UF?",
+            "geography_residence_vs_hospital",
+            ["residencia", "hospital"],
+        ),
+        (
+            "Mortalidade infantil por estado",
+            "mortality_infantil_scope",
+            ["indicador socioeconomico", "criancas"],
+        ),
+        (
+            "Casos de covid em 2021",
+            "clinical_covid_case_scope",
+            ["diagnostico principal", "obitos"],
+        ),
+        (
+            "Quais cidades tiveram mais obitos em 2021?",
+            "geography_residence_vs_hospital",
+            ["residencia", "hospital"],
+        ),
+        (
+            "Compare covid por municipio em 2021.",
+            "geography_residence_vs_hospital",
+            ["residencia", "hospital"],
+        ),
+        (
+            "Quais hospitais tiveram mais casos em 2020?",
+            "generic_case_scope",
+            ["casos", "internacoes"],
+        ),
+        (
+            "Existe relacao entre renda e mortalidade?",
+            "renda_mortality_scope",
+            ["renda", "socioeconomico"],
+        ),
+    ],
+)
+def test_plan_gate_clarifies_critical_ambiguities(
+    question,
+    expected_metadata,
+    expected_terms,
+):
+    state = create_initial_messages_state(question, session_id="test-critical-ambiguity")
+
+    new_state = plan_gate_node(state)
+
+    assert new_state["needs_clarification"] is True
+    assert new_state["response_metadata"]["critical_ambiguity"] == expected_metadata
+    clarification = new_state["clarification_question"] or ""
+    for term in expected_terms:
+        assert term in clarification
+    assert new_state["generated_sql"] is None
+
+    clarified_state = clarification_node(new_state)
+    legacy = state_to_legacy_format(clarified_state)
+    assert legacy["technical_success"] is True
+    assert legacy["answerability"] == "requires_clarification"
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Quais municipios de residencia tiveram mais internacoes em 2020?",
+        "Quais hospitais tiveram maior mortalidade em 2020?",
+        "Qual a taxa de mortalidade hospitalar por UF de residencia?",
+        "Qual a taxa de mortalidade infantil media no Brasil como indicador socioeconomico?",
+        "Qual foi a mortalidade infantil socioeconomica media por UF em 2019?",
+        "Quantas internacoes por covid ocorreram em 2021?",
+        "Qual foi a taxa de internacoes por 100 mil habitantes por UF em 2019?",
+    ],
+)
+def test_plan_gate_does_not_clarify_explicit_scopes(question):
+    state = create_initial_messages_state(question, session_id="test-explicit-scope")
+
+    new_state = plan_gate_node(state)
+
+    assert new_state["needs_clarification"] is False
+    assert "critical_ambiguity" not in new_state["response_metadata"]
+
+
+@pytest.mark.parametrize(
     ("question", "metric_name"),
     [
         ("Qual foi a cobertura vacinal dos internados?", "vacina"),
         ("Qual antibiótico foi usado em pneumonia?", "medicacao"),
         ("Qual o resultado dos exames laboratoriais?", "exames_laboratoriais"),
-        ("Existe relação entre resultado de hemograma e mortalidade hospitalar?", "exames_laboratoriais"),
+        (
+            "Existe relação entre resultado de hemograma e mortalidade hospitalar?",
+            "exames_laboratoriais",
+        ),
         ("Compare internações em área rural e urbana em 2021.", "area_rural_urbana"),
         ("Quais bairros de residencia aparecem com mais internacoes?", "bairro"),
         ("Compare renda individual do paciente entre MA e RS.", "renda_individual"),
@@ -129,9 +223,7 @@ def test_plan_gate_routes_unsupported_schema_metric_to_clarification():
         ("Compare pressao arterial na admissao entre MA e RS.", "sinais_vitais"),
     ],
 )
-def test_plan_gate_routes_new_unavailable_schema_metrics_to_clarification(
-    question, metric_name
-):
+def test_plan_gate_routes_new_unavailable_schema_metrics_to_clarification(question, metric_name):
     state = create_initial_messages_state(
         question,
         session_id=f"test-unsupported-{metric_name}",

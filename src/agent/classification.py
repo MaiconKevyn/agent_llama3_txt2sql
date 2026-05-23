@@ -23,8 +23,22 @@ logger = get_nodes_logger()
 
 # Prefixes/words that strongly indicate a follow-up turn in Portuguese
 _FOLLOWUP_PREFIXES = ("e ", "e se ", "e para ", "mas ", "também ", "quais foram", "qual foi")
-_FOLLOWUP_ANAPHORA = ("isso", "disso", "esse", "essa", "esses", "essas", "mesmo", "mesma",
-                      "anterior", "delas", "deles", "tal", "acima", "abaixo")
+_FOLLOWUP_ANAPHORA = (
+    "isso",
+    "disso",
+    "esse",
+    "essa",
+    "esses",
+    "essas",
+    "mesmo",
+    "mesma",
+    "anterior",
+    "delas",
+    "deles",
+    "tal",
+    "acima",
+    "abaixo",
+)
 
 
 def _extract_prior_context(messages: list) -> tuple[str | None, str | None]:
@@ -117,20 +131,20 @@ def query_classification_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2S
             user_query = state["user_query"]
         elif "messages" in state and state["messages"]:
             for msg in reversed(state["messages"]):
-                if hasattr(msg, 'type') and msg.type == 'human':
+                if hasattr(msg, "type") and msg.type == "human":
                     user_query = msg.content
                     break
-                elif isinstance(msg, dict) and msg.get('type') == 'human':
-                    user_query = msg.get('content', '')
+                elif isinstance(msg, dict) and msg.get("type") == "human":
+                    user_query = msg.get("content", "")
                     break
-                elif isinstance(msg, dict) and msg.get('role') == 'human':
-                    user_query = msg.get('content', '')
+                elif isinstance(msg, dict) and msg.get("role") == "human":
+                    user_query = msg.get("content", "")
                     break
 
         if not user_query:
             logger.debug("State parsing failed", extra={"state_keys": list(state.keys())})
             if "messages" in state:
-                logger.debug("Messages found in state", extra={"messages": str(state['messages'])})
+                logger.debug("Messages found in state", extra={"messages": str(state["messages"])})
             raise ValueError("No user query found in state")
 
         logger.info("User query extracted", extra={"query": user_query[:100]})
@@ -147,32 +161,32 @@ def query_classification_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2S
         if _is_followup(user_query, prior_human):
             llm_manager = get_llm_manager()
             resolve_messages = [
-                SystemMessage(content=(
-                    "Reescreva a PERGUNTA ATUAL como uma pergunta autossuficiente, "
-                    "incorporando o contexto da conversa anterior. "
-                    "Responda APENAS com a pergunta reescrita, sem explicações adicionais."
-                )),
-                HumanMessage(content=(
-                    f"Pergunta anterior: {prior_human}\n"
-                    f"Resposta anterior (resumo): {prior_ai[:300] if prior_ai else ''}\n"
-                    f"Pergunta atual: {user_query}"
-                )),
+                SystemMessage(
+                    content=(
+                        "Reescreva a PERGUNTA ATUAL como uma pergunta autossuficiente, "
+                        "incorporando o contexto da conversa anterior. "
+                        "Responda APENAS com a pergunta reescrita, sem explicações adicionais."
+                    )
+                ),
+                HumanMessage(
+                    content=(
+                        f"Pergunta anterior: {prior_human}\n"
+                        f"Resposta anterior (resumo): {prior_ai[:300] if prior_ai else ''}\n"
+                        f"Pergunta atual: {user_query}"
+                    )
+                ),
             ]
             resolved_response = llm_manager.invoke_chat(resolve_messages)
             resolved_query = getattr(resolved_response, "content", user_query).strip()
             if resolved_query and resolved_query != user_query:
                 logger.info(
-                    "Follow-up resolved",
-                    extra={"original": user_query, "resolved": resolved_query}
+                    "Follow-up resolved", extra={"original": user_query, "resolved": resolved_query}
                 )
                 user_query = resolved_query
                 state["user_query"] = resolved_query
 
         visualization_intent = state.get("visualization_intent") or {}
-        if (
-            isinstance(visualization_intent, dict)
-            and visualization_intent.get("requested")
-        ):
+        if isinstance(visualization_intent, dict) and visualization_intent.get("requested"):
             query_route = QueryRoute.DATABASE
             confidence_score = 0.95
             reasoning = "Explicit chart request requires database query execution."
@@ -205,9 +219,7 @@ def query_classification_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2S
         ):
             query_route = QueryRoute.DATABASE
             confidence_score = 0.9
-            reasoning = (
-                f"Heuristic fast-path: route=DATABASE, score={heur_scores.get('DATABASE', 0)}, skipping LLM"
-            )
+            reasoning = f"Heuristic fast-path: route=DATABASE, score={heur_scores.get('DATABASE', 0)}, skipping LLM"
             logger.info(
                 f"Heuristic fast-path: route=DATABASE, score={heur_scores.get('DATABASE', 0)}, skipping LLM"
             )
@@ -249,17 +261,17 @@ def query_classification_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2S
             llm_manager = get_llm_manager()
             system_prompt = (
                 "Você é um classificador de consultas. Decida a ROTA em {DATABASE, CONVERSATIONAL, SCHEMA}.\n"
-                "Responda APENAS em JSON com campos: {\\\"route\\\":<string>,\\\"confidence\\\":<float>,\\\"reasons\\\":<string>}\n"
+                'Responda APENAS em JSON com campos: {\\"route\\":<string>,\\"confidence\\":<float>,\\"reasons\\":<string>}\n'
                 "DATABASE: perguntas de dados (contagem, ranking, listar, filtros, por cidade/ano/sexo...)\n"
-                "CONVERSATIONAL: explicações/definições (\\\"o que é\\\", \\\"significa\\\", \\\"como funciona\\\", diferenças)\n"
+                'CONVERSATIONAL: explicações/definições (\\"o que é\\", \\"significa\\", \\"como funciona\\", diferenças)\n'
                 "SCHEMA: estrutura do banco (tabelas, colunas, schema, dicionário de dados).\n"
                 "Exemplos:\n"
                 "Q: Quantos óbitos ocorreram em 2023?\n"
-                "A: {\\\"route\\\":\\\"DATABASE\\\",\\\"confidence\\\":0.9,\\\"reasons\\\":\\\"contagem temporal\\\"}\n"
+                'A: {\\"route\\":\\"DATABASE\\",\\"confidence\\":0.9,\\"reasons\\":\\"contagem temporal\\"}\n'
                 "Q: O que significa o CID J189?\n"
-                "A: {\\\"route\\\":\\\"CONVERSATIONAL\\\",\\\"confidence\\\":0.9,\\\"reasons\\\":\\\"pedido de definição\\\"}\n"
+                'A: {\\"route\\":\\"CONVERSATIONAL\\",\\"confidence\\":0.9,\\"reasons\\":\\"pedido de definição\\"}\n'
                 "Q: Quais colunas existem na tabela internacoes?\n"
-                "A: {\\\"route\\\":\\\"SCHEMA\\\",\\\"confidence\\\":0.95,\\\"reasons\\\":\\\"estrutura da tabela\\\"}"
+                'A: {\\"route\\":\\"SCHEMA\\",\\"confidence\\":0.95,\\"reasons\\":\\"estrutura da tabela\\"}'
             )
 
             messages = [
@@ -291,8 +303,10 @@ def query_classification_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2S
                 reasoning = f"LLM(JSON) high confidence. Heuristic={heur_scores}"
             else:
                 final_route_str = combine_scores(llm_route, llm_conf, heur_scores, w_llm=0.7)
-                confidence_score = float(llm_conf) if llm_conf is not None else (
-                    1.0 if heur_scores.get(final_route_str, 0) > 0 else 0.6
+                confidence_score = (
+                    float(llm_conf)
+                    if llm_conf is not None
+                    else (1.0 if heur_scores.get(final_route_str, 0) > 0 else 0.6)
                 )
                 reasoning = (
                     f"Hybrid decision. llm_route={llm_route} conf={llm_conf} heur={heur_scores}"
@@ -318,24 +332,33 @@ def query_classification_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2S
         state["classification"] = classification
         state["requires_sql"] = query_route == QueryRoute.DATABASE
 
-        ai_response = f"Query classified as {query_route.value} (confidence: {confidence_score:.1f})"
+        ai_response = (
+            f"Query classified as {query_route.value} (confidence: {confidence_score:.1f})"
+        )
         state = add_ai_message(state, ai_response)
 
         execution_time = time.time() - start_time
         state = update_phase(state, ExecutionPhase.QUERY_CLASSIFICATION, execution_time)
 
-        logger.info("Query classified successfully", extra={
-            "result": query_route.value,
-            "confidence": confidence_score,
-            "execution_time": execution_time,
-            "route_type": "SQL Pipeline" if query_route == QueryRoute.DATABASE else "Direct Response",
-        })
+        logger.info(
+            "Query classified successfully",
+            extra={
+                "result": query_route.value,
+                "confidence": confidence_score,
+                "execution_time": execution_time,
+                "route_type": "SQL Pipeline"
+                if query_route == QueryRoute.DATABASE
+                else "Direct Response",
+            },
+        )
 
         return state
 
     except Exception as e:
         error_message = f"Query classification failed: {str(e)}"
-        state = add_error(state, error_message, "classification_error", ExecutionPhase.QUERY_CLASSIFICATION)
+        state = add_error(
+            state, error_message, "classification_error", ExecutionPhase.QUERY_CLASSIFICATION
+        )
 
         state["query_route"] = QueryRoute.DATABASE
         state["requires_sql"] = True

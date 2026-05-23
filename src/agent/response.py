@@ -6,49 +6,15 @@ from typing import Any
 from ..utils.logging_config import get_nodes_logger
 from ..visualization.data import normalize_result_rows
 from .llm_manager import get_llm_manager
+from .response_caveats import (
+    build_data_quality_caveats,
+    build_domain_caveats,
+    build_join_policy_caveats,
+)
 from .state_helpers import add_ai_message, add_error, clean_conversation_messages, update_phase
 from .state_models import ExecutionPhase, MessagesStateTXT2SQL, QueryRoute
 
 logger = get_nodes_logger()
-
-
-def build_domain_caveats(*, user_query: str, semantic_plan: dict[str, Any] | None) -> list[str]:
-    """Return user-facing caveats for implicit domain policies."""
-
-    filters = (semantic_plan or {}).get("filters", [])
-    caveats: list[str] = []
-    normalized = (user_query or "").lower()
-    if (
-        any(token in normalized for token in ["crianca", "criança", "criancas", "crianças", "pediatric"])
-        and any(
-            item.get("field") == "idade"
-            and item.get("operator") == "<"
-            and item.get("values") == ["18"]
-            for item in filters
-        )
-    ):
-        caveats.append("Crianca foi operacionalizado como idade menor que 18 anos.")
-    if ("respirat" in normalized or "cid j" in normalized) and any(
-        item.get("field") == "diagnostico_principal_prefix"
-        and item.get("values") == ["J%"]
-        for item in filters
-    ):
-        caveats.append("Causas respiratorias foram operacionalizadas como CID J00-J99.")
-    if (
-        "quais cid" in normalized or "quais cids" in normalized
-    ) and "analisar" in normalized and any(
-        item.get("field") == "diagnostico_principal_prefix" for item in filters
-    ):
-        caveats.append(
-            "Lista candidata de CIDs; confirme o escopo clinico antes de usar em contagens."
-        )
-    if "cronica" in normalized or "cronicas" in normalized or "crônica" in normalized:
-        caveats.append(
-            "Doencas cronicas nao sao um unico bloco CID; confirme a lista de condicoes ou o escopo clinico."
-        )
-    if any(item.get("field") == "desfecho" for item in filters):
-        caveats.append("Mortes hospitalares foram filtradas com MORTE=true.")
-    return caveats
 
 
 def generate_response_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
@@ -91,10 +57,19 @@ def generate_response_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
                 error_message = state.get("current_error", "Erro desconhecido")
                 final_response = f"Não foi possível processar sua consulta: {error_message}"
 
-        domain_caveats = build_domain_caveats(
-            user_query=user_query,
-            semantic_plan=state.get("semantic_plan"),
+        executed_sql = (
+            sql_execution_result.sql_query
+            if query_route != QueryRoute.CONVERSATIONAL and sql_execution_result
+            else None
         )
+        domain_caveats = [
+            *build_domain_caveats(
+                user_query=user_query,
+                semantic_plan=state.get("semantic_plan"),
+            ),
+            *build_join_policy_caveats(executed_sql),
+            *build_data_quality_caveats(executed_sql),
+        ]
         state["domain_caveats"] = domain_caveats
         if domain_caveats and not state.get("current_error"):
             caveat_text = "Observacoes de escopo: " + " ".join(domain_caveats)
@@ -154,6 +129,12 @@ def _generate_formatted_response(
         analytic_response = _format_analytic_response_if_available(user_query, normalized_rows)
         if analytic_response:
             return analytic_response
+        deterministic_response = _format_deterministic_response_if_available(
+            normalized_rows=normalized_rows,
+            row_count=row_count,
+        )
+        if deterministic_response:
+            return deterministic_response
 
         if row_count == 1 and len(results) == 1:
             result_value = normalized_rows[0] if normalized_rows else results[0].get("result", "")
@@ -286,6 +267,102 @@ def _generate_fallback_response(user_query: str, results_text: str, row_count: i
         return f"Encontrados {row_count} resultados:\n{results_text}"
 
 
+def _format_deterministic_response_if_available(
+    *,
+    normalized_rows: list[dict[str, Any]],
+    row_count: int,
+) -> str | None:
+    """Format common SQL results without an extra LLM call."""
+
+    if not normalized_rows:
+        return None
+    if row_count == 1 and len(normalized_rows) == 1:
+        return _format_single_row_response(normalized_rows[0])
+    return _format_rowset_response(normalized_rows, row_count)
+
+
+def _format_single_row_response(row: dict[str, Any]) -> str | None:
+    if not row:
+        return None
+    visible_items = [(key, value) for key, value in row.items() if not _is_empty_value(value)]
+    if not visible_items:
+        return None
+    if len(visible_items) == 1:
+        key, value = visible_items[0]
+        return f"{_humanize_column_name(key)}: {_format_response_value(value)}."
+    return (
+        "Resultado: "
+        + "; ".join(
+            f"{_humanize_column_name(key)}: {_format_response_value(value)}"
+            for key, value in visible_items[:8]
+        )
+        + "."
+    )
+
+
+def _format_rowset_response(rows: list[dict[str, Any]], row_count: int) -> str | None:
+    if not rows:
+        return None
+    display_rows = rows[:10]
+    lines = []
+    for index, row in enumerate(display_rows, 1):
+        visible_items = [(key, value) for key, value in row.items() if not _is_empty_value(value)]
+        if not visible_items:
+            continue
+        lines.append(
+            f"{index}. "
+            + "; ".join(
+                f"{_humanize_column_name(key)}: {_format_response_value(value)}"
+                for key, value in visible_items[:6]
+            )
+        )
+    if not lines:
+        return None
+    if row_count > len(display_rows):
+        lines.append(
+            f"... amostra parcial: mostrando {len(display_rows)} de {row_count} registros."
+        )
+    return "Resultados:\n" + "\n".join(lines)
+
+
+def _humanize_column_name(column: str) -> str:
+    labels = {
+        "ano": "Ano",
+        "mes": "Mes",
+        "uf": "UF",
+        "estado": "Estado",
+        "municipio": "Municipio",
+        "municipio_residencia": "Municipio de residencia",
+        "capitulo_cid": "Capitulo CID",
+        "cid_capitulo": "Capitulo CID",
+        "procedimento": "Procedimento",
+        "total": "Total",
+        "total_internacoes": "Total de internacoes",
+        "total_procedimentos": "Total de procedimentos",
+        "diagnosticos_sem_lookup": "Diagnosticos sem catalogo",
+        "custo_medio": "Custo medio",
+        "valor_indicador": "Valor do indicador",
+        "taxa_por_100_mil": "Taxa por 100 mil",
+    }
+    normalized = str(column).strip()
+    return labels.get(normalized.lower(), normalized.replace("_", " ").capitalize())
+
+
+def _format_response_value(value: Any) -> str:
+    if isinstance(value, bool):
+        return "sim" if value else "nao"
+    if isinstance(value, int):
+        return f"{value:,}".replace(",", ".")
+    if isinstance(value, float):
+        formatted = f"{value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        return formatted.rstrip("0").rstrip(",")
+    return str(value)
+
+
+def _is_empty_value(value: Any) -> bool:
+    return value is None or value == ""
+
+
 def _format_analytic_response_if_available(
     user_query: str,
     rows: list[dict[str, Any]],
@@ -396,9 +473,7 @@ def _format_analytic_response_from_package(user_query: str, package: dict[str, A
     return ""
 
 
-def _format_age_diagnosis_response_from_package(
-    user_query: str, package: dict[str, Any]
-) -> str:
+def _format_age_diagnosis_response_from_package(user_query: str, package: dict[str, Any]) -> str:
     """Format a deterministic analytic package without asking the LLM to infer calculations."""
     concept = _humanize_clinical_label_for_response(
         str(package.get("resolved_concept") or "diagnostico informado")
@@ -506,7 +581,9 @@ def _format_categorical_outcome_response_from_package(package: dict[str, Any]) -
 
 
 def _format_geographic_condition_response_from_package(package: dict[str, Any]) -> str:
-    concept = _humanize_clinical_label(str(package.get("resolved_concept") or "diagnóstico informado"))
+    concept = _humanize_clinical_label(
+        str(package.get("resolved_concept") or "diagnóstico informado")
+    )
     total = _format_int(package.get("total_internacoes"))
     denominator = _humanize_denominator(str(package.get("denominador") or "internacoes"))
     groups = _parse_rate_distribution(str(package.get("group_distribution") or ""))
@@ -554,7 +631,9 @@ def _format_geographic_condition_response_from_package(package: dict[str, Any]) 
 
 
 def _format_temporal_condition_response_from_package(package: dict[str, Any]) -> str:
-    concept = _humanize_clinical_label(str(package.get("resolved_concept") or "diagnóstico informado"))
+    concept = _humanize_clinical_label(
+        str(package.get("resolved_concept") or "diagnóstico informado")
+    )
     total = _format_int(package.get("total_internacoes"))
     denominator = _humanize_denominator(str(package.get("denominador") or "internacoes"))
     series = _parse_time_series(str(package.get("time_series") or ""))
@@ -598,9 +677,7 @@ def _format_temporal_condition_response_from_package(package: dict[str, Any]) ->
     )
     if warnings:
         lines.extend(["", f"Atenção sobre escopo dos dados: {warnings}."])
-    lines.append(
-        "Limite: isto descreve evolução observada nos registros, não causalidade."
-    )
+    lines.append("Limite: isto descreve evolução observada nos registros, não causalidade.")
     return "\n".join(lines)
 
 

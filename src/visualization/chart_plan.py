@@ -178,6 +178,14 @@ def _normalize(text: str) -> str:
 
 
 def _infer_metric(normalized_query: str) -> str:
+    if (
+        "percentual" in normalized_query
+        and any(token in normalized_query for token in ["sem informacao", "sem informação"])
+        and any(token in normalized_query for token in ["raca/cor", "raca cor", "raça/cor"])
+    ):
+        return "percentual_obitos_sem_raca_cor"
+    if "taxa de internacoes por 100 mil" in normalized_query:
+        return "taxa_por_100k"
     if any(
         token in normalized_query for token in ["taxa de mortalidade", "mortalidade hospitalar"]
     ):
@@ -186,7 +194,10 @@ def _infer_metric(normalized_query: str) -> str:
         return "mortalidade_infantil"
     if "mortalidade" in normalized_query:
         return "taxa_mortalidade"
-    if any(token in normalized_query for token in ["pib per capita", "produto interno bruto per capita"]):
+    if any(
+        token in normalized_query
+        for token in ["pib per capita", "produto interno bruto per capita"]
+    ):
         return "pib_per_capita"
     if any(token in normalized_query for token in ["leitos sus por 1000", "leitos por 1000"]):
         return "leitos_sus_1000"
@@ -200,7 +211,10 @@ def _infer_metric(normalized_query: str) -> str:
         return "populacao"
     if "uti" in normalized_query and any(token in normalized_query for token in ["valor", "custo"]):
         return "valor_total_uti"
-    if any(token in normalized_query for token in ["custo medio", "custo médio", "valor medio", "valor médio"]):
+    if any(
+        token in normalized_query
+        for token in ["custo medio", "custo médio", "valor medio", "valor médio"]
+    ):
         return "custo_medio"
     if any(
         token in normalized_query
@@ -237,6 +251,8 @@ def _infer_metric(normalized_query: str) -> str:
         for token in ["morte", "mortes", "obito", "obitos", "death", "deaths"]
     ):
         return "total_mortes"
+    if any(token in normalized_query for token in ["procedimento", "procedimentos"]):
+        return "total_procedimentos"
     if any(
         token in normalized_query
         for token in [
@@ -255,6 +271,12 @@ def _infer_metric(normalized_query: str) -> str:
 
 
 def _infer_x_dimension(normalized_query: str) -> str | None:
+    if (
+        "percentual" in normalized_query
+        and any(token in normalized_query for token in ["sem informacao", "sem informação"])
+        and any(token in normalized_query for token in ["raca/cor", "raca cor", "raça/cor"])
+    ):
+        return None
     if any(token in normalized_query for token in ["por mes", "mensal", "mensais", "monthly"]):
         return "mes"
     if _is_temporal_query(normalized_query):
@@ -277,7 +299,15 @@ def _infer_x_dimension(normalized_query: str) -> str | None:
         return "regiao_saude"
     if any(
         token in normalized_query
-        for token in ["raca cor", "raca/cor", "raça cor", "raça/cor", "por raca", "por raça", "por cor"]
+        for token in [
+            "raca cor",
+            "raca/cor",
+            "raça cor",
+            "raça/cor",
+            "por raca",
+            "por raça",
+            "por cor",
+        ]
     ):
         return "raca_cor"
     if any(
@@ -389,7 +419,9 @@ def _infer_series_dimension(normalized_query: str) -> str | None:
     is_temporal = _is_temporal_query(normalized_query)
     if is_temporal and _mentions_both_sexes(normalized_query):
         return "sexo"
-    if is_temporal and any(token in normalized_query for token in ["procedimento", "procedimentos"]):
+    if is_temporal and any(
+        token in normalized_query for token in ["procedimento", "procedimentos"]
+    ):
         return "procedimento"
     if "por estado" in normalized_query and is_temporal:
         return "estado"
@@ -583,6 +615,9 @@ def _default_y_column(metric: str) -> str:
     return {
         "total_mortes": "total_mortes",
         "total_internacoes": "total_internacoes",
+        "total_procedimentos": "total_procedimentos",
+        "taxa_por_100k": "taxa_por_100k",
+        "percentual_obitos_sem_raca_cor": "percentual_sem_raca_cor",
         "taxa_mortalidade": "taxa_mortalidade",
         "mortalidade_infantil": "mortalidade_infantil",
         "pib_per_capita": "pib_per_capita",
@@ -603,6 +638,9 @@ def _metric_expression(metric: str) -> str | None:
     return {
         "total_mortes": 'COUNT rows where "MORTE" = true',
         "total_internacoes": "COUNT rows",
+        "total_procedimentos": "COUNT procedure rows",
+        "taxa_por_100k": "COUNT admissions * 100000.0 / population",
+        "percentual_obitos_sem_raca_cor": "Deaths without mapped race/color / total deaths",
         "taxa_mortalidade": "SUM(MORTE=true) * 100.0 / COUNT(*)",
         "mortalidade_infantil": 'AVG("VL_MORT_INFANTIL")',
         "pib_per_capita": 'AVG("VL_PIB_PERCAPITA")',
@@ -655,8 +693,7 @@ def _is_recent_period_filter_only(normalized_query: str) -> bool:
 def _is_temporal_query(normalized_query: str) -> bool:
     recent_year_window = _recent_year_window(normalized_query)
     return (
-        bool(recent_year_window)
-        and not _is_recent_period_filter_only(normalized_query)
+        bool(recent_year_window) and not _is_recent_period_filter_only(normalized_query)
     ) or any(
         token in normalized_query
         for token in [

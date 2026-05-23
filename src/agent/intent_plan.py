@@ -55,7 +55,9 @@ class CohortSlot(BaseModel):
 
 class ConceptSlot(BaseModel):
     name: str
-    concept_type: Literal["clinical", "population", "geographic", "operational", "unknown"] = "unknown"
+    concept_type: Literal["clinical", "population", "geographic", "operational", "unknown"] = (
+        "unknown"
+    )
     filters: list[dict[str, object]] = Field(default_factory=list)
 
 
@@ -140,7 +142,9 @@ def _infer_primary_task(normalized: str, presentation: Presentation) -> PrimaryT
             for token in ["compare", "comparar", "comparando", "comparacao", "comparação"]
         ):
             return "comparison"
-        if _looks_like_observational_association(normalized) or _looks_like_socioeconomic_association(normalized):
+        if _looks_like_observational_association(
+            normalized
+        ) or _looks_like_socioeconomic_association(normalized):
             return "association"
         if re.search(r"\bscatter\b|\bdispersao\b|\bdispersão\b", normalized):
             return "association"
@@ -156,7 +160,9 @@ def _infer_primary_task(normalized: str, presentation: Presentation) -> PrimaryT
         return "comparison"
     if _looks_like_seasonal_comparison(normalized):
         return "comparison"
-    if _looks_like_observational_association(normalized) or _looks_like_socioeconomic_association(normalized):
+    if _looks_like_observational_association(normalized) or _looks_like_socioeconomic_association(
+        normalized
+    ):
         return "association"
     if _looks_like_data_quality(normalized):
         return "data_quality"
@@ -225,13 +231,21 @@ def _infer_temporal_scope(normalized: str) -> TemporalScope | None:
         )
     year = re.search(r"\b((?:19|20)\d{2})\b", normalized)
     if year:
-        return TemporalScope(type="year", start_year=int(year.group(1)), end_year=int(year.group(1)))
+        return TemporalScope(
+            type="year", start_year=int(year.group(1)), end_year=int(year.group(1))
+        )
     return TemporalScope(type="none") if _has_temporal_language(normalized) else None
 
 
 def _infer_metric_slots(normalized: str) -> list[MetricSlot]:
-    if any(token in normalized for token in ["morte", "mortes", "obito", "obitos", "óbito", "óbitos"]):
-        return [MetricSlot(name="total_mortes", expression_type="count", required_filters=["MORTE = true"])]
+    if any(
+        token in normalized for token in ["morte", "mortes", "obito", "obitos", "óbito", "óbitos"]
+    ):
+        return [
+            MetricSlot(
+                name="total_mortes", expression_type="count", required_filters=["MORTE = true"]
+            )
+        ]
     if "taxa" in normalized and "mortalidade" in normalized:
         return [MetricSlot(name="taxa_mortalidade", expression_type="rate")]
     if any(token in normalized for token in ["custo", "valor", "receita"]):

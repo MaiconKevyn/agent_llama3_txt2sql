@@ -126,8 +126,10 @@ def select_analytic_template(plan: SemanticPlan | dict | None) -> AnalyticTempla
         "diagnostico_principal_prefix",
         "diagnostico_principal_descricao",
     }
-    if parsed.intent == "trend" and required_dimensions & {"ano", "mes"} and (
-        filter_fields & (diagnosis_filter_fields | {"desfecho"})
+    if (
+        parsed.intent == "trend"
+        and required_dimensions & {"ano", "mes"}
+        and (filter_fields & (diagnosis_filter_fields | {"desfecho"}))
     ):
         return ANALYTIC_TEMPLATES["temporal_trend_by_condition"]
     if required_dimensions & {

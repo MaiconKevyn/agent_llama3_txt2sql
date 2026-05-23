@@ -497,7 +497,7 @@ def _diagnosis_target_sql_from_plan(plan: SemanticPlan) -> tuple[str | None, str
     prefixes = _diagnosis_prefixes_from_plan(plan)
     if prefixes:
         prefix_conditions = " OR ".join(
-            f'c."CID" LIKE \'{_sql_literal(prefix)}\'' for prefix in prefixes
+            f"c.\"CID\" LIKE '{_sql_literal(prefix)}'" for prefix in prefixes
         )
         label = _diagnosis_label_from_plan(plan) or "CID " + ", ".join(prefixes)
         return (
@@ -508,8 +508,7 @@ def _diagnosis_target_sql_from_plan(plan: SemanticPlan) -> tuple[str | None, str
     description_terms = _diagnosis_description_terms_from_plan(plan)
     if description_terms:
         description_conditions = " OR ".join(
-            f'c."DESCRICAO" ILIKE \'%{_sql_literal(term)}%\''
-            for term in description_terms
+            f"c.\"DESCRICAO\" ILIKE '%{_sql_literal(term)}%'" for term in description_terms
         )
         return (
             f'SELECT c."CID" FROM cid c WHERE {description_conditions}',
@@ -549,7 +548,7 @@ def _categorical_factor_from_plan(
                 "WHEN i.\"SEXO\" = 3 THEN 'Feminino' "
                 "ELSE 'Sexo ignorado/outro' END"
             ),
-            "CASE i.\"SEXO\" WHEN 1 THEN 1 WHEN 3 THEN 2 ELSE 9 END",
+            'CASE i."SEXO" WHEN 1 THEN 1 WHEN 3 THEN 2 ELSE 9 END',
             "",
             "internacoes agrupadas por sexo",
             "",
@@ -558,7 +557,7 @@ def _categorical_factor_from_plan(
         return (
             "raca_cor",
             'rc."DESCRICAO"',
-            "CASE WHEN i.\"RACA_COR\" IN (1, 2, 3, 4, 5) THEN i.\"RACA_COR\" ELSE 9 END",
+            'CASE WHEN i."RACA_COR" IN (1, 2, 3, 4, 5) THEN i."RACA_COR" ELSE 9 END',
             'i."RACA_COR" IN (1, 2, 3, 4, 5)',
             "internacoes com raca/cor identificada",
             'JOIN raca_cor rc ON i."RACA_COR" = rc."RACA_COR"',
@@ -653,9 +652,7 @@ def _scope_conditions_from_plan(plan: SemanticPlan, alias: str) -> list[str]:
             if len(values) == 1:
                 conditions.append(f'EXTRACT(YEAR FROM {alias}."DT_INTER") = {values[0]}')
             else:
-                conditions.append(
-                    f'EXTRACT(YEAR FROM {alias}."DT_INTER") IN ({", ".join(values)})'
-                )
+                conditions.append(f'EXTRACT(YEAR FROM {alias}."DT_INTER") IN ({", ".join(values)})')
         elif semantic_filter.field == "ano_intervalo" and len(values) >= 2:
             conditions.append(
                 f'EXTRACT(YEAR FROM {alias}."DT_INTER") BETWEEN {values[0]} AND {values[1]}'

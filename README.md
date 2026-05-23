@@ -663,6 +663,35 @@ python evaluation/run_rich_prompt_baseline.py
 python evaluation/generate_report.py
 ```
 
+### Agent v1 Benchmark and Release Gate
+
+The agentic benchmark v1 checks answerability, safe refusal, ambiguity handling,
+SQL generation, visualization, and domain-level scores for the DataSUS TXT2SQL
+workflow:
+
+```bash
+python -m evaluation.agent.run_generalization_exhaustion \
+  --benchmark evaluation/benchmarks/v1
+```
+
+After a benchmark run, validate the release thresholds against the generated
+JSON result:
+
+```bash
+python -m evaluation.agent.release_thresholds \
+  evaluation/agent/results/generalization_exhaustion_<run_id>.json \
+  --report evaluation/results/release_v1/threshold_check_<run_id>.md
+```
+
+The v1 gate currently enforces:
+
+- global benchmark score >= 90%;
+- each critical domain >= 85%;
+- out-of-schema safe refusal >= 95%;
+- ambiguity/clarification >= 90%;
+- answerable median latency <= 12 seconds;
+- answerable p95 latency <= 30 seconds.
+
 Compatibility note:
 
 - `evaluation/run_dag_evaluation.py` is kept as a wrapper.
@@ -674,6 +703,8 @@ Compatibility note:
 evaluation/results/dag_evaluation_<id>/       # DAG evaluation run folders
 evaluation/results/dag_evaluation_<id>/queries/<question_id>/trace.json
 evaluation/ablation/results/<run_id>/         # Ablation outputs and checkpoints
+evaluation/agent/results/                     # Agentic benchmark JSON/Markdown outputs
+evaluation/results/release_v1/                # Release threshold reports
 evaluation/table_selection/results/<run_id>/  # Table-selection benchmark outputs
 evaluation/visualization/results/             # Chart evaluation outputs
 baselines/rich_prompt_baseline/artifacts/     # Baseline artifacts

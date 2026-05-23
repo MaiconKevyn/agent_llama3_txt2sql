@@ -1,14 +1,14 @@
 """Result synthesizer — formats verified multi-query outputs into a final answer."""
 
 import time
-from typing import Any, Dict, List
+from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from .llm_manager import get_llm_manager
-from .state_models import ExecutionPhase, MessagesStateTXT2SQL
-from .state_helpers import add_ai_message, add_error, update_phase
 from ..utils.logging_config import get_nodes_logger
+from .llm_manager import get_llm_manager
+from .state_helpers import add_ai_message, add_error, update_phase
+from .state_models import ExecutionPhase, MessagesStateTXT2SQL
 
 logger = get_nodes_logger()
 
@@ -23,7 +23,7 @@ Diretrizes:
 """
 
 
-def _format_rows_for_prompt(rows: List[Any], max_rows: int = 25) -> str:
+def _format_rows_for_prompt(rows: list[Any], max_rows: int = 25) -> str:
     if not rows:
         return "[sem linhas]"
     display_rows = rows[:max_rows]
@@ -45,13 +45,17 @@ def result_synthesizer_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL
 
         if not verifier_outcome.get("passed") or merged_rows is None:
             error_msg = "Result synthesizer recebeu multi-query sem rows verificadas."
-            state = add_error(state, error_msg, "sql_execution_error", ExecutionPhase.RESPONSE_FORMATTING)
+            state = add_error(
+                state, error_msg, "sql_execution_error", ExecutionPhase.RESPONSE_FORMATTING
+            )
             state["final_response"] = (
                 "Não foi possível consolidar a resposta automaticamente. Tente reformular a pergunta."
             )
             state["success"] = False
             state["completed"] = True
-            state = update_phase(state, ExecutionPhase.RESPONSE_FORMATTING, time.time() - start_time)
+            state = update_phase(
+                state, ExecutionPhase.RESPONSE_FORMATTING, time.time() - start_time
+            )
             return state
 
         llm_manager = get_llm_manager()
@@ -63,10 +67,12 @@ def result_synthesizer_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL
             "Responda ao usuário de forma clara e objetiva:"
         )
 
-        response = llm_manager.invoke_chat([
-            SystemMessage(content=_SYSTEM_PROMPT),
-            HumanMessage(content=human_prompt),
-        ])
+        response = llm_manager.invoke_chat(
+            [
+                SystemMessage(content=_SYSTEM_PROMPT),
+                HumanMessage(content=human_prompt),
+            ]
+        )
 
         final_response = response.content.strip() if hasattr(response, "content") else str(response)
 
@@ -84,10 +90,13 @@ def result_synthesizer_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL
 
         state = add_ai_message(state, final_response)
 
-        logger.info("Result synthesizer complete", extra={
-            "plan_type": query_plan.plan_type if query_plan else None,
-            "row_count": len(merged_rows),
-        })
+        logger.info(
+            "Result synthesizer complete",
+            extra={
+                "plan_type": query_plan.plan_type if query_plan else None,
+                "row_count": len(merged_rows),
+            },
+        )
 
         state = update_phase(state, ExecutionPhase.RESPONSE_FORMATTING, time.time() - start_time)
         return state
@@ -95,7 +104,9 @@ def result_synthesizer_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL
     except Exception as e:
         error_msg = f"Result synthesizer failed: {str(e)}"
         logger.error("result_synthesizer_node error", extra={"error": str(e)})
-        state = add_error(state, error_msg, "sql_execution_error", ExecutionPhase.RESPONSE_FORMATTING)
+        state = add_error(
+            state, error_msg, "sql_execution_error", ExecutionPhase.RESPONSE_FORMATTING
+        )
         state["completed"] = True
         state["success"] = False
         state = update_phase(state, ExecutionPhase.RESPONSE_FORMATTING, time.time() - start_time)

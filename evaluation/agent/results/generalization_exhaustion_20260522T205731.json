@@ -1,0 +1,1088 @@
+{
+  "run_id": "generalization_exhaustion_20260522T205731",
+  "created_at": "2026-05-22T20:57:55",
+  "dry_run": false,
+  "summary": {
+    "status_counts": {
+      "passed": 2
+    },
+    "scored_total": 2,
+    "score": 1.0,
+    "category_scores": {
+      "visualizacao": {
+        "passed": 2,
+        "total": 2,
+        "score": 1.0
+      }
+    },
+    "answerability_counts": {
+      "answerable": 2
+    },
+    "root_cause_counts": {},
+    "severity_counts": {}
+  },
+  "items": [
+    {
+      "id": "V1_VIS_007",
+      "persona": "gestor_hospitalar",
+      "category": "visualizacao",
+      "difficulty": "medium",
+      "question": "Quais foram os procedimentos mais frequentes em 2019? Gere um grafico de barras.",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "visualizacao_procedimentos",
+      "status": "passed",
+      "evaluation_passed": true,
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "procedimento": "PARTO NORMAL",
+            "total_procedimentos": 969931
+          },
+          {
+            "procedimento": "PARTO CESARIANO",
+            "total_procedimentos": 694927
+          },
+          {
+            "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+            "total_procedimentos": 644659
+          },
+          {
+            "procedimento": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+            "total_procedimentos": 321392
+          },
+          {
+            "procedimento": "TRATAMENTO C/ CIRURGIAS MULTIPLAS",
+            "total_procedimentos": 280651
+          }
+        ],
+        "actual_preview": [
+          {
+            "procedimento": "PARTO NORMAL",
+            "total_procedimentos": 969931
+          },
+          {
+            "procedimento": "PARTO CESARIANO",
+            "total_procedimentos": 694927
+          },
+          {
+            "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+            "total_procedimentos": 644659
+          },
+          {
+            "procedimento": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+            "total_procedimentos": 321392
+          },
+          {
+            "procedimento": "TRATAMENTO C/ CIRURGIAS MULTIPLAS",
+            "total_procedimentos": 280651
+          }
+        ]
+      },
+      "success": true,
+      "technical_success": true,
+      "answerability": "answerable",
+      "response": "Resultados:\n1. Procedimento: PARTO NORMAL; Total de procedimentos: 969.931\n2. Procedimento: PARTO CESARIANO; Total de procedimentos: 694.927\n3. Procedimento: TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE); Total de procedimentos: 644.659\n4. Procedimento: TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS; Total de procedimentos: 321.392\n5. Procedimento: TRATAMENTO C/ CIRURGIAS MULTIPLAS; Total de procedimentos: 280.651\n6. Procedimento: TRATAMENTO DE INTERCORRENCIAS CLINICAS NA GRAVIDEZ; Total de procedimentos: 222.974\n7. Procedimento: TRATAMENTO DE INSUFICIENCIA CARDIACA; Total de procedimentos: 204.523\n8. Procedimento: TRATAMENTO DE DOENCAS INFECCIOSAS INTESTINAIS; Total de procedimentos: 201.482\n9. Procedimento: TRATAMENTO DE ACIDENTE VASCULAR CEREBRAL - AVC (ISQUEMICO OU HEMORRAGICO AGUDO); Total de procedimentos: 201.131\n10. Procedimento: DIAGNOSTICO E/OU ATENDIMENTO DE URGENCIA EM CLINICA MEDICA; Total de procedimentos: 198.704\n\nObservacoes de escopo: DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro. DQ012 (high): Procedimentos realizados sem descricao afeta 627 registros. Procedimentos orfaos impedem interpretacao assistencial do codigo PROC_REA.",
+      "sql": "SELECT p.\"NOME_PROC\" AS procedimento, COUNT(*) AS total_procedimentos FROM internacoes i JOIN internacao_procedimento ip ON i.\"N_AIH\" = ip.\"N_AIH\" JOIN procedimentos p ON ip.\"PROC_REA\" = p.\"PROC_REA\" WHERE p.\"NOME_PROC\" IS NOT NULL AND TRIM(p.\"NOME_PROC\") <> '' AND p.\"NOME_PROC\" NOT IN ('Nao preenchido', 'Nao informado') AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2019 GROUP BY p.\"NOME_PROC\" ORDER BY total_procedimentos DESC LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.95,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5,
+          "phases_completed": 7,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 10.113752841949463
+        },
+        "phases_completed": [
+          "initialization",
+          "reasoning",
+          "table_discovery",
+          "schema_analysis",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 1.215268611907959
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.103559970855713
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 1.6337251663208008
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "procedimentos",
+          "internacao_procedimento",
+          "internacoes"
+        ],
+        "schema_context_length": 16512,
+        "latency_by_component": {
+          "query_classification": 0.0002999305725097656,
+          "table_discovery": 1.2153494358062744,
+          "schema_analysis": 0.0008947849273681641,
+          "reasoning": 4.127121448516846,
+          "sql_generation": 0.0006279945373535156,
+          "sql_validation": 3.103591203689575,
+          "sql_execution": 1.633833885192871,
+          "completed": 0.0013616085052490234
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais foram os procedimentos mais frequentes em 2019? Gere um grafico de barras.",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "procedimento_ocorrencia",
+          "metrics": [
+            {
+              "name": "requested_metric",
+              "expression_type": "unknown",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "procedimento",
+              "source": "procedimentos.NOME_PROC",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2019"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "procedimento"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "procedimento"
+            ],
+            "filter_dimensions": [],
+            "counted_entity": "procedimento",
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "intent_plan": {
+          "user_question": "Quais foram os procedimentos mais frequentes em 2019? Gere um grafico de barras.",
+          "persona_hint": "common_user",
+          "primary_task": "ranking",
+          "presentation": "chart",
+          "metric_slots": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "cohort_slots": [],
+          "concept_slots": [],
+          "temporal_scope": {
+            "type": "year",
+            "n": null,
+            "start_year": 2019,
+            "end_year": 2019,
+            "date_column": "DT_INTER"
+          },
+          "grouping_slots": [],
+          "requested_tools": [],
+          "uncertainty": [],
+          "requires_clarification": false
+        },
+        "tool_plan": [
+          {
+            "name": "inspect_schema",
+            "reason": "confirm available tables and columns before SQL compilation"
+          },
+          {
+            "name": "resolve_temporal_scope",
+            "reason": "normalize requested time window"
+          },
+          {
+            "name": "compile_sql",
+            "reason": "compile the resolved domain plan to SQL"
+          },
+          {
+            "name": "execute_sql",
+            "reason": "execute validated SQL against the database"
+          },
+          {
+            "name": "validate_result_contract",
+            "reason": "check result shape and metric semantics"
+          },
+          {
+            "name": "build_chart",
+            "reason": "render a chart-compatible result"
+          }
+        ],
+        "plan_audit": {
+          "passed": true,
+          "errors": [],
+          "resolved_concepts": []
+        },
+        "result_audit": {
+          "passed": true,
+          "errors": [],
+          "warnings": [
+            {
+              "layer": "result_contract",
+              "code": "unlabeled_tuple_result",
+              "message": "Result parser returned positional tuples; column count matches chart contract."
+            }
+          ]
+        },
+        "structured_error": null,
+        "answerability": "answerable",
+        "technical_success": true,
+        "domain_caveats": [
+          "DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro.",
+          "DQ012 (high): Procedimentos realizados sem descricao afeta 627 registros. Procedimentos orfaos impedem interpretacao assistencial do codigo PROC_REA."
+        ],
+        "visualization_intent": {
+          "requested": true,
+          "source": "explicit_current_query",
+          "uses_last_result": false,
+          "chart_hint": "bar",
+          "reason": "Usuario pediu explicitamente grafico do tipo bar"
+        },
+        "chart_plan": {
+          "requested": true,
+          "chart_type": "bar",
+          "metric": "total_procedimentos",
+          "metric_expression": "COUNT procedure rows",
+          "x_dimension": "procedimento",
+          "series_dimension": null,
+          "y_column": "total_procedimentos",
+          "grain": "procedimento",
+          "expected_result_shape": "category_metric",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [
+            "procedimento",
+            "total_procedimentos"
+          ],
+          "sql_shape_guidance": "Return one row per procedimento with columns: procedimento, total_procedimentos.",
+          "reason": "structured chart parameters extracted before SQL generation"
+        },
+        "chart_spec": {
+          "chartable": true,
+          "chart_type": "bar",
+          "title": "total procedimentos por procedimento",
+          "x": "procedimento",
+          "y": "total_procedimentos",
+          "series": null,
+          "encoding": {
+            "x_type": "nominal",
+            "y_type": "quantitative"
+          },
+          "data": [
+            {
+              "procedimento": "PARTO NORMAL",
+              "total_procedimentos": 969931
+            },
+            {
+              "procedimento": "PARTO CESARIANO",
+              "total_procedimentos": 694927
+            },
+            {
+              "procedimento": "TRATAMENTO DE PNEUMONIAS OU INFLUENZA (GRIPE)",
+              "total_procedimentos": 644659
+            },
+            {
+              "procedimento": "TRATAMENTO DE OUTRAS DOENCAS BACTERIANAS",
+              "total_procedimentos": 321392
+            },
+            {
+              "procedimento": "TRATAMENTO C/ CIRURGIAS MULTIPLAS",
+              "total_procedimentos": 280651
+            },
+            {
+              "procedimento": "TRATAMENTO DE INTERCORRENCIAS CLINICAS NA GRAVIDEZ",
+              "total_procedimentos": 222974
+            },
+            {
+              "procedimento": "TRATAMENTO DE INSUFICIENCIA CARDIACA",
+              "total_procedimentos": 204523
+            },
+            {
+              "procedimento": "TRATAMENTO DE DOENCAS INFECCIOSAS INTESTINAIS",
+              "total_procedimentos": 201482
+            },
+            {
+              "procedimento": "TRATAMENTO DE ACIDENTE VASCULAR CEREBRAL - AVC (ISQUEMICO OU HEMORRAGICO AGUDO)",
+              "total_procedimentos": 201131
+            },
+            {
+              "procedimento": "DIAGNOSTICO E/OU ATENDIMENTO DE URGENCIA EM CLINICA MEDICA",
+              "total_procedimentos": 198704
+            }
+          ],
+          "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+          "warnings": [],
+          "presentation": {
+            "title": "Total procedimentos por procedimento",
+            "subtitle": "Ranking por valor",
+            "x_label": "Procedimento",
+            "y_label": "Total procedimentos",
+            "series_label": null,
+            "value_format": "integer",
+            "sort_order": "as_returned",
+            "footnote": null,
+            "summary": "PARTO NORMAL lidera com 969.931."
+          }
+        },
+        "intent_planning": {
+          "duration_seconds": 0.0047,
+          "primary_task": "ranking",
+          "presentation": "chart",
+          "tools": [
+            "inspect_schema",
+            "resolve_temporal_scope",
+            "compile_sql",
+            "execute_sql",
+            "validate_result_contract",
+            "build_chart"
+          ]
+        },
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "procedimentos",
+          "internacao_procedimento",
+          "internacoes"
+        ],
+        "llamaindex_confidence": 0.4629878762851483,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "procedimentos",
+          "internacao_procedimento",
+          "internacoes",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "procedimentos",
+          "internacao_procedimento",
+          "internacoes"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "procedimentos",
+          "internacao_procedimento",
+          "internacoes"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é identificar os procedimentos mais frequentes em 2019, utilizando a contagem como métrica. A dimensão 'procedimento' é utilizada para agrupar os resultados, e um filtro é aplicado para restringir os dados ao ano de 2019. O formato de resposta é um ranking dos 10 procedimentos mais frequentes.",
+          "conflicts": [
+            "unknown_metric_ignored: frequencia"
+          ],
+          "accepted_llm_fields": [
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic chart SQL generated from the semantic and chart plans.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": true,
+            "chart_type": "bar",
+            "metric": "total_procedimentos",
+            "metric_expression": "COUNT procedure rows",
+            "x_dimension": "procedimento",
+            "series_dimension": null,
+            "y_column": "total_procedimentos",
+            "grain": "procedimento",
+            "expected_result_shape": "category_metric",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [
+              "procedimento",
+              "total_procedimentos"
+            ],
+            "sql_shape_guidance": "Return one row per procedimento with columns: procedimento, total_procedimentos.",
+            "reason": "structured chart parameters extracted before SQL generation"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260522T205731_v1_vis_007",
+        "query_number": 1,
+        "orchestrator_execution_time": 10.14512825012207
+      },
+      "error": null,
+      "latency_seconds": 10.14512825012207,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "V1_VIS_008",
+      "persona": "gestor_hospitalar",
+      "category": "visualizacao",
+      "difficulty": "medium",
+      "question": "Quais UFs tiveram maior leitos SUS por 1000 habitantes em 2021? Gere um grafico.",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "visualizacao_socioeconomico",
+      "status": "passed",
+      "evaluation_passed": true,
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "uf": "RS",
+            "valor_indicador": 1.92
+          },
+          {
+            "uf": "SC",
+            "valor_indicador": 1.78
+          },
+          {
+            "uf": "PR",
+            "valor_indicador": 1.6
+          },
+          {
+            "uf": "GO",
+            "valor_indicador": 1.49
+          },
+          {
+            "uf": "TO",
+            "valor_indicador": 1.46
+          }
+        ],
+        "actual_preview": [
+          {
+            "estado": "RS",
+            "leitos_sus_1000": 1.92
+          },
+          {
+            "estado": "SC",
+            "leitos_sus_1000": 1.78
+          },
+          {
+            "estado": "PR",
+            "leitos_sus_1000": 1.6
+          },
+          {
+            "estado": "GO",
+            "leitos_sus_1000": 1.49
+          },
+          {
+            "estado": "TO",
+            "leitos_sus_1000": 1.46
+          }
+        ]
+      },
+      "success": true,
+      "technical_success": true,
+      "answerability": "answerable",
+      "response": "Resultados:\n1. Estado: RS; Leitos sus 1000: 1,92\n2. Estado: SC; Leitos sus 1000: 1,78\n3. Estado: PR; Leitos sus 1000: 1,6\n4. Estado: GO; Leitos sus 1000: 1,49\n5. Estado: TO; Leitos sus 1000: 1,46\n6. Estado: MT; Leitos sus 1000: 1,41\n7. Estado: DF; Leitos sus 1000: 1,39\n8. Estado: RN; Leitos sus 1000: 1,33\n9. Estado: PI; Leitos sus 1000: 1,27\n10. Estado: PB; Leitos sus 1000: 1,26\n... amostra parcial: mostrando 10 de 27 registros.\n\nObservacoes de escopo: DQ016 (high): municipios.SG_UF contem valores que nao sao UFs brasileiras afeta 18 registros. Valores numericos em SG_UF fazem perguntas sobre UFs retornarem 38 categorias em vez das 27 UFs validas.",
+      "sql": "SELECT mu.\"SG_UF\" AS estado, ROUND(AVG(s.\"VL_LEITOS_SUS_1000\"), 2) AS leitos_sus_1000 FROM socioeconomico s JOIN municipios mu ON s.\"CO_MUNICIPIO_6D\" = mu.\"CO_MUNICIPIO_6D\" WHERE s.\"VL_LEITOS_SUS_1000\" IS NOT NULL AND s.\"NU_ANO\" = 2021 GROUP BY mu.\"SG_UF\" ORDER BY leitos_sus_1000 DESC;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.95,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5,
+          "phases_completed": 7,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 7.614385366439819
+        },
+        "phases_completed": [
+          "initialization",
+          "reasoning",
+          "table_discovery",
+          "schema_analysis",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 1.1216363906860352
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.404857873916626
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.007357597351074219
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "socioeconomico",
+          "municipios"
+        ],
+        "schema_context_length": 8214,
+        "latency_by_component": {
+          "query_classification": 0.0002510547637939453,
+          "table_discovery": 1.1217033863067627,
+          "schema_analysis": 0.0004220008850097656,
+          "reasoning": 5.0509490966796875,
+          "sql_generation": 0.0008721351623535156,
+          "sql_validation": 1.4048893451690674,
+          "sql_execution": 0.007441282272338867,
+          "completed": 0.0003821849822998047
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais UFs tiveram maior leitos SUS por 1000 habitantes em 2021? Gere um grafico.",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "municipio_ano",
+          "metrics": [
+            {
+              "name": "leitos_sus_1000",
+              "expression_type": "ratio",
+              "required_filters": [
+                "SUM(s.\"QT_LEITOS_SUS\")",
+                "SUM(s.\"QT_POPULACAO\")",
+                "1000"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "socioeconomico_column_metric_required"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "intent_plan": {
+          "user_question": "Quais UFs tiveram maior leitos SUS por 1000 habitantes em 2021? Gere um grafico.",
+          "persona_hint": "common_user",
+          "primary_task": "ranking",
+          "presentation": "chart",
+          "metric_slots": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "cohort_slots": [],
+          "concept_slots": [],
+          "temporal_scope": {
+            "type": "year",
+            "n": null,
+            "start_year": 2021,
+            "end_year": 2021,
+            "date_column": "DT_INTER"
+          },
+          "grouping_slots": [],
+          "requested_tools": [],
+          "uncertainty": [],
+          "requires_clarification": false
+        },
+        "tool_plan": [
+          {
+            "name": "inspect_schema",
+            "reason": "confirm available tables and columns before SQL compilation"
+          },
+          {
+            "name": "resolve_temporal_scope",
+            "reason": "normalize requested time window"
+          },
+          {
+            "name": "compile_sql",
+            "reason": "compile the resolved domain plan to SQL"
+          },
+          {
+            "name": "execute_sql",
+            "reason": "execute validated SQL against the database"
+          },
+          {
+            "name": "validate_result_contract",
+            "reason": "check result shape and metric semantics"
+          },
+          {
+            "name": "build_chart",
+            "reason": "render a chart-compatible result"
+          }
+        ],
+        "plan_audit": {
+          "passed": true,
+          "errors": [],
+          "resolved_concepts": []
+        },
+        "result_audit": {
+          "passed": true,
+          "errors": [],
+          "warnings": [
+            {
+              "layer": "result_contract",
+              "code": "unlabeled_tuple_result",
+              "message": "Result parser returned positional tuples; column count matches chart contract."
+            }
+          ]
+        },
+        "structured_error": null,
+        "answerability": "answerable",
+        "technical_success": true,
+        "domain_caveats": [
+          "DQ016 (high): municipios.SG_UF contem valores que nao sao UFs brasileiras afeta 18 registros. Valores numericos em SG_UF fazem perguntas sobre UFs retornarem 38 categorias em vez das 27 UFs validas."
+        ],
+        "visualization_intent": {
+          "requested": true,
+          "source": "explicit_current_query",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": "Usuario pediu explicitamente visualizacao em grafico"
+        },
+        "chart_plan": {
+          "requested": true,
+          "chart_type": "bar",
+          "metric": "leitos_sus_1000",
+          "metric_expression": "AVG(\"VL_LEITOS_SUS_1000\")",
+          "x_dimension": "estado",
+          "series_dimension": null,
+          "y_column": "leitos_sus_1000",
+          "grain": "estado",
+          "expected_result_shape": "category_metric",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [
+            "estado",
+            "leitos_sus_1000"
+          ],
+          "sql_shape_guidance": "Return one row per estado with columns: estado, leitos_sus_1000.",
+          "reason": "structured chart parameters extracted before SQL generation"
+        },
+        "chart_spec": {
+          "chartable": true,
+          "chart_type": "bar",
+          "title": "leitos sus 1000 por estado",
+          "x": "estado",
+          "y": "leitos_sus_1000",
+          "series": null,
+          "encoding": {
+            "x_type": "nominal",
+            "y_type": "quantitative"
+          },
+          "data": [
+            {
+              "estado": "RS",
+              "leitos_sus_1000": 1.92
+            },
+            {
+              "estado": "SC",
+              "leitos_sus_1000": 1.78
+            },
+            {
+              "estado": "PR",
+              "leitos_sus_1000": 1.6
+            },
+            {
+              "estado": "GO",
+              "leitos_sus_1000": 1.49
+            },
+            {
+              "estado": "TO",
+              "leitos_sus_1000": 1.46
+            },
+            {
+              "estado": "MT",
+              "leitos_sus_1000": 1.41
+            },
+            {
+              "estado": "DF",
+              "leitos_sus_1000": 1.39
+            },
+            {
+              "estado": "RN",
+              "leitos_sus_1000": 1.33
+            },
+            {
+              "estado": "PI",
+              "leitos_sus_1000": 1.27
+            },
+            {
+              "estado": "PB",
+              "leitos_sus_1000": 1.26
+            },
+            {
+              "estado": "RJ",
+              "leitos_sus_1000": 1.25
+            },
+            {
+              "estado": "SP",
+              "leitos_sus_1000": 1.14
+            },
+            {
+              "estado": "MG",
+              "leitos_sus_1000": 1.12
+            },
+            {
+              "estado": "BA",
+              "leitos_sus_1000": 1.11
+            },
+            {
+              "estado": "MA",
+              "leitos_sus_1000": 1.1
+            }
+          ],
+          "reason": "Grafico planejado a partir de ChartPlan pre-SQL estruturado.",
+          "warnings": [
+            {
+              "code": "bar_limited_for_readability",
+              "message": "Exibindo os 15 maiores valores de 27 categorias.",
+              "severity": "info"
+            }
+          ],
+          "presentation": {
+            "title": "Leitos sus 1000 por estado",
+            "subtitle": "Ranking por valor",
+            "x_label": "Estado",
+            "y_label": "Leitos sus 1000",
+            "series_label": null,
+            "value_format": "integer",
+            "sort_order": "as_returned",
+            "footnote": "Exibindo os 15 maiores valores de 27 categorias.",
+            "summary": "RS lidera com 2."
+          }
+        },
+        "intent_planning": {
+          "duration_seconds": 0.0017,
+          "primary_task": "ranking",
+          "presentation": "chart",
+          "tools": [
+            "inspect_schema",
+            "resolve_temporal_scope",
+            "compile_sql",
+            "execute_sql",
+            "validate_result_contract",
+            "build_chart"
+          ]
+        },
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "socioeconomico",
+          "municipios"
+        ],
+        "llamaindex_confidence": 0.4118621907108669,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "socioeconomico",
+          "municipios",
+          "internacoes",
+          "hospital"
+        ],
+        "validated_selected_tables": [
+          "socioeconomico",
+          "municipios"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "socioeconomico",
+          "municipios"
+        ],
+        "semantic_constraints": [
+          "socioeconomico_column_metric_required"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é identificar quais UFs possuem a maior quantidade de leitos SUS por 1000 habitantes em 2021. A métrica 'leitos_sus_1000' é calculada como uma razão entre a soma dos leitos SUS e a soma da população, multiplicada por 1000. As dimensões incluem o estado, que é agrupado para permitir a comparação entre as UFs. O filtro é aplicado para restringir os dados ao ano de 2021. O formato da resposta é uma tabela agrupada por estado, com uma linha por grupo, que é adequado para visualização em gráfico.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic chart SQL generated from the semantic and chart plans.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": true,
+            "chart_type": "bar",
+            "metric": "leitos_sus_1000",
+            "metric_expression": "AVG(\"VL_LEITOS_SUS_1000\")",
+            "x_dimension": "estado",
+            "series_dimension": null,
+            "y_column": "leitos_sus_1000",
+            "grain": "estado",
+            "expected_result_shape": "category_metric",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [
+              "estado",
+              "leitos_sus_1000"
+            ],
+            "sql_shape_guidance": "Return one row per estado with columns: estado, leitos_sus_1000.",
+            "reason": "structured chart parameters extracted before SQL generation"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "socioeconomico_column_metric_required"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260522T205731_v1_vis_008",
+        "query_number": 2,
+        "orchestrator_execution_time": 7.633193492889404
+      },
+      "error": null,
+      "latency_seconds": 7.633193492889404,
+      "root_cause": null,
+      "severity": null
+    }
+  ]
+}

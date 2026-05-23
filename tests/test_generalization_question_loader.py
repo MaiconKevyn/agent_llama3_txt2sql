@@ -6,7 +6,9 @@ from evaluation.agent.generalization_rubric import load_generalization_questions
 
 
 def test_load_generalization_questions_has_required_fields():
-    questions = load_generalization_questions(Path("evaluation/agent/generalization_questions.jsonl"))
+    questions = load_generalization_questions(
+        Path("evaluation/agent/generalization_questions.jsonl")
+    )
 
     assert len(questions) >= 12
     ids = [item.id for item in questions]
@@ -44,7 +46,9 @@ def test_jsonl_is_valid_one_object_per_line():
 
 
 def test_generalization_corpus_meets_plan_coverage_targets():
-    questions = load_generalization_questions(Path("evaluation/agent/generalization_questions.jsonl"))
+    questions = load_generalization_questions(
+        Path("evaluation/agent/generalization_questions.jsonl")
+    )
     total = len(questions)
     behavior_counts = Counter(item.expected_behavior for item in questions)
     category_counts = Counter(item.category for item in questions)

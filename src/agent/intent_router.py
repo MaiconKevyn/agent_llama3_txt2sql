@@ -16,7 +16,6 @@ from __future__ import annotations
 import os
 import threading
 from dataclasses import dataclass
-from typing import Optional
 
 from ..utils.logging_config import get_nodes_logger
 
@@ -77,10 +76,10 @@ _SCHEMA_UTTERANCES = (
 class IntentRouterResult:
     """Outcome of a semantic-router classification."""
 
-    route: Optional[str]
-    score: Optional[float]
-    matched_utterance: Optional[str] = None
-    fallback_reason: Optional[str] = None
+    route: str | None
+    score: float | None
+    matched_utterance: str | None = None
+    fallback_reason: str | None = None
 
 
 _router_lock = threading.Lock()
@@ -98,7 +97,9 @@ def _build_router():
         raise RuntimeError("OPENAI_API_KEY is not set; semantic router requires it.")
 
     routes = [
-        Route(name="DATABASE", utterances=list(_DATABASE_UTTERANCES), score_threshold=MIN_SIMILARITY),
+        Route(
+            name="DATABASE", utterances=list(_DATABASE_UTTERANCES), score_threshold=MIN_SIMILARITY
+        ),
         Route(
             name="CONVERSATIONAL",
             utterances=list(_CONVERSATIONAL_UTTERANCES),
@@ -137,13 +138,17 @@ def classify_intent(user_query: str) -> IntentRouterResult:
         router = get_router()
     except Exception as exc:
         logger.warning("Semantic router unavailable; falling back", extra={"error": str(exc)})
-        return IntentRouterResult(route=None, score=None, fallback_reason=f"router_init_error: {exc}")
+        return IntentRouterResult(
+            route=None, score=None, fallback_reason=f"router_init_error: {exc}"
+        )
 
     try:
         choice = router(user_query)
     except Exception as exc:
         logger.warning("Semantic router call failed; falling back", extra={"error": str(exc)})
-        return IntentRouterResult(route=None, score=None, fallback_reason=f"router_call_error: {exc}")
+        return IntentRouterResult(
+            route=None, score=None, fallback_reason=f"router_call_error: {exc}"
+        )
 
     route_name = getattr(choice, "name", None)
     if route_name is None:

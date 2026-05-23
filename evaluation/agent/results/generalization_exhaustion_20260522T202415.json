@@ -1,0 +1,4461 @@
+{
+  "run_id": "generalization_exhaustion_20260522T202415",
+  "created_at": "2026-05-22T20:26:12",
+  "dry_run": false,
+  "summary": {
+    "status_counts": {
+      "passed": 10
+    },
+    "scored_total": 10,
+    "score": 1.0,
+    "category_scores": {
+      "custos_permanencia": {
+        "passed": 10,
+        "total": 10,
+        "score": 1.0
+      }
+    },
+    "answerability_counts": {
+      "answerable": 10
+    },
+    "root_cause_counts": {},
+    "severity_counts": {}
+  },
+  "items": [
+    {
+      "id": "V1_COST_001",
+      "persona": "gestor_hospitalar",
+      "category": "custos_permanencia",
+      "difficulty": "medium",
+      "question": "Qual foi o valor total de internacoes por UF de residencia em 2019?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "custo_total_uf",
+      "status": "passed",
+      "evaluation_passed": true,
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "uf_residencia": "SP",
+            "valor_total": 4153466167.85
+          },
+          {
+            "uf_residencia": "MG",
+            "valor_total": 2344805011.1
+          },
+          {
+            "uf_residencia": "PR",
+            "valor_total": 1783741470.11
+          },
+          {
+            "uf_residencia": "RS",
+            "valor_total": 1327447867.44
+          },
+          {
+            "uf_residencia": "RJ",
+            "valor_total": 1146285509.92
+          }
+        ],
+        "actual_preview": [
+          {
+            "uf_residencia": "SP",
+            "valor_total": 4153466167.85
+          },
+          {
+            "uf_residencia": "MG",
+            "valor_total": 2344805011.1
+          },
+          {
+            "uf_residencia": "PR",
+            "valor_total": 1783741470.11
+          },
+          {
+            "uf_residencia": "RS",
+            "valor_total": 1327447867.44
+          },
+          {
+            "uf_residencia": "RJ",
+            "valor_total": 1146285509.92
+          }
+        ]
+      },
+      "success": true,
+      "technical_success": true,
+      "answerability": "answerable",
+      "response": "Resultados:\n1. Uf residencia: SP; Valor total: 4.153.466.167,85\n2. Uf residencia: MG; Valor total: 2.344.805.011,1\n3. Uf residencia: PR; Valor total: 1.783.741.470,11\n4. Uf residencia: RS; Valor total: 1.327.447.867,44\n5. Uf residencia: RJ; Valor total: 1.146.285.509,92\n6. Uf residencia: BA; Valor total: 1.042.171.388,61\n7. Uf residencia: PE; Valor total: 923.543.231,19\n8. Uf residencia: SC; Valor total: 895.557.466,28\n9. Uf residencia: CE; Valor total: 704.405.321,06\n10. Uf residencia: GO; Valor total: 572.878.186,33\n... amostra parcial: mostrando 10 de 27 registros.\n\nObservacoes de escopo: DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro. DQ010 (high): Internacoes com municipio de residencia sem correspondencia afeta 1.270.397 registros. Municipios orfaos prejudicam analises territoriais. DQ016 (high): municipios.SG_UF contem valores que nao sao UFs brasileiras afeta 18 registros. Valores numericos em SG_UF fazem perguntas sobre UFs retornarem 38 categorias em vez das 27 UFs validas.",
+      "sql": "SELECT mu.\"SG_UF\" AS \"uf_residencia\", ROUND(SUM(i.\"VAL_TOT\"), 2) AS \"valor_total\" FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2019 AND i.\"VAL_TOT\" IS NOT NULL GROUP BY mu.\"SG_UF\" ORDER BY \"valor_total\" DESC;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5,
+          "phases_completed": 7,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 8.425195693969727
+        },
+        "phases_completed": [
+          "initialization",
+          "reasoning",
+          "table_discovery",
+          "schema_analysis",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 1.244802713394165
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.153475522994995
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.5294489860534668
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "schema_context_length": 16512,
+        "latency_by_component": {
+          "query_classification": 0.0008943080902099609,
+          "table_discovery": 1.2448885440826416,
+          "schema_analysis": 0.0009312629699707031,
+          "reasoning": 4.464076042175293,
+          "sql_generation": 0.0008995532989501953,
+          "sql_validation": 2.153507709503174,
+          "sql_execution": 0.5295586585998535,
+          "completed": 0.0010938644409179688
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi o valor total de internacoes por UF de residencia em 2019?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "distribution",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "valor_total_internacoes",
+              "expression_type": "sum",
+              "required_filters": [
+                "SUM(VAL_TOT)"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2019"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "intent_plan": {
+          "user_question": "Qual foi o valor total de internacoes por UF de residencia em 2019?",
+          "persona_hint": "common_user",
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "metric_slots": [
+            {
+              "name": "receita_total",
+              "expression_type": "sum",
+              "required_filters": []
+            }
+          ],
+          "cohort_slots": [],
+          "concept_slots": [],
+          "temporal_scope": {
+            "type": "year",
+            "n": null,
+            "start_year": 2019,
+            "end_year": 2019,
+            "date_column": "DT_INTER"
+          },
+          "grouping_slots": [
+            {
+              "name": "estado"
+            }
+          ],
+          "requested_tools": [],
+          "uncertainty": [],
+          "requires_clarification": false
+        },
+        "tool_plan": [
+          {
+            "name": "inspect_schema",
+            "reason": "confirm available tables and columns before SQL compilation"
+          },
+          {
+            "name": "resolve_temporal_scope",
+            "reason": "normalize requested time window"
+          },
+          {
+            "name": "resolve_join_policy",
+            "reason": "validate joins required by dimensions and concepts"
+          },
+          {
+            "name": "compile_sql",
+            "reason": "compile the resolved domain plan to SQL"
+          },
+          {
+            "name": "execute_sql",
+            "reason": "execute validated SQL against the database"
+          },
+          {
+            "name": "validate_result_contract",
+            "reason": "check result shape and metric semantics"
+          }
+        ],
+        "plan_audit": {
+          "passed": true,
+          "errors": [],
+          "resolved_concepts": []
+        },
+        "result_audit": {
+          "passed": true,
+          "errors": [],
+          "warnings": []
+        },
+        "structured_error": null,
+        "answerability": "answerable",
+        "technical_success": true,
+        "domain_caveats": [
+          "DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro.",
+          "DQ010 (high): Internacoes com municipio de residencia sem correspondencia afeta 1.270.397 registros. Municipios orfaos prejudicam analises territoriais.",
+          "DQ016 (high): municipios.SG_UF contem valores que nao sao UFs brasileiras afeta 18 registros. Valores numericos em SG_UF fazem perguntas sobre UFs retornarem 38 categorias em vez das 27 UFs validas."
+        ],
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "intent_planning": {
+          "duration_seconds": 0.0053,
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "tools": [
+            "inspect_schema",
+            "resolve_temporal_scope",
+            "resolve_join_policy",
+            "compile_sql",
+            "execute_sql",
+            "validate_result_contract"
+          ]
+        },
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.4491447776898674,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "internacao_procedimento"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é calcular a distribuição do valor total de internações por UF de residência em 2019. A métrica escolhida é a soma do valor total das internações, agrupada por estado de residência. O filtro aplicado é para o ano de 2019, garantindo que os dados sejam relevantes para o período solicitado.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260522T202415_v1_cost_001",
+        "query_number": 1,
+        "orchestrator_execution_time": 8.449596405029297
+      },
+      "error": null,
+      "latency_seconds": 8.449596405029297,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "V1_COST_002",
+      "persona": "gestor_hospitalar",
+      "category": "custos_permanencia",
+      "difficulty": "medium",
+      "question": "Qual foi o valor total de internacoes por UF de residencia em 2020?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "custo_total_uf",
+      "status": "passed",
+      "evaluation_passed": true,
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "uf_residencia": "SP",
+            "valor_total": 4950924292.65
+          },
+          {
+            "uf_residencia": "MG",
+            "valor_total": 2577399237.25
+          },
+          {
+            "uf_residencia": "PR",
+            "valor_total": 1857210768.11
+          },
+          {
+            "uf_residencia": "RS",
+            "valor_total": 1568173261.6
+          },
+          {
+            "uf_residencia": "RJ",
+            "valor_total": 1290754959.94
+          }
+        ],
+        "actual_preview": [
+          {
+            "uf_residencia": "SP",
+            "valor_total": 4950924292.65
+          },
+          {
+            "uf_residencia": "MG",
+            "valor_total": 2577399237.25
+          },
+          {
+            "uf_residencia": "PR",
+            "valor_total": 1857210768.11
+          },
+          {
+            "uf_residencia": "RS",
+            "valor_total": 1568173261.6
+          },
+          {
+            "uf_residencia": "RJ",
+            "valor_total": 1290754959.94
+          }
+        ]
+      },
+      "success": true,
+      "technical_success": true,
+      "answerability": "answerable",
+      "response": "Resultados:\n1. Uf residencia: SP; Valor total: 4.950.924.292,65\n2. Uf residencia: MG; Valor total: 2.577.399.237,25\n3. Uf residencia: PR; Valor total: 1.857.210.768,11\n4. Uf residencia: RS; Valor total: 1.568.173.261,6\n5. Uf residencia: RJ; Valor total: 1.290.754.959,94\n6. Uf residencia: BA; Valor total: 1.205.925.036,17\n7. Uf residencia: SC; Valor total: 1.048.970.755,46\n8. Uf residencia: PE; Valor total: 1.031.957.013,05\n9. Uf residencia: CE; Valor total: 803.788.696,24\n10. Uf residencia: GO; Valor total: 683.160.426,44\n... amostra parcial: mostrando 10 de 27 registros.\n\nObservacoes de escopo: DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro. DQ010 (high): Internacoes com municipio de residencia sem correspondencia afeta 1.270.397 registros. Municipios orfaos prejudicam analises territoriais. DQ016 (high): municipios.SG_UF contem valores que nao sao UFs brasileiras afeta 18 registros. Valores numericos em SG_UF fazem perguntas sobre UFs retornarem 38 categorias em vez das 27 UFs validas.",
+      "sql": "SELECT mu.\"SG_UF\" AS \"uf_residencia\", ROUND(SUM(i.\"VAL_TOT\"), 2) AS \"valor_total\" FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 AND i.\"VAL_TOT\" IS NOT NULL GROUP BY mu.\"SG_UF\" ORDER BY \"valor_total\" DESC;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5,
+          "phases_completed": 7,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 7.751626014709473
+        },
+        "phases_completed": [
+          "initialization",
+          "reasoning",
+          "table_discovery",
+          "schema_analysis",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.4781498908996582
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.154600143432617
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.19421982765197754
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "internacao_procedimento",
+          "municipios",
+          "procedimentos"
+        ],
+        "schema_context_length": 20599,
+        "latency_by_component": {
+          "query_classification": 0.0002956390380859375,
+          "table_discovery": 0.47821831703186035,
+          "schema_analysis": 0.000606536865234375,
+          "reasoning": 4.897050380706787,
+          "sql_generation": 0.0010118484497070312,
+          "sql_validation": 2.154630184173584,
+          "sql_execution": 0.19434094429016113,
+          "completed": 0.00036787986755371094
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi o valor total de internacoes por UF de residencia em 2020?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "distribution",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "valor_total_internacoes",
+              "expression_type": "sum",
+              "required_filters": [
+                "SUM(VAL_TOT)"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "intent_plan": {
+          "user_question": "Qual foi o valor total de internacoes por UF de residencia em 2020?",
+          "persona_hint": "common_user",
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "metric_slots": [
+            {
+              "name": "receita_total",
+              "expression_type": "sum",
+              "required_filters": []
+            }
+          ],
+          "cohort_slots": [],
+          "concept_slots": [],
+          "temporal_scope": {
+            "type": "year",
+            "n": null,
+            "start_year": 2020,
+            "end_year": 2020,
+            "date_column": "DT_INTER"
+          },
+          "grouping_slots": [
+            {
+              "name": "estado"
+            }
+          ],
+          "requested_tools": [],
+          "uncertainty": [],
+          "requires_clarification": false
+        },
+        "tool_plan": [
+          {
+            "name": "inspect_schema",
+            "reason": "confirm available tables and columns before SQL compilation"
+          },
+          {
+            "name": "resolve_temporal_scope",
+            "reason": "normalize requested time window"
+          },
+          {
+            "name": "resolve_join_policy",
+            "reason": "validate joins required by dimensions and concepts"
+          },
+          {
+            "name": "compile_sql",
+            "reason": "compile the resolved domain plan to SQL"
+          },
+          {
+            "name": "execute_sql",
+            "reason": "execute validated SQL against the database"
+          },
+          {
+            "name": "validate_result_contract",
+            "reason": "check result shape and metric semantics"
+          }
+        ],
+        "plan_audit": {
+          "passed": true,
+          "errors": [],
+          "resolved_concepts": []
+        },
+        "result_audit": {
+          "passed": true,
+          "errors": [],
+          "warnings": []
+        },
+        "structured_error": null,
+        "answerability": "answerable",
+        "technical_success": true,
+        "domain_caveats": [
+          "DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro.",
+          "DQ010 (high): Internacoes com municipio de residencia sem correspondencia afeta 1.270.397 registros. Municipios orfaos prejudicam analises territoriais.",
+          "DQ016 (high): municipios.SG_UF contem valores que nao sao UFs brasileiras afeta 18 registros. Valores numericos em SG_UF fazem perguntas sobre UFs retornarem 38 categorias em vez das 27 UFs validas."
+        ],
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "intent_planning": {
+          "duration_seconds": 0.0021,
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "tools": [
+            "inspect_schema",
+            "resolve_temporal_scope",
+            "resolve_join_policy",
+            "compile_sql",
+            "execute_sql",
+            "validate_result_contract"
+          ]
+        },
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "municipios",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.44625554541467266,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "municipios"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "municipios",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "municipios",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é calcular a distribuição do valor total de internações por UF de residência em 2020. A métrica escolhida é a soma do valor total das internações, agrupada por estado de residência, que é a dimensão relevante para a análise. O filtro aplicado garante que apenas os dados do ano de 2020 sejam considerados.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260522T202415_v1_cost_002",
+        "query_number": 2,
+        "orchestrator_execution_time": 7.770830392837524
+      },
+      "error": null,
+      "latency_seconds": 7.770830392837524,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "V1_COST_003",
+      "persona": "medico_pesquisador",
+      "category": "custos_permanencia",
+      "difficulty": "hard",
+      "question": "Qual foi o custo medio de internacao por doencas respiratorias em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "custo_medio_condicao",
+      "status": "passed",
+      "evaluation_passed": true,
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "total_internacoes": 803361,
+            "custo_medio": 2302.36
+          }
+        ],
+        "actual_preview": [
+          {
+            "total_internacoes": 803361,
+            "custo_medio": 2302.36
+          }
+        ]
+      },
+      "success": true,
+      "technical_success": true,
+      "answerability": "answerable",
+      "response": "Resultado: Total de internacoes: 803.361; Custo medio: 2.302,36.\n\nObservacoes de escopo: Causas respiratorias foram operacionalizadas como CID J00-J99. DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro. DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo.",
+      "sql": "SELECT COUNT(*) AS total_internacoes, ROUND(AVG(i.\"VAL_TOT\"), 2) AS custo_medio FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND (i.\"DIAG_PRINC\" LIKE 'J%') AND (c.\"CID\" LIKE 'J%' OR c.\"DESCRICAO\" ILIKE '%doenca respiratoria%' OR c.\"DS_CATEGORIA\" ILIKE '%doenca respiratoria%' OR c.\"DS_GRUPO\" ILIKE '%doenca respiratoria%' OR c.\"DS_CAPITULO\" ILIKE '%doenca respiratoria%' OR c.\"DESCRICAO\" ILIKE '%doenca pulmonar%' OR c.\"DS_CATEGORIA\" ILIKE '%doenca pulmonar%' OR c.\"DS_GRUPO\" ILIKE '%doenca pulmonar%' OR c.\"DS_CAPITULO\" ILIKE '%doenca pulmonar%');",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5,
+          "phases_completed": 7,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 18.389190196990967
+        },
+        "phases_completed": [
+          "initialization",
+          "reasoning",
+          "table_discovery",
+          "schema_analysis",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.47260522842407227
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 4.637162446975708
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.3458266258239746
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.0002961158752441406,
+          "table_discovery": 0.4726707935333252,
+          "schema_analysis": 0.00038933753967285156,
+          "reasoning": 12.904203176498413,
+          "sql_generation": 0.0009627342224121094,
+          "sql_validation": 4.637201547622681,
+          "sql_execution": 0.3459334373474121,
+          "completed": 0.0002944469451904297
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi o custo medio de internacao por doencas respiratorias em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "rate",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "media",
+              "expression_type": "avg",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "diagnostico_principal_prefix",
+              "values": [
+                "J%"
+              ],
+              "operator": "LIKE"
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "values": [
+                "CID J00-J99 - Doencas do aparelho respiratorio"
+              ],
+              "operator": "metadata"
+            },
+            {
+              "field": "diagnostico_conceito_termo_expandido",
+              "values": [
+                "doenca respiratoria",
+                "doenca pulmonar",
+                "cid j"
+              ],
+              "operator": "metadata"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [
+              "diagnostico"
+            ],
+            "forbidden_output_dimensions": [
+              "diagnostico"
+            ]
+          },
+          "constraints": [
+            "diagnosis_filter_dimension_not_output"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "intent_plan": {
+          "user_question": "Qual foi o custo medio de internacao por doencas respiratorias em 2021?",
+          "persona_hint": "manager",
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "metric_slots": [
+            {
+              "name": "receita_total",
+              "expression_type": "sum",
+              "required_filters": []
+            }
+          ],
+          "cohort_slots": [],
+          "concept_slots": [
+            {
+              "name": "clinical_concept",
+              "concept_type": "clinical",
+              "filters": [
+                {
+                  "field": "diagnostico_principal_prefix",
+                  "values": [
+                    "J%"
+                  ],
+                  "operator": "LIKE"
+                },
+                {
+                  "field": "diagnostico_conceito_label",
+                  "values": [
+                    "CID J00-J99 - Doencas do aparelho respiratorio"
+                  ],
+                  "operator": "metadata"
+                }
+              ]
+            }
+          ],
+          "temporal_scope": {
+            "type": "year",
+            "n": null,
+            "start_year": 2021,
+            "end_year": 2021,
+            "date_column": "DT_INTER"
+          },
+          "grouping_slots": [],
+          "requested_tools": [],
+          "uncertainty": [],
+          "requires_clarification": false
+        },
+        "tool_plan": [
+          {
+            "name": "inspect_schema",
+            "reason": "confirm available tables and columns before SQL compilation"
+          },
+          {
+            "name": "resolve_concepts",
+            "reason": "normalize clinical, population, or operational concepts"
+          },
+          {
+            "name": "resolve_temporal_scope",
+            "reason": "normalize requested time window"
+          },
+          {
+            "name": "resolve_join_policy",
+            "reason": "validate joins required by dimensions and concepts"
+          },
+          {
+            "name": "compile_sql",
+            "reason": "compile the resolved domain plan to SQL"
+          },
+          {
+            "name": "execute_sql",
+            "reason": "execute validated SQL against the database"
+          },
+          {
+            "name": "validate_result_contract",
+            "reason": "check result shape and metric semantics"
+          }
+        ],
+        "plan_audit": {
+          "passed": true,
+          "errors": [],
+          "resolved_concepts": [
+            "respiratory_cid"
+          ]
+        },
+        "result_audit": {
+          "passed": true,
+          "errors": [],
+          "warnings": []
+        },
+        "structured_error": null,
+        "answerability": "answerable",
+        "technical_success": true,
+        "domain_caveats": [
+          "Causas respiratorias foram operacionalizadas como CID J00-J99.",
+          "DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro.",
+          "DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo."
+        ],
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "intent_planning": {
+          "duration_seconds": 0.0017,
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "tools": [
+            "inspect_schema",
+            "resolve_concepts",
+            "resolve_temporal_scope",
+            "resolve_join_policy",
+            "compile_sql",
+            "execute_sql",
+            "validate_result_contract"
+          ]
+        },
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.37974983328214335,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "cid",
+          "internacao_procedimento"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "diagnosis_filter_dimension_not_output"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é calcular a média do custo de internação para doenças respiratórias em 2021. A métrica escolhida é a média do custo, filtrando por ano e pelo diagnóstico relacionado a doenças respiratórias. Não há dimensões adicionais necessárias, pois o foco é no custo médio.",
+          "conflicts": [
+            "unknown_metric_ignored: custo_medio",
+            "metric_mismatch: heuristic=['media']; llm=['custo_medio']"
+          ],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic scalar SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "diagnosis_filter_dimension_not_output"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260522T202415_v1_cost_003",
+        "query_number": 3,
+        "orchestrator_execution_time": 18.408182621002197
+      },
+      "error": null,
+      "latency_seconds": 18.408182621002197,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "V1_COST_004",
+      "persona": "medico_pesquisador",
+      "category": "custos_permanencia",
+      "difficulty": "hard",
+      "question": "Qual foi o custo medio de internacao por covid em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "custo_medio_condicao",
+      "status": "passed",
+      "evaluation_passed": true,
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "total_internacoes": 1153020,
+            "custo_medio": 10692.34
+          }
+        ],
+        "actual_preview": [
+          {
+            "total_internacoes": 1153020,
+            "custo_medio": 10692.34
+          }
+        ]
+      },
+      "success": true,
+      "technical_success": true,
+      "answerability": "answerable",
+      "response": "Resultado: Total de internacoes: 1.153.020; Custo medio: 10.692,34.\n\nObservacoes de escopo: DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro. DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo.",
+      "sql": "SELECT COUNT(*) AS total_internacoes, ROUND(AVG(i.\"VAL_TOT\"), 2) AS custo_medio FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND i.\"DIAG_PRINC\" IN ('B342', 'B972') AND (c.\"CID\" IN ('B342', 'B972') OR c.\"DESCRICAO\" ILIKE '%covid%' OR c.\"DS_CATEGORIA\" ILIKE '%covid%' OR c.\"DS_GRUPO\" ILIKE '%covid%' OR c.\"DS_CAPITULO\" ILIKE '%covid%' OR c.\"DESCRICAO\" ILIKE '%coronavirus%' OR c.\"DS_CATEGORIA\" ILIKE '%coronavirus%' OR c.\"DS_GRUPO\" ILIKE '%coronavirus%' OR c.\"DS_CAPITULO\" ILIKE '%coronavirus%');",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5,
+          "phases_completed": 7,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 8.613826274871826
+        },
+        "phases_completed": [
+          "initialization",
+          "reasoning",
+          "table_discovery",
+          "schema_analysis",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.4712178707122803
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.875079870223999
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.31272053718566895
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid"
+        ],
+        "schema_context_length": 15248,
+        "latency_by_component": {
+          "query_classification": 0.0003495216369628906,
+          "table_discovery": 0.4712834358215332,
+          "schema_analysis": 0.0006062984466552734,
+          "reasoning": 4.930901527404785,
+          "sql_generation": 0.0007221698760986328,
+          "sql_validation": 2.875107526779175,
+          "sql_execution": 0.31282639503479004,
+          "completed": 0.0002777576446533203
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi o custo medio de internacao por covid em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "rate",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "media",
+              "expression_type": "avg",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "diagnostico_principal_codigo",
+              "values": [
+                "B342",
+                "B972"
+              ],
+              "operator": "IN"
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "values": [
+                "B342 - Infecc p/coronavirus NE",
+                "B972 - Coronavirus como causa de doenc class outr cap"
+              ],
+              "operator": "metadata"
+            },
+            {
+              "field": "diagnostico_conceito_termo_expandido",
+              "values": [
+                "covid",
+                "coronavirus"
+              ],
+              "operator": "metadata"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "diagnosis_filter_dimension_not_output"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "intent_plan": {
+          "user_question": "Qual foi o custo medio de internacao por covid em 2021?",
+          "persona_hint": "manager",
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "metric_slots": [
+            {
+              "name": "receita_total",
+              "expression_type": "sum",
+              "required_filters": []
+            }
+          ],
+          "cohort_slots": [],
+          "concept_slots": [
+            {
+              "name": "clinical_concept",
+              "concept_type": "clinical",
+              "filters": [
+                {
+                  "field": "diagnostico_principal_codigo",
+                  "values": [
+                    "B342",
+                    "B972"
+                  ],
+                  "operator": "IN"
+                },
+                {
+                  "field": "diagnostico_conceito_label",
+                  "values": [
+                    "B342 - Infecc p/coronavirus NE",
+                    "B972 - Coronavirus como causa de doenc class outr cap"
+                  ],
+                  "operator": "metadata"
+                }
+              ]
+            }
+          ],
+          "temporal_scope": {
+            "type": "year",
+            "n": null,
+            "start_year": 2021,
+            "end_year": 2021,
+            "date_column": "DT_INTER"
+          },
+          "grouping_slots": [],
+          "requested_tools": [],
+          "uncertainty": [],
+          "requires_clarification": false
+        },
+        "tool_plan": [
+          {
+            "name": "inspect_schema",
+            "reason": "confirm available tables and columns before SQL compilation"
+          },
+          {
+            "name": "resolve_concepts",
+            "reason": "normalize clinical, population, or operational concepts"
+          },
+          {
+            "name": "resolve_temporal_scope",
+            "reason": "normalize requested time window"
+          },
+          {
+            "name": "resolve_join_policy",
+            "reason": "validate joins required by dimensions and concepts"
+          },
+          {
+            "name": "compile_sql",
+            "reason": "compile the resolved domain plan to SQL"
+          },
+          {
+            "name": "execute_sql",
+            "reason": "execute validated SQL against the database"
+          },
+          {
+            "name": "validate_result_contract",
+            "reason": "check result shape and metric semantics"
+          }
+        ],
+        "plan_audit": {
+          "passed": true,
+          "errors": [],
+          "resolved_concepts": []
+        },
+        "result_audit": {
+          "passed": true,
+          "errors": [],
+          "warnings": []
+        },
+        "structured_error": null,
+        "answerability": "answerable",
+        "technical_success": true,
+        "domain_caveats": [
+          "DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro.",
+          "DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo."
+        ],
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "intent_planning": {
+          "duration_seconds": 0.0017,
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "tools": [
+            "inspect_schema",
+            "resolve_concepts",
+            "resolve_temporal_scope",
+            "resolve_join_policy",
+            "compile_sql",
+            "execute_sql",
+            "validate_result_contract"
+          ]
+        },
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.3691862636347338,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "cid",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid"
+        ],
+        "semantic_constraints": [
+          "diagnosis_filter_dimension_not_output"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é calcular a média dos custos de internação por COVID em 2021, utilizando as métricas e filtros apropriados para focar nas internações relacionadas ao diagnóstico de COVID. A métrica escolhida é a média do custo, e os filtros garantem que apenas os dados de 2021 e os diagnósticos relevantes sejam considerados.",
+          "conflicts": [
+            "unknown_metric_ignored: custo_medio",
+            "metric_mismatch: heuristic=['media']; llm=['custo_medio']"
+          ],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic scalar SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "diagnosis_filter_dimension_not_output"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260522T202415_v1_cost_004",
+        "query_number": 4,
+        "orchestrator_execution_time": 8.640930891036987
+      },
+      "error": null,
+      "latency_seconds": 8.640930891036987,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "V1_COST_005",
+      "persona": "medico_pesquisador",
+      "category": "custos_permanencia",
+      "difficulty": "hard",
+      "question": "Qual foi o custo medio de internacao por pneumonia em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "custo_medio_condicao",
+      "status": "passed",
+      "evaluation_passed": true,
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "total_internacoes": 376222,
+            "custo_medio": 2013.49
+          }
+        ],
+        "actual_preview": [
+          {
+            "total_internacoes": 376222,
+            "custo_medio": 2013.49
+          }
+        ]
+      },
+      "success": true,
+      "technical_success": true,
+      "answerability": "answerable",
+      "response": "Resultado: Total de internacoes: 376.222; Custo medio: 2.013,49.\n\nObservacoes de escopo: DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro. DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo.",
+      "sql": "SELECT COUNT(*) AS total_internacoes, ROUND(AVG(i.\"VAL_TOT\"), 2) AS custo_medio FROM internacoes i JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 AND (i.\"DIAG_PRINC\" LIKE 'J12%' OR i.\"DIAG_PRINC\" LIKE 'J13%' OR i.\"DIAG_PRINC\" LIKE 'J14%' OR i.\"DIAG_PRINC\" LIKE 'J15%' OR i.\"DIAG_PRINC\" LIKE 'J16%' OR i.\"DIAG_PRINC\" LIKE 'J17%' OR i.\"DIAG_PRINC\" LIKE 'J18%') AND (c.\"CID\" LIKE 'J12%' OR c.\"CID\" LIKE 'J13%' OR c.\"CID\" LIKE 'J14%' OR c.\"CID\" LIKE 'J15%' OR c.\"CID\" LIKE 'J16%' OR c.\"CID\" LIKE 'J17%' OR c.\"CID\" LIKE 'J18%' OR c.\"DESCRICAO\" ILIKE '%pneumonia%' OR c.\"DS_CATEGORIA\" ILIKE '%pneumonia%' OR c.\"DS_GRUPO\" ILIKE '%pneumonia%' OR c.\"DS_CAPITULO\" ILIKE '%pneumonia%' OR c.\"DESCRICAO\" ILIKE '%pneumonite%' OR c.\"DS_CATEGORIA\" ILIKE '%pneumonite%' OR c.\"DS_GRUPO\" ILIKE '%pneumonite%' OR c.\"DS_CAPITULO\" ILIKE '%pneumonite%');",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.8,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5,
+          "phases_completed": 7,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 13.430022478103638
+        },
+        "phases_completed": [
+          "initialization",
+          "reasoning",
+          "table_discovery",
+          "schema_analysis",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5671765804290771
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 5.129021406173706
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.6459910869598389
+          }
+        ],
+        "message_count": 12,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "schema_context_length": 16512,
+        "latency_by_component": {
+          "query_classification": 0.0003790855407714844,
+          "table_discovery": 0.5672414302825928,
+          "schema_analysis": 0.0007383823394775391,
+          "reasoning": 7.063398838043213,
+          "sql_generation": 0.000934600830078125,
+          "sql_validation": 5.129049777984619,
+          "sql_execution": 0.6461029052734375,
+          "completed": 0.0003056526184082031
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi o custo medio de internacao por pneumonia em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "rate",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "media",
+              "expression_type": "avg",
+              "required_filters": []
+            }
+          ],
+          "dimensions": [],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "diagnostico_principal_prefix",
+              "values": [
+                "J12%",
+                "J13%",
+                "J14%",
+                "J15%",
+                "J16%",
+                "J17%",
+                "J18%"
+              ],
+              "operator": "LIKE_ANY"
+            },
+            {
+              "field": "diagnostico_conceito_label",
+              "values": [
+                "CID J12-J18 - Pneumonias"
+              ],
+              "operator": "metadata"
+            },
+            {
+              "field": "diagnostico_conceito_termo_expandido",
+              "values": [
+                "pneumonia",
+                "pneumonite"
+              ],
+              "operator": "metadata"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "single_scalar",
+            "top_n_scope": "none",
+            "required_dimensions": [],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": false,
+            "include_unknown_bucket": false,
+            "answer_kind": "scalar",
+            "expected_row_count": "one",
+            "output_dimensions": [],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "diagnosis_filter_dimension_not_output"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "intent_plan": {
+          "user_question": "Qual foi o custo medio de internacao por pneumonia em 2021?",
+          "persona_hint": "manager",
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "metric_slots": [
+            {
+              "name": "receita_total",
+              "expression_type": "sum",
+              "required_filters": []
+            }
+          ],
+          "cohort_slots": [],
+          "concept_slots": [
+            {
+              "name": "clinical_concept",
+              "concept_type": "clinical",
+              "filters": [
+                {
+                  "field": "diagnostico_principal_prefix",
+                  "values": [
+                    "J12%",
+                    "J13%",
+                    "J14%",
+                    "J15%",
+                    "J16%",
+                    "J17%",
+                    "J18%"
+                  ],
+                  "operator": "LIKE_ANY"
+                },
+                {
+                  "field": "diagnostico_conceito_label",
+                  "values": [
+                    "CID J12-J18 - Pneumonias"
+                  ],
+                  "operator": "metadata"
+                }
+              ]
+            }
+          ],
+          "temporal_scope": {
+            "type": "year",
+            "n": null,
+            "start_year": 2021,
+            "end_year": 2021,
+            "date_column": "DT_INTER"
+          },
+          "grouping_slots": [],
+          "requested_tools": [],
+          "uncertainty": [],
+          "requires_clarification": false
+        },
+        "tool_plan": [
+          {
+            "name": "inspect_schema",
+            "reason": "confirm available tables and columns before SQL compilation"
+          },
+          {
+            "name": "resolve_concepts",
+            "reason": "normalize clinical, population, or operational concepts"
+          },
+          {
+            "name": "resolve_temporal_scope",
+            "reason": "normalize requested time window"
+          },
+          {
+            "name": "resolve_join_policy",
+            "reason": "validate joins required by dimensions and concepts"
+          },
+          {
+            "name": "compile_sql",
+            "reason": "compile the resolved domain plan to SQL"
+          },
+          {
+            "name": "execute_sql",
+            "reason": "execute validated SQL against the database"
+          },
+          {
+            "name": "validate_result_contract",
+            "reason": "check result shape and metric semantics"
+          }
+        ],
+        "plan_audit": {
+          "passed": true,
+          "errors": [],
+          "resolved_concepts": []
+        },
+        "result_audit": {
+          "passed": true,
+          "errors": [],
+          "warnings": []
+        },
+        "structured_error": null,
+        "answerability": "answerable",
+        "technical_success": true,
+        "domain_caveats": [
+          "DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro.",
+          "DQ011 (high): Diagnosticos principais sem correspondencia na tabela CID afeta 1.044 registros. CIDs orfaos impedem interpretacao clinica por descricao, grupo e capitulo."
+        ],
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "intent_planning": {
+          "duration_seconds": 0.0016,
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "tools": [
+            "inspect_schema",
+            "resolve_concepts",
+            "resolve_temporal_scope",
+            "resolve_join_policy",
+            "compile_sql",
+            "execute_sql",
+            "validate_result_contract"
+          ]
+        },
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.3498241082266574,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "procedimentos"
+        ],
+        "semantic_constraints": [
+          "diagnosis_filter_dimension_not_output"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é calcular a taxa média de custo de internação por pneumonia em 2021, utilizando as métricas e filtros apropriados para garantir que apenas os dados relevantes sejam considerados.",
+          "conflicts": [
+            "unknown_metric_ignored: custo_medio",
+            "metric_mismatch: heuristic=['media']; llm=['custo_medio']"
+          ],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic scalar SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "diagnosis_filter_dimension_not_output"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260522T202415_v1_cost_005",
+        "query_number": 5,
+        "orchestrator_execution_time": 13.448487281799316
+      },
+      "error": null,
+      "latency_seconds": 13.448487281799316,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "V1_COST_006",
+      "persona": "gestor_hospitalar",
+      "category": "custos_permanencia",
+      "difficulty": "hard",
+      "question": "Quais hospitais tiveram maior custo por dia de internacao em 2020 com pelo menos 1000 internacoes?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "custo_por_dia_hospital",
+      "status": "passed",
+      "evaluation_passed": true,
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [],
+        "actual_preview": []
+      },
+      "success": true,
+      "technical_success": true,
+      "answerability": "answerable",
+      "response": "Nenhum resultado encontrado para sua consulta.\n\nObservacoes de escopo: DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro. DQ013 (medium): Hospitais referenciados sem nome cadastrado afeta 59.346.551 registros. CNES com nome ausente dificulta comunicacao com gestores e auditoria nominal.",
+      "sql": "SELECT h.\"NO_HOSPITAL\" AS hospital, COUNT(*) AS total_internacoes, ROUND(SUM(i.\"VAL_TOT\") / NULLIF(SUM(i.\"DIAS_PERM\"), 0), 2) AS custo_medio_por_dia FROM internacoes i JOIN hospital h ON i.\"CNES\" = h.\"CNES\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 AND i.\"DIAS_PERM\" > 0 GROUP BY h.\"NO_HOSPITAL\" HAVING COUNT(*) >= 1000 ORDER BY custo_medio_por_dia DESC NULLS LAST LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5,
+          "phases_completed": 7,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 11.567266464233398
+        },
+        "phases_completed": [
+          "initialization",
+          "reasoning",
+          "table_discovery",
+          "schema_analysis",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5439369678497314
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 3.8480379581451416
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.01198887825012207
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "internacao_procedimento",
+          "hospital",
+          "procedimentos"
+        ],
+        "schema_context_length": 19471,
+        "latency_by_component": {
+          "query_classification": 0.0003542900085449219,
+          "table_discovery": 0.544001579284668,
+          "schema_analysis": 0.0007143020629882812,
+          "reasoning": 7.132901430130005,
+          "sql_generation": 0.0009081363677978516,
+          "sql_validation": 3.8480677604675293,
+          "sql_execution": 0.012092113494873047,
+          "completed": 0.00020241737365722656
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Quais hospitais tiveram maior custo por dia de internacao em 2020 com pelo menos 1000 internacoes?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "ranking",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "custo_por_dia",
+              "expression_type": "ratio",
+              "required_filters": [
+                "SUM(VAL_TOT)",
+                "SUM(DIAS_PERM)"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "hospital",
+              "source": "internacoes.CNES",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "minimum_group_count",
+              "values": [
+                "1000"
+              ],
+              "operator": ">"
+            },
+            {
+              "field": "internacoes_count",
+              "values": [
+                "1000"
+              ],
+              "operator": ">"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "top_n_global",
+            "top_n": 10,
+            "top_n_scope": "global",
+            "required_dimensions": [
+              "hospital"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "top_n_global",
+            "expected_row_count": "bounded_n",
+            "output_dimensions": [
+              "hospital"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [
+            "cost_per_day_highest_requested"
+          ],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "intent_plan": {
+          "user_question": "Quais hospitais tiveram maior custo por dia de internacao em 2020 com pelo menos 1000 internacoes?",
+          "persona_hint": "manager",
+          "primary_task": "ranking",
+          "presentation": "text",
+          "metric_slots": [
+            {
+              "name": "receita_total",
+              "expression_type": "sum",
+              "required_filters": []
+            }
+          ],
+          "cohort_slots": [],
+          "concept_slots": [],
+          "temporal_scope": {
+            "type": "year",
+            "n": null,
+            "start_year": 2020,
+            "end_year": 2020,
+            "date_column": "DT_INTER"
+          },
+          "grouping_slots": [],
+          "requested_tools": [],
+          "uncertainty": [],
+          "requires_clarification": false
+        },
+        "tool_plan": [
+          {
+            "name": "inspect_schema",
+            "reason": "confirm available tables and columns before SQL compilation"
+          },
+          {
+            "name": "resolve_temporal_scope",
+            "reason": "normalize requested time window"
+          },
+          {
+            "name": "compile_sql",
+            "reason": "compile the resolved domain plan to SQL"
+          },
+          {
+            "name": "execute_sql",
+            "reason": "execute validated SQL against the database"
+          },
+          {
+            "name": "validate_result_contract",
+            "reason": "check result shape and metric semantics"
+          }
+        ],
+        "plan_audit": {
+          "passed": true,
+          "errors": [],
+          "resolved_concepts": []
+        },
+        "result_audit": {
+          "passed": true,
+          "errors": [],
+          "warnings": []
+        },
+        "structured_error": null,
+        "answerability": "answerable",
+        "technical_success": true,
+        "domain_caveats": [
+          "DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro.",
+          "DQ013 (medium): Hospitais referenciados sem nome cadastrado afeta 59.346.551 registros. CNES com nome ausente dificulta comunicacao com gestores e auditoria nominal."
+        ],
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "intent_planning": {
+          "duration_seconds": 0.0018,
+          "primary_task": "ranking",
+          "presentation": "text",
+          "tools": [
+            "inspect_schema",
+            "resolve_temporal_scope",
+            "compile_sql",
+            "execute_sql",
+            "validate_result_contract"
+          ]
+        },
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "hospital",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.4537521519556145,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "hospital",
+          "socioeconomico"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "hospital",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "internacao_procedimento",
+          "hospital",
+          "procedimentos"
+        ],
+        "semantic_constraints": [
+          "cost_per_day_highest_requested"
+        ],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é classificar os hospitais com base no custo por dia de internação em 2020, considerando apenas aqueles com pelo menos 1000 internações. A métrica 'custo_por_dia' é calculada como a razão entre o total de valores e o total de dias de permanência. As dimensões incluem o hospital, e os filtros garantem que apenas os dados de 2020 e hospitais com mais de 1000 internações sejam considerados. O formato da resposta é o top 10 global dos hospitais com maior custo por dia.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "metrics",
+            "filters"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [
+            "cost_per_day_highest_requested"
+          ],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260522T202415_v1_cost_006",
+        "query_number": 6,
+        "orchestrator_execution_time": 11.584923267364502
+      },
+      "error": null,
+      "latency_seconds": 11.584923267364502,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "V1_COST_007",
+      "persona": "gestor_hospitalar",
+      "category": "custos_permanencia",
+      "difficulty": "medium",
+      "question": "Qual foi o valor total de UTI por UF de residencia em 2020?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "custo_uti_uf",
+      "status": "passed",
+      "evaluation_passed": true,
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "uf_residencia": "SP",
+            "valor_uti_total": 1200299531.73
+          },
+          {
+            "uf_residencia": "MG",
+            "valor_uti_total": 617050312.38
+          },
+          {
+            "uf_residencia": "PR",
+            "valor_uti_total": 429074601.38
+          },
+          {
+            "uf_residencia": "RS",
+            "valor_uti_total": 357046874.72
+          },
+          {
+            "uf_residencia": "RJ",
+            "valor_uti_total": 272403897.95
+          }
+        ],
+        "actual_preview": [
+          {
+            "uf_residencia": "SP",
+            "valor_uti_total": 1200299531.73
+          },
+          {
+            "uf_residencia": "MG",
+            "valor_uti_total": 617050312.38
+          },
+          {
+            "uf_residencia": "PR",
+            "valor_uti_total": 429074601.38
+          },
+          {
+            "uf_residencia": "RS",
+            "valor_uti_total": 357046874.72
+          },
+          {
+            "uf_residencia": "RJ",
+            "valor_uti_total": 272403897.95
+          }
+        ]
+      },
+      "success": true,
+      "technical_success": true,
+      "answerability": "answerable",
+      "response": "Resultados:\n1. Uf residencia: SP; Valor uti total: 1.200.299.531,73\n2. Uf residencia: MG; Valor uti total: 617.050.312,38\n3. Uf residencia: PR; Valor uti total: 429.074.601,38\n4. Uf residencia: RS; Valor uti total: 357.046.874,72\n5. Uf residencia: RJ; Valor uti total: 272.403.897,95\n6. Uf residencia: BA; Valor uti total: 259.153.831,36\n7. Uf residencia: SC; Valor uti total: 233.538.094,29\n8. Uf residencia: PE; Valor uti total: 224.698.097,92\n9. Uf residencia: CE; Valor uti total: 161.547.119,14\n10. Uf residencia: GO; Valor uti total: 158.552.610,11\n... amostra parcial: mostrando 10 de 27 registros.\n\nObservacoes de escopo: DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro. DQ010 (high): Internacoes com municipio de residencia sem correspondencia afeta 1.270.397 registros. Municipios orfaos prejudicam analises territoriais. DQ016 (high): municipios.SG_UF contem valores que nao sao UFs brasileiras afeta 18 registros. Valores numericos em SG_UF fazem perguntas sobre UFs retornarem 38 categorias em vez das 27 UFs validas.",
+      "sql": "SELECT mu.\"SG_UF\" AS \"uf_residencia\", ROUND(SUM(i.\"VAL_UTI\"), 2) AS \"valor_uti_total\" FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 GROUP BY mu.\"SG_UF\" ORDER BY \"valor_uti_total\" DESC;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5,
+          "phases_completed": 7,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 9.26973557472229
+        },
+        "phases_completed": [
+          "initialization",
+          "reasoning",
+          "table_discovery",
+          "schema_analysis",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5728273391723633
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 1.7617671489715576
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.2806985378265381
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "cid",
+          "municipios"
+        ],
+        "schema_context_length": 19335,
+        "latency_by_component": {
+          "query_classification": 0.00032520294189453125,
+          "table_discovery": 0.5728936195373535,
+          "schema_analysis": 0.000514984130859375,
+          "reasoning": 6.623755931854248,
+          "sql_generation": 0.0006456375122070312,
+          "sql_validation": 1.7617988586425781,
+          "sql_execution": 0.28082728385925293,
+          "completed": 0.0003352165222167969
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi o valor total de UTI por UF de residencia em 2020?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "distribution",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "valor_total_uti",
+              "expression_type": "sum",
+              "required_filters": [
+                "SUM(VAL_UTI)",
+                "VAL_UTI > 0"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "uti",
+              "values": [
+                "VAL_UTI > 0"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "intent_plan": {
+          "user_question": "Qual foi o valor total de UTI por UF de residencia em 2020?",
+          "persona_hint": "common_user",
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "metric_slots": [
+            {
+              "name": "receita_total",
+              "expression_type": "sum",
+              "required_filters": []
+            }
+          ],
+          "cohort_slots": [],
+          "concept_slots": [],
+          "temporal_scope": {
+            "type": "year",
+            "n": null,
+            "start_year": 2020,
+            "end_year": 2020,
+            "date_column": "DT_INTER"
+          },
+          "grouping_slots": [
+            {
+              "name": "estado"
+            }
+          ],
+          "requested_tools": [],
+          "uncertainty": [],
+          "requires_clarification": false
+        },
+        "tool_plan": [
+          {
+            "name": "inspect_schema",
+            "reason": "confirm available tables and columns before SQL compilation"
+          },
+          {
+            "name": "resolve_temporal_scope",
+            "reason": "normalize requested time window"
+          },
+          {
+            "name": "resolve_join_policy",
+            "reason": "validate joins required by dimensions and concepts"
+          },
+          {
+            "name": "compile_sql",
+            "reason": "compile the resolved domain plan to SQL"
+          },
+          {
+            "name": "execute_sql",
+            "reason": "execute validated SQL against the database"
+          },
+          {
+            "name": "validate_result_contract",
+            "reason": "check result shape and metric semantics"
+          }
+        ],
+        "plan_audit": {
+          "passed": true,
+          "errors": [],
+          "resolved_concepts": []
+        },
+        "result_audit": {
+          "passed": true,
+          "errors": [],
+          "warnings": []
+        },
+        "structured_error": null,
+        "answerability": "answerable",
+        "technical_success": true,
+        "domain_caveats": [
+          "DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro.",
+          "DQ010 (high): Internacoes com municipio de residencia sem correspondencia afeta 1.270.397 registros. Municipios orfaos prejudicam analises territoriais.",
+          "DQ016 (high): municipios.SG_UF contem valores que nao sao UFs brasileiras afeta 18 registros. Valores numericos em SG_UF fazem perguntas sobre UFs retornarem 38 categorias em vez das 27 UFs validas."
+        ],
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "intent_planning": {
+          "duration_seconds": 0.0021,
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "tools": [
+            "inspect_schema",
+            "resolve_temporal_scope",
+            "resolve_join_policy",
+            "compile_sql",
+            "execute_sql",
+            "validate_result_contract"
+          ]
+        },
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "cid",
+          "municipios"
+        ],
+        "llamaindex_confidence": 0.39318401691272814,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "socioeconomico",
+          "cid",
+          "municipios"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "cid",
+          "municipios"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "cid",
+          "municipios"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é calcular a distribuição do valor total de UTI por UF de residência em 2020. A métrica escolhida é a soma do valor total de UTI, filtrando apenas os registros onde o valor é maior que zero. A dimensão utilizada é a UF de residência, que é agrupada para obter o total por estado. O filtro aplicado é para o ano de 2020, garantindo que os dados sejam relevantes para o período solicitado.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260522T202415_v1_cost_007",
+        "query_number": 7,
+        "orchestrator_execution_time": 9.287951946258545
+      },
+      "error": null,
+      "latency_seconds": 9.287951946258545,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "V1_COST_008",
+      "persona": "gestor_hospitalar",
+      "category": "custos_permanencia",
+      "difficulty": "medium",
+      "question": "Qual foi o valor total de UTI por UF de residencia em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "custo_uti_uf",
+      "status": "passed",
+      "evaluation_passed": true,
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "uf_residencia": "SP",
+            "valor_uti_total": 2041631398.61
+          },
+          {
+            "uf_residencia": "MG",
+            "valor_uti_total": 1061869592.12
+          },
+          {
+            "uf_residencia": "PR",
+            "valor_uti_total": 752139295.76
+          },
+          {
+            "uf_residencia": "RS",
+            "valor_uti_total": 592681845.57
+          },
+          {
+            "uf_residencia": "RJ",
+            "valor_uti_total": 537906707.51
+          }
+        ],
+        "actual_preview": [
+          {
+            "uf_residencia": "SP",
+            "valor_uti_total": 2041631398.61
+          },
+          {
+            "uf_residencia": "MG",
+            "valor_uti_total": 1061869592.12
+          },
+          {
+            "uf_residencia": "PR",
+            "valor_uti_total": 752139295.76
+          },
+          {
+            "uf_residencia": "RS",
+            "valor_uti_total": 592681845.57
+          },
+          {
+            "uf_residencia": "RJ",
+            "valor_uti_total": 537906707.51
+          }
+        ]
+      },
+      "success": true,
+      "technical_success": true,
+      "answerability": "answerable",
+      "response": "Resultados:\n1. Uf residencia: SP; Valor uti total: 2.041.631.398,61\n2. Uf residencia: MG; Valor uti total: 1.061.869.592,12\n3. Uf residencia: PR; Valor uti total: 752.139.295,76\n4. Uf residencia: RS; Valor uti total: 592.681.845,57\n5. Uf residencia: RJ; Valor uti total: 537.906.707,51\n6. Uf residencia: BA; Valor uti total: 466.485.290,8\n7. Uf residencia: PE; Valor uti total: 445.515.158,97\n8. Uf residencia: SC; Valor uti total: 409.465.650,63\n9. Uf residencia: GO; Valor uti total: 312.422.576,13\n10. Uf residencia: CE; Valor uti total: 298.644.155,45\n... amostra parcial: mostrando 10 de 27 registros.\n\nObservacoes de escopo: DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro. DQ010 (high): Internacoes com municipio de residencia sem correspondencia afeta 1.270.397 registros. Municipios orfaos prejudicam analises territoriais. DQ016 (high): municipios.SG_UF contem valores que nao sao UFs brasileiras afeta 18 registros. Valores numericos em SG_UF fazem perguntas sobre UFs retornarem 38 categorias em vez das 27 UFs validas.",
+      "sql": "SELECT mu.\"SG_UF\" AS \"uf_residencia\", ROUND(SUM(i.\"VAL_UTI\"), 2) AS \"valor_uti_total\" FROM internacoes i JOIN municipios mu ON i.\"MUNIC_RES\" = mu.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 GROUP BY mu.\"SG_UF\" ORDER BY \"valor_uti_total\" DESC;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5,
+          "phases_completed": 7,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 8.691889762878418
+        },
+        "phases_completed": [
+          "initialization",
+          "reasoning",
+          "table_discovery",
+          "schema_analysis",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.5123488903045654
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.2133302688598633
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.1961841583251953
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "internacoes",
+          "municipios",
+          "cid"
+        ],
+        "schema_context_length": 19335,
+        "latency_by_component": {
+          "query_classification": 0.0003731250762939453,
+          "table_discovery": 0.5124170780181885,
+          "schema_analysis": 0.0007829666137695312,
+          "reasoning": 5.750940561294556,
+          "sql_generation": 0.0006422996520996094,
+          "sql_validation": 2.2133586406707764,
+          "sql_execution": 0.19629144668579102,
+          "completed": 0.0003418922424316406
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi o valor total de UTI por UF de residencia em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "distribution",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "valor_total_uti",
+              "expression_type": "sum",
+              "required_filters": [
+                "SUM(VAL_UTI)",
+                "VAL_UTI > 0"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "estado",
+              "source": "municipios.SG_UF",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            },
+            {
+              "field": "uti",
+              "values": [
+                "VAL_UTI > 0"
+              ],
+              "operator": "semantic"
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "estado"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "estado"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "intent_plan": {
+          "user_question": "Qual foi o valor total de UTI por UF de residencia em 2021?",
+          "persona_hint": "common_user",
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "metric_slots": [
+            {
+              "name": "receita_total",
+              "expression_type": "sum",
+              "required_filters": []
+            }
+          ],
+          "cohort_slots": [],
+          "concept_slots": [],
+          "temporal_scope": {
+            "type": "year",
+            "n": null,
+            "start_year": 2021,
+            "end_year": 2021,
+            "date_column": "DT_INTER"
+          },
+          "grouping_slots": [
+            {
+              "name": "estado"
+            }
+          ],
+          "requested_tools": [],
+          "uncertainty": [],
+          "requires_clarification": false
+        },
+        "tool_plan": [
+          {
+            "name": "inspect_schema",
+            "reason": "confirm available tables and columns before SQL compilation"
+          },
+          {
+            "name": "resolve_temporal_scope",
+            "reason": "normalize requested time window"
+          },
+          {
+            "name": "resolve_join_policy",
+            "reason": "validate joins required by dimensions and concepts"
+          },
+          {
+            "name": "compile_sql",
+            "reason": "compile the resolved domain plan to SQL"
+          },
+          {
+            "name": "execute_sql",
+            "reason": "execute validated SQL against the database"
+          },
+          {
+            "name": "validate_result_contract",
+            "reason": "check result shape and metric semantics"
+          }
+        ],
+        "plan_audit": {
+          "passed": true,
+          "errors": [],
+          "resolved_concepts": []
+        },
+        "result_audit": {
+          "passed": true,
+          "errors": [],
+          "warnings": []
+        },
+        "structured_error": null,
+        "answerability": "answerable",
+        "technical_success": true,
+        "domain_caveats": [
+          "DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro.",
+          "DQ010 (high): Internacoes com municipio de residencia sem correspondencia afeta 1.270.397 registros. Municipios orfaos prejudicam analises territoriais.",
+          "DQ016 (high): municipios.SG_UF contem valores que nao sao UFs brasileiras afeta 18 registros. Valores numericos em SG_UF fazem perguntas sobre UFs retornarem 38 categorias em vez das 27 UFs validas."
+        ],
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "intent_planning": {
+          "duration_seconds": 0.002,
+          "primary_task": "direct_metric",
+          "presentation": "text",
+          "tools": [
+            "inspect_schema",
+            "resolve_temporal_scope",
+            "resolve_join_policy",
+            "compile_sql",
+            "execute_sql",
+            "validate_result_contract"
+          ]
+        },
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "internacoes",
+          "municipios",
+          "cid"
+        ],
+        "llamaindex_confidence": 0.3906252884997157,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "internacoes",
+          "socioeconomico",
+          "municipios",
+          "cid"
+        ],
+        "validated_selected_tables": [
+          "internacoes",
+          "municipios",
+          "cid"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "internacoes",
+          "municipios",
+          "cid"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é calcular a distribuição do valor total de UTI por estado de residência em 2021. A métrica escolhida é a soma do valor total de UTI, filtrando apenas os registros onde o valor é maior que zero. A dimensão utilizada é o estado de residência, que é agrupada para obter o total por UF. O filtro aplicado é para o ano de 2021, garantindo que os dados sejam relevantes para o período solicitado.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260522T202415_v1_cost_008",
+        "query_number": 8,
+        "orchestrator_execution_time": 8.71126127243042
+      },
+      "error": null,
+      "latency_seconds": 8.71126127243042,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "V1_COST_009",
+      "persona": "gestor_hospitalar",
+      "category": "custos_permanencia",
+      "difficulty": "medium",
+      "question": "Qual foi a permanencia media por especialidade em 2020?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "permanencia_especialidade",
+      "status": "passed",
+      "evaluation_passed": true,
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "especialidade": "CARDIOLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "BUCO MAXILO FACIAL",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "SAUDE MENTAL",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "NEFROLOGIAUROLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "OBSTETRICIA CIRURGICA",
+            "permanencia_media": 0.0
+          }
+        ],
+        "actual_preview": [
+          {
+            "especialidade": "CARDIOLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "NEUROCIRURGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "ENDOCRINOLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "GASTROENTEROLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "GINECOLOGIA",
+            "permanencia_media": 0.0
+          }
+        ]
+      },
+      "success": true,
+      "technical_success": true,
+      "answerability": "answerable",
+      "response": "Resultados:\n1. Especialidade: CARDIOLOGIA; Permanencia media: 0\n2. Especialidade: BUCO MAXILO FACIAL; Permanencia media: 0\n3. Especialidade: OBSTETRICIA CIRURGICA; Permanencia media: 0\n4. Especialidade: SAUDE MENTAL; Permanencia media: 0\n5. Especialidade: NEFROLOGIAUROLOGIA; Permanencia media: 0\n6. Especialidade: ORTOPEDIATRAUMATOLOGIA; Permanencia media: 0\n7. Especialidade: CIRURGICO/DIAGNOSTICO/TERAPEUTICO; Permanencia media: 0\n8. Especialidade: OTORRINOLARINGOLOGIA; Permanencia media: 0\n9. Especialidade: GASTROENTEROLOGIA; Permanencia media: 0\n10. Especialidade: GINECOLOGIA; Permanencia media: 0\n\nObservacoes de escopo: DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro.",
+      "sql": "SELECT e.\"DESCRICAO\" AS especialidade, ROUND(AVG(i.\"DIAS_PERM\"), 2) AS permanencia_media FROM internacoes i JOIN especialidade e ON i.\"ESPEC\" = e.\"ESPEC\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 GROUP BY e.\"DESCRICAO\" ORDER BY permanencia_media DESC NULLS LAST LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5,
+          "phases_completed": 7,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 11.216747522354126
+        },
+        "phases_completed": [
+          "initialization",
+          "reasoning",
+          "table_discovery",
+          "schema_analysis",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.4585423469543457
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 5.09003758430481
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.197800874710083
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "schema_context_length": 13017,
+        "latency_by_component": {
+          "query_classification": 0.00030231475830078125,
+          "table_discovery": 0.4586150646209717,
+          "schema_analysis": 0.0005602836608886719,
+          "reasoning": 5.453417062759399,
+          "sql_generation": 0.0007097721099853516,
+          "sql_validation": 5.09006667137146,
+          "sql_execution": 0.19790434837341309,
+          "completed": 0.00030541419982910156
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi a permanencia media por especialidade em 2020?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "distribution",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "media_dias_permanencia",
+              "expression_type": "avg",
+              "required_filters": [
+                "AVG(DIAS_PERM)"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "especialidade",
+              "source": "especialidade.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2020"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "especialidade"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "especialidade"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "intent_plan": {
+          "user_question": "Qual foi a permanencia media por especialidade em 2020?",
+          "persona_hint": "common_user",
+          "primary_task": "breakdown",
+          "presentation": "text",
+          "metric_slots": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "cohort_slots": [],
+          "concept_slots": [],
+          "temporal_scope": {
+            "type": "year",
+            "n": null,
+            "start_year": 2020,
+            "end_year": 2020,
+            "date_column": "DT_INTER"
+          },
+          "grouping_slots": [],
+          "requested_tools": [],
+          "uncertainty": [],
+          "requires_clarification": false
+        },
+        "tool_plan": [
+          {
+            "name": "inspect_schema",
+            "reason": "confirm available tables and columns before SQL compilation"
+          },
+          {
+            "name": "resolve_temporal_scope",
+            "reason": "normalize requested time window"
+          },
+          {
+            "name": "compile_sql",
+            "reason": "compile the resolved domain plan to SQL"
+          },
+          {
+            "name": "execute_sql",
+            "reason": "execute validated SQL against the database"
+          },
+          {
+            "name": "validate_result_contract",
+            "reason": "check result shape and metric semantics"
+          }
+        ],
+        "plan_audit": {
+          "passed": true,
+          "errors": [],
+          "resolved_concepts": []
+        },
+        "result_audit": {
+          "passed": true,
+          "errors": [],
+          "warnings": []
+        },
+        "structured_error": null,
+        "answerability": "answerable",
+        "technical_success": true,
+        "domain_caveats": [
+          "DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro."
+        ],
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "intent_planning": {
+          "duration_seconds": 0.002,
+          "primary_task": "breakdown",
+          "presentation": "text",
+          "tools": [
+            "inspect_schema",
+            "resolve_temporal_scope",
+            "compile_sql",
+            "execute_sql",
+            "validate_result_contract"
+          ]
+        },
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.41692847459939736,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "validated_selected_tables": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é calcular a permanência média por especialidade em 2020, o que requer a média dos dias de permanência agrupada por especialidade. A métrica escolhida é a média de dias de permanência, e a dimensão é a especialidade. O filtro aplicado é para o ano de 2020, garantindo que os dados sejam relevantes para o período solicitado.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260522T202415_v1_cost_009",
+        "query_number": 9,
+        "orchestrator_execution_time": 11.234917402267456
+      },
+      "error": null,
+      "latency_seconds": 11.234917402267456,
+      "root_cause": null,
+      "severity": null
+    },
+    {
+      "id": "V1_COST_010",
+      "persona": "gestor_hospitalar",
+      "category": "custos_permanencia",
+      "difficulty": "medium",
+      "question": "Qual foi a permanencia media por especialidade em 2021?",
+      "expected_behavior": "answer_with_sql",
+      "anti_overfit_family": "permanencia_especialidade",
+      "status": "passed",
+      "evaluation_passed": true,
+      "judge": {
+        "passed": true,
+        "missing": [],
+        "type": "result_equivalence",
+        "expected_preview": [
+          {
+            "especialidade": "CARDIOLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "ORTOPEDIATRAUMATOLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "ENDOCRINOLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "NEUROCIRURGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "OBSTETRICIA CIRURGICA",
+            "permanencia_media": 0.0
+          }
+        ],
+        "actual_preview": [
+          {
+            "especialidade": "OBSTETRICIA CIRURGICA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "OTORRINOLARINGOLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "BUCO MAXILO FACIAL",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "ORTOPEDIATRAUMATOLOGIA",
+            "permanencia_media": 0.0
+          },
+          {
+            "especialidade": "GINECOLOGIA",
+            "permanencia_media": 0.0
+          }
+        ]
+      },
+      "success": true,
+      "technical_success": true,
+      "answerability": "answerable",
+      "response": "Resultados:\n1. Especialidade: OTORRINOLARINGOLOGIA; Permanencia media: 0\n2. Especialidade: CIRURGICO/DIAGNOSTICO/TERAPEUTICO; Permanencia media: 0\n3. Especialidade: CARDIOLOGIA; Permanencia media: 0\n4. Especialidade: NEUROCIRURGIA; Permanencia media: 0\n5. Especialidade: ENDOCRINOLOGIA; Permanencia media: 0\n6. Especialidade: ORTOPEDIATRAUMATOLOGIA; Permanencia media: 0\n7. Especialidade: GINECOLOGIA; Permanencia media: 0\n8. Especialidade: GASTROENTEROLOGIA; Permanencia media: 0\n9. Especialidade: ONCOLOGIA; Permanencia media: 0\n10. Especialidade: OFTALMOLOGIA; Permanencia media: 0\n\nObservacoes de escopo: DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro.",
+      "sql": "SELECT e.\"DESCRICAO\" AS especialidade, ROUND(AVG(i.\"DIAS_PERM\"), 2) AS permanencia_media FROM internacoes i JOIN especialidade e ON i.\"ESPEC\" = e.\"ESPEC\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 GROUP BY e.\"DESCRICAO\" ORDER BY permanencia_media DESC NULLS LAST LIMIT 10;",
+      "metadata": {
+        "langgraph_v3": true,
+        "messages_state": true,
+        "query_route": "database",
+        "classification": {
+          "route": "database",
+          "confidence": 0.9,
+          "requires_tools": true
+        },
+        "workflow_metrics": {
+          "overall_success": true,
+          "completion_rate": 0.5,
+          "phases_completed": 7,
+          "total_phases": 14,
+          "tool_success_rate": 1.0,
+          "total_tools_used": 3,
+          "retry_count": 0,
+          "error_count": 0,
+          "execution_time": 10.857027769088745
+        },
+        "phases_completed": [
+          "initialization",
+          "reasoning",
+          "table_discovery",
+          "schema_analysis",
+          "sql_generation",
+          "sql_validation",
+          "sql_execution"
+        ],
+        "current_phase": "completed",
+        "tool_calls": [
+          {
+            "name": "sql_db_list_tables",
+            "success": true,
+            "execution_time": 0.47717714309692383
+          },
+          {
+            "name": "sql_db_query_checker",
+            "success": true,
+            "execution_time": 2.0680582523345947
+          },
+          {
+            "name": "sql_db_query",
+            "success": true,
+            "execution_time": 0.1276259422302246
+          }
+        ],
+        "message_count": 13,
+        "retry_count": 0,
+        "error_count": 0,
+        "tables_used": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "schema_context_length": 13017,
+        "latency_by_component": {
+          "query_classification": 0.0002853870391845703,
+          "table_discovery": 0.4772520065307617,
+          "schema_analysis": 0.00041747093200683594,
+          "reasoning": 8.154699802398682,
+          "sql_generation": 0.0006639957427978516,
+          "sql_validation": 2.068087577819824,
+          "sql_execution": 0.12772631645202637,
+          "completed": 0.00028634071350097656
+        },
+        "multi_query": {
+          "is_multi_query": false,
+          "plan_type": "single_default",
+          "execution_mode": "single",
+          "multi_query_allowed": false,
+          "allowed_multi_plan_types": [
+            "bind_then_query",
+            "fanout_concat",
+            "verification_side_query"
+          ],
+          "query_plan": {
+            "strategy": "single",
+            "reasoning": "force_single_query está ativo; planner multi desabilitado para esta execução.",
+            "plan_type": "single_default",
+            "merge_strategy": "none",
+            "output_nodes": [
+              "sq1"
+            ],
+            "required_constraints": [],
+            "expected_output_shape": {},
+            "verifier_checks": [],
+            "fallback_policy": {},
+            "sub_queries": [
+              {
+                "id": "sq1",
+                "description": "Qual foi a permanencia media por especialidade em 2021?",
+                "purpose": "final_output",
+                "output_role": "output",
+                "expected_result_kind": "rowset",
+                "expected_max_rows": null,
+                "required_constraints": [],
+                "selected_tables": [],
+                "bind_keys": [],
+                "sql": null,
+                "validated_sql": null,
+                "result_raw": null,
+                "parsed_rows": null,
+                "success": false,
+                "error": null,
+                "depends_on": [],
+                "repair_attempts": 0
+              }
+            ]
+          },
+          "sub_query_results": [],
+          "merged_rows": null,
+          "merged_rows_source": null,
+          "merge_strategy": "none",
+          "verifier_outcome": null,
+          "single_fallback_active": false,
+          "single_fallback_reason": null,
+          "final_sql_query": null,
+          "failure_taxonomy": []
+        },
+        "semantic_plan": {
+          "intent": "distribution",
+          "base_grain": "internacao",
+          "metrics": [
+            {
+              "name": "media_dias_permanencia",
+              "expression_type": "avg",
+              "required_filters": [
+                "AVG(DIAS_PERM)"
+              ]
+            }
+          ],
+          "dimensions": [
+            {
+              "name": "especialidade",
+              "source": "especialidade.DESCRICAO",
+              "role": "group"
+            }
+          ],
+          "filters": [
+            {
+              "field": "ano",
+              "values": [
+                "2021"
+              ],
+              "operator": "="
+            }
+          ],
+          "answer_shape": {
+            "row_grain": "one_row_per_group",
+            "top_n_scope": "none",
+            "required_dimensions": [
+              "especialidade"
+            ],
+            "partition_dimensions": [],
+            "ranked_dimensions": [],
+            "requires_group_by": true,
+            "include_unknown_bucket": false,
+            "answer_kind": "grouped_table",
+            "expected_row_count": "one_per_group",
+            "output_dimensions": [
+              "especialidade"
+            ],
+            "filter_dimensions": [],
+            "forbidden_output_dimensions": []
+          },
+          "constraints": [],
+          "null_policy": [],
+          "ambiguities": []
+        },
+        "intent_plan": {
+          "user_question": "Qual foi a permanencia media por especialidade em 2021?",
+          "persona_hint": "common_user",
+          "primary_task": "breakdown",
+          "presentation": "text",
+          "metric_slots": [
+            {
+              "name": "total_internacoes",
+              "expression_type": "count",
+              "required_filters": []
+            }
+          ],
+          "cohort_slots": [],
+          "concept_slots": [],
+          "temporal_scope": {
+            "type": "year",
+            "n": null,
+            "start_year": 2021,
+            "end_year": 2021,
+            "date_column": "DT_INTER"
+          },
+          "grouping_slots": [],
+          "requested_tools": [],
+          "uncertainty": [],
+          "requires_clarification": false
+        },
+        "tool_plan": [
+          {
+            "name": "inspect_schema",
+            "reason": "confirm available tables and columns before SQL compilation"
+          },
+          {
+            "name": "resolve_temporal_scope",
+            "reason": "normalize requested time window"
+          },
+          {
+            "name": "compile_sql",
+            "reason": "compile the resolved domain plan to SQL"
+          },
+          {
+            "name": "execute_sql",
+            "reason": "execute validated SQL against the database"
+          },
+          {
+            "name": "validate_result_contract",
+            "reason": "check result shape and metric semantics"
+          }
+        ],
+        "plan_audit": {
+          "passed": true,
+          "errors": [],
+          "resolved_concepts": []
+        },
+        "result_audit": {
+          "passed": true,
+          "errors": [],
+          "warnings": []
+        },
+        "structured_error": null,
+        "answerability": "answerable",
+        "technical_success": true,
+        "domain_caveats": [
+          "DQ002 (high): DT_INTER fora do periodo 2007-2023 afeta 27 registros. O calendario `tempo` cobre 2007-2023; registros fora desse intervalo podem indicar carga historica residual ou erro."
+        ],
+        "visualization_intent": {
+          "requested": false,
+          "source": "none",
+          "uses_last_result": false,
+          "chart_hint": "auto",
+          "reason": ""
+        },
+        "chart_plan": {
+          "requested": false,
+          "chart_type": "auto",
+          "metric": null,
+          "metric_expression": null,
+          "x_dimension": null,
+          "series_dimension": null,
+          "y_column": null,
+          "grain": "unknown",
+          "expected_result_shape": "unknown",
+          "filters": [],
+          "time_window": {
+            "type": "none",
+            "n": null,
+            "start_year": null,
+            "end_year": null,
+            "date_column": "DT_INTER"
+          },
+          "required_columns": [],
+          "sql_shape_guidance": "",
+          "reason": "visualization not requested"
+        },
+        "chart_spec": null,
+        "intent_planning": {
+          "duration_seconds": 0.002,
+          "primary_task": "breakdown",
+          "presentation": "text",
+          "tools": [
+            "inspect_schema",
+            "resolve_temporal_scope",
+            "compile_sql",
+            "execute_sql",
+            "validate_result_contract"
+          ]
+        },
+        "llamaindex_enabled": true,
+        "llamaindex_mode": "context",
+        "llamaindex_retrieval_mode": "llamaindex_schema",
+        "llamaindex_selected_tables": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "llamaindex_confidence": 0.41755270117695775,
+        "llamaindex_error": "",
+        "raw_selected_tables": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "validated_selected_tables": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "table_selection_mode": "llamaindex_context",
+        "schema_context_source": "llamaindex",
+        "schema_context_verified_with_db": false,
+        "schema_context_tables": [
+          "especialidade",
+          "internacoes",
+          "procedimentos"
+        ],
+        "semantic_constraints": [],
+        "semantic_null_policy": [],
+        "semantic_planner": {
+          "mode": "llm_reconciled",
+          "confidence": 0.9,
+          "reasoning": "A intenção é calcular a permanência média por especialidade em 2021, o que requer a média dos dias de permanência agrupada por especialidade. A métrica escolhida é a média de dias de permanência, e a dimensão é a especialidade. O filtro aplicado é para o ano de 2021, garantindo que os dados sejam relevantes para o período solicitado.",
+          "conflicts": [],
+          "accepted_llm_fields": [
+            "intent",
+            "metrics"
+          ],
+          "rejected_llm_fields": []
+        },
+        "sql_generation_confidence": 1.0,
+        "sql_generation_reasoning": "Deterministic grouped SQL generated from the semantic plan.",
+        "chart_plan_validation": {
+          "passed": true,
+          "message": null,
+          "chart_plan": {
+            "requested": false,
+            "chart_type": "auto",
+            "metric": null,
+            "metric_expression": null,
+            "x_dimension": null,
+            "series_dimension": null,
+            "y_column": null,
+            "grain": "unknown",
+            "expected_result_shape": "unknown",
+            "filters": [],
+            "time_window": {
+              "type": "none",
+              "n": null,
+              "start_year": null,
+              "end_year": null,
+              "date_column": "DT_INTER"
+            },
+            "required_columns": [],
+            "sql_shape_guidance": "",
+            "reason": "visualization not requested"
+          }
+        },
+        "semantic_validation": {
+          "passed": true,
+          "constraints": [],
+          "null_policy": [],
+          "message": null
+        },
+        "orchestrator_v3": true,
+        "current_model": {
+          "provider": "openai",
+          "model_name": "gpt-4o-mini",
+          "temperature": 0.0
+        },
+        "environment": "testing",
+        "session_id": "generalization_exhaustion_20260522T202415_v1_cost_010",
+        "query_number": 10,
+        "orchestrator_execution_time": 10.883884191513062
+      },
+      "error": null,
+      "latency_seconds": 10.883884191513062,
+      "root_cause": null,
+      "severity": null
+    }
+  ]
+}

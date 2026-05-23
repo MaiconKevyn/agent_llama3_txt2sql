@@ -323,9 +323,13 @@ def state_to_legacy_format(state: MessagesStateTXT2SQL) -> dict[str, Any]:
 
     response_text = state.get("final_response") or get_latest_ai_response(state) or ""
     metrics = calculate_success_metrics(state)
+    answerability = _derive_answerability(state, sql_query)
+    technical_success = _derive_technical_success(state, answerability)
 
     return {
         "success": state["success"],
+        "technical_success": technical_success,
+        "answerability": answerability,
         "question": state["user_query"],
         "sql_query": sql_query,
         "results": results,
@@ -395,6 +399,8 @@ def state_to_legacy_format(state: MessagesStateTXT2SQL) -> dict[str, Any]:
             "plan_audit": state.get("plan_audit"),
             "result_audit": state.get("result_audit"),
             "structured_error": state.get("structured_error"),
+            "answerability": answerability,
+            "technical_success": technical_success,
             "domain_caveats": state.get("domain_caveats", []),
             "visualization_intent": state.get("visualization_intent"),
             "chart_plan": state.get("chart_plan"),
@@ -402,6 +408,25 @@ def state_to_legacy_format(state: MessagesStateTXT2SQL) -> dict[str, Any]:
             **state.get("response_metadata", {}),
         },
     }
+
+
+def _derive_answerability(state: MessagesStateTXT2SQL, sql_query: str) -> str:
+    response_metadata = state.get("response_metadata", {}) or {}
+    if response_metadata.get("unsupported_schema_metric"):
+        return "unanswerable_schema"
+    if state.get("needs_clarification") or response_metadata.get("critical_ambiguity"):
+        return "requires_clarification"
+    if state.get("current_error"):
+        return "technical_error"
+    if sql_query:
+        return "answerable"
+    return "unknown"
+
+
+def _derive_technical_success(state: MessagesStateTXT2SQL, answerability: str) -> bool:
+    if answerability in {"requires_clarification", "unanswerable_schema"}:
+        return bool(state.get("final_response") or get_latest_ai_response(state))
+    return bool(state.get("success")) and not bool(state.get("current_error"))
 
 
 def validate_messages_state(state: MessagesStateTXT2SQL) -> list[str]:

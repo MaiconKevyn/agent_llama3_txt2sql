@@ -9,11 +9,9 @@ Provides:
 - Score combination helpers
 """
 
-from typing import Dict, Tuple, Optional
-import re
 import json
+import re
 import unicodedata
-
 
 ROUTES = ("DATABASE", "CONVERSATIONAL", "SCHEMA")
 
@@ -36,34 +34,86 @@ def detect_sql_snippets(text: str) -> bool:
     return False
 
 
-KEYWORDS_PT: Dict[str, Tuple[str, ...]] = {
+KEYWORDS_PT: dict[str, tuple[str, ...]] = {
     # Data/aggregation/filters
     "DATABASE": (
-        "quantos", "quantidade", "numero", "número", "total", "media", "média", "taxa",
-        "proporcao", "proporção", "top", "ranking", "mais comuns", "mais comum",
-        "listar", "mostrar", "por cidade", "por ano", "por sexo", "distribuicao", "distribuição",
-        "contagem", "contar", "soma", "sum", "avg", "media", "mediana",
+        "quantos",
+        "quantidade",
+        "numero",
+        "número",
+        "total",
+        "media",
+        "média",
+        "taxa",
+        "proporcao",
+        "proporção",
+        "top",
+        "ranking",
+        "mais comuns",
+        "mais comum",
+        "listar",
+        "mostrar",
+        "por cidade",
+        "por ano",
+        "por sexo",
+        "distribuicao",
+        "distribuição",
+        "contagem",
+        "contar",
+        "soma",
+        "sum",
+        "avg",
+        "media",
+        "mediana",
         # Common data-query starters (covers MIN/MAX/COUNT/SUM questions)
-        "qual", "quais", "principais", "principal", "menor", "maior",
+        "qual",
+        "quais",
+        "principais",
+        "principal",
+        "menor",
+        "maior",
         # "registrado/cadastrado" = data in the system (not SCHEMA introspection)
-        "registrado", "registrada", "registrados", "registradas",
-        "cadastrado", "cadastrada", "cadastrados", "cadastradas",
+        "registrado",
+        "registrada",
+        "registrados",
+        "registradas",
+        "cadastrado",
+        "cadastrada",
+        "cadastrados",
+        "cadastradas",
     ),
     # Explanations/definitions
     "CONVERSATIONAL": (
-        "o que e", "o que eh", "o que significa", "definicao", "definição",
-        "explica", "explicar", "por que", "porque", "como funciona",
-        "diferenca", "diferença", "explique"
+        "o que e",
+        "o que eh",
+        "o que significa",
+        "definicao",
+        "definição",
+        "explica",
+        "explicar",
+        "por que",
+        "porque",
+        "como funciona",
+        "diferenca",
+        "diferença",
+        "explique",
     ),
     # Schema/structure
     "SCHEMA": (
-        "tabelas", "colunas", "schema", "estrutura", "dicionario de dados", "quais campos",
-        "mostrar estrutura", "descrever tabela", "describe"
+        "tabelas",
+        "colunas",
+        "schema",
+        "estrutura",
+        "dicionario de dados",
+        "quais campos",
+        "mostrar estrutura",
+        "descrever tabela",
+        "describe",
     ),
 }
 
 
-def keyword_scores(text: str) -> Dict[str, int]:
+def keyword_scores(text: str) -> dict[str, int]:
     t = normalize_text(text)
     scores = {r: 0 for r in ROUTES}
     for route, kws in KEYWORDS_PT.items():
@@ -73,7 +123,7 @@ def keyword_scores(text: str) -> Dict[str, int]:
     return scores
 
 
-def heuristic_route(text: str) -> Tuple[str, Dict[str, int]]:
+def heuristic_route(text: str) -> tuple[str, dict[str, int]]:
     scores = keyword_scores(text)
     # Pick max score; tie-break preference: SCHEMA > DATABASE > CONVERSATIONAL (safer)
     order = ["SCHEMA", "DATABASE", "CONVERSATIONAL"]
@@ -81,7 +131,7 @@ def heuristic_route(text: str) -> Tuple[str, Dict[str, int]]:
     return best, scores
 
 
-def try_extract_json_block(s: str) -> Optional[Dict]:
+def try_extract_json_block(s: str) -> dict | None:
     """Try to parse JSON from string; fallback to the first {...} block."""
     if not s:
         return None
@@ -101,7 +151,9 @@ def try_extract_json_block(s: str) -> Optional[Dict]:
     return None
 
 
-def combine_scores(llm_route: Optional[str], llm_conf: Optional[float], heur_scores: Dict[str, int], w_llm: float = 0.7) -> str:
+def combine_scores(
+    llm_route: str | None, llm_conf: float | None, heur_scores: dict[str, int], w_llm: float = 0.7
+) -> str:
     """Combine LLM confidence with heuristic (normalized) to pick final route."""
     # Normalize heuristic scores into [0,1]
     max_h = max(heur_scores.values()) if heur_scores else 0
@@ -118,4 +170,3 @@ def combine_scores(llm_route: Optional[str], llm_conf: Optional[float], heur_sco
         scores[r] = w_llm * llm_term + (1 - w_llm) * norm[r]
     # Pick best
     return max(ROUTES, key=lambda r: scores[r])
-

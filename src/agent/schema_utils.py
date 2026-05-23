@@ -1,52 +1,58 @@
 """Schema utility helpers: column parsing, alias resolution, and validation."""
 
-import re
 import difflib
-from typing import Any, Dict, List
+import re
+from typing import Any
 
 
-def _parse_schema_columns(schema_text: str) -> Dict[str, List[str]]:
+def _parse_schema_columns(schema_text: str) -> dict[str, list[str]]:
     """Parse schema_context into {table: [columns]} using a lightweight parser."""
     if not schema_text:
         return {}
-    tables: Dict[str, List[str]] = {}
+    tables: dict[str, list[str]] = {}
     create_re = re.compile(r"CREATE\s+TABLE\s+([a-zA-Z_][\w]*)\s*\((.*?)\);", re.S | re.I)
     col_re = re.compile(r'^\s*(?:"(?P<qcol>[^"]+)"|(?P<col>[A-Za-z_][A-Za-z0-9_]*))\s+', re.M)
     for m in create_re.finditer(schema_text):
         table = (m.group(1) or "").strip()
         body = m.group(2) or ""
-        cols: List[str] = []
+        cols: list[str] = []
         for cm in col_re.finditer(body):
-            cname = cm.group('qcol') or cm.group('col')
-            if cname and cname.upper() != 'CONSTRAINT':
+            cname = cm.group("qcol") or cm.group("col")
+            if cname and cname.upper() != "CONSTRAINT":
                 cols.append(cname)
         if cols:
             tables[table.lower()] = cols
     return tables
 
 
-def _extract_alias_map(sql: str) -> Dict[str, str]:
+def _extract_alias_map(sql: str) -> dict[str, str]:
     """Map aliases to base table names using FROM/JOIN clauses."""
-    alias_map: Dict[str, str] = {}
+    alias_map: dict[str, str] = {}
     text = sql or ""
-    for m in re.finditer(r"\bfrom\s+([a-zA-Z_][\w]*)\s+(?:as\s+)?([a-zA-Z_][\w]*)", text, flags=re.I):
+    for m in re.finditer(
+        r"\bfrom\s+([a-zA-Z_][\w]*)\s+(?:as\s+)?([a-zA-Z_][\w]*)", text, flags=re.I
+    ):
         alias_map[m.group(2)] = m.group(1)
-    for m in re.finditer(r"\bjoin\s+([a-zA-Z_][\w]*)\s+(?:as\s+)?([a-zA-Z_][\w]*)", text, flags=re.I):
+    for m in re.finditer(
+        r"\bjoin\s+([a-zA-Z_][\w]*)\s+(?:as\s+)?([a-zA-Z_][\w]*)", text, flags=re.I
+    ):
         alias_map[m.group(2)] = m.group(1)
     return alias_map
 
 
-def _extract_alias_columns(sql: str) -> List[tuple]:
+def _extract_alias_columns(sql: str) -> list[tuple]:
     """Extract occurrences like alias.col or alias."COL"."""
-    pairs: List[tuple] = []
-    for m in re.finditer(r'\b([A-Za-z_][\w]*)\s*\.\s*(?:"([^"]+)"|([A-Za-z_][A-Za-z0-9_]*))', sql or ""):
+    pairs: list[tuple] = []
+    for m in re.finditer(
+        r'\b([A-Za-z_][\w]*)\s*\.\s*(?:"([^"]+)"|([A-Za-z_][A-Za-z0-9_]*))', sql or ""
+    ):
         alias = m.group(1)
         col = m.group(2) or m.group(3)
         pairs.append((alias, col))
     return pairs
 
 
-def _best_column_suggestions(missing_col: str, candidates: List[str], k: int = 3) -> List[str]:
+def _best_column_suggestions(missing_col: str, candidates: list[str], k: int = 3) -> list[str]:
     """Suggest k similar columns using difflib ratio and substring bonus."""
     if not candidates:
         return []
@@ -70,13 +76,13 @@ def _best_column_suggestions(missing_col: str, candidates: List[str], k: int = 3
     return out
 
 
-def _check_columns_against_schema(schema_text: str, sql: str) -> Dict[str, Any]:
+def _check_columns_against_schema(schema_text: str, sql: str) -> dict[str, Any]:
     """Check alias.column references against schema_context content."""
     schema_map = _parse_schema_columns(schema_text)
     alias_map = _extract_alias_map(sql)
     alias_cols = _extract_alias_columns(sql)
     missing = []
-    suggestions: Dict[str, List[str]] = {}
+    suggestions: dict[str, list[str]] = {}
     for alias, col in alias_cols:
         base = alias_map.get(alias)
         if not base:

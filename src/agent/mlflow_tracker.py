@@ -3,11 +3,12 @@
 All public functions are no-ops when MLflow is not installed or
 MLFLOW_TRACKING_URI is not set — the agent never fails because of tracking.
 """
+
 from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ..utils.logging_config import get_nodes_logger
 
@@ -20,6 +21,7 @@ _ABLATION_EXPERIMENT = "txt2sql-ablation"
 _mlflow_available = False
 try:
     import mlflow  # noqa: F401
+
     _mlflow_available = True
 except ImportError:
     pass
@@ -30,8 +32,8 @@ def _is_enabled() -> bool:
 
 
 def init_mlflow(
-    tracking_uri: Optional[str] = None,
-    experiment_name: Optional[str] = None,
+    tracking_uri: str | None = None,
+    experiment_name: str | None = None,
 ) -> bool:
     """Configure MLflow tracking URI and experiment.
 
@@ -46,6 +48,7 @@ def init_mlflow(
 
     try:
         import mlflow
+
         mlflow.set_tracking_uri(uri)
         mlflow.set_experiment(experiment_name or _EXPERIMENT)
         return True
@@ -56,7 +59,7 @@ def init_mlflow(
 
 def log_query_run(
     *,
-    result: Dict[str, Any],
+    result: dict[str, Any],
     session_id: str,
     model: str,
     environment: str,
@@ -78,19 +81,23 @@ def log_query_run(
         wf_metrics = meta.get("workflow_metrics", {}) or {}
 
         with mlflow.start_run(run_name=f"query_{session_id}"):
-            mlflow.set_tags({
-                "session_id": session_id,
-                "model": model,
-                "environment": environment,
-                "query_preview": query[:120],
-            })
-            mlflow.log_metrics({
-                "success": int(result.get("success", False)),
-                "execution_time_s": round(result.get("execution_time", 0.0), 3),
-                "retry_count": wf_metrics.get("retry_count", 0),
-                "row_count": result.get("row_count", 0),
-                "error_count": wf_metrics.get("error_count", 0),
-            })
+            mlflow.set_tags(
+                {
+                    "session_id": session_id,
+                    "model": model,
+                    "environment": environment,
+                    "query_preview": query[:120],
+                }
+            )
+            mlflow.log_metrics(
+                {
+                    "success": int(result.get("success", False)),
+                    "execution_time_s": round(result.get("execution_time", 0.0), 3),
+                    "retry_count": wf_metrics.get("retry_count", 0),
+                    "row_count": result.get("row_count", 0),
+                    "error_count": wf_metrics.get("error_count", 0),
+                }
+            )
     except Exception as exc:
         logger.warning("MLflow log_query_run failed", extra={"error": str(exc)})
 
@@ -99,16 +106,16 @@ def log_ablation_run(
     *,
     variant_id: str,
     variant_name: str,
-    flags: Dict[str, Any],
+    flags: dict[str, Any],
     ex_overall: float,
-    ex_by_tier: Dict[str, float],
+    ex_by_tier: dict[str, float],
     delta_ex_pp: float,
-    mcnemar_chi2: Optional[float],
-    mcnemar_p: Optional[float],
+    mcnemar_chi2: float | None,
+    mcnemar_p: float | None,
     n_queries: int,
     git_sha: str,
     model_id: str,
-    results_csv_path: Optional[str] = None,
+    results_csv_path: str | None = None,
     total_tokens: int = 0,
     total_cost_usd: float = 0.0,
 ) -> None:
@@ -127,16 +134,18 @@ def log_ablation_run(
         mlflow.set_experiment(_ABLATION_EXPERIMENT)
 
         with mlflow.start_run(run_name=variant_name):
-            mlflow.set_tags({
-                "variant_id": variant_id,
-                "variant_name": variant_name,
-                "git_sha": git_sha,
-                "model_id": model_id,
-                "n_queries": str(n_queries),
-                **{f"flag_{k}": str(v) for k, v in flags.items()},
-            })
+            mlflow.set_tags(
+                {
+                    "variant_id": variant_id,
+                    "variant_name": variant_name,
+                    "git_sha": git_sha,
+                    "model_id": model_id,
+                    "n_queries": str(n_queries),
+                    **{f"flag_{k}": str(v) for k, v in flags.items()},
+                }
+            )
 
-            metrics: Dict[str, float] = {
+            metrics: dict[str, float] = {
                 "ex_overall": ex_overall,
                 "delta_ex_pp": delta_ex_pp,
             }

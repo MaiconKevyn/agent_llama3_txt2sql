@@ -24,6 +24,41 @@ def test_plans_bar_for_categorical_metric_result():
     assert spec.y == "total_internacoes"
 
 
+def test_plans_bar_for_mortality_rate_when_denominator_columns_are_present():
+    spec = plan_chart(
+        ChartPlanningInput(
+            user_query="Compare os municipios com maior mortalidade e destaque o lider.",
+            columns=["municipio", "total_internacoes", "total_mortes", "taxa"],
+            column_types={
+                "municipio": "string",
+                "total_internacoes": "number",
+                "total_mortes": "number",
+                "taxa": "number",
+            },
+            rows=[
+                {
+                    "municipio": "Nova Friburgo",
+                    "total_internacoes": 136883,
+                    "total_mortes": 12582,
+                    "taxa": 9.19,
+                },
+                {
+                    "municipio": "Saquarema",
+                    "total_internacoes": 57003,
+                    "total_mortes": 5223,
+                    "taxa": 9.16,
+                },
+            ],
+            row_count=2,
+        )
+    )
+
+    assert spec.chartable is True
+    assert spec.chart_type == "bar"
+    assert spec.x == "municipio"
+    assert spec.y == "taxa"
+
+
 def test_plans_line_for_temporal_metric_result():
     spec = plan_chart(
         ChartPlanningInput(
