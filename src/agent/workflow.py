@@ -357,15 +357,21 @@ def execute_sql_workflow(
         # Set max_retries for early stopping
         initial_state["max_retries"] = max_retries
 
-        # Execute workflow with cost tracking
+        # Execute workflow with cost and runtime budget tracking
         from .cost_tracker import QueryCostTracker
+        from .runtime_budget import RuntimeBudgetPolicy, track_runtime_budget
 
-        with QueryCostTracker() as cost:
+        budget_policy = RuntimeBudgetPolicy.from_config(
+            getattr(llm_manager, "config", None),
+            max_retries=max_retries,
+        )
+        with QueryCostTracker() as cost, track_runtime_budget(budget_policy) as runtime_budget:
             final_state = workflow.invoke(initial_state, config=config)
 
         # Convert to legacy format for API compatibility
         result = state_to_legacy_format(final_state)
         result["cost"] = cost.as_dict()
+        result.setdefault("metadata", {})["runtime_budget"] = runtime_budget.as_dict()
 
         return result
 

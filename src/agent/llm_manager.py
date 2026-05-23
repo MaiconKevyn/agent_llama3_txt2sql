@@ -11,6 +11,7 @@ from langchain_openai import ChatOpenAI
 from ..application.config.simple_config import ApplicationConfig
 from ..utils.logging_config import get_llm_manager_logger
 from ..utils.sql_safety import is_select_only, sanitize_sql_for_execution
+from .runtime_budget import record_llm_call
 
 logger = get_llm_manager_logger()
 
@@ -141,6 +142,7 @@ class OpenAILLMManager:
         self, messages: list[BaseMessage], max_iterations: int = 5
     ) -> dict[str, Any]:
         llm = self.get_bound_llm()
+        record_llm_call("tool_bound_chat")
         response = llm.invoke(messages)
         tool_calls = getattr(response, "tool_calls", []) or []
         return {
@@ -201,8 +203,9 @@ Rules:
         system_prompt = f"""You are a helpful assistant for Brazilian healthcare (SUS) data analysis.
 Answer in Portuguese, be concise.
 {f"Contexto: {context}" if context else ""}
-"""
+        """
         messages = self.create_messages(user_query, system_prompt, conversation_history)
+        record_llm_call("conversational_chat")
         response = self.get_bound_llm().invoke(messages)
         return {
             "success": True,
@@ -213,6 +216,7 @@ Answer in Portuguese, be concise.
 
     def invoke_chat(self, messages: list[BaseMessage]):
         """Simple chat invocation without provider branching (OpenAI only)."""
+        record_llm_call("chat")
         return self._llm.invoke(messages)
 
     def invoke_chat_structured(self, messages: list[BaseMessage], output_schema):
@@ -222,6 +226,7 @@ Answer in Portuguese, be concise.
         on failure so callers can fall back to text-based parsing.
         """
         structured_llm = self._llm.with_structured_output(output_schema)
+        record_llm_call("structured_chat")
         return structured_llm.invoke(messages)
 
     def validate_sql_query(self, sql_query: str) -> dict[str, Any]:

@@ -13,6 +13,11 @@ BUSINESS_INNER_JOIN_ALLOWED = "business_inner_join_allowed"
 LEFT_JOIN_OR_EXPLICIT_SCOPE = "left_join_or_explicit_mapped_scope_required"
 AUDIT_ONLY = "audit_only"
 
+JOIN_ENFORCEMENT_ALLOW = "allow"
+JOIN_ENFORCEMENT_ALLOW_WITH_CAVEAT = "allow_with_caveat"
+JOIN_ENFORCEMENT_BLOCK = "block"
+AUDIT_ONLY_BLOCKED_LOOKUP_TABLES = frozenset({"cid"})
+
 
 @dataclass(frozen=True)
 class JoinEndpoint:
@@ -59,35 +64,70 @@ class JoinPolicy:
 
     @property
     def is_allowed(self) -> bool:
-        return self.accepted_usage_policy in {
-            BUSINESS_INNER_JOIN_ALLOWED,
-            LEFT_JOIN_OR_EXPLICIT_SCOPE,
+        return self.enforcement in {
+            JOIN_ENFORCEMENT_ALLOW,
+            JOIN_ENFORCEMENT_ALLOW_WITH_CAVEAT,
         }
 
     @property
     def requires_caveat(self) -> bool:
-        return self.accepted_usage_policy == LEFT_JOIN_OR_EXPLICIT_SCOPE
+        return self.enforcement == JOIN_ENFORCEMENT_ALLOW_WITH_CAVEAT
 
     @property
     def is_audit_only(self) -> bool:
         return self.accepted_usage_policy == AUDIT_ONLY
 
     @property
+    def enforcement(self) -> str:
+        if self.accepted_usage_policy == BUSINESS_INNER_JOIN_ALLOWED:
+            return JOIN_ENFORCEMENT_ALLOW
+        if self.accepted_usage_policy == LEFT_JOIN_OR_EXPLICIT_SCOPE:
+            return JOIN_ENFORCEMENT_ALLOW_WITH_CAVEAT
+        if self.accepted_usage_policy == AUDIT_ONLY:
+            if self.right.table in AUDIT_ONLY_BLOCKED_LOOKUP_TABLES:
+                return JOIN_ENFORCEMENT_BLOCK
+            return JOIN_ENFORCEMENT_ALLOW_WITH_CAVEAT
+        return JOIN_ENFORCEMENT_BLOCK
+
+    @property
+    def enforcement_reason(self) -> str:
+        if self.enforcement == JOIN_ENFORCEMENT_ALLOW:
+            return "business join contract is confirmed"
+        if self.accepted_usage_policy == LEFT_JOIN_OR_EXPLICIT_SCOPE:
+            return "join requires explicit mapped-scope caveat"
+        if self.accepted_usage_policy == AUDIT_ONLY and self.requires_caveat:
+            return "audit-only categorical lookup requires a coverage caveat"
+        if self.accepted_usage_policy == AUDIT_ONLY:
+            return "audit-only clinical-code lookup is not valid for normal analytical use"
+        return f"unsupported join usage policy: {self.accepted_usage_policy}"
+
+    @property
     def caveat_code(self) -> str | None:
-        if self.requires_caveat:
+        if self.requires_caveat and self.accepted_usage_policy == LEFT_JOIN_OR_EXPLICIT_SCOPE:
             return f"{self.left.table}_{self.left.column}_mapped_scope"
-        if self.is_audit_only:
+        if self.requires_caveat and self.is_audit_only:
+            return f"{self.left.table}_{self.left.column}_audit_coverage"
+        if self.enforcement == JOIN_ENFORCEMENT_BLOCK:
             return f"{self.left.table}_{self.left.column}_audit_only"
         return None
 
     @property
     def message_ptbr(self) -> str | None:
-        if self.requires_caveat:
+        if self.requires_caveat and self.accepted_usage_policy == LEFT_JOIN_OR_EXPLICIT_SCOPE:
             return (
                 f"O join {self.left.qualified_name} -> {self.right.qualified_name} "
                 "tem cobertura imperfeita; resultados consideram registros mapeaveis."
             )
-        if self.is_audit_only:
+        if self.requires_caveat and self.is_audit_only:
+            coverage = ""
+            if self.match_rate_non_null is not None:
+                coverage = f" Cobertura mapeada aproximada: {self.match_rate_non_null:.1%}."
+            return (
+                f"O join {self.left.qualified_name} -> {self.right.qualified_name} "
+                "tem baixa cobertura no contrato do banco; interprete o resultado como registros "
+                f"com codigo informado e mapeavel.{coverage}"
+            )
+        if self.enforcement == JOIN_ENFORCEMENT_BLOCK:
             return (
                 f"O join {self.left.qualified_name} -> {self.right.qualified_name} "
                 "e audit-only e nao deve ser usado como relacao analitica normal sem escopo explicito."

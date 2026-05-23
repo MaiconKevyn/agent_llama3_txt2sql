@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 
 from .contract_validator import validate_sql_contract
-from .contracts.join_policy import JoinPolicy, policies_for_sql_joins
+from .contracts.join_policy import JOIN_ENFORCEMENT_BLOCK, JoinPolicy, policies_for_sql_joins
 from .plan_schema import SemanticPlan
 from .sql_inspector import SQLInspector
 
@@ -816,10 +816,13 @@ def _validate_additional_semantic_constraints(
             )
 
     for policy in policies_for_sql_joins(inspector.normalized_sql):
-        if _join_policy_is_hard_blocked(policy):
+        if policy.enforcement == JOIN_ENFORCEMENT_BLOCK and not _blocked_join_has_explicit_scope(
+            policy, plan, text
+        ):
             return False, (
                 "SEMANTIC PLAN ERROR: Join policy marks "
-                f"{policy.left.qualified_name} -> {policy.right.qualified_name} as audit-only; "
+                f"{policy.left.qualified_name} -> {policy.right.qualified_name} as blocked; "
+                f"{policy.enforcement_reason}; "
                 "do not use it as a normal analytical join without an explicit audit contract."
             )
 
@@ -1536,14 +1539,24 @@ def _sql_satisfies_age_filter(sql_lower: str, operator: str, expected_value: str
     return False
 
 
-def _join_policy_is_hard_blocked(policy: JoinPolicy) -> bool:
-    """Return True for audit-only joins that should fail validation outright."""
+def _blocked_join_has_explicit_scope(policy: JoinPolicy, plan: SemanticPlan, text: str) -> bool:
+    """Allow blocked lookup joins only when a plan-level domain contract scopes them."""
 
-    return (
-        policy.is_audit_only
-        and policy.left.table == "internacoes"
-        and policy.right.table == "cid"
-        and policy.left.column in {"cid_morte", "diag_secun"}
+    if (
+        policy.left.table == "internacoes"
+        and policy.left.column == "instru"
+        and policy.right.table == "instrucao"
+        and policy.right.column == "instru"
+        and "domain_instrucao_valid_required" in plan.constraints
+    ):
+        return _sql_has_valid_instrucao_scope(text)
+    return False
+
+
+def _sql_has_valid_instrucao_scope(text: str) -> bool:
+    return bool(
+        re.search(r"\binstru\b[\s\S]{0,80}\bis\s+not\s+null\b", text, re.I)
+        and re.search(r"\binstru\b\"?\s*(?:!=|<>)\s*0\b", text, re.I)
     )
 
 
