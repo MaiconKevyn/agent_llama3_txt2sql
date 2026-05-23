@@ -4,38 +4,20 @@ import re
 import time
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from pydantic import BaseModel, Field
 
 from ..semantic.analytic_templates import analytic_metadata_for_plan
 from ..semantic.plan_schema import SemanticPlan
 from ..utils.logging_config import get_nodes_logger
 from .analytic_sql import build_analytic_sql_package
 from .cid_catalog_sql import build_deterministic_cid_catalog_sql
-from .llamaindex_context import should_use_llamaindex_sql_draft
 from .llm_manager import get_llm_manager
 from .plan_auditor import audit_pre_sql_plan
 from .prompt_builder import build_pregeneration_hints, build_sql_generation_messages
+from .sql_fallback import SQLOutput, generate_sql_with_fallback
 from .state_helpers import add_ai_message, add_error, update_phase
 from .state_models import ExecutionPhase, MessagesStateTXT2SQL
 
 logger = get_nodes_logger()
-
-
-# ---------------------------------------------------------------------------
-# Output schema
-# ---------------------------------------------------------------------------
-
-
-class SQLOutput(BaseModel):
-    """Structured output for SQL generation."""
-
-    sql: str = Field(description="Valid DuckDB SELECT query answering the user question")
-    reasoning: str = Field(description="Brief explanation of table/filter choices (1-2 sentences)")
-    confidence: float = Field(
-        ge=0.0,
-        le=1.0,
-        description="Confidence score 0-1; use <0.6 for uncertain queries",
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -2534,75 +2516,22 @@ def generate_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             },
         )
 
-        sql_query: str | None = None
-        generation_method = "structured"
-        if should_use_llamaindex_sql_draft(ablation_flags):
-            try:
-                from .llamaindex_sql_generator import generate_llamaindex_sql_draft
-
-                draft = generate_llamaindex_sql_draft(
-                    user_query=user_query,
-                    schema_context=schema_context,
-                    selected_tables=selected_tables,
-                    semantic_plan=semantic_plan if isinstance(semantic_plan, dict) else None,
-                    chart_plan=chart_plan if isinstance(chart_plan, dict) else None,
-                    model=llm_manager.config.llm_model,
-                    temperature=llm_manager.config.llm_temperature,
-                )
-                sql_query = llm_manager._clean_sql_query(draft.sql)
-                if sql_query:
-                    generation_method = draft.source
-                    meta = state.get("response_metadata", {}) or {}
-                    meta["sql_generation_source"] = draft.source
-                    meta["sql_generation_confidence"] = draft.confidence
-                    meta["sql_generation_reasoning"] = draft.reasoning
-                    state["response_metadata"] = meta
-                    logger.info(
-                        "SQL generated via LlamaIndex draft",
-                        extra={
-                            "sql": sql_query[:200],
-                            "confidence": draft.confidence,
-                        },
-                    )
-            except Exception as llama_err:
-                meta = state.get("response_metadata", {}) or {}
-                meta["llamaindex_sql_draft_error"] = str(llama_err)
-                state["response_metadata"] = meta
-                logger.warning(
-                    "LlamaIndex SQL draft failed, falling back to current generator",
-                    extra={"error": str(llama_err)},
-                )
-
-        if not sql_query:
-            try:
-                structured_result = llm_manager.invoke_chat_structured(
-                    formatted_messages, SQLOutput
-                )
-                sql_query = llm_manager._clean_sql_query(structured_result.sql)
-                logger.info(
-                    "SQL generated via structured output",
-                    extra={
-                        "sql": sql_query[:200],
-                        "reasoning": structured_result.reasoning[:120],
-                        "confidence": structured_result.confidence,
-                    },
-                )
-                meta = state.get("response_metadata", {}) or {}
-                meta["sql_generation_confidence"] = structured_result.confidence
-                meta["sql_generation_reasoning"] = structured_result.reasoning
-                meta["sql_generation_source"] = "current_structured_output"
-                state["response_metadata"] = meta
-            except Exception as struct_err:
-                logger.warning(
-                    "Structured output failed, falling back to text parse",
-                    extra={"error": str(struct_err)},
-                )
-                generation_method = "text_fallback"
-                response = llm_manager.invoke_chat(formatted_messages)
-                sql_query = (
-                    response.content.strip() if hasattr(response, "content") else str(response)
-                )
-                sql_query = llm_manager._clean_sql_query(sql_query)
+        fallback_result = generate_sql_with_fallback(
+            llm_manager=llm_manager,
+            formatted_messages=formatted_messages,
+            user_query=user_query,
+            schema_context=schema_context,
+            selected_tables=selected_tables,
+            semantic_plan=semantic_plan if isinstance(semantic_plan, dict) else None,
+            chart_plan=chart_plan if isinstance(chart_plan, dict) else None,
+            ablation_flags=ablation_flags,
+        )
+        sql_query = fallback_result.sql_query
+        generation_method = fallback_result.generation_method
+        if fallback_result.metadata:
+            meta = state.get("response_metadata", {}) or {}
+            meta.update(fallback_result.metadata)
+            state["response_metadata"] = meta
 
         if sql_query:
             state["generated_sql"] = sql_query
