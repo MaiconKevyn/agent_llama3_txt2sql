@@ -9,6 +9,30 @@ from __future__ import annotations
 
 import re
 
+from .cid_rules import (
+    CID_CATALOG_DIMENSION_SOURCES,
+)
+from .cid_rules import (
+    cid_catalog_dimension_from_query as _cid_catalog_dimension_from_query,
+)
+from .cid_rules import (
+    extract_cid_catalog_search_terms as _extract_cid_catalog_search_terms,
+)
+from .cid_rules import (
+    extract_explicit_cid_prefix_filters as _extract_explicit_cid_prefix_filters,
+)
+from .cid_rules import (
+    has_cid_catalog_lookup_context as _has_cid_catalog_lookup_context,
+)
+from .cid_rules import (
+    has_cid_chapter_context as _has_cid_chapter_context,
+)
+from .cid_rules import (
+    has_missing_cid_lookup_request as _has_missing_cid_lookup_request,
+)
+from .cid_rules import (
+    is_cid_duplicate_description_query as _is_cid_duplicate_description_query,
+)
 from .concept_resolver import find_clinical_concepts
 from .domain_resolvers import resolve_clinical_domain, resolve_population_group
 from .plan_schema import (
@@ -390,34 +414,6 @@ def _has_missing_primary_diagnosis_request(query_lower: str) -> bool:
     return has_primary_diagnosis and has_missing_language and has_fact_scope
 
 
-def _has_missing_cid_lookup_request(query_lower: str) -> bool:
-    has_primary_diagnosis = _contains_any(
-        query_lower,
-        [
-            "diagnosticos principais",
-            "diagnósticos principais",
-            "diagnostico principal",
-            "diagnóstico principal",
-            "diag_princ",
-        ],
-    )
-    has_catalog = _contains_any(query_lower, ["catalogo cid", "catálogo cid", "cid"])
-    has_missing_lookup = _contains_any(
-        query_lower,
-        [
-            "nao existem",
-            "não existem",
-            "nao existe",
-            "não existe",
-            "sem lookup",
-            "sem cadastro",
-            "fora do catalogo",
-            "fora do catálogo",
-        ],
-    )
-    return has_primary_diagnosis and has_catalog and has_missing_lookup
-
-
 def _has_missing_municipio_lookup_request(query_lower: str) -> bool:
     has_residence_municipality = _contains_any(
         query_lower,
@@ -690,7 +686,7 @@ def _is_plural_metric_ranking_without_explicit_limit(query_lower: str) -> bool:
         return False
     if re.search(
         r"\bqual\s+(?:o|a)\s+(?:munic[ií]pio|cidade|estado|uf|regi[aã]o|hospital|"
-            r"especialidade|procedimento|diagn[oó]stico|cid|cap[ií]tulo|categoria|grupo|causa)\b",
+        r"especialidade|procedimento|diagn[oó]stico|cid|cap[ií]tulo|categoria|grupo|causa)\b",
         query_lower,
     ):
         return False
@@ -704,9 +700,9 @@ def _is_plural_metric_ranking_without_explicit_limit(query_lower: str) -> bool:
     )
     if not has_plural_ranked_entity:
         return False
-    if re.search(
-        r"\b(?:principais|mais\s+comuns|mais\s+frequentes)\b", query_lower
-    ) or re.search(r"\bconcentraram\s+mais\b", query_lower):
+    if re.search(r"\b(?:principais|mais\s+comuns|mais\s+frequentes)\b", query_lower) or re.search(
+        r"\bconcentraram\s+mais\b", query_lower
+    ):
         return True
     if re.search(
         r"\b(?:tiveram|tem|têm|com)\s+mais\b[\s\S]{0,60}"
@@ -1123,158 +1119,6 @@ def _has_state_comparison_request(query_lower: str) -> bool:
     ) and _contains_any(query_lower, ["entre", "versus", "vs"])
 
 
-def _has_cid_chapter_context(query_lower: str) -> bool:
-    return bool(
-        re.search(r"\bcap[ií]tulos?\s+(?:do\s+)?cid\b", query_lower, re.I)
-        or re.search(r"\bcid[\s-]*10\s+cap[ií]tulos?\b", query_lower, re.I)
-    )
-
-
-def _has_cid_catalog_lookup_context(query_lower: str) -> bool:
-    if not _contains_any(query_lower, ["cid", "cids", "cid-10", "cid10"]):
-        return False
-    if _contains_any(
-        query_lower,
-        [
-            "frequente",
-            "frequentes",
-            "frequencia",
-            "freqüência",
-            "concentram",
-            "concentraram",
-            "tiveram mais",
-            "aparecem mais",
-            "em criancas",
-            "em crianças",
-            "em idosos",
-            "em idosas",
-        ],
-    ):
-        return False
-    if _contains_any(
-        query_lower,
-        [
-            "internação",
-            "internacao",
-            "internações",
-            "internacoes",
-            "hospitalização",
-            "hospitalizacao",
-            "hospitalizações",
-            "hospitalizacoes",
-            "paciente",
-            "pacientes",
-            "internado",
-            "internada",
-            "internados",
-            "internadas",
-            "óbito",
-            "obito",
-            "óbitos",
-            "obitos",
-            "morte",
-            "mortes",
-            "mortalidade",
-            "valor",
-            "custo",
-            "gasto",
-            "permanência",
-            "permanencia",
-            "uti",
-        ],
-    ):
-        return False
-    return _contains_any(
-        query_lower,
-        [
-            "catalogo",
-            "catálogo",
-            "base",
-            "existem",
-            "existe",
-            "liste",
-            "listar",
-            "quais",
-            "código",
-            "codigo",
-            "códigos",
-            "codigos",
-            "descrição",
-            "descricao",
-            "descrições",
-            "descricoes",
-            "categoria cid",
-            "categorias cid",
-            "grupo cid",
-            "grupos cid",
-            "capitulo cid",
-            "capítulo cid",
-            "restricao",
-            "restrição",
-            "restricoes",
-            "restrições",
-        ],
-    )
-
-
-def _extract_explicit_cid_prefix_filters(query_lower: str) -> list[SemanticFilter]:
-    patterns = [
-        r"\bcids?\b[\s\S]{0,60}\b(?:c[oó]digo\s+)?(?:come[cç]a|inicia)\s+com\s+([a-z]\d{1,2}[a-z0-9]?)\b",
-        r"\bc[oó]digo\s+come[cç]a\s+com\s+([a-z]\d{1,2}[a-z0-9]?)\b",
-        r"\bprefixo\s+cid\s+([a-z]\d{1,2}[a-z0-9]?)\b",
-    ]
-    filters: list[SemanticFilter] = []
-    for pattern in patterns:
-        for match in re.finditer(pattern, query_lower, re.I):
-            prefix = match.group(1).upper()
-            if not prefix.endswith("%"):
-                prefix = f"{prefix}%"
-            filters.append(SemanticFilter(field="diagnostico_principal_prefix", values=[prefix], operator="LIKE"))
-    return filters
-
-
-def _extract_cid_catalog_search_terms(query_lower: str) -> list[str]:
-    patterns = [
-        r"\b(?:representam|relacionad[oa]s?\s+a|para|mencionam|cont[eê]m|contem)\s+(.+?)\??$",
-        r"\bquero\s+analisar\s+(.+?)\.\s+quais\s+cids?\b",
-    ]
-    terms: list[str] = []
-    for pattern in patterns:
-        match = re.search(pattern, query_lower, re.I)
-        if not match:
-            continue
-        raw = match.group(1)
-        raw = re.sub(r"\b(?:cid|cids|diagn[oó]stico|principal|devo|considerar)\b", " ", raw, flags=re.I)
-        for part in re.split(r"\s+ou\s+|\s+e\s+|,", raw):
-            value = re.sub(r"\s+", " ", part).strip(" .?")
-            if len(value) >= 3:
-                terms.append(value)
-    return list(dict.fromkeys(terms))
-
-
-def _cid_catalog_dimension_from_query(query_lower: str) -> str | None:
-    if re.search(r"\brestri[cç][oõ]es?\b[\s\S]{0,60}\bsexo\b", query_lower, re.I):
-        return "cid_restrsexo"
-    if re.search(r"\bgrupos?\s+(?:do\s+)?cid\b", query_lower, re.I):
-        return "cid_grupo"
-    if re.search(r"\bcategorias?\s+(?:do\s+)?cid\b", query_lower, re.I):
-        return "cid_categoria"
-    if _has_cid_chapter_context(query_lower):
-        return "cid_capitulo"
-    if re.search(r"\bdescri[cç][oõ]es?\s+(?:do\s+)?cid\b", query_lower, re.I):
-        return "cid_descricao"
-    if re.search(r"\b(?:c[oó]digos?\s+cid|cids?)\b", query_lower, re.I):
-        return "cid_codigo"
-    return None
-
-
-def _is_cid_duplicate_description_query(query_lower: str) -> bool:
-    return bool(
-        _contains_any(query_lower, ["descricoes cid", "descrições cid", "descricao cid", "descrição cid"])
-        and _contains_any(query_lower, ["repetidas", "repetidos", "duplicadas", "duplicados"])
-    )
-
-
 def _has_parallel_state_top_n_context(query_lower: str) -> bool:
     if _contains_any(query_lower, ["combinado", "combinada", "total combinado"]):
         return False
@@ -1446,7 +1290,12 @@ def _has_group_phrase(query_lower: str, dimension: str) -> bool:
         ],
         "cid_categoria": ["categoria cid", "categorias cid"],
         "cid_grupo": ["grupo cid", "grupos cid"],
-        "cid_restrsexo": ["restrição de sexo", "restricao de sexo", "restrições de sexo", "restricoes de sexo"],
+        "cid_restrsexo": [
+            "restrição de sexo",
+            "restricao de sexo",
+            "restrições de sexo",
+            "restricoes de sexo",
+        ],
         "nacionalidade": ["nacionalidade"],
         "diagnostico": ["diagnóstico", "diagnostico", "cid", "doença", "doenca"],
         "procedimento": ["procedimento"],
@@ -1705,6 +1554,8 @@ def _counted_entity_from_scalar_question(
         "estado",
         "estado_hospital",
         "cid_capitulo",
+        "cid_codigo",
+        "cid_descricao",
         "diagnostico",
         "procedimento",
         "sexo",
@@ -1713,7 +1564,7 @@ def _counted_entity_from_scalar_question(
     raw_names = [dim.name for dim in raw_dimensions]
     for name in priority:
         if name in raw_names:
-            return name
+            return "diagnostico" if name in {"cid_codigo", "cid_descricao"} else name
     return None
 
 
@@ -1833,7 +1684,10 @@ def _diagnosis_mention_is_filter_context(query_lower: str) -> bool:
     )
     has_named_diagnosis_filter = bool(_extract_diagnosis_description_terms(query_lower))
     return (
-        ((asks_scalar_count or asks_temporal_measure or asks_non_diagnosis_ranking) and has_category)
+        (
+            (asks_scalar_count or asks_temporal_measure or asks_non_diagnosis_ranking)
+            and has_category
+        )
         or has_named_diagnosis_filter
     ) and not asks_breakdown
 
@@ -2443,12 +2297,16 @@ def _infer_metrics(query_lower: str) -> list[SemanticMetric]:
         query_lower,
         ["taxa", "percentual", "proporção", "proporcao"],
     ) and _contains_any(query_lower, ["óbito", "obito", "óbitos", "obitos", "morte", "mortes"])
-    if "mortalidade infantil" not in query_lower and not has_missing_race_color_death_rate and (
-        any(
-            token in query_lower
-            for token in ["taxa de mortalidade", "mortalidade hospitalar", "mortalidade"]
+    if (
+        "mortalidade infantil" not in query_lower
+        and not has_missing_race_color_death_rate
+        and (
+            any(
+                token in query_lower
+                for token in ["taxa de mortalidade", "mortalidade hospitalar", "mortalidade"]
+            )
+            or has_outcome_rate_request
         )
-        or has_outcome_rate_request
     ):
         metrics.append(
             SemanticMetric(
@@ -2482,17 +2340,16 @@ def _infer_metrics(query_lower: str) -> list[SemanticMetric]:
         )
 
     has_specific_average_metric = False
-    if (
-        _contains_any(query_lower, ["tempo médio", "tempo medio", "média", "media"])
-        and _contains_any(
-            query_lower,
-            [
-                "entre internação e óbito",
-                "entre internacao e obito",
-                "entre internação e obito",
-                "entre internacao e óbito",
-            ],
-        )
+    if _contains_any(
+        query_lower, ["tempo médio", "tempo medio", "média", "media"]
+    ) and _contains_any(
+        query_lower,
+        [
+            "entre internação e óbito",
+            "entre internacao e obito",
+            "entre internação e obito",
+            "entre internacao e óbito",
+        ],
     ):
         metrics.append(
             SemanticMetric(
@@ -2744,26 +2601,28 @@ def _infer_filters(query: str, query_lower: str) -> list[SemanticFilter]:
         ],
     )
     if has_cesarean_procedure:
-        filters.append(SemanticFilter(field="procedimento_nome", values=["CESAR"], operator="ILIKE"))
+        filters.append(
+            SemanticFilter(field="procedimento_nome", values=["CESAR"], operator="ILIKE")
+        )
     if (
         not _has_cid_catalog_lookup_context(query_lower)
         and _contains_any(
-        query_lower,
-        [
-            "obstétrica",
-            "obstetrica",
-            "obstétricas",
-            "obstetricas",
-            "obstétrico",
-            "obstetrico",
-            "obstétricos",
-            "obstetricos",
-            "obstetrícia",
-            "obstetricia",
-            "parto",
-            "gestante",
-            "gestantes",
-        ],
+            query_lower,
+            [
+                "obstétrica",
+                "obstetrica",
+                "obstétricas",
+                "obstetricas",
+                "obstétrico",
+                "obstetrico",
+                "obstétricos",
+                "obstetricos",
+                "obstetrícia",
+                "obstetricia",
+                "parto",
+                "gestante",
+                "gestantes",
+            ],
         )
         and not has_cesarean_procedure
     ):
@@ -2818,7 +2677,9 @@ def _infer_filters(query: str, query_lower: str) -> list[SemanticFilter]:
     filters.extend(_extract_age_filters(query_lower))
     skip_diagnosis_term_extraction = _has_missing_race_color_death_rate_request(query_lower)
     death_cause_term = (
-        None if skip_diagnosis_term_extraction else _extract_death_cause_description_term(query_lower)
+        None
+        if skip_diagnosis_term_extraction
+        else _extract_death_cause_description_term(query_lower)
     )
     if death_cause_term:
         death_cause_terms = _expand_diagnosis_description_terms(death_cause_term)
@@ -2886,11 +2747,7 @@ def _apply_resolved_clinical_concept_filters(
     if not force and not has_description_filter and not has_resolved_filter:
         return filters
 
-    updated = [
-        filter_
-        for filter_ in filters
-        if filter_.field != "diagnostico_principal_descricao"
-    ]
+    updated = [filter_ for filter_ in filters if filter_.field != "diagnostico_principal_descricao"]
     if not any(filter_.field == "diagnostico_principal_codigo" for filter_ in updated):
         if concept.resolved_codes:
             updated.append(
@@ -2906,9 +2763,7 @@ def _apply_resolved_clinical_concept_filters(
                 SemanticFilter(
                     field="diagnostico_principal_prefix",
                     values=concept.resolved_prefixes,
-                    operator="LIKE"
-                    if len(concept.resolved_prefixes) == 1
-                    else "LIKE_ANY",
+                    operator="LIKE" if len(concept.resolved_prefixes) == 1 else "LIKE_ANY",
                 )
             )
     if not any(filter_.field == "diagnostico_conceito_label" for filter_ in updated):
@@ -2944,7 +2799,16 @@ def build_semantic_plan(
     unsupported_schema_metrics = _unsupported_schema_metrics(q)
     explicit_min_group_count = _extract_min_group_count(q)
     raw_dimensions = _infer_dimensions(q)
-    if _contains_any(q, ["diagnostico principal", "diagnóstico principal"]):
+    if _has_death_cause_context(q):
+        raw_dimensions = [
+            _dimension("diagnostico", "cid.DESCRICAO")
+            if dim.name in {"cid_codigo", "cid_descricao"}
+            else dim
+            for dim in raw_dimensions
+        ]
+    if _contains_any(
+        q, ["diagnostico principal", "diagnóstico principal"]
+    ) and not _has_death_cause_context(q):
         if re.search(r"\bc[oó]digos?\s+cid\b|\bcids?\b", q, re.I):
             raw_dimensions = [
                 _dimension("cid_codigo", "cid.CID") if dim.name == "diagnostico" else dim
@@ -2952,9 +2816,7 @@ def build_semantic_plan(
             ]
         elif re.search(r"\bdescri[cç][oõ]es?\s+cid\b", q, re.I):
             raw_dimensions = [
-                _dimension("cid_descricao", "cid.DESCRICAO")
-                if dim.name == "diagnostico"
-                else dim
+                _dimension("cid_descricao", "cid.DESCRICAO") if dim.name == "diagnostico" else dim
                 for dim in raw_dimensions
             ]
     metrics = _infer_metrics(q)
@@ -2965,14 +2827,7 @@ def build_semantic_plan(
         raw_dimensions = [dim for dim in raw_dimensions if dim.name.startswith("cid_")]
         catalog_dimension = _cid_catalog_dimension_from_query(q)
         if catalog_dimension and not any(dim.name == catalog_dimension for dim in raw_dimensions):
-            source = {
-                "cid_codigo": "cid.CID",
-                "cid_descricao": "cid.DESCRICAO",
-                "cid_categoria": "cid.DS_CATEGORIA",
-                "cid_grupo": "cid.DS_GRUPO",
-                "cid_capitulo": "cid.DS_CAPITULO",
-                "cid_restrsexo": "cid.RESTRSEXO",
-            }[catalog_dimension]
+            source = CID_CATALOG_DIMENSION_SOURCES[catalog_dimension]
             raw_dimensions.append(_dimension(catalog_dimension, source))
     association_concept = resolved_clinical_concepts[0] if resolved_clinical_concepts else None
     has_clinical_condition_filter = any(
@@ -2989,9 +2844,7 @@ def build_semantic_plan(
         and _has_age_factor(q)
         and (association_concept or has_clinical_condition_filter)
     )
-    has_clinical_concept_association = bool(
-        association_concept and _has_association_intent(q)
-    )
+    has_clinical_concept_association = bool(association_concept and _has_association_intent(q))
     filters = _apply_resolved_clinical_concept_filters(
         filters,
         association_concept,
@@ -3282,8 +3135,7 @@ def build_semantic_plan(
             (
                 dim
                 for dim in raw_dimensions
-                if dim.name
-                in {"estado", "estado_hospital", "municipio", "municipio_hospital"}
+                if dim.name in {"estado", "estado_hospital", "municipio", "municipio_hospital"}
             ),
             None,
         )
@@ -3618,9 +3470,7 @@ def build_semantic_plan(
     if has_diagnosis_description_filter and (
         _has_death_cause_context(q)
         or has_categorical_outcome_association
-        or any(
-            semantic_filter.field == "desfecho" for semantic_filter in filters
-        )
+        or any(semantic_filter.field == "desfecho" for semantic_filter in filters)
     ):
         constraints.append("death_cause_description_requires_diag_princ_with_morte")
     period_filters = [
@@ -3740,6 +3590,8 @@ def build_semantic_plan(
         forbidden_output_dimensions = [
             dim.name for dim in raw_dimensions if dim.name not in output_dimensions
         ]
+        if counted_entity == "diagnostico":
+            forbidden_output_dimensions.append("diagnostico")
 
     answer_shape = AnswerShape(
         row_grain=row_grain,

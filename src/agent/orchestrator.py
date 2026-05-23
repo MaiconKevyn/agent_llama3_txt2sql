@@ -17,6 +17,7 @@ from ..visualization import (
 from ..visualization.renderer_contract import build_chart_response
 from ..visualization.schema import ChartPlan, ChartSpec, VisualizationIntent
 from .cli_session import InteractiveSession, WorkflowVisualizer
+from .conversation_context import resolve_contextual_followup
 from .llamaindex_context import normalize_llamaindex_mode
 from .llm_manager import OpenAILLMManager
 from .metrics import MetricsCollector
@@ -69,9 +70,7 @@ def _orchestrator_config_from_env() -> OrchestratorConfig:
         enable_llamaindex_context=_env_bool("ENABLE_LLAMAINDEX_CONTEXT")
         or mode in {"context", "sql_draft", "hybrid"},
         enable_llamaindex_sql_draft=_env_bool("ENABLE_LLAMAINDEX_SQL_DRAFT") or mode == "sql_draft",
-        enable_analytic_response_templates=_env_bool(
-            "ENABLE_ANALYTIC_RESPONSE_TEMPLATES", True
-        ),
+        enable_analytic_response_templates=_env_bool("ENABLE_ANALYTIC_RESPONSE_TEMPLATES", True),
         llamaindex_mode=mode,
         llamaindex_top_k_tables=_env_int("LLAMAINDEX_TOP_K_TABLES", 6),
         llamaindex_index_dir=os.getenv("LLAMAINDEX_INDEX_DIR", ".llamaindex_schema"),
@@ -268,6 +267,7 @@ class LangGraphOrchestrator:
         run_name: str = None,
         tags: list[str] = None,
         metadata: dict[str, Any] = None,
+        chart_from_last_result: bool = False,
     ) -> dict[str, Any] | list[dict[str, Any]]:
         """Process a user query using the LangGraph workflow.
 
@@ -280,6 +280,7 @@ class LangGraphOrchestrator:
             run_name: Optional LangSmith/LangGraph run name
             tags: Optional tracing tags
             metadata: Optional tracing metadata
+            chart_from_last_result: Force chart generation from the cached session result
 
         Returns:
             Query result dictionary or list of streaming updates
@@ -303,6 +304,14 @@ class LangGraphOrchestrator:
 
         try:
             visualization_intent = detect_visualization_intent(user_query)
+            if chart_from_last_result:
+                visualization_intent = VisualizationIntent(
+                    requested=True,
+                    source="explicit_followup",
+                    uses_last_result=True,
+                    chart_hint=visualization_intent.chart_hint,
+                    reason="UI requested chart from cached session result",
+                )
             chart_plan = build_chart_plan(user_query, visualization_intent)
             effective_force_single_query = force_single_query or visualization_intent.requested
             if visualization_intent.requested and visualization_intent.uses_last_result:
@@ -322,6 +331,14 @@ class LangGraphOrchestrator:
                     started_at=start_time,
                 )
 
+            workflow_user_query = user_query
+            conversation_followup = resolve_contextual_followup(
+                user_query=user_query,
+                cached_result=self._last_result_by_session.get(session_id),
+            )
+            if conversation_followup.is_followup:
+                workflow_user_query = conversation_followup.resolved_query
+
             workflow_config = build_workflow_config(config=config, session_id=session_id)
             if run_name:
                 workflow_config["run_name"] = run_name
@@ -334,7 +351,7 @@ class LangGraphOrchestrator:
                 results = []
                 for update in stream_sql_workflow(
                     workflow=self._workflow,
-                    user_query=user_query,
+                    user_query=workflow_user_query,
                     session_id=session_id,
                     config=workflow_config,
                     force_single_query=effective_force_single_query,
@@ -349,7 +366,7 @@ class LangGraphOrchestrator:
 
             result = execute_sql_workflow(
                 workflow=self._workflow,
-                user_query=user_query,
+                user_query=workflow_user_query,
                 session_id=session_id,
                 config=workflow_config,
                 force_single_query=effective_force_single_query,
@@ -357,6 +374,9 @@ class LangGraphOrchestrator:
                 visualization_intent=visualization_intent.model_dump(mode="json"),
                 chart_plan=chart_plan.model_dump(mode="json"),
             )
+            if conversation_followup.is_followup:
+                result["metadata"] = result.get("metadata", {}) or {}
+                result["metadata"]["conversation_followup"] = conversation_followup.metadata
 
             execution_time = time.time() - start_time
             result["execution_time"] = execution_time
@@ -366,7 +386,11 @@ class LangGraphOrchestrator:
                 visualization_intent=visualization_intent,
                 chart_plan=chart_plan,
             )
-            self._remember_result_if_available(session_id=session_id, result=result)
+            self._remember_result_if_available(
+                session_id=session_id,
+                user_query=conversation_followup.canonical_query,
+                result=result,
+            )
             self._metrics.record_result(
                 user_query,
                 result,
@@ -520,10 +544,18 @@ class LangGraphOrchestrator:
                 reason=f"Nao foi possivel gerar grafico validado: {exc}",
             )
 
-    def _remember_result_if_available(self, *, session_id: str, result: dict[str, Any]) -> None:
+    def _remember_result_if_available(
+        self,
+        *,
+        session_id: str,
+        user_query: str,
+        result: dict[str, Any],
+    ) -> None:
         if not result.get("success") or not result.get("results"):
             return
         self._last_result_by_session[session_id] = {
+            "user_query": user_query,
+            "canonical_query": user_query,
             "response": result.get("response"),
             "sql_query": result.get("sql_query"),
             "results": result.get("results") or [],
@@ -559,7 +591,7 @@ class LangGraphOrchestrator:
         }
         return self._attach_visualization_if_requested(
             result=base_result,
-            user_query=user_query,
+            user_query=cached_result.get("user_query") or user_query,
             visualization_intent=visualization_intent,
         )
 

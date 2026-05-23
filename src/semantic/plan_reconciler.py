@@ -223,7 +223,9 @@ def _merge_filters(
     heuristic_fields = {semantic_filter.field for semantic_filter in heuristic_filters}
     if "idade" in heuristic_fields:
         candidate_filters = [
-            semantic_filter for semantic_filter in candidate_filters if semantic_filter.field != "idade"
+            semantic_filter
+            for semantic_filter in candidate_filters
+            if semantic_filter.field != "idade"
         ]
     protected_metric_names = protected_metric_names or set()
     if protected_metric_names & {"percentual_obitos_sem_raca_cor"}:

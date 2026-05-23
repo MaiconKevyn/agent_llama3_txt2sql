@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 
 from .contract_validator import validate_sql_contract
+from .contracts.join_policy import JoinPolicy, policies_for_sql_joins
 from .plan_schema import SemanticPlan
 from .sql_inspector import SQLInspector
 
@@ -105,6 +106,10 @@ def _has_group_by_dimension(inspector: SQLInspector, dimension: str) -> bool:
             r"\bcategoria_cid\b",
             r"\bcid_categoria\b",
             r"\bds_categoria\b",
+            r"\bcap[ií]tulo\b",
+            r"\bcapitulo_cid\b",
+            r"\bcid_capitulo\b",
+            r"\bds_capitulo\b",
         ],
         "cid_grupo": [
             r"\bgrupo\b",
@@ -174,9 +179,8 @@ def validate_sql_against_semantic_plan(
             "do not use metrica/valor."
         )
     answer_shape = plan.answer_shape
-    if (
-        "cid_capitulo" in answer_shape.required_dimensions
-        and re.search(r"\bsubstr\s*\([^)]*diag_princ", sql_lower, re.I)
+    if "cid_capitulo" in answer_shape.required_dimensions and re.search(
+        r"\bsubstr\s*\([^)]*diag_princ", sql_lower, re.I
     ):
         return False, (
             "SEMANTIC PLAN ERROR: CID chapter grouping must use cid.DS_CAPITULO via the cid lookup; "
@@ -449,9 +453,7 @@ def _validate_age_diagnosis_association_sql(
         if semantic_filter.field == "diagnostico_principal_prefix"
         for value in semantic_filter.values
     ]
-    missing_prefixes = [
-        prefix for prefix in expected_prefixes if f"like '{prefix}%" not in text
-    ]
+    missing_prefixes = [prefix for prefix in expected_prefixes if f"like '{prefix}%" not in text]
     if missing_prefixes:
         return False, (
             "SEMANTIC PLAN ERROR: analytic age-diagnosis association SQL is missing "
@@ -534,7 +536,10 @@ def _validate_additional_semantic_constraints(
                 "the question asks for a diagnosis breakdown."
             )
 
-    if "diagnosis_description_lookup_required" in plan.constraints and plan.base_grain != "cid_catalog":
+    if (
+        "diagnosis_description_lookup_required" in plan.constraints
+        and plan.base_grain != "cid_catalog"
+    ):
         if "diag_princ" not in text or "cid" not in text or "descricao" not in text:
             return False, (
                 "SEMANTIC PLAN ERROR: Diagnosis description lookup must resolve disease terms "
@@ -808,6 +813,14 @@ def _validate_additional_semantic_constraints(
             return False, (
                 "SEMANTIC PLAN ERROR: Analytical death-cause rankings must use DIAG_PRINC "
                 "with MORTE = true, not CID_MORTE."
+            )
+
+    for policy in policies_for_sql_joins(inspector.normalized_sql):
+        if _join_policy_is_hard_blocked(policy):
+            return False, (
+                "SEMANTIC PLAN ERROR: Join policy marks "
+                f"{policy.left.qualified_name} -> {policy.right.qualified_name} as audit-only; "
+                "do not use it as a normal analytical join without an explicit audit contract."
             )
 
     if "categorical_lookup_label_required" in plan.constraints:
@@ -1284,7 +1297,12 @@ def _first_dimension_select_position(select_items: list[str], dimension: str) ->
         "municipio_hospital": [r"\bnome\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
         "hospital": [r"\b(?:cnes|no_hospital|hospital)\b"],
         "especialidade": [r"\bespecialidade\b", r"\bdescri[cç][aã]o\b", r"\bespec\b"],
-        "cid_capitulo": [r"\bcap[ií]tulo\b", r"\bcapitulo_cid\b", r"\bcid_capitulo\b", r"\bsubstr\s*\("],
+        "cid_capitulo": [
+            r"\bcap[ií]tulo\b",
+            r"\bcapitulo_cid\b",
+            r"\bcid_capitulo\b",
+            r"\bsubstr\s*\(",
+        ],
         "diagnostico": [r"\bdescricao\b", r"\bdiag_princ\b", r"\bcid\b"],
         "procedimento": [r"\bnome_proc\b", r"\bproc_rea\b", r"\bprocedimento\b"],
         "marca_uti": [r"\bmarca_uti\b", r"\btipo_uti\b", r"\bdescri[cç][aã]o\b"],
@@ -1516,6 +1534,17 @@ def _sql_satisfies_age_filter(sql_lower: str, operator: str, expected_value: str
             ):
                 return True
     return False
+
+
+def _join_policy_is_hard_blocked(policy: JoinPolicy) -> bool:
+    """Return True for audit-only joins that should fail validation outright."""
+
+    return (
+        policy.is_audit_only
+        and policy.left.table == "internacoes"
+        and policy.right.table == "cid"
+        and policy.left.column in {"cid_morte", "diag_secun"}
+    )
 
 
 def _has_unrequested_nonzero_metric_filter(inspector: SQLInspector) -> bool:

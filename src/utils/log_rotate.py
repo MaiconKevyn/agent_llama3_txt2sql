@@ -5,9 +5,7 @@ LOG_DIR = Path("logs")
 
 def is_log_file(path: Path) -> bool:
     """Return True for active log files and rotated log backups."""
-    return path.is_file() and (
-        path.name.endswith(".log") or ".log." in path.name
-    )
+    return path.is_file() and (path.name.endswith(".log") or ".log." in path.name)
 
 
 def iter_log_files(log_dir: Path = LOG_DIR) -> list[Path]:
@@ -42,10 +40,7 @@ def rotate_log(log_dir: Path = LOG_DIR) -> None:
         cleared_files += 1
 
     reclaimed_mb = reclaimed_bytes / (1024 * 1024)
-    print(
-        f"Logs limpos em {log_dir}: {cleared_files} arquivo(s), "
-        f"{reclaimed_mb:.2f} MB liberados."
-    )
+    print(f"Logs limpos em {log_dir}: {cleared_files} arquivo(s), {reclaimed_mb:.2f} MB liberados.")
 
 
 if __name__ == "__main__":

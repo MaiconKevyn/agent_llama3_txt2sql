@@ -68,9 +68,9 @@ def test_build_chart_plan_for_procedure_series_over_years():
     assert plan.chart_type == "line"
     assert plan.x_dimension == "ano"
     assert plan.series_dimension == "procedimento"
-    assert plan.y_column == "total_internacoes"
+    assert plan.y_column == "total_procedimentos"
     assert plan.expected_result_shape == "time_series_metric"
-    assert plan.required_columns == ["ano", "procedimento", "total_internacoes"]
+    assert plan.required_columns == ["ano", "procedimento", "total_procedimentos"]
 
 
 def test_build_chart_plan_for_monthly_plural_uses_month_axis():

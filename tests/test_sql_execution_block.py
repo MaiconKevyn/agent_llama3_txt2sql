@@ -157,9 +157,9 @@ def test_build_age_diagnosis_association_sql_supports_cid_prefix_and_age_quality
     sql = build_age_diagnosis_association_sql(plan)
 
     assert sql is not None
-    assert "SELECT c.\"CID\" FROM cid c WHERE c.\"CID\" LIKE 'J%'" in sql
+    assert 'SELECT c."CID" FROM cid c WHERE c."CID" LIKE \'J%\'' in sql
     assert "'CID J00-J99 - Doencas do aparelho respiratorio' AS resolved_concept" in sql
-    assert "date_diff('day', \"NASC\", \"DT_INTER\") >= 365" in sql
+    assert 'date_diff(\'day\', "NASC", "DT_INTER") >= 365' in sql
     assert "idade_zero_inconsistente_nasc" in sql
     assert "AS warnings" in sql
 
@@ -177,7 +177,8 @@ def test_build_age_diagnosis_association_sql_supports_generic_diagnosis_descript
     sql = build_age_diagnosis_association_sql(plan)
 
     assert sql is not None
-    assert "SELECT c.\"CID\" FROM cid c WHERE c.\"DESCRICAO\" ILIKE '%diabetes%'" in sql
+    assert 'SELECT c."CID" FROM cid c WHERE c."CID" LIKE \'E10%\'' in sql
+    assert "c.\"CID\" LIKE 'E14%'" in sql
     assert 'JOIN diagnosticos_alvo d ON i."DIAG_PRINC" = d."CID"' in sql
     assert "faixas_etarias" in sql
 
@@ -218,14 +219,10 @@ def test_deterministic_analytic_sql_respects_rollout_flag():
     plan = build_semantic_plan("Existe relação entre idade e doenças pulmonares?")
 
     assert (
-        _build_deterministic_analytic_sql(
-            plan, {"enable_analytic_response_templates": False}
-        )
+        _build_deterministic_analytic_sql(plan, {"enable_analytic_response_templates": False})
         is None
     )
-    assert _build_deterministic_analytic_sql(
-        plan, {"enable_analytic_response_templates": True}
-    )
+    assert _build_deterministic_analytic_sql(plan, {"enable_analytic_response_templates": True})
 
 
 @pytest.mark.parametrize(
@@ -292,28 +289,28 @@ def test_categorical_outcome_association_preserves_resolved_clinical_concept(que
 
 
 @pytest.mark.parametrize(
-    ("question", "term", "dimension_sql"),
+    ("question", "expected_prefixes", "dimension_sql"),
     [
         (
             "Existe relação entre morte por dengue e raça/cor?",
-            "dengue",
+            ["A90%", "A91%"],
             'JOIN raca_cor rc ON i."RACA_COR" = rc."RACA_COR"',
         ),
         (
             "Existe relação entre mortalidade por pneumonia e sexo?",
-            "pneumonia",
+            ["J12%", "J13%", "J14%", "J15%", "J16%", "J17%", "J18%"],
             'CASE WHEN i."SEXO" = 1 THEN',
         ),
         (
             "Óbitos por dengue variam por raça/cor?",
-            "dengue",
+            ["A90%", "A91%"],
             'JOIN raca_cor rc ON i."RACA_COR" = rc."RACA_COR"',
         ),
     ],
 )
-def test_categorical_outcome_association_preserves_generic_clinical_condition(
+def test_categorical_outcome_association_preserves_versioned_clinical_condition(
     question,
-    term,
+    expected_prefixes,
     dimension_sql,
 ):
     from src.agent.analytic_sql import build_analytic_sql_package
@@ -322,21 +319,22 @@ def test_categorical_outcome_association_preserves_generic_clinical_condition(
 
     plan = build_semantic_plan(question)
 
-    description_filters = [
+    prefix_filters = [
         semantic_filter
         for semantic_filter in plan.filters
-        if semantic_filter.field == "diagnostico_principal_descricao"
+        if semantic_filter.field == "diagnostico_principal_prefix"
     ]
-    assert description_filters
-    assert description_filters[0].values == [term]
+    assert prefix_filters
+    assert prefix_filters[0].values == expected_prefixes
     assert "categorical_outcome_association_required" in plan.constraints
-    assert "diagnosis_description_lookup_required" in plan.constraints
+    assert "diagnosis_concept_resolution_required" in plan.constraints
 
     sql = build_analytic_sql_package(plan)
 
     assert sql is not None
     assert 'SELECT c."CID" FROM cid c WHERE' in sql
-    assert f'c."DESCRICAO" ILIKE \'%{term}%\'' in sql
+    for prefix in expected_prefixes:
+        assert f"c.\"CID\" LIKE '{prefix}'" in sql
     assert 'JOIN diagnosticos_alvo d ON i."DIAG_PRINC" = d."CID"' in sql
     assert dimension_sql in sql
     assert 'SUM(CASE WHEN "MORTE" = true THEN 1 ELSE 0 END)' in sql
@@ -569,7 +567,7 @@ def test_deterministic_grouped_sql_limits_residence_municipality_rankings():
     assert sql is not None
     assert 'JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"' in sql
     assert 'mu."NO_MUNICIPIO" AS municipio_residencia' in sql
-    assert 'mu."SG_UF" = \'MA\'' in sql
+    assert "mu.\"SG_UF\" = 'MA'" in sql
     assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2020' in sql
     assert 'ORDER BY "total_internacoes" DESC' in sql
     assert "LIMIT 10" in sql
@@ -591,7 +589,7 @@ def test_deterministic_grouped_sql_limits_health_region_rankings():
     assert 'JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"' in sql
     assert 'mu."NO_REGIAO_SAUDE" AS "regiao_saude"' in sql
     assert 'mu."NO_MUNICIPIO" AS regiao_saude' not in sql
-    assert 'mu."SG_UF" = \'MA\'' in sql
+    assert "mu.\"SG_UF\" = 'MA'" in sql
     assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
     assert 'ORDER BY "total_internacoes" DESC' in sql
     assert "LIMIT 10" in sql
@@ -611,7 +609,8 @@ def test_build_temporal_condition_trend_sql_package_supports_generic_diagnosis_d
 
     assert sql is not None
     assert "'temporal_condition_trend' AS analysis_type" in sql
-    assert "SELECT c.\"CID\" FROM cid c WHERE c.\"DESCRICAO\" ILIKE '%dengue%'" in sql
+    assert 'SELECT c."CID" FROM cid c WHERE c."CID" LIKE \'A90%\'' in sql
+    assert "c.\"CID\" LIKE 'A91%'" in sql
     assert 'JOIN diagnosticos_alvo d ON i."DIAG_PRINC" = d."CID"' in sql
     assert "time_series" in sql
 
@@ -779,9 +778,9 @@ def test_build_goalv2_diagnosis_description_lookup_sql_expands_covid():
 
     assert sql is not None
     assert "WITH diagnosticos_alvo AS" in sql
-    assert 'FROM cid c' in sql
-    assert 'c."CID" IN (\'B342\', \'B972\')' in sql
-    assert 'FROM internacoes i' in sql
+    assert "FROM cid c" in sql
+    assert "c.\"CID\" IN ('B342', 'B972')" in sql
+    assert "FROM internacoes i" in sql
     assert 'i."DIAG_PRINC" IN (SELECT "CID" FROM diagnosticos_alvo)' in sql
     assert "GROUP BY" not in sql
     assert 'i."CID_MORTE"' not in sql
@@ -964,7 +963,9 @@ def test_build_goalv2_population_rate_by_state_sql_preaggregates_denominator():
     from src.agent.execution import _build_population_rate_by_state_sql
     from src.semantic.planner import build_semantic_plan
 
-    plan = build_semantic_plan("Qual foi a taxa de internações por 100 mil habitantes por estado em 2021?")
+    plan = build_semantic_plan(
+        "Qual foi a taxa de internações por 100 mil habitantes por estado em 2021?"
+    )
 
     sql = _build_population_rate_by_state_sql(plan)
 
@@ -1019,9 +1020,7 @@ def test_post_execution_contract_accepts_health_region_output_dimension():
     from src.agent.execution import _validate_post_execution_contract
     from src.semantic.planner import build_semantic_plan
 
-    plan = build_semantic_plan(
-        "Quais regioes de saude de MA tiveram mais internacoes em 2021?"
-    )
+    plan = build_semantic_plan("Quais regioes de saude de MA tiveram mais internacoes em 2021?")
     sql = """
         SELECT mu."NO_REGIAO_SAUDE" AS regiao_saude,
                COUNT(*) AS total_internacoes
@@ -1080,8 +1079,8 @@ def test_deterministic_grouped_sql_ranks_procedures_inside_diagnosis_description
     assert 'COUNT(*) AS "total_procedimentos"' in sql
     assert 'JOIN internacao_procedimento ip ON i."N_AIH" = ip."N_AIH"' in sql
     assert 'JOIN procedimentos p ON ip."PROC_REA" = p."PROC_REA"' in sql
-    assert 'i."DIAG_PRINC" IN (SELECT c."CID" FROM cid c' in sql
-    assert 'c."DESCRICAO" ILIKE \'%diabetes%\'' in sql
+    assert "i.\"DIAG_PRINC\" LIKE 'E10%'" in sql
+    assert "i.\"DIAG_PRINC\" LIKE 'E14%'" in sql
     assert 'GROUP BY p."NOME_PROC"' in sql
     assert 'ORDER BY "total_procedimentos" DESC' in sql
     assert "LIMIT 10" in sql
@@ -1104,7 +1103,7 @@ def test_deterministic_grouped_sql_ranks_procedures_inside_diagnosis_prefix_coho
     assert sql is not None
     assert 'p."NOME_PROC" AS "procedimento"' in sql
     assert 'COUNT(*) AS "total_procedimentos"' in sql
-    assert 'i."DIAG_PRINC" LIKE \'C%\'' in sql
+    assert "i.\"DIAG_PRINC\" LIKE 'C%'" in sql
     assert 'GROUP BY p."NOME_PROC"' in sql
     assert "LIMIT 10" in sql
 
@@ -1147,6 +1146,9 @@ def test_deterministic_grouped_sql_sums_uti_value_by_residence_uf_contract_alias
     assert 'ROUND(SUM(i."VAL_UTI"), 2) AS "valor_uti_total"' in sql
     assert 'JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"' in sql
     assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
+    assert 'i."UTI_INT_TO" IS NOT NULL' not in sql
+    assert 'i."MARCA_UTI" IS NOT NULL' not in sql
+    assert 'i."VAL_UTI" > 0' not in sql
     assert 'GROUP BY mu."SG_UF"' in sql
     assert 'ORDER BY "valor_uti_total" DESC' in sql
 
@@ -1159,16 +1161,14 @@ def test_deterministic_grouped_sql_rates_uti_mortality_by_residence_uf_with_usag
     from src.semantic.planner import build_semantic_plan
     from src.semantic.validators import validate_sql_against_semantic_plan
 
-    plan = build_semantic_plan(
-        "Qual foi a mortalidade em internacoes com UTI por UF em 2021?"
-    )
+    plan = build_semantic_plan("Qual foi a mortalidade em internacoes com UTI por UF em 2021?")
 
     sql = _build_deterministic_grouped_sql(plan)
 
     assert sql is not None
     assert 'mu."SG_UF" AS "uf_residencia"' in sql
     assert "COUNT(*) AS total_internacoes" in sql
-    assert "SUM(CASE WHEN i.\"MORTE\" = true THEN 1 ELSE 0 END) AS total_obitos" in sql
+    assert 'SUM(CASE WHEN i."MORTE" = true THEN 1 ELSE 0 END) AS total_obitos' in sql
     assert "taxa_mortalidade_percentual" in sql
     assert 'JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"' in sql
     assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
@@ -1194,7 +1194,7 @@ def test_deterministic_grouped_sql_distributes_uti_admissions_by_marker_label():
 
     assert sql is not None
     assert 'COALESCE(m."DESCRICAO", ' in sql
-    assert 'AS tipo_uti' in sql
+    assert "AS tipo_uti" in sql
     assert "COUNT(*) AS total_internacoes" in sql
     assert 'LEFT JOIN marca_uti m ON i."MARCA_UTI" = m."MARCA_UTI"' in sql
     assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
@@ -1315,7 +1315,7 @@ def test_deterministic_scalar_sql_average_age_for_diagnosis_cohort_contract_alia
     assert "COUNT(*) AS total_internacoes" in sql
     assert 'ROUND(AVG(i."IDADE"), 2) AS idade_media' in sql
     assert 'JOIN cid c ON i."DIAG_PRINC" = c."CID"' in sql
-    assert 'c."DESCRICAO" ILIKE \'%pneumonia%\'' in sql
+    assert "c.\"DESCRICAO\" ILIKE '%pneumonia%'" in sql
     assert 'i."IDADE" IS NOT NULL' in sql
     assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
     assert 'AVG(i."VAL_TOT")' not in sql
@@ -1351,9 +1351,7 @@ def test_deterministic_grouped_sql_socioeconomic_indicator_by_uf_contract_aliase
     from src.semantic.planner import build_semantic_plan
     from src.semantic.validators import validate_sql_against_semantic_plan
 
-    plan = build_semantic_plan(
-        "Quais UFs tiveram maior leitos SUS por 1000 habitantes em 2021?"
-    )
+    plan = build_semantic_plan("Quais UFs tiveram maior leitos SUS por 1000 habitantes em 2021?")
 
     sql = _build_deterministic_grouped_sql(plan)
 
@@ -1368,6 +1366,99 @@ def test_deterministic_grouped_sql_socioeconomic_indicator_by_uf_contract_aliase
     assert "LIMIT" not in sql
 
     valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_chart_sql_applies_state_filter_to_monthly_series():
+    from src.agent.sql_generation import _build_deterministic_chart_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.visualization.chart_plan import build_chart_plan, validate_sql_against_chart_plan
+    from src.visualization.intent import detect_visualization_intent
+
+    question = "Como evoluiram mensalmente as internacoes em MA em 2020? Gere um grafico de linha."
+    plan = build_semantic_plan(question)
+    chart_plan = build_chart_plan(question, detect_visualization_intent(question))
+
+    sql = _build_deterministic_chart_sql(plan, chart_plan)
+
+    assert sql is not None
+    assert 'JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"' in sql
+    assert "mu.\"SG_UF\" IN ('MA')" in sql
+    assert "i.\"MUNIC_RES\" = 'MA'" not in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2020' in sql
+    assert "ORDER BY mes ASC" in sql
+    valid, message = validate_sql_against_chart_plan(chart_plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_chart_sql_uses_socioeconomic_indicator_value_for_uf_chart():
+    from src.agent.sql_generation import _build_deterministic_chart_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.visualization.chart_plan import build_chart_plan, validate_sql_against_chart_plan
+    from src.visualization.intent import detect_visualization_intent
+
+    question = "Quais UFs tiveram maior leitos SUS por 1000 habitantes em 2021? Gere um grafico."
+    plan = build_semantic_plan(question)
+    chart_plan = build_chart_plan(question, detect_visualization_intent(question))
+
+    sql = _build_deterministic_chart_sql(plan, chart_plan)
+
+    assert sql is not None
+    assert 'mu."SG_UF" AS estado' in sql
+    assert 'ROUND(AVG(s."VL_LEITOS_SUS_1000"), 2) AS leitos_sus_1000' in sql
+    assert 's."NU_ANO" = 2021' in sql
+    assert "ORDER BY leitos_sus_1000 DESC" in sql
+    valid, message = validate_sql_against_chart_plan(chart_plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_chart_sql_builds_population_rate_chart_shape():
+    from src.agent.sql_generation import _build_deterministic_chart_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.visualization.chart_plan import build_chart_plan, validate_sql_against_chart_plan
+    from src.visualization.intent import detect_visualization_intent
+
+    question = (
+        "Qual foi a taxa de internacoes por 100 mil habitantes por UF em 2019? Gere um grafico."
+    )
+    plan = build_semantic_plan(question)
+    chart_plan = build_chart_plan(question, detect_visualization_intent(question))
+
+    sql = _build_deterministic_chart_sql(plan, chart_plan)
+
+    assert sql is not None
+    assert "internacoes_por_estado" in sql
+    assert "populacao_por_estado" in sql
+    assert "AS taxa_por_100k" in sql
+    assert "ORDER BY taxa_por_100k DESC" in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2019' in sql
+    assert 's."NU_ANO" = 2019' in sql
+    valid, message = validate_sql_against_chart_plan(chart_plan, sql)
+    assert valid is True, message
+
+
+def test_deterministic_chart_sql_preserves_missing_race_color_scalar_contract():
+    from src.agent.sql_generation import _build_deterministic_chart_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.visualization.chart_plan import build_chart_plan, validate_sql_against_chart_plan
+    from src.visualization.intent import detect_visualization_intent
+
+    question = (
+        "Qual percentual dos obitos de 2020 esta sem informacao de raca/cor mapeada? "
+        "Gere um grafico."
+    )
+    plan = build_semantic_plan(question)
+    chart_plan = build_chart_plan(question, detect_visualization_intent(question))
+
+    sql = _build_deterministic_chart_sql(plan, chart_plan)
+
+    assert sql is not None
+    assert "obitos_sem_raca_cor_mapeada" in sql
+    assert "percentual_sem_raca_cor" in sql
+    assert 'LEFT JOIN raca_cor r ON i."RACA_COR" = r."RACA_COR"' in sql
+    assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2020' in sql
+    assert chart_plan.expected_result_shape == "single_metric"
+    valid, message = validate_sql_against_chart_plan(chart_plan, sql)
     assert valid is True, message
 
 
@@ -1409,7 +1500,7 @@ def test_deterministic_grouped_sql_population_rate_by_uf_contract_aliases():
     assert "populacao_por_uf AS" in sql
     assert 'mu."SG_UF" AS uf' in sql
     assert 'm."SG_UF" AS uf' in sql
-    assert 'COUNT(*) AS total_internacoes' in sql
+    assert "COUNT(*) AS total_internacoes" in sql
     assert 'SUM(s."QT_POPULACAO") AS populacao' in sql
     assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
     assert 's."NU_ANO" = 2021' in sql
@@ -1557,8 +1648,8 @@ def test_deterministic_grouped_sql_limits_average_stay_by_specialty():
     assert 'ROUND(AVG(i."DIAS_PERM"), 2) AS permanencia_media' in sql
     assert 'JOIN especialidade e ON i."ESPEC" = e."ESPEC"' in sql
     assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
-    assert 'ORDER BY permanencia_media DESC NULLS LAST' in sql
-    assert 'LIMIT 10' in sql
+    assert "ORDER BY permanencia_media DESC NULLS LAST" in sql
+    assert "LIMIT 10" in sql
 
     valid, message = validate_sql_against_semantic_plan(plan, sql)
     assert valid is True, message
@@ -1574,7 +1665,7 @@ def test_deterministic_scalar_sql_counts_uti_usage_with_usage_markers():
     sql = _build_deterministic_scalar_sql(plan)
 
     assert sql is not None
-    assert 'COUNT(*) AS internacoes_com_uti' in sql
+    assert "COUNT(*) AS internacoes_com_uti" in sql
     assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2019' in sql
     assert 'i."MARCA_UTI" IS NOT NULL OR i."UTI_INT_TO" > 0' in sql
     assert 'i."VAL_UTI" > 0' not in sql
@@ -1588,17 +1679,15 @@ def test_deterministic_scalar_sql_average_cost_for_diagnosis_cohort_contract_ali
     from src.semantic.planner import build_semantic_plan
     from src.semantic.validators import validate_sql_against_semantic_plan
 
-    plan = build_semantic_plan(
-        "Qual foi o custo medio de internacao por pneumonia em 2021?"
-    )
+    plan = build_semantic_plan("Qual foi o custo medio de internacao por pneumonia em 2021?")
 
     sql = _build_deterministic_scalar_sql(plan)
 
     assert sql is not None
-    assert 'COUNT(*) AS total_internacoes' in sql
+    assert "COUNT(*) AS total_internacoes" in sql
     assert 'ROUND(AVG(i."VAL_TOT"), 2) AS custo_medio' in sql
     assert 'JOIN cid c ON i."DIAG_PRINC" = c."CID"' in sql
-    assert 'c."DESCRICAO" ILIKE \'%pneumonia%\'' in sql
+    assert "c.\"DESCRICAO\" ILIKE '%pneumonia%'" in sql
     assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
     assert "GROUP BY" not in sql
 
@@ -1616,9 +1705,9 @@ def test_deterministic_scalar_sql_average_cost_for_resolved_code_concept_keeps_d
     sql = _build_deterministic_scalar_sql(plan)
 
     assert sql is not None
-    assert 'c."CID" IN (\'B342\', \'B972\')' in sql
-    assert 'c."DESCRICAO" ILIKE \'%coronavirus%\'' in sql
-    assert 'COUNT(*) AS total_internacoes' in sql
+    assert "c.\"CID\" IN ('B342', 'B972')" in sql
+    assert "c.\"DESCRICAO\" ILIKE '%coronavirus%'" in sql
+    assert "COUNT(*) AS total_internacoes" in sql
     assert 'ROUND(AVG(i."VAL_TOT"), 2) AS custo_medio' in sql
 
     valid, message = validate_sql_against_semantic_plan(plan, sql)
@@ -1638,15 +1727,17 @@ def test_deterministic_grouped_sql_ranks_hospital_cost_per_day_with_support_colu
 
     assert sql is not None
     assert 'h."NO_HOSPITAL" AS hospital' in sql
-    assert 'COUNT(*) AS total_internacoes' in sql
-    assert 'ROUND(SUM(i."VAL_TOT") / NULLIF(SUM(i."DIAS_PERM"), 0), 2) AS custo_medio_por_dia' in sql
+    assert "COUNT(*) AS total_internacoes" in sql
+    assert (
+        'ROUND(SUM(i."VAL_TOT") / NULLIF(SUM(i."DIAS_PERM"), 0), 2) AS custo_medio_por_dia' in sql
+    )
     assert 'JOIN hospital h ON i."CNES" = h."CNES"' in sql
     assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
     assert 'i."DIAS_PERM" > 0' in sql
     assert 'GROUP BY h."NO_HOSPITAL"' in sql
-    assert 'HAVING COUNT(*) >= 1000' in sql
-    assert 'ORDER BY custo_medio_por_dia DESC NULLS LAST' in sql
-    assert 'LIMIT 10' in sql
+    assert "HAVING COUNT(*) >= 1000" in sql
+    assert "ORDER BY custo_medio_por_dia DESC NULLS LAST" in sql
+    assert "LIMIT 10" in sql
 
     valid, message = validate_sql_against_semantic_plan(plan, sql)
     assert valid is True, message
@@ -1669,7 +1760,7 @@ def test_deterministic_grouped_sql_filters_procedure_births_by_residence_uf():
     assert 'JOIN municipios mu ON i."MUNIC_RES" = mu."CO_MUNICIPIO_6D"' in sql
     assert 'mu."SG_UF" AS "uf_residencia"' in sql
     assert 'COUNT(*) AS "total_procedimentos_cesarea"' in sql
-    assert 'p."NOME_PROC" ILIKE \'%CESAR%\'' in sql
+    assert "p.\"NOME_PROC\" ILIKE '%CESAR%'" in sql
     assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2022' in sql
     assert 'ORDER BY "total_procedimentos_cesarea" DESC' in sql
     assert 'i."DIAG_PRINC"' not in sql

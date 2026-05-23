@@ -46,3 +46,15 @@ def test_query_response_hides_raw_internal_planning_error():
     assert "SEMANTIC PLAN ERROR" not in response.answer
     assert "internal validator details" not in response.answer
     assert "segurança" in response.answer
+
+
+def test_query_request_accepts_cached_result_chart_flag() -> None:
+    from src.interfaces.api.main import QueryRequest
+
+    request = QueryRequest(
+        query="Gere um grafico dessa resposta usando os dados ja retornados.",
+        session_id="s1",
+        chart_from_last_result=True,
+    )
+
+    assert request.chart_from_last_result is True

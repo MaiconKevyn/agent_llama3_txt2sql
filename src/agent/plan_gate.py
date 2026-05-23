@@ -73,6 +73,29 @@ _FANOUT_PATTERN = re.compile(
     r"(por sexo|sexo masculino|sexo feminino|entre homens e mulheres|faixa et[aá]ria|faixa de idade|grupo et[aá]rio)",
     re.I,
 )
+_GEO_RESIDENCE_OR_HOSPITAL_PATTERN = re.compile(
+    r"\b(resid[eê]ncia|residente|moradia|domic[ií]lio|hospital|hospitais|atendimento|estabelecimento|movimento|habitantes|popula[cç][aã]o)\b",
+    re.I,
+)
+_GEO_AMBIGUOUS_PATTERN = re.compile(
+    r"\b(munic[ií]pio|munic[ií]pios|cidade|cidades|uf|estado|estados)\b", re.I
+)
+_MORTALITY_INFANTIL_EXPLICIT_PATTERN = re.compile(
+    r"\b(indicador|socioecon[oô]mic[ao]|socioeconomic[ao]|nascidos vivos|intern[açc][oõ]es?|crian[cç]as?|pedi[aá]tric[ao]s?)\b",
+    re.I,
+)
+_COVID_CASE_SCOPE_PATTERN = re.compile(
+    r"\b(casos?|casos?\s+de)\s+(covid|covid-19|coronavirus|coronav[ií]rus)\b|\b(covid|covid-19|coronavirus|coronav[ií]rus)\b.*\bcasos?\b",
+    re.I,
+)
+_GENERIC_CASE_SCOPE_PATTERN = re.compile(r"\bcasos?\b", re.I)
+_CASE_SCOPE_EXPLICIT_PATTERN = re.compile(
+    r"\b(intern[açc][oõ]es?|diagn[oó]stico principal|diag_princ|procedimento|causa de morte|[óo]bitos?|mortes?)\b",
+    re.I,
+)
+_RENDA_MORTALITY_AMBIGUITY_PATTERN = re.compile(
+    r"\brenda\b.*\bmortalidade\b|\bmortalidade\b.*\brenda\b", re.I
+)
 
 
 def _build_single_plan(user_query: str, plan_type: str, reasoning: str) -> QueryPlan:
@@ -149,6 +172,63 @@ def classify_plan_type(user_query: str) -> tuple[str, str]:
     return "single_default", "Sem padrão de multi-query seguro; usar SQL único."
 
 
+def _critical_ambiguity_question(user_query: str) -> tuple[str, str] | None:
+    query = (user_query or "").strip()
+    if not query:
+        return None
+
+    if _COVID_CASE_SCOPE_PATTERN.search(query) and not _CASE_SCOPE_EXPLICIT_PATTERN.search(query):
+        return (
+            "clinical_covid_case_scope",
+            "Quando voce diz casos de covid, quer internacoes com diagnostico principal de covid, "
+            "procedimentos relacionados, ou obitos hospitalares nesse escopo?",
+        )
+
+    if _GENERIC_CASE_SCOPE_PATTERN.search(query) and not _CASE_SCOPE_EXPLICIT_PATTERN.search(query):
+        return (
+            "generic_case_scope",
+            "Quando voce diz casos, quer contar internacoes, diagnosticos principais, "
+            "procedimentos ou obitos hospitalares?",
+        )
+
+    if _RENDA_MORTALITY_AMBIGUITY_PATTERN.search(query):
+        return (
+            "renda_mortality_scope",
+            "Quando voce diz renda e mortalidade, quer usar algum indicador socioeconomico "
+            "disponivel como proxy, ou renda individual do paciente? Renda individual nao esta "
+            "disponivel no schema atual.",
+        )
+
+    if "mortalidade infantil" in query.lower() and not _MORTALITY_INFANTIL_EXPLICIT_PATTERN.search(
+        query
+    ):
+        return (
+            "mortality_infantil_scope",
+            "Quando voce diz mortalidade infantil, quer o indicador socioeconomico de mortalidade "
+            "infantil ou obitos em internacoes de criancas?",
+        )
+
+    if "mortalidade infantil" in query.lower() and _MORTALITY_INFANTIL_EXPLICIT_PATTERN.search(
+        query
+    ):
+        return None
+
+    if _GEO_AMBIGUOUS_PATTERN.search(query) and not _GEO_RESIDENCE_OR_HOSPITAL_PATTERN.search(
+        query
+    ):
+        if re.search(
+            r"\bmortalidade\b|\btaxa de mortalidade\b|\bintern\w+\b|[óo]bitos?|mortes?|covid|diagn[oó]stic",
+            query,
+            re.I,
+        ):
+            return (
+                "geography_residence_vs_hospital",
+                "Voce quer usar a geografia de residencia do paciente ou a geografia do hospital/atendimento?",
+            )
+
+    return None
+
+
 def plan_gate_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
     """Apply deterministic routing guardrails before invoking the LLM planner."""
     start_time = time.time()
@@ -203,6 +283,16 @@ def plan_gate_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         state["multi_query_allowed"] = False
         state["execution_mode"] = "clarification"
         meta["unsupported_schema_metric"] = unsupported_schema_metrics
+    else:
+        ambiguity = _critical_ambiguity_question(user_query)
+        if ambiguity:
+            ambiguity_code, question = ambiguity
+            state["needs_clarification"] = True
+            state["clarification_question"] = question
+            state["current_error"] = None
+            state["multi_query_allowed"] = False
+            state["execution_mode"] = "clarification"
+            meta["critical_ambiguity"] = ambiguity_code
     state["response_metadata"] = meta
 
     logger.info(

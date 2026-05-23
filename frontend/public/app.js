@@ -7,6 +7,13 @@ const MAX_CONVERSATION_TURNS = 10;
 const MAX_HISTORY_MESSAGES = MAX_CONVERSATION_TURNS * 2;
 const MAX_MESSAGE_LENGTH = 1000;
 const SAFE_AGENT_ERROR_MESSAGE = 'Nao foi possivel processar sua consulta com seguranca. Tente refinar o recorte ou pedir o grafico de outra forma.';
+const LOADING_STATUS_STEPS = [
+    { delayMs: 0, text: 'Preparando a consulta...' },
+    { delayMs: 5000, text: 'Selecionando tabelas e contexto do banco...' },
+    { delayMs: 10000, text: 'Validando SQL e contratos semanticos...' },
+    { delayMs: 16000, text: 'Executando no DuckDB e revisando o resultado...' },
+    { delayMs: 24000, text: 'Finalizando resposta, SQL e observacoes...' }
+];
 const INTERNAL_AGENT_ERROR_PATTERNS = [
     /SEMANTIC PLAN ERROR/i,
     /CHART PLAN ERROR/i,
@@ -28,6 +35,7 @@ let schemaTriggerElement = null;
 let databaseOverview = null;
 let selectedDatabaseTable = null;
 let activeTableContext = null;
+const loadingStatusTimers = new Map();
 
 const elements = {
     messageInput: document.getElementById('messageInput'),
@@ -401,14 +409,8 @@ function canGenerateChartFromMessage(messageData) {
         && metadata.chartGenerationState !== 'done';
 }
 
-function buildChartFollowupQuestion(sourceQuestion) {
-    const trimmed = String(sourceQuestion || '').trim();
-    return [
-        'Gere um grafico adequado para responder a consulta abaixo.',
-        'Mantenha exatamente o mesmo recorte, filtros, periodo e populacao da consulta original.',
-        '',
-        `Consulta original: ${trimmed}`
-    ].join('\n');
+function buildChartFollowupQuestion() {
+    return 'Gere um grafico dessa resposta usando os dados ja retornados.';
 }
 
 function createMessageActionBar(messageData) {
@@ -450,7 +452,7 @@ async function requestChartForMessage(messageId, button) {
     const messageData = findMessageDataById(messageId);
     if (!messageData || !messageData.metadata || !messageData.metadata.sourceQuestion) return;
 
-    const chartQuestion = buildChartFollowupQuestion(messageData.metadata.sourceQuestion);
+    const chartQuestion = buildChartFollowupQuestion();
     messageData.metadata.chartGenerationState = 'loading';
     saveMessageHistory();
     setChartButtonLoading(button, true);
@@ -470,13 +472,14 @@ async function requestChartForMessage(messageId, button) {
                 question: chartQuestion,
                 session_id: getSessionId(),
                 debug: false,
+                chart_from_last_result: true,
                 table_context: activeTableContext ? createTableContextPayload(activeTableContext) : null
             })
         });
 
         const data = await response.json();
-        if (!response.ok || !data.success || !data.chart) {
-            throw new Error(data.error_message || data.answer || data.response || 'Grafico indisponivel.');
+        if (!response.ok || !data.success || !data.chart || data.chart.echarts === null) {
+            throw new Error(extractChartFailureReason(data));
         }
 
         appendChartToExistingMessage(messageId, data.chart);
@@ -485,11 +488,22 @@ async function requestChartForMessage(messageId, button) {
         console.error('Error generating chart:', error);
         messageData.metadata.chartGenerationState = 'failed';
         saveMessageHistory();
-        renderChartInlineError(messageId, 'Nao foi possivel gerar um grafico validado para esta resposta.');
+        renderChartInlineError(
+            messageId,
+            error.message || 'Nao foi possivel gerar um grafico validado para esta resposta.'
+        );
         showErrorToast('Nao foi possivel gerar o grafico para esta resposta.');
     } finally {
         setChartButtonLoading(button, false);
     }
+}
+
+function extractChartFailureReason(data) {
+    const chartReason = data && data.chart && (
+        data.chart.reason ||
+        (data.chart.spec && data.chart.spec.reason)
+    );
+    return chartReason || data.error_message || data.answer || data.response || 'Grafico indisponivel.';
 }
 
 function appendChartToExistingMessage(messageId, chartPayload) {
@@ -1017,16 +1031,66 @@ function getMessageIcon(type) {
 
 async function copyMessage(content, button) {
     try {
-        await navigator.clipboard.writeText(content);
-        const original = button.innerHTML;
-        button.innerHTML = '<i class="fas fa-check" aria-hidden="true"></i><span>Copiado</span>';
-        setTimeout(() => {
-            button.innerHTML = original;
-        }, 1600);
+        await writeClipboardText(content);
+        markCopyButtonSuccess(button);
     } catch (error) {
         console.warn('Clipboard unavailable:', error);
         showErrorToast('Nao foi possivel copiar a resposta.');
     }
+}
+
+async function writeClipboardText(content) {
+    const text = String(content ?? '');
+    if (
+        typeof navigator !== 'undefined'
+        && navigator.clipboard
+        && typeof navigator.clipboard.writeText === 'function'
+    ) {
+        try {
+            await navigator.clipboard.writeText(text);
+            return;
+        } catch (error) {
+            console.warn('Navigator clipboard failed, trying fallback:', error);
+        }
+    }
+    if (fallbackCopyText(text)) return;
+    throw new Error('Clipboard API and fallback copy are unavailable.');
+}
+
+function fallbackCopyText(text) {
+    if (!document.body || typeof document.createElement !== 'function') return false;
+
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.top = '-1000px';
+    textarea.style.left = '-1000px';
+    textarea.style.opacity = '0';
+
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    let copied = false;
+    try {
+        copied = typeof document.execCommand === 'function' && document.execCommand('copy');
+    } catch (error) {
+        console.warn('Fallback clipboard copy failed:', error);
+        copied = false;
+    } finally {
+        textarea.remove();
+    }
+    return copied;
+}
+
+function markCopyButtonSuccess(button) {
+    if (!button) return;
+    const original = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-check" aria-hidden="true"></i><span>Copiado</span>';
+    setTimeout(() => {
+        button.innerHTML = original;
+    }, 1600);
 }
 
 function formatMessageContent(content) {
@@ -1211,6 +1275,7 @@ function scrollToBottom() {
 
 function addLoadingMessage() {
     const loadingId = `loading-${Date.now()}`;
+    const initialStatus = LOADING_STATUS_STEPS[0].text;
     const loading = document.createElement('div');
     loading.className = 'message assistant-message loading-message';
     loading.id = loadingId;
@@ -1225,15 +1290,27 @@ function addLoadingMessage() {
                     <span class="thinking-dot"></span>
                     <span class="thinking-dot"></span>
                 </div>
+                <span class="loading-status" data-loading-status>${escapeHtml(initialStatus)}</span>
             </div>
         </div>
     `;
     elements.chatMessages.appendChild(loading);
+    const timers = LOADING_STATUS_STEPS.slice(1).map((step) => setTimeout(() => {
+        const currentLoading = document.getElementById(loadingId);
+        const status = currentLoading ? currentLoading.querySelector('[data-loading-status]') : null;
+        if (status) {
+            status.textContent = step.text;
+        }
+    }, step.delayMs));
+    loadingStatusTimers.set(loadingId, timers);
     scrollToBottom();
     return loadingId;
 }
 
 function removeLoadingMessage(loadingId) {
+    const timers = loadingStatusTimers.get(loadingId) || [];
+    timers.forEach((timer) => clearTimeout(timer));
+    loadingStatusTimers.delete(loadingId);
     const loading = document.getElementById(loadingId);
     if (loading) loading.remove();
 }

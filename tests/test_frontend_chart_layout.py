@@ -87,3 +87,18 @@ def test_generate_chart_action_has_accessible_loading_and_error_states() -> None
     assert "chart-inline-error" in app_js
     assert ".generate-chart-btn.is-loading" in styles
     assert ".chart-inline-error" in styles
+
+
+def test_generate_chart_action_requests_cached_result_chart() -> None:
+    app_js = (ROOT / "frontend/public/app.js").read_text(encoding="utf-8")
+
+    assert "chart_from_last_result: true" in app_js
+    assert "Consulta original:" not in app_js
+
+
+def test_generate_chart_action_uses_chart_reason_when_available() -> None:
+    app_js = (ROOT / "frontend/public/app.js").read_text(encoding="utf-8")
+
+    assert "extractChartFailureReason" in app_js
+    assert "data.chart" in app_js
+    assert "data.chart.spec" in app_js

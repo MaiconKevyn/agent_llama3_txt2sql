@@ -23,9 +23,7 @@ def validate_chart_spec(
 
     available_columns = set(columns)
     referenced = [
-        column
-        for column in [chart_spec.x, chart_spec.y, chart_spec.series]
-        if column is not None
+        column for column in [chart_spec.x, chart_spec.y, chart_spec.series] if column is not None
     ]
     missing = [column for column in referenced if column not in available_columns]
     if missing:

@@ -160,7 +160,7 @@ app.post('/api/query', async (req, res) => {
     const startTime = Date.now();
 
     try {
-        const { question, session_id, debug, table_context } = req.body;
+        const { question, session_id, debug, table_context, chart_from_last_result } = req.body;
         const debugEnabled = Boolean(debug);
 
         if (!question || typeof question !== 'string' || question.trim().length === 0) {
@@ -193,6 +193,7 @@ app.post('/api/query', async (req, res) => {
                 session_id: session_id || null,
                 include_sql: debugEnabled,
                 debug: debugEnabled,
+                chart_from_last_result: Boolean(chart_from_last_result),
                 table_context: table_context || null
             })
         });

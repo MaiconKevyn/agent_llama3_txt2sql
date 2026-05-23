@@ -125,19 +125,20 @@ def plan_chart(planning_input: ChartPlanningInput | dict[str, Any]) -> ChartSpec
 
     if chart_input.chart_hint in {"pie", "donut"} and categorical_columns and numeric_columns:
         chart_type = "donut" if chart_input.chart_hint == "donut" else "pie"
+        metric_column = _select_metric_column(chart_input, numeric_columns)
         prepared_data, warnings = _prepare_chart_data_for_spec(
             chart_input.rows,
             chart_type=chart_type,
             x=categorical_columns[0],
-            y=numeric_columns[0],
+            y=metric_column,
             series=None,
         )
         spec = ChartSpec(
             chartable=True,
             chart_type=chart_type,
-            title=_build_title(chart_input, numeric_columns[0], categorical_columns[0]),
+            title=_build_title(chart_input, metric_column, categorical_columns[0]),
             x=categorical_columns[0],
-            y=numeric_columns[0],
+            y=metric_column,
             encoding={"x_type": "nominal", "y_type": "quantitative"},
             data=prepared_data,
             reason="Pedido explicito de grafico de proporcao.",
@@ -160,12 +161,13 @@ def plan_chart(planning_input: ChartPlanningInput | dict[str, Any]) -> ChartSpec
 
     if temporal_columns and numeric_columns:
         series = categorical_columns[0] if categorical_columns else None
+        metric_column = _select_metric_column(chart_input, numeric_columns)
         spec = ChartSpec(
             chartable=True,
             chart_type="line" if chart_input.chart_hint != "area" else "area",
-            title=_build_title(chart_input, numeric_columns[0], temporal_columns[0]),
+            title=_build_title(chart_input, metric_column, temporal_columns[0]),
             x=temporal_columns[0],
-            y=numeric_columns[0],
+            y=metric_column,
             series=series,
             encoding={"x_type": "temporal", "y_type": "quantitative"},
             data=chart_input.rows,
@@ -174,19 +176,20 @@ def plan_chart(planning_input: ChartPlanningInput | dict[str, Any]) -> ChartSpec
         return _finalize_spec(spec, columns, column_types)
 
     if categorical_columns and numeric_columns:
+        metric_column = _select_metric_column(chart_input, numeric_columns)
         prepared_data, warnings = _prepare_chart_data_for_spec(
             chart_input.rows,
             chart_type="bar",
             x=categorical_columns[0],
-            y=numeric_columns[0],
+            y=metric_column,
             series=None,
         )
         spec = ChartSpec(
             chartable=True,
             chart_type="bar",
-            title=_build_title(chart_input, numeric_columns[0], categorical_columns[0]),
+            title=_build_title(chart_input, metric_column, categorical_columns[0]),
             x=categorical_columns[0],
-            y=numeric_columns[0],
+            y=metric_column,
             encoding={"x_type": "nominal", "y_type": "quantitative"},
             data=prepared_data,
             reason="Resultado categorico com metrica numerica.",
@@ -438,6 +441,120 @@ def _build_title(
 
 def _humanize(column_name: str) -> str:
     return column_name.replace("_", " ").strip()
+
+
+def _select_metric_column(
+    chart_input: ChartPlanningInput,
+    numeric_columns: list[str],
+) -> str:
+    """Choose the metric that best matches the user's analytical intent."""
+
+    if not numeric_columns:
+        return ""
+    if len(numeric_columns) == 1:
+        return numeric_columns[0]
+
+    normalized_query = _normalize_label(chart_input.user_query)
+    normalized_columns = {column: _normalize_label(column) for column in numeric_columns}
+
+    semantic_match = _metric_from_semantic_plan(chart_input.semantic_plan, normalized_columns)
+    if semantic_match:
+        return semantic_match
+
+    rate_terms = {
+        "taxa",
+        "mortalidade",
+        "letalidade",
+        "percentual",
+        "porcentagem",
+        "proporcao",
+        "proporção",
+        "indice",
+        "índice",
+        "rate",
+        "ratio",
+    }
+    if any(term in normalized_query for term in rate_terms):
+        for token in [
+            "taxa",
+            "mortalidade",
+            "letalidade",
+            "percent",
+            "proporcao",
+            "indice",
+            "rate",
+            "ratio",
+        ]:
+            for column, normalized_column in normalized_columns.items():
+                if token in normalized_column:
+                    return column
+
+    death_terms = {"morte", "mortes", "obito", "obitos", "óbito", "óbitos"}
+    if any(_normalize_label(term) in normalized_query for term in death_terms):
+        for token in ["morte", "obito"]:
+            for column, normalized_column in normalized_columns.items():
+                if token in normalized_column:
+                    return column
+
+    non_denominator_columns = [
+        column
+        for column, normalized_column in normalized_columns.items()
+        if not _is_denominator_metric(normalized_column)
+    ]
+    return non_denominator_columns[0] if non_denominator_columns else numeric_columns[0]
+
+
+def _metric_from_semantic_plan(
+    semantic_plan: dict[str, Any] | None,
+    normalized_columns: dict[str, str],
+) -> str | None:
+    if not isinstance(semantic_plan, dict):
+        return None
+    metrics = semantic_plan.get("metrics")
+    if not isinstance(metrics, list):
+        return None
+
+    for metric in metrics:
+        if not isinstance(metric, dict):
+            continue
+        metric_name = _normalize_label(metric.get("name"))
+        expression_type = _normalize_label(metric.get("expression_type"))
+        if metric_name:
+            for column, normalized_column in normalized_columns.items():
+                if metric_name == normalized_column or metric_name in normalized_column:
+                    return column
+        if expression_type == "rate":
+            for column, normalized_column in normalized_columns.items():
+                if any(
+                    token in normalized_column for token in ["taxa", "percent", "proporcao", "rate"]
+                ):
+                    return column
+    return None
+
+
+def _is_denominator_metric(normalized_column: str) -> bool:
+    denominator_tokens = {
+        "internacao",
+        "internacoes",
+        "populacao",
+        "nascido",
+        "nascidos",
+        "denominador",
+        "total registros",
+    }
+    outcome_tokens = {
+        "morte",
+        "mortes",
+        "obito",
+        "obitos",
+        "taxa",
+        "percent",
+        "proporcao",
+        "mortalidade",
+    }
+    return any(token in normalized_column for token in denominator_tokens) and not any(
+        token in normalized_column for token in outcome_tokens
+    )
 
 
 def _drop_total_metrics_when_breakdown_exists(numeric_columns: list[str]) -> list[str]:

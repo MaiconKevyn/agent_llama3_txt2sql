@@ -159,7 +159,7 @@ def _sql_literal(value: str) -> str:
 
 def _sql_description_filter(alias: str, terms: list[str]) -> str:
     clauses = [
-        f'{alias}."DESCRICAO" ILIKE \'%{_sql_literal(term)}%\''
+        f"{alias}.\"DESCRICAO\" ILIKE '%{_sql_literal(term)}%'"
         for term in terms
         if str(term).strip()
     ]
@@ -235,7 +235,7 @@ def _build_diagnosis_description_lookup_sql(
     prefix_filter = ""
     if prefixes:
         prefix_filter = " OR ".join(
-            f'c."CID" LIKE \'{_sql_literal(prefix)}\'' for prefix in prefixes
+            f"c.\"CID\" LIKE '{_sql_literal(prefix)}'" for prefix in prefixes
         )
     target_filters = [item for item in [code_filter, prefix_filter, description_filter] if item]
     if not target_filters:
@@ -251,7 +251,7 @@ def _build_diagnosis_description_lookup_sql(
         " (SELECT COUNT(*) FROM internacoes i"
         ' WHERE i."DIAG_PRINC" IN (SELECT "CID" FROM diagnosticos_alvo)'
         f"{year_filter}) AS total_internacoes,"
-        " STRING_AGG(\"CID\" || ' - ' || \"DESCRICAO\", ' | ' ORDER BY \"CID\")"
+        ' STRING_AGG("CID" || \' - \' || "DESCRICAO", \' | \' ORDER BY "CID")'
         " AS diagnosticos_encontrados"
         " FROM diagnosticos_alvo;"
     )
@@ -684,7 +684,7 @@ def _build_population_rate_by_state_sql(
         ' SELECT mu."SG_UF" AS estado, SUM(s."QT_POPULACAO") AS populacao'
         " FROM socioeconomico s"
         ' JOIN municipios mu ON s."CO_MUNICIPIO_6D" = mu."CO_MUNICIPIO_6D"'
-        f" WHERE s.\"QT_POPULACAO\" IS NOT NULL{socioeconomic_year_filter}{state_filter}"
+        f' WHERE s."QT_POPULACAO" IS NOT NULL{socioeconomic_year_filter}{state_filter}'
         ' GROUP BY mu."SG_UF"'
         ") "
         "SELECT ipe.estado, ipe.total_internacoes, ppe.populacao,"
@@ -711,7 +711,7 @@ def _build_time_to_death_sql(
 
     year_filter = _year_where_clause(plan, "i")
     return (
-        "SELECT ROUND(AVG(date_diff('day', i.\"DT_INTER\", i.\"DT_SAIDA\")), 2)"
+        'SELECT ROUND(AVG(date_diff(\'day\', i."DT_INTER", i."DT_SAIDA")), 2)'
         " AS tempo_medio_dias_ate_obito"
         " FROM internacoes i"
         ' WHERE i."MORTE" = true'
@@ -1426,8 +1426,19 @@ def _select_item_matches_dimension(select_item: str, dimension: str) -> bool:
         "municipio_hospital": [r"\bnome\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
         "hospital": [r"\bcnes\b"],
         "especialidade": [r"\bespecialidade\b", r"\bdescri[cç][aã]o\b", r"\bespec\b"],
-        "cid_capitulo": [r"\bcap[ií]tulo\b", r"\bcapitulo_cid\b", r"\bcid_capitulo\b", r"\bds_capitulo\b", r"\bsubstr\s*\("],
-        "cid_categoria": [r"\bcategoria\b", r"\bcategoria_cid\b", r"\bcid_categoria\b", r"\bds_categoria\b"],
+        "cid_capitulo": [
+            r"\bcap[ií]tulo\b",
+            r"\bcapitulo_cid\b",
+            r"\bcid_capitulo\b",
+            r"\bds_capitulo\b",
+            r"\bsubstr\s*\(",
+        ],
+        "cid_categoria": [
+            r"\bcategoria\b",
+            r"\bcategoria_cid\b",
+            r"\bcid_categoria\b",
+            r"\bds_categoria\b",
+        ],
         "cid_grupo": [r"\bgrupo\b", r"\bgrupo_cid\b", r"\bcid_grupo\b", r"\bds_grupo\b"],
         "cid_restrsexo": [r"\brestr(?:icao|ição|icoes|ições)?_?sexo\b", r"\brestrsexo\b"],
         "cid_codigo": [r"\bcid\b"],
@@ -1472,11 +1483,26 @@ def _sql_mentions_output_dimension(sql: str, dimension: str) -> bool:
         "estado_hospital": [r"\bsg_uf\b", r"\bestado\b"],
         "municipio": [r"\bno_municipio\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
         "municipio_hospital": [r"\bno_municipio\b", r"\bmunicipio\b", r"\bmunic[ií]pio\b"],
-        "regiao_saude": [r"\bno_regiao_saude\b", r"\bregiao_saude\b", r"\bregi[aã]o\s+de\s+sa[uú]de\b"],
+        "regiao_saude": [
+            r"\bno_regiao_saude\b",
+            r"\bregiao_saude\b",
+            r"\bregi[aã]o\s+de\s+sa[uú]de\b",
+        ],
         "hospital": [r"\bcnes\b", r"\bhospital\b"],
         "especialidade": [r"\bespecialidade\b", r"\bespec\b", r"\bdescri[cç][aã]o\b"],
-        "cid_capitulo": [r"\bcap[ií]tulo\b", r"\bcapitulo_cid\b", r"\bcid_capitulo\b", r"\bds_capitulo\b", r"\bsubstr\s*\("],
-        "cid_categoria": [r"\bcategoria\b", r"\bcategoria_cid\b", r"\bcid_categoria\b", r"\bds_categoria\b"],
+        "cid_capitulo": [
+            r"\bcap[ií]tulo\b",
+            r"\bcapitulo_cid\b",
+            r"\bcid_capitulo\b",
+            r"\bds_capitulo\b",
+            r"\bsubstr\s*\(",
+        ],
+        "cid_categoria": [
+            r"\bcategoria\b",
+            r"\bcategoria_cid\b",
+            r"\bcid_categoria\b",
+            r"\bds_categoria\b",
+        ],
         "cid_grupo": [r"\bgrupo\b", r"\bgrupo_cid\b", r"\bcid_grupo\b", r"\bds_grupo\b"],
         "cid_restrsexo": [r"\brestr(?:icao|ição|icoes|ições)?_?sexo\b", r"\brestrsexo\b"],
         "cid_codigo": [r"\bcid\b"],
@@ -1534,7 +1560,11 @@ def _validate_post_execution_contract(
                 "POST EXECUTION CONTRACT ERROR: successful SQL is missing requested output "
                 f"dimension(s): {', '.join(missing_dimensions)}."
             )
-        if row_count <= 1 and not results and plan.answer_shape.expected_row_count == "one_per_group":
+        if (
+            row_count <= 1
+            and not results
+            and plan.answer_shape.expected_row_count == "one_per_group"
+        ):
             return False, (
                 "POST EXECUTION CONTRACT ERROR: grouped query returned no rows, so it did not "
                 "materialize the requested output dimensions."
@@ -1736,7 +1766,9 @@ def execute_sql_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             metadata = state.get("response_metadata", {}) or {}
             metadata["post_execution_contract_error"] = post_execution_message
             state["response_metadata"] = metadata
-            state = add_ai_message(state, post_execution_message or "Post-execution contract failed")
+            state = add_ai_message(
+                state, post_execution_message or "Post-execution contract failed"
+            )
             execution_time = time.time() - start_time
             state = update_phase(state, ExecutionPhase.SQL_EXECUTION, execution_time)
             return state

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 
 class MetricsCollector:
@@ -36,7 +36,7 @@ class MetricsCollector:
     def record_result(
         self,
         query: str,
-        result: Dict[str, Any],
+        result: dict[str, Any],
         execution_time: float,
         *,
         model_id: str,
@@ -71,10 +71,10 @@ class MetricsCollector:
         self._successful_queries = 0
         self._failed_queries = 0
         self._total_execution_time = 0.0
-        self._query_history: List[Dict[str, Any]] = []
+        self._query_history: list[dict[str, Any]] = []
 
-    def get_model_performance(self) -> Dict[str, Any]:
-        model_stats: Dict[str, Dict[str, Any]] = {}
+    def get_model_performance(self) -> dict[str, Any]:
+        model_stats: dict[str, dict[str, Any]] = {}
 
         for entry in self._query_history:
             model = entry["model"]
@@ -98,20 +98,16 @@ class MetricsCollector:
         self,
         *,
         environment: str,
-        current_model: Dict[str, Any],
-        llm_health: Dict[str, Any],
+        current_model: dict[str, Any],
+        llm_health: dict[str, Any],
         version: str = "3.0",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         recent_queries = self._query_history[-10:] if self._query_history else []
         avg_execution_time = (
-            self._total_execution_time / self._total_queries
-            if self._total_queries > 0
-            else 0
+            self._total_execution_time / self._total_queries if self._total_queries > 0 else 0
         )
         success_rate = (
-            self._successful_queries / self._total_queries
-            if self._total_queries > 0
-            else 0
+            self._successful_queries / self._total_queries if self._total_queries > 0 else 0
         )
         recent_success_rate = (
             sum(1 for q in recent_queries if q["success"]) / len(recent_queries)

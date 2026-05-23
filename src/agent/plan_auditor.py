@@ -37,7 +37,9 @@ def audit_pre_sql_plan(
 
     if _mentions_respiratory(normalized):
         respiratory_filter = filters.get("diagnostico_principal_prefix")
-        if respiratory_filter and any(str(value).upper() == "J%" for value in respiratory_filter.values):
+        if respiratory_filter and any(
+            str(value).upper() == "J%" for value in respiratory_filter.values
+        ):
             resolved.append("respiratory_cid")
         else:
             errors.append(
@@ -56,9 +58,7 @@ def audit_pre_sql_plan(
     if chart.requested:
         metric_names = {metric.name for metric in plan.metrics}
         dimensions = set(plan.answer_shape.required_dimensions)
-        chart_dimensions = {
-            value for value in [chart.x_dimension, chart.series_dimension] if value
-        }
+        chart_dimensions = {value for value in [chart.x_dimension, chart.series_dimension] if value}
         missing_columns = [
             column
             for column in chart.required_columns

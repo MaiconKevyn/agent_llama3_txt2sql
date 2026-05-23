@@ -8,10 +8,10 @@ Usage
 
 Falls back to zeroed dict if langchain_community is unavailable.
 """
+
 from __future__ import annotations
 
-from contextlib import contextmanager, nullcontext
-from typing import Any, Dict, Generator
+from typing import Any
 
 _EMPTY = {
     "prompt_tokens": 0,
@@ -23,6 +23,7 @@ _EMPTY = {
 
 try:
     from langchain_community.callbacks import get_openai_callback as _get_cb
+
     _CB_AVAILABLE = True
 except ImportError:
     _CB_AVAILABLE = False
@@ -32,11 +33,11 @@ class QueryCostTracker:
     """Context manager that captures OpenAI token usage for a block of code."""
 
     def __init__(self):
-        self._ctx = None   # the generator context manager from get_openai_callback()
+        self._ctx = None  # the generator context manager from get_openai_callback()
         self._handler = None  # the OpenAICallbackHandler returned by __enter__
-        self._data: Dict[str, Any] = dict(_EMPTY)
+        self._data: dict[str, Any] = dict(_EMPTY)
 
-    def __enter__(self) -> "QueryCostTracker":
+    def __enter__(self) -> QueryCostTracker:
         if _CB_AVAILABLE:
             self._ctx = _get_cb()
             self._handler = self._ctx.__enter__()
@@ -54,7 +55,7 @@ class QueryCostTracker:
                 "successful_requests": h.successful_requests,
             }
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return dict(self._data)
 
 

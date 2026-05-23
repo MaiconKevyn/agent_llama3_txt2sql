@@ -17,13 +17,32 @@ from evaluation.agent.analytic_rubric import score_analytic_response
 from evaluation.agent.generalization_rubric import (
     dump_json,
     judge_safe_refusal,
+    load_benchmark_questions,
     load_generalization_questions,
 )
 
 
 def summarize_items(items: list[dict[str, Any]]) -> dict[str, Any]:
+    scored_items = [item for item in items if item.get("status") in {"passed", "failed"}]
+    total = len(scored_items)
+    passed = sum(1 for item in scored_items if item.get("status") == "passed")
+    by_category: dict[str, dict[str, int | float]] = {}
+    for category in sorted({str(item.get("category") or "unknown") for item in items}):
+        category_items = [
+            item for item in scored_items if str(item.get("category") or "unknown") == category
+        ]
+        category_passed = sum(1 for item in category_items if item.get("status") == "passed")
+        by_category[category] = {
+            "passed": category_passed,
+            "total": len(category_items),
+            "score": round(category_passed / len(category_items), 4) if category_items else 0.0,
+        }
     return {
         "status_counts": dict(Counter(item.get("status") for item in items)),
+        "scored_total": total,
+        "score": round(passed / total, 4) if total else 0.0,
+        "category_scores": by_category,
+        "answerability_counts": dict(Counter(item.get("answerability") for item in items)),
         "root_cause_counts": dict(
             Counter(item.get("root_cause") for item in items if item.get("root_cause"))
         ),
@@ -69,6 +88,25 @@ def evaluate_response(
     if question.expected_behavior == "safe_refusal":
         judgement = judge_safe_refusal(response=response, judge=question.judge)
         return {"passed": judgement["passed"], "judge": judgement}
+
+    if question.expected_behavior == "requires_clarification":
+        normalized_response = response.lower()
+        missing = [
+            token
+            for token in question.judge.get("must_mention", [])
+            if str(token).lower() not in normalized_response
+        ]
+        if sql:
+            missing.append("unexpected_sql_for_clarification")
+        if not (
+            metadata.get("critical_ambiguity")
+            or metadata.get("answerability") == "requires_clarification"
+        ):
+            missing.append("missing_clarification_metadata")
+        return {
+            "passed": not missing,
+            "judge": {"type": "requires_clarification", "missing": missing},
+        }
 
     if question.expected_behavior == "answer_with_analytic_template":
         score = score_analytic_response(
@@ -131,8 +169,11 @@ def select_questions(
     category: str | None,
     behavior: str | None,
     ids: list[str] | None,
+    benchmark: Path | None = None,
 ) -> list[Any]:
-    questions = load_generalization_questions()
+    questions = (
+        load_benchmark_questions(benchmark) if benchmark else load_generalization_questions()
+    )
     if ids:
         wanted = set(ids)
         questions = [item for item in questions if item.id in wanted]
@@ -156,6 +197,7 @@ def run_items(
     category: str | None = None,
     behavior: str | None = None,
     ids: list[str] | None = None,
+    benchmark: Path | None = None,
     dry_run: bool,
 ) -> list[dict[str, Any]]:
     selected = select_questions(
@@ -164,15 +206,20 @@ def run_items(
         category=category,
         behavior=behavior,
         ids=ids,
+        benchmark=benchmark,
     )
     if dry_run:
         return [
             {
                 "id": item.id,
                 "question": item.question,
+                "category": item.category,
                 "expected_behavior": item.expected_behavior,
                 "anti_overfit_family": item.anti_overfit_family,
                 "status": "dry_run",
+                "evaluation_passed": None,
+                "technical_success": None,
+                "answerability": item.expected_behavior,
                 "root_cause": None,
                 "severity": None,
             }
@@ -212,18 +259,49 @@ def run_items(
             "expected_behavior": item.expected_behavior,
             "anti_overfit_family": item.anti_overfit_family,
             "status": "passed" if judgement["passed"] else "failed",
+            "evaluation_passed": judgement["passed"],
             "judge": judgement["judge"],
             "success": raw.get("success"),
+            "technical_success": _technical_success(item, raw, judgement),
+            "answerability": _answerability(item, raw),
             "response": raw.get("response") or raw.get("final_response"),
             "sql": raw.get("sql_query") or raw.get("generated_sql"),
             "metadata": raw.get("metadata") or {},
             "error": raw.get("error_message") or raw.get("error"),
+            "latency_seconds": raw.get("execution_time"),
         }
         root_cause, severity = classify_failure(output)
         output["root_cause"] = root_cause
         output["severity"] = severity
         results.append(output)
     return results
+
+
+def _answerability(question: Any, raw: dict[str, Any]) -> str:
+    if raw.get("answerability"):
+        return str(raw["answerability"])
+    metadata = raw.get("metadata") or {}
+    if question.expected_behavior == "requires_clarification" or metadata.get("critical_ambiguity"):
+        return "requires_clarification"
+    if question.expected_behavior == "safe_refusal":
+        return "unanswerable_schema"
+    if raw.get("error_message") or raw.get("error"):
+        return "technical_error"
+    if raw.get("sql_query") or raw.get("generated_sql"):
+        return "answerable"
+    return "unknown"
+
+
+def _technical_success(question: Any, raw: dict[str, Any], judgement: dict[str, Any]) -> bool:
+    if raw.get("technical_success") is not None:
+        return bool(raw["technical_success"])
+    if raw.get("error_message") or raw.get("error"):
+        return False
+    if question.expected_behavior in {"safe_refusal", "requires_clarification"}:
+        return bool(raw.get("response") or raw.get("final_response")) and bool(
+            judgement.get("passed")
+        )
+    return bool(raw.get("success"))
 
 
 def build_sql_executor(db_url: str) -> Callable[[str], list[dict[str, Any]]]:
@@ -260,6 +338,7 @@ def write_markdown(payload: dict[str, Any], path: Path) -> None:
         f"- Run: `{payload['run_id']}`",
         f"- Total: {len(payload['items'])}",
         f"- Dry run: `{payload['dry_run']}`",
+        f"- Score: {_format_score(summary)}",
         "",
         "## Status",
         "",
@@ -269,7 +348,53 @@ def write_markdown(payload: dict[str, Any], path: Path) -> None:
     for status, count in sorted(summary["status_counts"].items()):
         lines.append(f"| `{status}` | {count} |")
 
-    lines.extend(["", "## Failures", "", "| ID | Severity | Root cause | Question |", "| --- | --- | --- | --- |"])
+    lines.extend(
+        [
+            "",
+            "## Domain Scores",
+            "",
+            "| Domain | Passed | Total | Score |",
+            "| --- | ---: | ---: | ---: |",
+        ]
+    )
+    for category, row in sorted((summary.get("category_scores") or {}).items()):
+        if row["total"] == 0:
+            continue
+        lines.append(
+            f"| `{category}` | {row['passed']} | {row['total']} | {float(row['score']):.1%} |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Cases",
+            "",
+            "| ID | Domain | Status | Answerability | Latency | Question | SQL / response | Caveats |",
+            "| --- | --- | --- | --- | ---: | --- | --- | --- |",
+        ]
+    )
+    for item in payload["items"]:
+        metadata = item.get("metadata") or {}
+        caveats = metadata.get("domain_caveats") or []
+        sql_or_response = _markdown_snippet(item.get("sql") or item.get("response") or "")
+        question = _markdown_snippet(item.get("question") or "", limit=120)
+        latency = item.get("latency_seconds")
+        latency_text = f"{float(latency):.2f}s" if isinstance(latency, int | float) else ""
+        lines.append(
+            f"| `{item['id']}` | `{item.get('category')}` | `{item.get('status')}` | "
+            f"`{item.get('answerability')}` | {latency_text} | {question} | "
+            f"{sql_or_response} | {_markdown_snippet('; '.join(caveats), limit=120)} |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Failures",
+            "",
+            "| ID | Severity | Root cause | Question |",
+            "| --- | --- | --- | --- |",
+        ]
+    )
     failure_rows = 0
     for item in payload["items"]:
         if item.get("status") != "failed":
@@ -284,6 +409,19 @@ def write_markdown(payload: dict[str, Any], path: Path) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def _markdown_snippet(value: str, *, limit: int = 180) -> str:
+    text = " ".join(str(value or "").split()).replace("|", "\\|")
+    if len(text) > limit:
+        return text[: limit - 3] + "..."
+    return text or "-"
+
+
+def _format_score(summary: dict[str, Any]) -> str:
+    if int(summary.get("scored_total") or 0) == 0:
+        return "n/a"
+    return f"{float(summary.get('score') or 0):.1%}"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--limit", type=int, default=None)
@@ -291,10 +429,16 @@ def main() -> None:
     parser.add_argument("--category", type=str, default=None)
     parser.add_argument(
         "--behavior",
-        choices=["answer_with_sql", "safe_refusal", "answer_with_analytic_template"],
+        choices=[
+            "answer_with_sql",
+            "safe_refusal",
+            "requires_clarification",
+            "answer_with_analytic_template",
+        ],
         default=None,
     )
     parser.add_argument("--ids", type=str, default=None, help="Comma-separated GEN ids to run.")
+    parser.add_argument("--benchmark", type=Path, default=None)
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
@@ -307,6 +451,7 @@ def main() -> None:
         category=args.category,
         behavior=args.behavior,
         ids=ids,
+        benchmark=args.benchmark,
         dry_run=args.dry_run,
     )
     output_dir = Path("evaluation/agent/results")

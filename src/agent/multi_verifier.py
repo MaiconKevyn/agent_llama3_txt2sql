@@ -1,19 +1,19 @@
 """Verifier for multi-query plans before accepting merged rows as final output."""
 
-import time
 import re
-from typing import Any, Dict, List, Optional, Tuple
+import time
+from typing import Any
 
-from .state_models import ExecutionPhase, MessagesStateTXT2SQL, QueryPlan
-from .state_helpers import add_ai_message, update_phase
 from ..utils.logging_config import get_nodes_logger
+from .state_helpers import add_ai_message, update_phase
+from .state_models import ExecutionPhase, MessagesStateTXT2SQL, QueryPlan
 
 logger = get_nodes_logger()
 
 _SUPPORTED_MERGES = {"concat", "scalar_bind", "final_sql", "verifier_only"}
 
 
-def _get_result_map(sub_query_results: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+def _get_result_map(sub_query_results: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     return {result["id"]: result for result in sub_query_results}
 
 
@@ -24,12 +24,14 @@ def _append_failure(state: MessagesStateTXT2SQL, failure_code: str) -> None:
     state["failure_taxonomy"] = failures
 
 
-def _validate_constraints(plan: QueryPlan, output_results: List[Dict[str, Any]]) -> Optional[str]:
+def _validate_constraints(plan: QueryPlan, output_results: list[dict[str, Any]]) -> str | None:
     required_constraints = plan.required_constraints or []
     if not required_constraints:
         return None
 
-    combined_sql = "\n".join(result.get("validated_sql") or result.get("sql") or "" for result in output_results)
+    combined_sql = "\n".join(
+        result.get("validated_sql") or result.get("sql") or "" for result in output_results
+    )
     lower_sql = combined_sql.lower()
 
     for constraint in required_constraints:
@@ -42,7 +44,7 @@ def _validate_constraints(plan: QueryPlan, output_results: List[Dict[str, Any]])
     return None
 
 
-def _validate_required_groups(plan: QueryPlan, merged_rows: List) -> Optional[str]:
+def _validate_required_groups(plan: QueryPlan, merged_rows: list) -> str | None:
     shape = plan.expected_output_shape or {}
     group_labels = shape.get("group_labels") or []
     if not group_labels:
@@ -55,7 +57,7 @@ def _validate_required_groups(plan: QueryPlan, merged_rows: List) -> Optional[st
     return None
 
 
-def _validate_row_shape(plan: QueryPlan, merged_rows: List) -> Optional[str]:
+def _validate_row_shape(plan: QueryPlan, merged_rows: list) -> str | None:
     shape = plan.expected_output_shape or {}
     column_count = shape.get("column_count")
     if column_count is not None:
@@ -77,7 +79,7 @@ def _validate_row_shape(plan: QueryPlan, merged_rows: List) -> Optional[str]:
     return None
 
 
-def _validate_binding_limits(sub_query_results: List[Dict[str, Any]]) -> Optional[str]:
+def _validate_binding_limits(sub_query_results: list[dict[str, Any]]) -> str | None:
     for result in sub_query_results:
         if result.get("purpose") != "binding":
             continue
@@ -91,14 +93,16 @@ def _validate_binding_limits(sub_query_results: List[Dict[str, Any]]) -> Optiona
     return None
 
 
-def _merge_output_rows(plan: QueryPlan, sub_query_results: List[Dict[str, Any]]) -> Tuple[Optional[List], Optional[str], Optional[str]]:
+def _merge_output_rows(
+    plan: QueryPlan, sub_query_results: list[dict[str, Any]]
+) -> tuple[list | None, str | None, str | None]:
     result_map = _get_result_map(sub_query_results)
     merge_strategy = plan.merge_strategy
 
     if merge_strategy not in _SUPPORTED_MERGES:
         return None, None, f"Unsupported merge strategy: {merge_strategy}"
 
-    output_results: List[Dict[str, Any]] = []
+    output_results: list[dict[str, Any]] = []
     for node_id in plan.output_nodes:
         result = result_map.get(node_id)
         if not result or not result.get("success"):
@@ -106,7 +110,7 @@ def _merge_output_rows(plan: QueryPlan, sub_query_results: List[Dict[str, Any]])
         output_results.append(result)
 
     if merge_strategy == "concat":
-        merged_rows: List = []
+        merged_rows: list = []
         for result in output_results:
             parsed_rows = result.get("parsed_rows")
             if parsed_rows is None:
@@ -137,7 +141,7 @@ def multi_verifier_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         state = update_phase(state, ExecutionPhase.SQL_VALIDATION, time.time() - start_time)
         return state
 
-    verifier_outcome: Dict[str, Any] = {
+    verifier_outcome: dict[str, Any] = {
         "passed": False,
         "plan_type": query_plan.plan_type,
         "merge_strategy": query_plan.merge_strategy,
@@ -146,32 +150,49 @@ def multi_verifier_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
 
     merged_rows, merged_rows_source, merge_error = _merge_output_rows(query_plan, sub_query_results)
     if merge_error:
-        _append_failure(state, "unsupported_merge_strategy" if "Unsupported" in merge_error else "missing_output_node")
+        _append_failure(
+            state,
+            "unsupported_merge_strategy" if "Unsupported" in merge_error else "missing_output_node",
+        )
         state["single_fallback_active"] = True
         state["single_fallback_reason"] = merge_error
         state["execution_mode"] = "single_fallback"
         verifier_outcome["reason"] = merge_error
         state["verifier_outcome"] = verifier_outcome
-        state = add_ai_message(state, f"Multi-query verifier acionou fallback single: {merge_error}")
+        state = add_ai_message(
+            state, f"Multi-query verifier acionou fallback single: {merge_error}"
+        )
         state = update_phase(state, ExecutionPhase.SQL_VALIDATION, time.time() - start_time)
         return state
 
     result_map = _get_result_map(sub_query_results)
-    output_results = [result_map[node_id] for node_id in query_plan.output_nodes if node_id in result_map]
+    output_results = [
+        result_map[node_id] for node_id in query_plan.output_nodes if node_id in result_map
+    ]
 
     checks = [
-        ("binding_cardinality", _validate_binding_limits(sub_query_results), "binding_cardinality_exceeded"),
+        (
+            "binding_cardinality",
+            _validate_binding_limits(sub_query_results),
+            "binding_cardinality_exceeded",
+        ),
         ("row_shape", _validate_row_shape(query_plan, merged_rows), "wrong_shape"),
-        ("required_groups", _validate_required_groups(query_plan, merged_rows), "missing_constraint"),
+        (
+            "required_groups",
+            _validate_required_groups(query_plan, merged_rows),
+            "missing_constraint",
+        ),
         ("constraints", _validate_constraints(query_plan, output_results), "missing_constraint"),
     ]
 
     for check_name, maybe_error, failure_code in checks:
-        verifier_outcome["checks"].append({
-            "name": check_name,
-            "passed": maybe_error is None,
-            "error": maybe_error,
-        })
+        verifier_outcome["checks"].append(
+            {
+                "name": check_name,
+                "passed": maybe_error is None,
+                "error": maybe_error,
+            }
+        )
         if maybe_error is not None:
             _append_failure(state, failure_code)
             state["single_fallback_active"] = True
@@ -179,25 +200,32 @@ def multi_verifier_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
             state["execution_mode"] = "single_fallback"
             verifier_outcome["reason"] = maybe_error
             state["verifier_outcome"] = verifier_outcome
-            state = add_ai_message(state, f"Multi-query verifier acionou fallback single: {maybe_error}")
+            state = add_ai_message(
+                state, f"Multi-query verifier acionou fallback single: {maybe_error}"
+            )
             state = update_phase(state, ExecutionPhase.SQL_VALIDATION, time.time() - start_time)
             return state
 
     # No intermediate rows should leak into the final output.
     allowed_output_ids = set(query_plan.output_nodes)
     leaked_ids = [
-        result["id"] for result in sub_query_results
+        result["id"]
+        for result in sub_query_results
         if result.get("success")
         and result.get("parsed_rows")
         and result["id"] not in allowed_output_ids
         and result.get("output_role") != "verifier"
         and result.get("purpose") != "binding"
     ]
-    verifier_outcome["checks"].append({
-        "name": "no_intermediate_rows",
-        "passed": not leaked_ids,
-        "error": f"Unexpected intermediate rows from {', '.join(leaked_ids)}" if leaked_ids else None,
-    })
+    verifier_outcome["checks"].append(
+        {
+            "name": "no_intermediate_rows",
+            "passed": not leaked_ids,
+            "error": f"Unexpected intermediate rows from {', '.join(leaked_ids)}"
+            if leaked_ids
+            else None,
+        }
+    )
     if leaked_ids:
         _append_failure(state, "intermediate_row_leak")
         state["single_fallback_active"] = True
@@ -205,7 +233,10 @@ def multi_verifier_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
         state["execution_mode"] = "single_fallback"
         verifier_outcome["reason"] = state["single_fallback_reason"]
         state["verifier_outcome"] = verifier_outcome
-        state = add_ai_message(state, f"Multi-query verifier acionou fallback single: {state['single_fallback_reason']}")
+        state = add_ai_message(
+            state,
+            f"Multi-query verifier acionou fallback single: {state['single_fallback_reason']}",
+        )
         state = update_phase(state, ExecutionPhase.SQL_VALIDATION, time.time() - start_time)
         return state
 
@@ -213,7 +244,9 @@ def multi_verifier_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
     state["merged_rows_source"] = merged_rows_source
     state["final_result_rows"] = merged_rows
     if len(query_plan.output_nodes) == 1:
-        output_sql = result_map[query_plan.output_nodes[0]].get("validated_sql") or result_map[query_plan.output_nodes[0]].get("sql")
+        output_sql = result_map[query_plan.output_nodes[0]].get("validated_sql") or result_map[
+            query_plan.output_nodes[0]
+        ].get("sql")
         state["final_sql_query"] = output_sql
 
     verifier_outcome["passed"] = True
@@ -223,15 +256,18 @@ def multi_verifier_node(state: MessagesStateTXT2SQL) -> MessagesStateTXT2SQL:
     state["single_fallback_reason"] = None
     state["execution_mode"] = "multi_verified"
 
-    logger.info("Multi-query verifier passed", extra={
-        "plan_type": query_plan.plan_type,
-        "merge_strategy": query_plan.merge_strategy,
-        "row_count": len(merged_rows),
-    })
+    logger.info(
+        "Multi-query verifier passed",
+        extra={
+            "plan_type": query_plan.plan_type,
+            "merge_strategy": query_plan.merge_strategy,
+            "row_count": len(merged_rows),
+        },
+    )
 
     state = add_ai_message(
         state,
-        f"Multi-query verifier aprovado: {query_plan.plan_type} com merge {query_plan.merge_strategy}."
+        f"Multi-query verifier aprovado: {query_plan.plan_type} com merge {query_plan.merge_strategy}.",
     )
     state = update_phase(state, ExecutionPhase.SQL_VALIDATION, time.time() - start_time)
     return state

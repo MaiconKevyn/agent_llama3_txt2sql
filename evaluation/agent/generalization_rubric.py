@@ -9,7 +9,12 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-ExpectedBehavior = Literal["answer_with_sql", "safe_refusal", "answer_with_analytic_template"]
+ExpectedBehavior = Literal[
+    "answer_with_sql",
+    "safe_refusal",
+    "requires_clarification",
+    "answer_with_analytic_template",
+]
 
 
 class GeneralizationQuestion(BaseModel):
@@ -24,13 +29,18 @@ class GeneralizationQuestion(BaseModel):
     judge: dict[str, Any]
     schema_basis: list[str] = Field(default_factory=list)
     anti_overfit_family: str
+    expected_caveats: list[str] = Field(default_factory=list)
+    max_latency_seconds: float | None = None
 
     @model_validator(mode="after")
     def validate_sql_policy(self) -> GeneralizationQuestion:
         if self.expected_behavior == "answer_with_sql" and not self.reference_sql:
             raise ValueError(f"{self.id} expects SQL but has no reference_sql")
-        if self.expected_behavior == "safe_refusal" and self.reference_sql:
-            raise ValueError(f"{self.id} is safe_refusal but has reference_sql")
+        if (
+            self.expected_behavior in {"safe_refusal", "requires_clarification"}
+            and self.reference_sql
+        ):
+            raise ValueError(f"{self.id} is {self.expected_behavior} but has reference_sql")
         return self
 
 
@@ -43,8 +53,46 @@ def load_generalization_questions(path: Path | None = None) -> list[Generalizati
         try:
             questions.append(GeneralizationQuestion.model_validate_json(line))
         except Exception as exc:
-            raise ValueError(f"Invalid generalization question at {path}:{line_number}: {exc}") from exc
+            raise ValueError(
+                f"Invalid generalization question at {path}:{line_number}: {exc}"
+            ) from exc
     return questions
+
+
+def load_benchmark_questions(path: Path) -> list[GeneralizationQuestion]:
+    """Load a benchmark directory or file, resolving source_id refs to the main corpus."""
+
+    base_by_id = {question.id: question for question in load_generalization_questions()}
+    records: list[dict[str, Any]] = []
+    files = sorted(path.glob("*.json*")) if path.is_dir() else [path]
+    for file_path in files:
+        records.extend(_load_benchmark_records(file_path))
+
+    questions: list[GeneralizationQuestion] = []
+    for record in records:
+        source_id = record.pop("source_id", None)
+        if source_id:
+            if source_id not in base_by_id:
+                raise ValueError(f"Unknown benchmark source_id: {source_id}")
+            source = base_by_id[source_id]
+            update = {key: value for key, value in record.items() if value is not None}
+            update.setdefault("id", source.id)
+            questions.append(source.model_copy(update=update))
+        else:
+            questions.append(GeneralizationQuestion.model_validate(record))
+    return questions
+
+
+def _load_benchmark_records(path: Path) -> list[dict[str, Any]]:
+    text = path.read_text(encoding="utf-8")
+    if path.suffix == ".jsonl":
+        return [json.loads(line) for line in text.splitlines() if line.strip()]
+    payload = json.loads(text)
+    if isinstance(payload, list):
+        return payload
+    if isinstance(payload, dict) and isinstance(payload.get("cases"), list):
+        return payload["cases"]
+    raise ValueError(f"Unsupported benchmark file shape: {path}")
 
 
 def _normalize_text(value: str) -> str:
@@ -90,7 +138,9 @@ def score_numeric_equivalence(
 ) -> dict[str, Any]:
     missing: list[str] = []
     column_aliases = _merged_column_aliases(column_aliases or {})
-    expected_rows = _project_rows(expected_rows, required_columns, column_aliases, missing, "expected")
+    expected_rows = _project_rows(
+        expected_rows, required_columns, column_aliases, missing, "expected"
+    )
     actual_rows = _project_rows(actual_rows, required_columns, column_aliases, missing, "actual")
     if len(expected_rows) != len(actual_rows):
         missing.append(f"row_count:{len(actual_rows)}!={len(expected_rows)}")
@@ -167,12 +217,27 @@ def _merged_column_aliases(overrides: dict[str, list[str]]) -> dict[str, list[st
         "uf": ["uf_residencia", "estado_residencia", "estado"],
         "uf_residencia": ["uf", "estado_residencia", "estado"],
         "estado_residencia": ["uf", "uf_residencia", "estado"],
+        "municipio_residencia": ["municipio"],
+        "municipio": ["municipio_residencia"],
         "total_internacoes": ["total", "internacoes", "qtd_internacoes", "quantidade"],
         "total": ["total_internacoes", "internacoes", "qtd_internacoes", "quantidade"],
+        "total_procedimentos": ["total_internacoes", "total", "quantidade"],
         "total_obitos": ["total_mortes", "obitos", "mortes"],
         "total_mortes": ["total_obitos", "obitos", "mortes"],
-        "taxa_mortalidade_percentual": ["taxa_mortalidade", "taxa_obitos", "mortalidade_percentual"],
-        "taxa_mortalidade": ["taxa_mortalidade_percentual", "taxa_obitos", "mortalidade_percentual"],
+        "valor_indicador": ["leitos_sus_1000", "medicos_1000", "indicador"],
+        "taxa_por_100k": ["taxa_internacoes_por_100_mil", "taxa_100k"],
+        "taxa_mortalidade_percentual": [
+            "taxa_mortalidade",
+            "taxa_obitos",
+            "mortalidade_percentual",
+        ],
+        "taxa_mortalidade": [
+            "taxa_mortalidade_percentual",
+            "taxa_obitos",
+            "mortalidade_percentual",
+        ],
+        "capitulo_cid": ["cid_capitulo"],
+        "cid_capitulo": ["capitulo_cid"],
     }
     for canonical, custom_aliases in overrides.items():
         aliases.setdefault(canonical, [])
@@ -193,7 +258,9 @@ def _project_rows(
         for column in required_columns:
             source_column = _find_column(row, column, column_aliases)
             if source_column is None:
-                missing_prefix = "expected_missing_column" if prefix == "expected" else "missing_column"
+                missing_prefix = (
+                    "expected_missing_column" if prefix == "expected" else "missing_column"
+                )
                 missing.append(f"{missing_prefix}:{column}")
                 continue
             projected_row[column] = row[source_column]

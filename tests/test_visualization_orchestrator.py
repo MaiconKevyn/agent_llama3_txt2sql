@@ -3,13 +3,32 @@ from src.visualization.intent import detect_visualization_intent
 
 
 class DummyLogger:
+    def info(self, message, extra=None):
+        self.last_info = (message, extra)
+
+    def error(self, message, extra=None):
+        self.last_error = (message, extra)
+
     def warning(self, message, extra=None):
         self.last_warning = (message, extra)
+
+
+class DummyMetrics:
+    def begin_query(self):
+        return 1
+
+
+class DummyModel:
+    provider = "openai"
+    model_name = "test-model"
 
 
 def _orchestrator_without_runtime():
     orchestrator = object.__new__(LangGraphOrchestrator)
     orchestrator.logger = DummyLogger()
+    orchestrator._metrics = DummyMetrics()
+    orchestrator._current_model = DummyModel()
+    orchestrator._last_result_by_session = {}
     return orchestrator
 
 
@@ -142,3 +161,43 @@ def test_followup_chart_result_uses_cached_session_result():
     assert result["chart"]["requested"] is True
     assert result["chart"]["uses_last_result"] is True
     assert result["results"] == cached["results"]
+
+
+def test_process_query_can_force_chart_from_cached_session_result():
+    orchestrator = _orchestrator_without_runtime()
+    orchestrator._last_result_by_session["s1"] = {
+        "user_query": "Compare os municipios com maior mortalidade e destaque o lider.",
+        "sql_query": (
+            "SELECT municipio, total_internacoes, total_mortes, taxa "
+            "FROM internacoes_ranked LIMIT 10"
+        ),
+        "results": [
+            {
+                "municipio": "Nova Friburgo",
+                "total_internacoes": 136883,
+                "total_mortes": 12582,
+                "taxa": 9.19,
+            },
+            {
+                "municipio": "Saquarema",
+                "total_internacoes": 57003,
+                "total_mortes": 5223,
+                "taxa": 9.16,
+            },
+        ],
+        "row_count": 2,
+        "metadata": {},
+    }
+
+    result = orchestrator.process_query(
+        "Gere um grafico dessa resposta usando os dados ja retornados.",
+        session_id="s1",
+        chart_from_last_result=True,
+    )
+
+    assert result["success"] is True
+    assert result["chart"]["requested"] is True
+    assert result["chart"]["uses_last_result"] is True
+    assert result["chart"]["spec"]["chartable"] is True
+    assert result["chart"]["spec"]["x"] == "municipio"
+    assert result["chart"]["spec"]["y"] == "taxa"

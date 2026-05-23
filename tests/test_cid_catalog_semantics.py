@@ -41,7 +41,8 @@ def test_cid_catalog_lookup_returns_codes_and_hierarchy_for_named_disease():
     assert '"DESCRICAO" AS descricao' in sql
     assert '"DS_CATEGORIA" AS categoria_cid' in sql
     assert '"DS_GRUPO" AS grupo_cid' in sql
-    assert "ILIKE '%pneumonia%'" in sql
+    assert "\"CID\" LIKE 'J12%'" in sql
+    assert "\"CID\" LIKE 'J18%'" in sql
 
 
 def test_cid_catalog_prefix_lookup_applies_cid_like_filter():
@@ -51,7 +52,7 @@ def test_cid_catalog_prefix_lookup_applies_cid_like_filter():
 
     assert plan.base_grain == "cid_catalog"
     assert sql is not None
-    assert '"CID" LIKE \'J18%\'' in sql
+    assert "\"CID\" LIKE 'J18%'" in sql
 
 
 def test_cid_duplicate_description_lookup_groups_and_having():
@@ -74,7 +75,7 @@ def test_cid_catalog_obstetric_lookup_does_not_require_internacao_filter():
     assert plan.base_grain == "cid_catalog"
     assert not any(filter_.field == "obstetrico" for filter_ in plan.filters)
     assert sql is not None
-    assert '"CID" LIKE \'O%\'' in sql
+    assert "\"CID\" LIKE 'O%'" in sql
     assert 'i."ESPEC"' not in sql
 
 
@@ -88,7 +89,7 @@ def test_cid_frequent_categories_for_children_use_internacoes_and_age_filter():
     assert sql is not None
     assert 'JOIN cid c ON i."DIAG_PRINC" = c."CID"' in sql
     assert 'i."IDADE" < 18' in sql
-    assert 'LIMIT 10' in sql
+    assert "LIMIT 10" in sql
 
 
 def test_disease_family_count_uses_cid_hierarchy_context_with_join():
@@ -106,7 +107,9 @@ def test_disease_family_count_uses_cid_hierarchy_context_with_join():
 
 
 def test_internacao_category_question_uses_cid_category_lookup_dimension():
-    plan = build_semantic_plan("Quais categorias CID foram mais frequentes entre internacoes femininas?")
+    plan = build_semantic_plan(
+        "Quais categorias CID foram mais frequentes entre internacoes femininas?"
+    )
 
     sql = _build_deterministic_grouped_sql(plan)
 
@@ -122,7 +125,9 @@ def test_internacao_category_question_uses_cid_category_lookup_dimension():
 
 
 def test_cid_description_long_stay_question_preserves_join_and_grouping():
-    plan = build_semantic_plan("Quais descricoes CID tiveram mais internacoes com longa permanencia?")
+    plan = build_semantic_plan(
+        "Quais descricoes CID tiveram mais internacoes com longa permanencia?"
+    )
 
     sql = _build_deterministic_grouped_sql(plan)
 
@@ -146,9 +151,7 @@ def test_reconciler_preserves_cid_hierarchy_dimensions():
     candidate = heuristic.model_copy(
         update={
             "dimensions": [],
-            "answer_shape": heuristic.answer_shape.model_copy(
-                update={"required_dimensions": []}
-            ),
+            "answer_shape": heuristic.answer_shape.model_copy(update={"required_dimensions": []}),
         }
     )
 

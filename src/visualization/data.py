@@ -49,11 +49,19 @@ def normalize_result_rows(
     aliases = _extract_select_aliases(sql_query or "")
     rows: list[dict[str, Any]] = []
     for result in results or []:
-        value = result.get("result") if isinstance(result, dict) and set(result.keys()) == {"result"} else result
+        value = (
+            result.get("result")
+            if isinstance(result, dict) and set(result.keys()) == {"result"}
+            else result
+        )
         if isinstance(value, dict):
             normalized = {str(key): _json_safe(item) for key, item in value.items()}
         elif isinstance(value, (list, tuple)):
-            keys = aliases if len(aliases) == len(value) else [f"col_{index + 1}" for index in range(len(value))]
+            keys = (
+                aliases
+                if len(aliases) == len(value)
+                else [f"col_{index + 1}" for index in range(len(value))]
+            )
             normalized = {keys[index]: _json_safe(item) for index, item in enumerate(value)}
         else:
             key = aliases[0] if len(aliases) == 1 else "value"
@@ -113,8 +121,8 @@ def _select_clause(sql_query: str) -> str:
             depth += 1
         elif char == ")":
             depth = max(0, depth - 1)
-        elif depth == 0 and lower[index:index + 6] == " from ":
-            return sql[select_start + len("select"):index].strip()
+        elif depth == 0 and lower[index : index + 6] == " from ":
+            return sql[select_start + len("select") : index].strip()
     return ""
 
 
@@ -178,7 +186,7 @@ def _split_top_level(text: str) -> list[str]:
 def _alias_from_select_item(item: str) -> str | None:
     lowered = item.lower()
     if " as " in lowered:
-        alias = item[lowered.rfind(" as ") + 4:].strip()
+        alias = item[lowered.rfind(" as ") + 4 :].strip()
         return _clean_identifier(alias)
     parts = item.split()
     if len(parts) >= 2 and not parts[-1].endswith(")"):
