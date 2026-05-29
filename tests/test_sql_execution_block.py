@@ -545,7 +545,7 @@ def test_deterministic_grouped_sql_uses_cid_chapter_lookup_label():
     assert valid is True, message
 
 
-def test_deterministic_scalar_sql_counts_description_condition_with_trimmed_term():
+def test_deterministic_scalar_sql_counts_resolved_hypertension_prefix():
     from src.agent.sql_generation import _build_deterministic_scalar_sql
     from src.semantic.planner import build_semantic_plan
     from src.semantic.validators import validate_sql_against_semantic_plan
@@ -556,8 +556,9 @@ def test_deterministic_scalar_sql_counts_description_condition_with_trimmed_term
 
     assert sql is not None
     assert 'JOIN cid c ON i."DIAG_PRINC" = c."CID"' in sql
-    assert 'c."DESCRICAO" ILIKE' in sql
-    assert "%hipertens%" in sql
+    assert 'c."CID" LIKE \'I10%\'' in sql
+    assert 'c."CID" LIKE \'I15%\'' in sql
+    assert 'c."DESCRICAO" ILIKE' not in sql
     assert "ocorreram" not in sql
     assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
 
@@ -815,6 +816,29 @@ def test_build_death_cause_top_n_sql_uses_diag_princ_with_death_filter():
     assert 'i."CID_MORTE"' not in sql
     assert "ORDER BY total_mortes DESC" in sql
     assert "LIMIT 1" in sql
+
+
+def test_deterministic_grouped_sql_lists_death_cause_cid_codes_with_default_top_ten():
+    from src.agent.sql_generation import _build_deterministic_grouped_sql
+    from src.semantic.planner import build_semantic_plan
+    from src.semantic.validators import validate_sql_against_semantic_plan
+
+    plan = build_semantic_plan(
+        "Quais códigos CID aparecem como diagnóstico principal em óbitos registrados?"
+    )
+
+    sql = _build_deterministic_grouped_sql(plan)
+
+    assert sql is not None
+    assert 'c."CID" AS cid' in sql
+    assert 'c."DESCRICAO" AS descricao' in sql
+    assert 'i."MORTE" = true' in sql
+    assert 'GROUP BY c."CID", c."DESCRICAO"' in sql
+    assert "ORDER BY total_mortes DESC" in sql
+    assert "LIMIT 10" in sql
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+    assert valid is True, message
 
 
 def test_death_cause_top_n_sql_has_no_fallback_observation_column():
@@ -1327,7 +1351,9 @@ def test_deterministic_scalar_sql_average_age_for_diagnosis_cohort_contract_alia
     assert "COUNT(*) AS total_internacoes" in sql
     assert 'ROUND(AVG(i."IDADE"), 2) AS idade_media' in sql
     assert 'JOIN cid c ON i."DIAG_PRINC" = c."CID"' in sql
-    assert "c.\"DESCRICAO\" ILIKE '%pneumonia%'" in sql
+    assert 'c."CID" LIKE \'J12%\'' in sql
+    assert 'c."CID" LIKE \'J18%\'' in sql
+    assert 'c."DESCRICAO" ILIKE' not in sql
     assert 'i."IDADE" IS NOT NULL' in sql
     assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
     assert 'AVG(i."VAL_TOT")' not in sql
@@ -1699,7 +1725,9 @@ def test_deterministic_scalar_sql_average_cost_for_diagnosis_cohort_contract_ali
     assert "COUNT(*) AS total_internacoes" in sql
     assert 'ROUND(AVG(i."VAL_TOT"), 2) AS custo_medio' in sql
     assert 'JOIN cid c ON i."DIAG_PRINC" = c."CID"' in sql
-    assert "c.\"DESCRICAO\" ILIKE '%pneumonia%'" in sql
+    assert 'c."CID" LIKE \'J12%\'' in sql
+    assert 'c."CID" LIKE \'J18%\'' in sql
+    assert 'c."DESCRICAO" ILIKE' not in sql
     assert 'EXTRACT(YEAR FROM i."DT_INTER") = 2021' in sql
     assert "GROUP BY" not in sql
 
@@ -1707,7 +1735,7 @@ def test_deterministic_scalar_sql_average_cost_for_diagnosis_cohort_contract_ali
     assert valid is True, message
 
 
-def test_deterministic_scalar_sql_average_cost_for_resolved_code_concept_keeps_description_synonym():
+def test_deterministic_scalar_sql_average_cost_for_resolved_code_concept_uses_codes_only():
     from src.agent.sql_generation import _build_deterministic_scalar_sql
     from src.semantic.planner import build_semantic_plan
     from src.semantic.validators import validate_sql_against_semantic_plan
@@ -1718,7 +1746,7 @@ def test_deterministic_scalar_sql_average_cost_for_resolved_code_concept_keeps_d
 
     assert sql is not None
     assert "c.\"CID\" IN ('B342', 'B972')" in sql
-    assert "c.\"DESCRICAO\" ILIKE '%coronavirus%'" in sql
+    assert 'c."DESCRICAO" ILIKE' not in sql
     assert "COUNT(*) AS total_internacoes" in sql
     assert 'ROUND(AVG(i."VAL_TOT"), 2) AS custo_medio' in sql
 

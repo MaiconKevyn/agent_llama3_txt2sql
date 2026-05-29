@@ -232,7 +232,7 @@ def _build_diagnosis_description_lookup_sql(
     ):
         return None
     terms = _description_terms_from_plan(plan)
-    description_filter = _sql_description_filter("c", terms)
+    description_filter = "" if codes or prefixes else _sql_description_filter("c", terms)
     code_filter = ""
     if codes:
         code_values = ", ".join(f"'{_sql_literal(code)}'" for code in codes)
@@ -327,6 +327,16 @@ def _build_death_cause_top_n_sql(
         *_death_cause_time_conditions(plan),
     ]
     where_clause = " AND ".join(where_conditions)
+    if "cid_codigo" in plan.answer_shape.required_dimensions:
+        return (
+            'SELECT c."CID" AS cid, c."DESCRICAO" AS descricao, COUNT(*) AS total_mortes '
+            "FROM internacoes i "
+            'JOIN cid c ON i."DIAG_PRINC" = c."CID" '
+            f"WHERE {where_clause} "
+            'GROUP BY c."CID", c."DESCRICAO" '
+            "ORDER BY total_mortes DESC "
+            f"LIMIT {top_n};"
+        )
     return (
         'SELECT c."DESCRICAO" AS causa_morte, COUNT(*) AS total_mortes '
         "FROM internacoes i "

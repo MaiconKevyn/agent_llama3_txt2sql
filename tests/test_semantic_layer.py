@@ -1893,6 +1893,33 @@ def test_semantic_plan_treats_named_diagnosis_lookup_as_resolved_cid_filter():
     assert set(diagnosis_filters[0].values) == {"B342", "B972"}
 
 
+def test_semantic_plan_resolves_infarction_to_cid_prefix_filter():
+    plan = build_semantic_plan("Quantas internacoes por infarto agudo do miocardio foram registradas?")
+
+    assert "diagnosis_description_lookup_required" not in plan.constraints
+    assert any(
+        filter_.field == "diagnostico_principal_prefix" and filter_.values == ["I21%"]
+        for filter_ in plan.filters
+    )
+    assert not any(
+        filter_.field == "diagnostico_principal_descricao" for filter_ in plan.filters
+    )
+
+
+def test_semantic_plan_resolves_cid_code_death_list_as_top_ten_codes():
+    plan = build_semantic_plan(
+        "Quais códigos CID aparecem como diagnóstico principal em óbitos registrados?"
+    )
+
+    assert plan.intent == "ranking"
+    assert plan.base_grain == "internacao"
+    assert plan.answer_shape.row_grain == "top_n_global"
+    assert plan.answer_shape.top_n == 10
+    assert plan.answer_shape.required_dimensions == ["cid_codigo"]
+    assert "death_cause_requires_diag_princ_with_morte" in plan.constraints
+    assert any(filter_.field == "desfecho" for filter_ in plan.filters)
+
+
 def test_semantic_validator_rejects_literal_covid_lookup_without_catalog_synonym():
     plan = build_semantic_plan("tem diagnostico de covid?")
     sql = """
@@ -1906,6 +1933,21 @@ def test_semantic_validator_rejects_literal_covid_lookup_without_catalog_synonym
 
     assert valid is False
     assert "resolved diagnosis code" in (message or "").lower()
+
+
+def test_semantic_validator_rejects_infarction_description_lookup_without_prefix():
+    plan = build_semantic_plan("Quantas internacoes por infarto agudo do miocardio foram registradas?")
+    sql = """
+        SELECT COUNT(*) AS total_internacoes
+        FROM internacoes i
+        JOIN cid c ON i."DIAG_PRINC" = c."CID"
+        WHERE c."DESCRICAO" ILIKE '%infarto agudo do miocardio%'
+    """
+
+    valid, message = validate_sql_against_semantic_plan(plan, sql)
+
+    assert valid is False
+    assert "diagnosis prefix" in (message or "").lower()
 
 
 def test_semantic_validator_accepts_resolved_covid_code_lookup():

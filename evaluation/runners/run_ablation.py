@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Ablation runner — evaluates the configured pipeline variants over the 40-query
-regression set and produces a paired comparison against the full pipeline.
+Ablation runner — evaluates configured pipeline variants over the regression
+set and produces paired comparisons against the full-pipeline baseline.
 
 Usage
 -----
-# All variants, full 40-query regression set
+# All variants, full regression set
 python -m evaluation.runners.run_ablation
 
 # Specific variants only
@@ -70,7 +70,10 @@ VARIANTS: list[VariantSpec] = [
     VariantSpec(
         id="V0",
         name="full_pipeline",
-        description="Full pipeline — baseline (all components enabled)",
+        description=(
+            "Full single-query pipeline baseline — all ablated components enabled; "
+            "multi-query planning is intentionally disabled by the runner"
+        ),
         flags={},
     ),
     VariantSpec(
@@ -105,8 +108,12 @@ VARIANTS: list[VariantSpec] = [
     ),
     VariantSpec(
         id="V8",
-        name="zero_shot_raw",
-        description="RULES + schema enrichment + CoT + validation all disabled",
+        name="no_rules_no_enrichment_no_cot_no_validation",
+        description=(
+            "Current generator with global rules, SUS schema enrichment, CoT, and validation "
+            "disabled; table templates, semantic planning, deterministic SQL macros, and "
+            "execution remain enabled"
+        ),
         flags={
             "disable_rules": True,
             "disable_schema_enrichment": True,
@@ -141,7 +148,10 @@ VARIANTS: list[VariantSpec] = [
     VariantSpec(
         id="LI2",
         name="llamaindex_sql_draft",
-        description="Use LlamaIndex SQL draft generation before validation/execution",
+        description=(
+            "Try LlamaIndex SQL draft before the current structured generator; falls back to "
+            "the current generator if drafting fails"
+        ),
         flags={
             "enable_llamaindex_context": True,
             "enable_llamaindex_sql_draft": True,
@@ -152,6 +162,29 @@ VARIANTS: list[VariantSpec] = [
 
 VARIANT_MAP: dict[str, VariantSpec] = {v.id: v for v in VARIANTS}
 _WORKER_LOCAL = threading.local()
+
+
+def _select_variant_specs(
+    variant_ids: list[str] | None,
+    *,
+    require_v0_for_paired_comparison: bool = False,
+) -> list[VariantSpec]:
+    if not variant_ids:
+        return VARIANTS
+
+    invalid = [vid for vid in variant_ids if vid not in VARIANT_MAP]
+    if invalid:
+        valid = ", ".join(VARIANT_MAP)
+        sys.exit(f"[ERROR] Unknown variant IDs: {invalid}. Valid IDs: {valid}")
+
+    selected = [VARIANT_MAP[vid] for vid in variant_ids]
+    if (
+        require_v0_for_paired_comparison
+        and len(selected) > 1
+        and "V0" not in {spec.id for spec in selected}
+    ):
+        sys.exit("[ERROR] Paired ablation comparisons require V0 in --variants.")
+    return selected
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -246,6 +279,18 @@ def _query_sort_key(query_or_result: dict[str, Any]) -> tuple[int, str]:
     qid = str(query_or_result.get("id", ""))
     digits = "".join(ch for ch in qid if ch.isdigit())
     return (int(digits) if digits else 10**9, qid)
+
+
+def _query_fingerprint(q: dict[str, Any]) -> str:
+    """Stable fingerprint used to decide if an item checkpoint can be resumed."""
+    payload = {
+        "id": q.get("id"),
+        "difficulty": q.get("difficulty"),
+        "question": q.get("question"),
+        "query": q.get("query"),
+    }
+    raw = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
 def _item_path(items_dir: Path, spec: VariantSpec, qid: str) -> Path:
@@ -587,12 +632,19 @@ def _run_item_in_worker(
         }
 
 
-def _load_item_result(path: Path) -> dict[str, Any] | None:
+def _load_item_result(
+    path: Path,
+    expected_query: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
     if not path.exists():
         return None
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
+        return None
+    if expected_query is not None and payload.get("query_fingerprint") != _query_fingerprint(
+        expected_query
+    ):
         return None
     result = payload.get("result") if isinstance(payload, dict) else None
     return result if isinstance(result, dict) else None
@@ -618,6 +670,14 @@ def _write_item_result(
             "variant_id": result["variant_id"],
             "variant_name": result["variant_name"],
             "query_id": result["id"],
+            "query_fingerprint": _query_fingerprint(
+                {
+                    "id": result["id"],
+                    "difficulty": result["difficulty"],
+                    "question": result["question"],
+                    "query": result["gold_sql"],
+                }
+            ),
             "result": result,
         },
     )
@@ -632,7 +692,7 @@ def _collect_item_results(
     for spec in selected_specs:
         variant_results: list[dict] = []
         for q in sorted(queries, key=_query_sort_key):
-            result = _load_item_result(_item_path(items_dir, spec, q["id"]))
+            result = _load_item_result(_item_path(items_dir, spec, q["id"]), q)
             if result is not None:
                 variant_results.append(result)
         all_results[spec.id] = variant_results
@@ -669,6 +729,17 @@ def _write_variant_jsons(
         )
 
 
+def _find_variant_json(out_dir: Path, spec: VariantSpec) -> Path | None:
+    exact = out_dir / f"{spec.id}_{spec.name}.json"
+    if exact.exists():
+        return exact
+
+    legacy_matches = sorted(out_dir.glob(f"{spec.id}_*.json"))
+    if len(legacy_matches) == 1:
+        return legacy_matches[0]
+    return None
+
+
 def _run_missing_items(
     selected_specs: list[VariantSpec],
     queries: list[dict],
@@ -689,7 +760,7 @@ def _run_missing_items(
     for spec in selected_specs:
         for q in queries:
             path = _item_path(items_dir, spec, q["id"])
-            if resume and _load_item_result(path) is not None:
+            if resume and _load_item_result(path, q) is not None:
                 resumed += 1
                 continue
             pending_by_spec.setdefault(spec.id, []).append((spec, q, path))
@@ -825,6 +896,35 @@ def _overall_ex(results: list[dict]) -> float:
     return round(sum(1 for r in results if r["ex"]) / len(results), 4)
 
 
+def _percentile(values: list[float], percentile: float) -> float:
+    if not values:
+        return 0.0
+    sorted_values = sorted(values)
+    if len(sorted_values) == 1:
+        return round(sorted_values[0], 3)
+    rank = (len(sorted_values) - 1) * percentile
+    lower = int(rank)
+    upper = min(lower + 1, len(sorted_values) - 1)
+    weight = rank - lower
+    value = sorted_values[lower] * (1 - weight) + sorted_values[upper] * weight
+    return round(value, 3)
+
+
+def _latency_summary(results: list[dict]) -> dict[str, float]:
+    latencies = [
+        float(r["elapsed_s"])
+        for r in results
+        if isinstance(r.get("elapsed_s"), (int, float))
+    ]
+    total = round(sum(latencies), 3)
+    return {
+        "avg_latency_s": round(total / len(latencies), 3) if latencies else 0.0,
+        "p50_latency_s": _percentile(latencies, 0.50),
+        "p95_latency_s": _percentile(latencies, 0.95),
+        "total_latency_s": total,
+    }
+
+
 # ── Report generation ─────────────────────────────────────────────────────────
 
 
@@ -856,16 +956,13 @@ def _write_report(
         "",
         "## Results",
         "",
-        "| ID | Variant | EX (%) | ΔEX (pp) | Easy | Medium | Hard | χ² | p-value | Tokens | Cost ($) |",
-        "|---|---|---|---|---|---|---|---|---|---|---|",
+        "| ID | Variant | EX (%) | ΔEX (pp) | Easy | Medium | Hard | χ² | p-value | Avg Latency (s) | p95 Latency (s) | Tokens | Cost ($) |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
 
-    v0_row = next((r for r in summary_rows if r["variant_id"] == "V0"), None)
-    v0_ex = v0_row["ex_overall"] if v0_row else 0.0
-
     for r in summary_rows:
-        delta = round((r["ex_overall"] - v0_ex) * 100, 1) if r["variant_id"] != "V0" else "—"
-        delta_str = f"{delta:+.1f}" if isinstance(delta, float) else delta
+        delta = r.get("delta_ex_pp")
+        delta_str = "—" if delta is None or r["variant_id"] == "V0" else f"{delta:+.1f}"
         chi2 = r.get("mcnemar_chi2", "—")
         pval = r.get("mcnemar_p", "—")
         chi2_str = f"{chi2:.3f}" if isinstance(chi2, float) else chi2
@@ -879,6 +976,8 @@ def _write_report(
             f"| {r.get('ex_medium', 0) * 100:.1f} "
             f"| {r.get('ex_hard', 0) * 100:.1f} "
             f"| {chi2_str} | {pval_str} "
+            f"| {r.get('avg_latency_s', 0):.2f} "
+            f"| {r.get('p95_latency_s', 0):.2f} "
             f"| {tokens:,} | {cost:.4f} |"
         )
 
@@ -896,7 +995,7 @@ def _write_report(
         "",
         "| Result | Decision |",
         "|---|---|",
-        "| ΔEX ≈ 0 pp, p > 0.05 | Candidate for removal / simplification |",
+        "| ΔEX ≈ 0 pp, p > 0.05 | Inconclusive; inspect failure modes and rerun before removal |",
         "| ΔEX < −3 pp, p < 0.05 | Keep component |",
         "| ΔEX < −3 pp, p > 0.05 | Effect present but not significant — keep, rerun with more queries |",
     ]
@@ -931,6 +1030,12 @@ def _build_summary_and_detail_rows(
         total_tokens = sum(r.get("total_tokens", 0) for r in results)
         total_cost = round(sum(r.get("total_cost_usd", 0.0) for r in results), 6)
         avg_tokens = round(total_tokens / len(results)) if results else 0
+        latency = _latency_summary(results)
+        delta_ex_pp = None
+        if spec.id == "V0":
+            delta_ex_pp = 0.0
+        elif v0_results and len(v0_correct) == len(vi_correct):
+            delta_ex_pp = round((ex_overall - v0_ex) * 100, 2)
 
         summary_rows.append(
             {
@@ -944,11 +1049,13 @@ def _build_summary_and_detail_rows(
                 "ex_easy": tier_ex.get("easy", 0.0),
                 "ex_medium": tier_ex.get("medium", 0.0),
                 "ex_hard": tier_ex.get("hard", 0.0),
-                "delta_ex_pp": round((ex_overall - v0_ex) * 100, 2)
-                if spec.id != "V0"
-                else 0.0,
+                "delta_ex_pp": delta_ex_pp,
                 "mcnemar_chi2": chi2,
                 "mcnemar_p": pval,
+                "avg_latency_s": latency["avg_latency_s"],
+                "p50_latency_s": latency["p50_latency_s"],
+                "p95_latency_s": latency["p95_latency_s"],
+                "total_latency_s": latency["total_latency_s"],
                 "total_tokens": total_tokens,
                 "avg_tokens_per_query": avg_tokens,
                 "total_cost_usd": total_cost,
@@ -970,7 +1077,8 @@ def _print_summary_table(summary_rows: list[dict]) -> None:
     print(header)
     print(f"  {'─' * 68}")
     for row in summary_rows:
-        delta_str = f"{row['delta_ex_pp']:+.1f}" if row["variant_id"] != "V0" else "  —  "
+        delta = row.get("delta_ex_pp")
+        delta_str = "  —  " if delta is None or row["variant_id"] == "V0" else f"{delta:+.1f}"
         pval_str = f"{row['mcnemar_p']:.3f}" if row["mcnemar_p"] is not None else "  —  "
         line = (
             f"  {row['variant_id']:<4} {row['variant_name']:<28} "
@@ -996,6 +1104,10 @@ SUMMARY_FIELDS = [
     "delta_ex_pp",
     "mcnemar_chi2",
     "mcnemar_p",
+    "avg_latency_s",
+    "p50_latency_s",
+    "p95_latency_s",
+    "total_latency_s",
     "total_tokens",
     "avg_tokens_per_query",
     "total_cost_usd",
@@ -1073,9 +1185,7 @@ def rebuild_outputs_from_variant_jsons(
     if not out_dir.exists():
         sys.exit(f"[ERROR] Output directory not found: {out_dir}")
 
-    selected_specs = (
-        [VARIANT_MAP[vid] for vid in variant_ids if vid in VARIANT_MAP] if variant_ids else VARIANTS
-    )
+    selected_specs = _select_variant_specs(variant_ids)
     metadata_path = out_dir / "run_metadata.json"
     items_dir = out_dir / "items"
     if metadata_path.exists() and items_dir.exists():
@@ -1138,8 +1248,8 @@ def rebuild_outputs_from_variant_jsons(
     missing: list[str] = []
 
     for spec in selected_specs:
-        variant_json = out_dir / f"{spec.id}_{spec.name}.json"
-        if not variant_json.exists():
+        variant_json = _find_variant_json(out_dir, spec)
+        if variant_json is None:
             missing.append(spec.id)
             continue
         with open(variant_json, encoding="utf-8") as f:
@@ -1241,11 +1351,10 @@ def run_ablation(
         if previous_metadata.get("run_ts"):
             run_ts = str(previous_metadata["run_ts"])
 
-    selected_specs = (
-        [VARIANT_MAP[vid] for vid in variant_ids if vid in VARIANT_MAP] if variant_ids else VARIANTS
+    selected_specs = _select_variant_specs(
+        variant_ids,
+        require_v0_for_paired_comparison=True,
     )
-    if not selected_specs:
-        sys.exit(f"[ERROR] No valid variant IDs in: {variant_ids}")
 
     dataset = _resolve_dataset_path(dataset_path)
     queries = _load_regression_set(tier=tier, max_queries=max_queries, dataset_path=str(dataset))
@@ -1370,6 +1479,9 @@ def run_ablation(
             results_csv_path=str(out_dir / "results.csv"),
             total_tokens=row.get("total_tokens", 0),
             total_cost_usd=row.get("total_cost_usd", 0.0),
+            avg_latency_s=row.get("avg_latency_s", 0.0),
+            p50_latency_s=row.get("p50_latency_s", 0.0),
+            p95_latency_s=row.get("p95_latency_s", 0.0),
         )
 
     print(f"  Results saved → {out_dir}/")
