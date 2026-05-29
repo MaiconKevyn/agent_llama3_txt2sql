@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from ..utils.logging_config import get_nodes_logger
 
@@ -31,6 +32,18 @@ def _is_enabled() -> bool:
     return _mlflow_available and bool(_TRACKING_URI)
 
 
+def _normalize_tracking_uri(uri: str) -> str:
+    """Convert plain local paths to MLflow file-store URIs.
+
+    MLflow interprets Windows paths like C:\\... as a URI with scheme "c"
+    unless they are passed as file:/// URIs.
+    """
+    parsed = urlparse(uri)
+    if parsed.scheme:
+        return uri
+    return Path(uri).resolve().as_uri()
+
+
 def init_mlflow(
     tracking_uri: str | None = None,
     experiment_name: str | None = None,
@@ -45,6 +58,7 @@ def init_mlflow(
     uri = tracking_uri or _TRACKING_URI
     if not uri:
         return False
+    uri = _normalize_tracking_uri(uri)
 
     try:
         import mlflow
@@ -118,6 +132,9 @@ def log_ablation_run(
     results_csv_path: str | None = None,
     total_tokens: int = 0,
     total_cost_usd: float = 0.0,
+    avg_latency_s: float = 0.0,
+    p50_latency_s: float = 0.0,
+    p95_latency_s: float = 0.0,
 ) -> None:
     """Log one ablation variant as an MLflow run under the ablation experiment.
 
@@ -129,7 +146,7 @@ def log_ablation_run(
     try:
         import mlflow
 
-        uri = _TRACKING_URI
+        uri = _normalize_tracking_uri(_TRACKING_URI)
         mlflow.set_tracking_uri(uri)
         mlflow.set_experiment(_ABLATION_EXPERIMENT)
 
@@ -159,6 +176,12 @@ def log_ablation_run(
                 metrics["total_tokens"] = float(total_tokens)
             if total_cost_usd:
                 metrics["total_cost_usd"] = total_cost_usd
+            if avg_latency_s:
+                metrics["avg_latency_s"] = avg_latency_s
+            if p50_latency_s:
+                metrics["p50_latency_s"] = p50_latency_s
+            if p95_latency_s:
+                metrics["p95_latency_s"] = p95_latency_s
 
             mlflow.log_metrics(metrics)
 

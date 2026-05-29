@@ -45,7 +45,7 @@ class TestLogQueryRunWithMLflow:
         import mlflow
         import src.agent.mlflow_tracker as tracker_mod
 
-        tracking_uri = str(tmp_path / "mlruns")
+        tracking_uri = (tmp_path / "mlruns").as_uri()
         monkeypatch.setattr(tracker_mod, "_TRACKING_URI", tracking_uri)
         monkeypatch.setattr(tracker_mod, "_mlflow_available", True)
 
@@ -79,7 +79,7 @@ class TestLogAblationRun:
         import mlflow
         import src.agent.mlflow_tracker as tracker_mod
 
-        tracking_uri = str(tmp_path / "mlruns")
+        tracking_uri = (tmp_path / "mlruns").as_uri()
         monkeypatch.setattr(tracker_mod, "_TRACKING_URI", tracking_uri)
         monkeypatch.setattr(tracker_mod, "_mlflow_available", True)
 
@@ -98,6 +98,9 @@ class TestLogAblationRun:
             results_csv_path=None,
             total_tokens=12500,
             total_cost_usd=0.0023,
+            avg_latency_s=7.5,
+            p50_latency_s=7.0,
+            p95_latency_s=12.5,
         )
 
         mlflow.set_tracking_uri(tracking_uri)
@@ -111,6 +114,8 @@ class TestLogAblationRun:
         assert run.data.metrics["delta_ex_pp"] == pytest.approx(-5.8)
         assert run.data.metrics["total_tokens"] == pytest.approx(12500)
         assert run.data.metrics["total_cost_usd"] == pytest.approx(0.0023)
+        assert run.data.metrics["avg_latency_s"] == pytest.approx(7.5)
+        assert run.data.metrics["p95_latency_s"] == pytest.approx(12.5)
         assert run.data.tags["variant_id"] == "V2"
 
 

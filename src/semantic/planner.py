@@ -545,8 +545,8 @@ def _has_hospitalization_outside_residence_uf_request(query_lower: str) -> bool:
     return has_admission_scope and has_residence_scope and has_outside_scope
 
 
-def _has_death_cause_context(query_lower: str) -> bool:
-    explicit_death_cause = _contains_any(
+def _has_explicit_death_cause_phrase(query_lower: str) -> bool:
+    return _contains_any(
         query_lower,
         [
             "causa de morte",
@@ -567,6 +567,10 @@ def _has_death_cause_context(query_lower: str) -> bool:
             "motivos do obito",
         ],
     )
+
+
+def _has_death_cause_context(query_lower: str) -> bool:
+    explicit_death_cause = _has_explicit_death_cause_phrase(query_lower)
     diagnosis_death_grouping = bool(
         re.search(r"\bdiagn[oó]sticos?\b", query_lower)
         and re.search(r"\b(?:mortes?|[óo]bitos?|obitos?|mortalidade)\b", query_lower)
@@ -679,8 +683,64 @@ def _extract_top_n(query_lower: str) -> int | None:
     return None
 
 
+def _asks_for_cid_code_dimension(query_lower: str) -> bool:
+    return bool(
+        re.search(r"\b(?:cids?|cid[\s-]*10|c[oó]digos?\s+cid)\b", query_lower, re.I)
+    )
+
+
+def _asks_for_cid_code_list(query_lower: str) -> bool:
+    return bool(
+        _asks_for_cid_code_dimension(query_lower)
+        and re.search(r"\b(?:quais|liste|listar|mostre|aparecem)\b", query_lower, re.I)
+    )
+
+
+def _has_absence_context(query_lower: str) -> bool:
+    excludes_unknown_bucket = _contains_any(
+        query_lower,
+        [
+            "excluindo sem informacao",
+            "excluir sem informacao",
+            "sem informacao exclu",
+        ],
+    ) or bool(
+        re.search(r"\bexclu\w*\s+sem\s+informa..o\b|\bsem\s+informa..o\s+exclu", query_lower)
+    )
+    if excludes_unknown_bucket:
+        return False
+    has_unknown_bucket = any(
+        token in query_lower
+        for token in [
+            "sem informacao",
+            "nao informado",
+            "incluindo os casos sem",
+        ]
+    ) or bool(
+        re.search(r"\bsem\s+informa..o\b|\bn.o\s+informado\b", query_lower, re.I)
+    )
+    return (
+        any(
+            token in query_lower
+            for token in [
+                "nunca",
+                "nenhum",
+                "nenhuma",
+                "sem registro",
+                "nao tiveram",
+                "nao foram",
+            ]
+        )
+        or bool(re.search(r"\bn.o\s+(?:tiveram|foram)\b", query_lower, re.I))
+        or ("sem " in query_lower and not has_unknown_bucket)
+    )
+
+
 def _is_plural_metric_ranking_without_explicit_limit(query_lower: str) -> bool:
     """Default plural metric rankings to a readable top-10 instead of top-1."""
+
+    if _has_absence_context(query_lower):
+        return False
 
     if re.search(r"\bcom\s+mais\s+de\s+\d+\s+interna[cç][oõ]es\b", query_lower, re.I):
         return False
@@ -693,7 +753,7 @@ def _is_plural_metric_ranking_without_explicit_limit(query_lower: str) -> bool:
     has_plural_ranked_entity = bool(
         re.search(
             r"\b(?:munic[ií]pios|cidades|estados|ufs|regi[oõ]es|hospitais|"
-            r"especialidades|procedimentos|diagn[oó]sticos|cids|descri[cç][oõ]es|"
+            r"especialidades|procedimentos|diagn[oó]sticos|c[oó]digos?\s+cid|cids|descri[cç][oõ]es|"
             r"cap[ií]tulos|categorias|grupos|causas)\b",
             query_lower,
         )
@@ -712,6 +772,13 @@ def _is_plural_metric_ranking_without_explicit_limit(query_lower: str) -> bool:
     ):
         return True
     if re.search(r"\branking\b", query_lower):
+        return True
+    if _asks_for_cid_code_list(query_lower) and re.search(
+        r"\b(?:aparecem|registrad[oa]s?|frequentes?|internacoes|interna[cç][oõ]es|"
+        r"mortes?|[oó]bitos?|obitos?)\b",
+        query_lower,
+        re.I,
+    ):
         return True
     return bool(
         re.search(
@@ -2799,13 +2866,31 @@ def build_semantic_plan(
     unsupported_schema_metrics = _unsupported_schema_metrics(q)
     explicit_min_group_count = _extract_min_group_count(q)
     raw_dimensions = _infer_dimensions(q)
+    asks_for_cid_code_list = _asks_for_cid_code_list(q)
+    asks_for_diagnosis_cid_code_list = (
+        asks_for_cid_code_list and not _has_explicit_death_cause_phrase(q)
+    )
     if _has_death_cause_context(q):
-        raw_dimensions = [
-            _dimension("diagnostico", "cid.DESCRICAO")
-            if dim.name in {"cid_codigo", "cid_descricao"}
-            else dim
-            for dim in raw_dimensions
-        ]
+        if asks_for_diagnosis_cid_code_list:
+            raw_dimensions = [
+                _dimension("cid_codigo", "cid.CID")
+                if dim.name in {"diagnostico", "cid_descricao"}
+                else dim
+                for dim in raw_dimensions
+            ]
+        else:
+            raw_dimensions = [
+                _dimension("diagnostico", "cid.DESCRICAO")
+                if dim.name in {"cid_codigo", "cid_descricao"}
+                else dim
+                for dim in raw_dimensions
+            ]
+    if asks_for_diagnosis_cid_code_list and not any(
+        dim.name
+        in {"cid_codigo", "cid_descricao", "cid_capitulo", "cid_categoria", "cid_grupo"}
+        for dim in raw_dimensions
+    ):
+        raw_dimensions.append(_dimension("cid_codigo", "cid.CID"))
     if _contains_any(
         q, ["diagnostico principal", "diagnóstico principal"]
     ) and not _has_death_cause_context(q):
@@ -2985,7 +3070,7 @@ def build_semantic_plan(
             "incluindo os casos sem",
         ]
     )
-    has_absence = (not excludes_unknown_bucket) and (
+    legacy_absence = (not excludes_unknown_bucket) and (
         any(
             token in q
             for token in [
@@ -2999,6 +3084,7 @@ def build_semantic_plan(
         )
         or ("sem " in q and not has_unknown_bucket)
     )
+    has_absence = _has_absence_context(q) or legacy_absence
     has_above_below_cohort = _contains_any(q, ["acima e abaixo", "abaixo e acima"]) or (
         _contains_any(q, ["compare", "comparar", "comparação", "comparacao"])
         and _contains_any(q, ["acima da média", "acima da media"])
@@ -3393,7 +3479,11 @@ def build_semantic_plan(
     if top_n and _lowest_rank_requested(q):
         constraints.append("lowest_rank_requested")
     if (
-        ("diagnostico" in required_dimensions or "cid_capitulo" in required_dimensions)
+        (
+            "diagnostico" in required_dimensions
+            or "cid_codigo" in required_dimensions
+            or "cid_capitulo" in required_dimensions
+        )
         and _has_death_cause_context(q)
         and not _contains_any(q, ["cid_morte", "cid morte"])
     ):

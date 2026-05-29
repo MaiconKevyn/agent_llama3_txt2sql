@@ -914,16 +914,26 @@ def _build_deterministic_grouped_sql(semantic_plan) -> str | None:
                 "media",
                 "media_dias_permanencia",
                 "valor_total_uti",
+                "total_mortes",
                 "taxa_mortalidade",
             }
         )
     ):
         dimension_name = next(iter(dimensions))
         column, alias = cid_hierarchy_dimensions[dimension_name]
+        select_columns = f"{column} AS {alias}"
+        group_by_columns = column
+        if dimension_name == "cid_codigo":
+            select_columns = 'c."CID" AS cid, c."DESCRICAO" AS descricao'
+            group_by_columns = 'c."CID", c."DESCRICAO"'
         where_conditions = [
             *_internacoes_semantic_filter_conditions(plan),
             *_nonempty_label_conditions(column),
         ]
+        if dimension_name == "cid_codigo":
+            where_conditions.extend(_nonempty_label_conditions('c."DESCRICAO"'))
+        if "total_mortes" in metric_names:
+            where_conditions.append('i."MORTE" = true')
         if "valor_total_uti" in metric_names:
             where_conditions.append('i."VAL_UTI" IS NOT NULL AND i."VAL_UTI" > 0')
         if "media_dias_permanencia" in metric_names:
@@ -938,6 +948,8 @@ def _build_deterministic_grouped_sql(semantic_plan) -> str | None:
         )
         metric_expression = "COUNT(*)"
         metric_alias = "total_internacoes"
+        if "total_mortes" in metric_names:
+            metric_alias = "total_mortes"
         if "valor_total_uti" in metric_names:
             metric_expression = 'ROUND(SUM(i."VAL_UTI"), 2)'
             metric_alias = "valor_total_uti"
@@ -954,12 +966,12 @@ def _build_deterministic_grouped_sql(semantic_plan) -> str | None:
             )
             metric_alias = "taxa_mortalidade_percentual"
         return (
-            f"SELECT {column} AS {alias},"
+            f"SELECT {select_columns},"
             f" {metric_expression} AS {metric_alias}"
             " FROM internacoes i"
             ' JOIN cid c ON i."DIAG_PRINC" = c."CID"'
             f" WHERE {where_clause}"
-            f" GROUP BY {column}"
+            f" GROUP BY {group_by_columns}"
             f" ORDER BY {metric_alias} DESC"
             f"{limit};"
         )
@@ -2238,6 +2250,12 @@ def _diagnosis_semantic_filter_conditions(
 
 def _diagnosis_join_cohort_condition(plan: SemanticPlan) -> str | None:
     predicates: list[str] = []
+    has_code_or_prefix = any(
+        semantic_filter.field.lower()
+        in {"diagnostico_principal_codigo", "diagnostico_principal_prefix"}
+        and any(str(value).strip() for value in semantic_filter.values)
+        for semantic_filter in plan.filters
+    )
     for semantic_filter in plan.filters:
         field = semantic_filter.field.lower()
         values = [str(value).strip() for value in semantic_filter.values if str(value).strip()]
@@ -2253,6 +2271,8 @@ def _diagnosis_join_cohort_condition(plan: SemanticPlan) -> str | None:
             predicates.extend(
                 f'c."CID" LIKE {_sql_string_literal(value.upper())}' for value in values
             )
+        elif field == "diagnostico_conceito_termo_expandido" and has_code_or_prefix:
+            continue
         elif field == "diagnostico_principal_descricao" or (
             field == "diagnostico_conceito_termo_expandido"
         ):

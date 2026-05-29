@@ -547,10 +547,16 @@ Ablation runs measure component impact by disabling one component at a time and 
 | `ex_easy`, `ex_medium`, `ex_hard` | Execution accuracy by difficulty |
 | `delta_ex_pp` | EX difference in percentage points versus `V0 full_pipeline` |
 | `mcnemar_chi2`, `mcnemar_p` | Paired significance test against the baseline |
+| `avg_latency_s`, `p50_latency_s`, `p95_latency_s` | Wall-clock latency summary per variant |
 | `total_tokens` | Total LLM tokens used by the variant |
 | `avg_tokens_per_query` | Average token usage per evaluated query |
 | `total_cost_usd` | Estimated model cost for the variant |
 | `results_detail.csv` | Query-level SQL, outputs, errors, token usage, cost, and comparison details |
+
+Current default `evaluation/regression_set.json` is a 90-question failure-focused
+regression set with 30 easy, 30 medium, and 30 hard questions selected from
+`evaluation/ground_truth_228.json`. It is intended for stress/regression evidence,
+not as an unbiased estimate of broad production accuracy.
 
 Reference run:
 
@@ -580,12 +586,12 @@ Reference run:
 | V11 | `no_semantic_contract_validator` | 92.5% | -2.5 | 100.0% | 93.3% | 86.7% | 0.500 | 559,974 | 13,999 | $0.0733 |
 | V12 | `no_semantic_repair_guidance` | 87.5% | -7.5 | 100.0% | 80.0% | 86.7% | 0.125 | 565,372 | 14,134 | $0.0731 |
 
-Note: this historical run includes the legacy `V5 no_table_selection_llm` variant. Current runtime table selection is LlamaIndex-only, so future ablation runs no longer include that legacy table-selection variant. Since LlamaIndex context is now the baseline, `LI1`/`LI3` context-only variants are also redundant; future ablations keep only `LI2` for the LlamaIndex SQL-draft path.
+Note: this historical run includes the legacy `V5 no_table_selection_llm` variant and the old V8 name `zero_shot_raw`. Current runtime table selection is LlamaIndex-only, so future ablation runs no longer include that legacy table-selection variant. Since LlamaIndex context is now the baseline, `LI1`/`LI3` context-only variants are also redundant; future ablations keep only `LI2` for the LlamaIndex SQL-draft path. Current V8 is named `no_rules_no_enrichment_no_cot_no_validation` because it still keeps table templates, semantic planning, deterministic SQL macros, and execution enabled.
 
 Interpretation for this run:
 
 - Validation and repair are high-impact reliability components: removing validation reduced EX by 55 pp, and removing repair reduced EX by 20 pp.
-- The raw zero-shot variant confirms that schema, rules, validation, and repair are necessary for hard-query robustness.
+- The V8 stress variant confirms that global rules, schema enrichment, validation, and related prompt support are important for hard-query robustness; it is not a pure direct-API zero-shot baseline.
 - Some variants with ΔEX near zero should not be removed based on this run alone; a 40-query ablation is useful for directional evidence but not enough to prove broad generalization.
 - Cost and token tracking are part of the evaluation contract, so quality improvements can be compared against latency and operating-cost impact.
 

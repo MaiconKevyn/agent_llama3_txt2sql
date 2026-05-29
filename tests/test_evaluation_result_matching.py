@@ -1,8 +1,12 @@
 from evaluation.runners.result_matching import compare_results, results_match
 from evaluation.runners.run_ablation import (
     VariantSpec,
+    _build_summary_and_detail_rows,
     _collect_item_results,
+    _find_variant_json,
     _gold_cache_key,
+    _load_item_result,
+    _select_variant_specs,
     _write_item_result,
     run_variant,
 )
@@ -171,3 +175,95 @@ def test_ablation_item_checkpoint_round_trip(tmp_path):
     )
 
     assert collected["VT"] == [result]
+
+
+def test_ablation_item_checkpoint_rejects_stale_query(tmp_path):
+    result = {
+        "variant_id": "VT",
+        "variant_name": "test_variant",
+        "id": "GT001",
+        "difficulty": "easy",
+        "question": "q",
+        "gold_sql": "SELECT 1;",
+        "generated_sql": "SELECT 1;",
+        "ex": True,
+        "elapsed_s": 0.1,
+        "error": "",
+        "session_id": "ablation_run_VT_GT001",
+        "agent_result_source": "final_result_rows",
+        "gold_row_count": 1,
+        "predicted_row_count": 1,
+        "gold_rows_sample": "[]",
+        "predicted_rows_sample": "[]",
+        "comparison_details": "{}",
+        "critical_rule": None,
+        "prompt_tokens": 1,
+        "completion_tokens": 1,
+        "total_tokens": 2,
+        "total_cost_usd": 0.001,
+    }
+    path = tmp_path / "items" / "VT_GT001.json"
+    _write_item_result(
+        path,
+        result,
+        run_ts="2026-01-01T00:00:00Z",
+        run_id="run",
+        git_sha="abc",
+        model_id="model",
+    )
+
+    stale_query = {
+        "id": "GT001",
+        "difficulty": "easy",
+        "question": "changed question",
+        "query": "SELECT 1;",
+    }
+
+    assert _load_item_result(path, stale_query) is None
+
+
+def test_ablation_summary_without_v0_does_not_invent_delta():
+    spec = VariantSpec("VT", "test_variant", "Test variant")
+    summary, _detail = _build_summary_and_detail_rows(
+        [spec],
+        {
+            "VT": [
+                {
+                    "id": "GT001",
+                    "difficulty": "easy",
+                    "ex": True,
+                    "elapsed_s": 1.0,
+                    "total_tokens": 10,
+                    "total_cost_usd": 0.01,
+                }
+            ]
+        },
+        run_id="run",
+    )
+
+    assert summary[0]["delta_ex_pp"] is None
+    assert summary[0]["avg_latency_s"] == 1.0
+    assert summary[0]["p95_latency_s"] == 1.0
+
+
+def test_ablation_variant_selection_rejects_unknown_ids():
+    import pytest
+
+    with pytest.raises(SystemExit):
+        _select_variant_specs(["V0", "DOES_NOT_EXIST"])
+
+
+def test_ablation_variant_selection_requires_v0_for_paired_comparison():
+    import pytest
+
+    with pytest.raises(SystemExit):
+        _select_variant_specs(["V2", "V3"], require_v0_for_paired_comparison=True)
+
+
+def test_ablation_finds_single_legacy_variant_json_name(tmp_path):
+    legacy = tmp_path / "V8_zero_shot_raw.json"
+    legacy.write_text("{}", encoding="utf-8")
+
+    spec = VariantSpec("V8", "no_rules_no_enrichment_no_cot_no_validation", "Test variant")
+
+    assert _find_variant_json(tmp_path, spec) == legacy

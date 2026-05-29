@@ -420,7 +420,10 @@ TABLE_TEMPLATES = {
         - "CID" (ICD-10 code), "DESCRICAO" (description)
 
         CRITICAL SEARCH PATTERNS:
-        - Description search (disease name): WHERE "DESCRICAO" ILIKE '%pneumonia%'
+        - Prefer resolved CID code/prefix filters from the semantic plan for analytical questions
+          over free-text disease-name search.
+        - Code/prefix cohort filter: WHERE i."DIAG_PRINC" LIKE 'I21%'
+        - Description search is fallback/catalog lookup only: WHERE "DESCRICAO" ILIKE '%pneumonia%'
         - Code range search (disease category): WHERE "CID" LIKE 'I%'
         - NEVER: WHERE "DESCRICAO" LIKE 'I%' (codes are in CID, not in DESCRICAO!)
 
