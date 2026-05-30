@@ -30,7 +30,9 @@ import concurrent.futures
 import csv
 import hashlib
 import json
+import multiprocessing
 import os
+import queue
 import subprocess
 import sys
 import threading
@@ -44,6 +46,20 @@ from uuid import uuid4
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
+
+def _configure_text_output() -> None:
+    """Keep progress output usable on Windows consoles with non-UTF-8 defaults."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding="utf-8")
+            except Exception:
+                pass
+
+
+_configure_text_output()
+
 # Load .env before any env-guard checks
 try:
     from dotenv import load_dotenv
@@ -52,8 +68,11 @@ try:
 except ImportError:
     pass
 
+from sqlalchemy import text  # noqa: E402
+
 from evaluation.runners.result_matching import compare_results, results_match  # noqa: E402
 from src.agent.mlflow_tracker import init_mlflow, log_ablation_run  # noqa: E402
+from src.utils.sql_safety import is_select_only, sanitize_sql_for_execution  # noqa: E402
 
 # ── Variant definitions ───────────────────────────────────────────────────────
 
@@ -69,7 +88,7 @@ class VariantSpec:
 VARIANTS: list[VariantSpec] = [
     VariantSpec(
         id="V0",
-        name="full_pipeline",
+        name="simple_agent",
         description=(
             "Full single-query pipeline baseline — all ablated components enabled; "
             "multi-query planning is intentionally disabled by the runner"
@@ -239,13 +258,42 @@ def _load_regression_set(
     return data
 
 
+def _resolve_sqlalchemy_engine(db_manager) -> Any | None:
+    """Return the SQLAlchemy engine exposed by the current or legacy DB manager."""
+    get_database = getattr(db_manager, "get_database", None)
+    if callable(get_database):
+        database = get_database()
+        engine = getattr(database, "_engine", None) or getattr(database, "engine", None)
+        if engine is not None:
+            return engine
+
+    database = getattr(db_manager, "_sql_database", None)
+    if database is not None:
+        engine = getattr(database, "_engine", None) or getattr(database, "engine", None)
+        if engine is not None:
+            return engine
+
+    return None
+
+
 def _run_gold_sql(sql: str, db_manager) -> Any:
     try:
+        cleaned_sql = sanitize_sql_for_execution(sql)
+        ok, reason = is_select_only(cleaned_sql)
+        if not ok:
+            return f"__GOLD_ERROR__: unsafe gold SQL: {reason}"
+
+        engine = _resolve_sqlalchemy_engine(db_manager)
+        if engine is not None:
+            with engine.connect() as conn:
+                result = conn.execute(text(cleaned_sql))
+                return [tuple(row) for row in result.fetchall()]
+
         tools = db_manager.get_sql_tools()
         query_tool = next((t for t in tools if t.name == "sql_db_query"), None)
         if not query_tool:
             return None
-        return query_tool.invoke(sql)
+        return query_tool.invoke(cleaned_sql)
     except Exception as exc:
         return f"__GOLD_ERROR__: {exc}"
 
@@ -574,6 +622,51 @@ def _get_worker_orchestrator(spec: VariantSpec):
     return cache[spec.id]
 
 
+def _failed_item_result(
+    spec: VariantSpec,
+    q: dict[str, Any],
+    *,
+    run_id: str,
+    elapsed: float,
+    error: str,
+) -> dict[str, Any]:
+    return {
+        "id": q["id"],
+        "difficulty": q["difficulty"],
+        "question": q["question"],
+        "gold_sql": q["query"],
+        "generated_sql": "",
+        "ex": False,
+        "elapsed_s": elapsed,
+        "error": error,
+        "session_id": f"ablation_{run_id}_{spec.id}_{q['id']}",
+        "agent_result_source": "results",
+        "gold_row_count": 0,
+        "predicted_row_count": 0,
+        "gold_rows_sample": "[]",
+        "predicted_rows_sample": "[]",
+        "comparison_details": "{}",
+        "variant_id": spec.id,
+        "variant_name": spec.name,
+        "critical_rule": q.get("critical_rule"),
+        "workflow_success": False,
+        "semantic_plan": "{}",
+        "semantic_validation": "{}",
+        "semantic_error": "{}",
+        "semantic_repair": "{}",
+        "repair_attempts": "[]",
+        "llamaindex_mode": None,
+        "llamaindex_retrieval_mode": None,
+        "llamaindex_selected_tables": "[]",
+        "sql_generation_source": None,
+        "latency_by_component": "{}",
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "total_cost_usd": 0.0,
+    }
+
+
 def _run_item_in_worker(
     spec_id: str,
     q: dict[str, Any],
@@ -595,41 +688,65 @@ def _run_item_in_worker(
         )
     except Exception as exc:
         elapsed = round(time.time() - t0, 2)
-        return {
-            "id": q["id"],
-            "difficulty": q["difficulty"],
-            "question": q["question"],
-            "gold_sql": q["query"],
-            "generated_sql": "",
-            "ex": False,
-            "elapsed_s": elapsed,
-            "error": str(exc),
-            "session_id": f"ablation_{run_id}_{spec.id}_{q['id']}",
-            "agent_result_source": "results",
-            "gold_row_count": 0,
-            "predicted_row_count": 0,
-            "gold_rows_sample": "[]",
-            "predicted_rows_sample": "[]",
-            "comparison_details": "{}",
-            "variant_id": spec.id,
-            "variant_name": spec.name,
-            "critical_rule": q.get("critical_rule"),
-            "workflow_success": False,
-            "semantic_plan": "{}",
-            "semantic_validation": "{}",
-            "semantic_error": "{}",
-            "semantic_repair": "{}",
-            "repair_attempts": "[]",
-            "llamaindex_mode": None,
-            "llamaindex_retrieval_mode": None,
-            "llamaindex_selected_tables": "[]",
-            "sql_generation_source": None,
-            "latency_by_component": "{}",
-            "prompt_tokens": 0,
-            "completion_tokens": 0,
-            "total_tokens": 0,
-            "total_cost_usd": 0.0,
-        }
+        return _failed_item_result(spec, q, run_id=run_id, elapsed=elapsed, error=str(exc))
+
+
+def _run_item_process_entry(
+    spec_id: str,
+    q: dict[str, Any],
+    run_id: str,
+    gold_cache: dict[str, Any] | None,
+    result_queue,
+) -> None:
+    result_queue.put(_run_item_in_worker(spec_id, q, run_id, gold_cache))
+
+
+def _run_item_with_timeout(
+    spec_id: str,
+    q: dict[str, Any],
+    run_id: str,
+    gold_cache: dict[str, Any] | None,
+    item_timeout_seconds: int | None,
+) -> dict[str, Any]:
+    if item_timeout_seconds is None or item_timeout_seconds <= 0:
+        return _run_item_in_worker(spec_id, q, run_id, gold_cache)
+
+    spec = VARIANT_MAP[spec_id]
+    t0 = time.time()
+    ctx = multiprocessing.get_context("spawn")
+    result_queue = ctx.Queue(maxsize=1)
+    process = ctx.Process(
+        target=_run_item_process_entry,
+        args=(spec_id, q, run_id, gold_cache, result_queue),
+    )
+    process.start()
+    process.join(item_timeout_seconds)
+    elapsed = round(time.time() - t0, 2)
+
+    if process.is_alive():
+        process.terminate()
+        process.join(timeout=5)
+        if process.is_alive() and hasattr(process, "kill"):
+            process.kill()
+            process.join(timeout=5)
+        return _failed_item_result(
+            spec,
+            q,
+            run_id=run_id,
+            elapsed=elapsed,
+            error=f"item_timeout_after_{item_timeout_seconds}s",
+        )
+
+    try:
+        return result_queue.get_nowait()
+    except queue.Empty:
+        return _failed_item_result(
+            spec,
+            q,
+            run_id=run_id,
+            elapsed=elapsed,
+            error=f"item_process_exited_without_result_exitcode_{process.exitcode}",
+        )
 
 
 def _load_item_result(
@@ -752,6 +869,7 @@ def _run_missing_items(
     workers: int,
     resume: bool,
     gold_cache: dict[str, Any] | None,
+    item_timeout_seconds: int | None,
     verbose: bool,
 ) -> None:
     items_dir = out_dir / "items"
@@ -787,7 +905,13 @@ def _run_missing_items(
 
         if workers <= 1:
             for spec_, q, path in pending:
-                result = _run_item_in_worker(spec_.id, q, run_id, gold_cache)
+                result = _run_item_with_timeout(
+                    spec_.id,
+                    q,
+                    run_id,
+                    gold_cache,
+                    item_timeout_seconds,
+                )
                 _write_item_result(
                     path,
                     result,
@@ -807,7 +931,14 @@ def _run_missing_items(
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
             future_map = {
-                executor.submit(_run_item_in_worker, spec_.id, q, run_id, gold_cache): (
+                executor.submit(
+                    _run_item_with_timeout,
+                    spec_.id,
+                    q,
+                    run_id,
+                    gold_cache,
+                    item_timeout_seconds,
+                ): (
                     spec_,
                     q,
                     path,
@@ -1313,6 +1444,7 @@ def run_ablation(
     output_dir: str | None = None,
     run_id: str | None = None,
     workers: int = 1,
+    item_timeout_seconds: int | None = None,
     resume: bool = True,
     use_gold_cache: bool = True,
     refresh_gold_cache: bool = False,
@@ -1372,6 +1504,8 @@ def run_ablation(
     print(f"  Dataset  : {dataset}")
     print(f"  Queries  : {len(queries)}")
     print(f"  Workers  : {max(workers, 1)}  |  Resume: {resume}  |  Gold cache: {use_gold_cache}")
+    timeout_label = f"{item_timeout_seconds}s" if item_timeout_seconds else "disabled"
+    print(f"  Item timeout: {timeout_label}")
     print(f"  Run ID   : {run_id}")
     print(f"  Model    : {model_id}  |  SHA: {git_sha}")
     print(f"  Output   : {out_dir}")
@@ -1389,6 +1523,7 @@ def run_ablation(
             "tier": tier,
             "variants": [spec.id for spec in selected_specs],
             "workers": max(workers, 1),
+            "item_timeout_seconds": item_timeout_seconds,
             "resume": resume,
             "gold_cache": use_gold_cache,
         },
@@ -1426,6 +1561,7 @@ def run_ablation(
         workers=max(workers, 1),
         resume=resume,
         gold_cache=gold_cache,
+        item_timeout_seconds=item_timeout_seconds,
         verbose=verbose,
     )
 
@@ -1523,6 +1659,15 @@ def main() -> None:
         help="Parallel query workers inside each variant. Variants remain sequential.",
     )
     parser.add_argument(
+        "--item-timeout-seconds",
+        type=int,
+        default=None,
+        help=(
+            "Optional hard timeout per query item. Timed-out items are recorded as EX=false "
+            "instead of hanging the whole ablation run. Use 0 to disable."
+        ),
+    )
+    parser.add_argument(
         "--run-id",
         type=str,
         default=None,
@@ -1569,6 +1714,7 @@ def main() -> None:
         output_dir=args.output,
         run_id=args.run_id,
         workers=args.workers,
+        item_timeout_seconds=args.item_timeout_seconds,
         resume=not args.no_resume,
         use_gold_cache=not args.no_gold_cache,
         refresh_gold_cache=args.refresh_gold_cache,

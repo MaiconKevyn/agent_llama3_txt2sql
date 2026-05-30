@@ -1,1 +1,0 @@
-"""Table-selection benchmark package."""

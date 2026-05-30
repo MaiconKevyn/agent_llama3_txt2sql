@@ -1,6 +1,4 @@
-"""
-LangGraph Migration Package - Progressive migration to graph-based orchestration
-"""
+"""Simple DATASUS text-to-SQL agent package."""
 
-__version__ = "0.1.0"
-__description__ = "LangGraph-based replacement for Clean Architecture Text2SQL system"
+__version__ = "0.4.0"
+__description__ = "Simple question-to-SQL chatbot runtime"

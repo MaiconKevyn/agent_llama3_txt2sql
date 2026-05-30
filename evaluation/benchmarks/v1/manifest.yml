@@ -1,0 +1,35 @@
+name: benchmark_v1
+purpose: >
+  Regression and generalization benchmark for database question answering.
+  Runtime semantic rules must generalize from schema/catalog evidence, not from
+  benchmark IDs, source IDs, or gold SQL.
+
+case_files:
+  - ambiguity.jsonl
+  - cid.jsonl
+  - costs.jsonl
+  - data_quality.jsonl
+  - geography.jsonl
+  - out_of_schema.jsonl
+  - procedures.jsonl
+  - socioeconomic.jsonl
+  - temporal.jsonl
+  - visualization.jsonl
+
+runtime_boundary:
+  runtime_source_roots:
+    - src/semantic
+    - src/agent
+  forbidden_runtime_patterns:
+    - '\bSMOKE\d{3}\b'
+    - '\bGEN\d{3}\b'
+    - '\bV1_[A-Z0-9_]+_\d{3}\b'
+    - '\bGT_\d{3}\b'
+    - 'ground_truth_v\d+\.json'
+    - 'expected_sql_features'
+  evidence_exceptions:
+    - src/semantic/catalog.yml
+
+case_policy:
+  source_ref_cases: inherit schema_basis and judge from generalization_questions.jsonl.
+  override_cases: must include schema_basis when they replace reference_sql or judge.

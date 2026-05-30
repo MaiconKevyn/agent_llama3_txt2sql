@@ -1,0 +1,112 @@
+[
+  {
+    "id": "SMOKE001",
+    "family": "scalar_count",
+    "difficulty": "easy",
+    "question": "Quantas internacoes existem no banco?",
+    "expected_route": "analytical_query",
+    "expected_tables": ["internacoes"],
+    "expected_sql_features": ["COUNT(*)", "FROM internacoes"],
+    "gold_sql": "SELECT COUNT(*) AS total_internacoes FROM internacoes;",
+    "notes": "Baseline fact-table count. Expected result at 2026-05-29 baseline: 183877219."
+  },
+  {
+    "id": "SMOKE002",
+    "family": "mortality_count",
+    "difficulty": "easy",
+    "question": "Quantos obitos hospitalares ocorreram em 2020?",
+    "expected_route": "analytical_query",
+    "expected_tables": ["internacoes"],
+    "expected_sql_features": ["MORTE", "DT_INTER"],
+    "gold_sql": "SELECT COUNT(*) AS total_obitos FROM internacoes WHERE MORTE = true AND EXTRACT(YEAR FROM DT_INTER) = 2020;",
+    "notes": "Mortality must use MORTE and default date DT_INTER."
+  },
+  {
+    "id": "SMOKE003",
+    "family": "mortality_rate",
+    "difficulty": "medium",
+    "question": "Qual a taxa de mortalidade por sexo em 2021?",
+    "expected_route": "analytical_query",
+    "expected_tables": ["internacoes", "sexo"],
+    "expected_sql_features": ["MORTE", "COUNT(*)", "GROUP BY", "SEXO", "DT_INTER"],
+    "gold_sql": "SELECT i.SEXO, COUNT(*) AS internacoes, SUM(CASE WHEN i.MORTE THEN 1 ELSE 0 END) AS obitos, CAST(SUM(CASE WHEN i.MORTE THEN 1 ELSE 0 END) AS DOUBLE) / NULLIF(COUNT(*), 0) AS taxa_mortalidade FROM internacoes i WHERE EXTRACT(YEAR FROM i.DT_INTER) = 2021 GROUP BY i.SEXO ORDER BY i.SEXO;",
+    "notes": "Rate requires numerator and denominator; fact table has observed SEXO values 1 and 3."
+  },
+  {
+    "id": "SMOKE004",
+    "family": "cid_ranking",
+    "difficulty": "medium",
+    "question": "Quais os 10 CIDs principais com mais internacoes?",
+    "expected_route": "analytical_query",
+    "expected_tables": ["internacoes", "cid"],
+    "expected_sql_features": ["DIAG_PRINC", "GROUP BY", "ORDER BY", "LIMIT 10"],
+    "gold_sql": "SELECT i.DIAG_PRINC, c.DESCRICAO, COUNT(*) AS total_internacoes FROM internacoes i LEFT JOIN cid c ON i.DIAG_PRINC = c.CID GROUP BY i.DIAG_PRINC, c.DESCRICAO ORDER BY total_internacoes DESC LIMIT 10;",
+    "notes": "Diagnosis defaults to DIAG_PRINC, not CID_MORTE or secondary diagnoses."
+  },
+  {
+    "id": "SMOKE005",
+    "family": "length_of_stay",
+    "difficulty": "medium",
+    "question": "Qual a media de permanencia por ano?",
+    "expected_route": "analytical_query",
+    "expected_tables": ["internacoes"],
+    "expected_sql_features": ["DIAS_PERM", "DT_INTER", "GROUP BY"],
+    "gold_sql": "SELECT EXTRACT(YEAR FROM DT_INTER) AS ano, AVG(DIAS_PERM) AS media_permanencia FROM internacoes GROUP BY ano ORDER BY ano;",
+    "notes": "Length of stay must use DIAS_PERM, not recomputed date_diff."
+  },
+  {
+    "id": "SMOKE006",
+    "family": "residence_municipality_ranking",
+    "difficulty": "medium",
+    "question": "Quais municipios de residencia tiveram mais internacoes?",
+    "expected_route": "analytical_query",
+    "expected_tables": ["internacoes", "municipios"],
+    "expected_sql_features": ["MUNIC_RES", "LEFT JOIN", "GROUP BY", "ORDER BY", "LIMIT"],
+    "gold_sql": "SELECT i.MUNIC_RES, m.NO_MUNICIPIO, COUNT(*) AS total_internacoes FROM internacoes i LEFT JOIN municipios m ON i.MUNIC_RES = m.CO_MUNICIPIO_6D GROUP BY i.MUNIC_RES, m.NO_MUNICIPIO ORDER BY total_internacoes DESC LIMIT 10;",
+    "notes": "Default municipality scope is patient residence unless user asks hospital location."
+  },
+  {
+    "id": "SMOKE007",
+    "family": "hospital_value_ranking",
+    "difficulty": "medium",
+    "question": "Quais hospitais tiveram maior valor total pago?",
+    "expected_route": "analytical_query",
+    "expected_tables": ["internacoes", "hospital"],
+    "expected_sql_features": ["CNES", "VAL_TOT", "GROUP BY", "ORDER BY", "LIMIT"],
+    "gold_sql": "SELECT i.CNES, h.NOME, SUM(i.VAL_TOT) AS valor_total FROM internacoes i LEFT JOIN hospital h ON i.CNES = h.CNES GROUP BY i.CNES, h.NOME ORDER BY valor_total DESC LIMIT 10;",
+    "notes": "Hospital joins through CNES; total value uses VAL_TOT."
+  },
+  {
+    "id": "SMOKE008",
+    "family": "procedure_ranking",
+    "difficulty": "medium",
+    "question": "Quais procedimentos foram mais realizados?",
+    "expected_route": "analytical_query",
+    "expected_tables": ["internacao_procedimento", "procedimentos"],
+    "expected_sql_features": ["PROC_REA", "GROUP BY", "ORDER BY", "LIMIT"],
+    "gold_sql": "SELECT ip.PROC_REA, p.PROC_REA_DESCRICAO, COUNT(*) AS total_procedimentos FROM internacao_procedimento ip LEFT JOIN procedimentos p ON ip.PROC_REA = p.PROC_REA GROUP BY ip.PROC_REA, p.PROC_REA_DESCRICAO ORDER BY total_procedimentos DESC LIMIT 10;",
+    "notes": "Procedure questions use the procedure fact table, not only internacoes."
+  },
+  {
+    "id": "SMOKE009",
+    "family": "socioeconomic",
+    "difficulty": "medium",
+    "question": "Qual o PIB per capita por municipio em 2021?",
+    "expected_route": "analytical_query",
+    "expected_tables": ["socioeconomico", "municipios"],
+    "expected_sql_features": ["VL_PIB_PERCAPITA", "NU_ANO", "CO_MUNICIPIO_6D"],
+    "gold_sql": "SELECT s.CO_MUNICIPIO_6D, m.NO_MUNICIPIO, s.VL_PIB_PERCAPITA FROM socioeconomico s LEFT JOIN municipios m ON s.CO_MUNICIPIO_6D = m.CO_MUNICIPIO_6D WHERE s.NU_ANO = 2021 ORDER BY s.VL_PIB_PERCAPITA DESC LIMIT 10;",
+    "notes": "Socioeconomic table grain is municipality/year."
+  },
+  {
+    "id": "SMOKE010",
+    "family": "schema_unavailable",
+    "difficulty": "easy",
+    "question": "O banco tem resultado de hemograma?",
+    "expected_route": "schema_unavailable",
+    "expected_tables": [],
+    "expected_sql_features": [],
+    "gold_sql": null,
+    "notes": "The agent should refuse/explain because lab exams are outside the schema."
+  }
+]

@@ -1,3 +1,5 @@
+from sqlalchemy import create_engine, text
+
 from evaluation.runners.result_matching import compare_results, results_match
 from evaluation.runners.run_ablation import (
     VariantSpec,
@@ -6,6 +8,7 @@ from evaluation.runners.run_ablation import (
     _find_variant_json,
     _gold_cache_key,
     _load_item_result,
+    _run_gold_sql,
     _select_variant_specs,
     _write_item_result,
     run_variant,
@@ -130,6 +133,44 @@ def test_ablation_variant_can_reuse_gold_cache_without_db_gold_execution():
     )
 
     assert rows[0]["ex"] is True
+
+
+def test_gold_sql_executes_against_simple_manager_engine():
+    engine = create_engine("sqlite:///:memory:")
+    with engine.begin() as conn:
+        conn.execute(text("CREATE TABLE internacoes (id INTEGER);"))
+        conn.execute(text("INSERT INTO internacoes (id) VALUES (1), (2);"))
+
+    class FakeDatabase:
+        _engine = engine
+
+    class FakeSimpleManager:
+        def get_database(self):
+            return FakeDatabase()
+
+    assert _run_gold_sql("SELECT COUNT(*) FROM internacoes;", FakeSimpleManager()) == [(2,)]
+
+
+def test_gold_sql_blocks_mutating_statements_before_execution():
+    engine = create_engine("sqlite:///:memory:")
+    with engine.begin() as conn:
+        conn.execute(text("CREATE TABLE internacoes (id INTEGER);"))
+        conn.execute(text("INSERT INTO internacoes (id) VALUES (1), (2);"))
+
+    class FakeDatabase:
+        _engine = engine
+
+    class FakeSimpleManager:
+        def get_database(self):
+            return FakeDatabase()
+
+    error = _run_gold_sql("DELETE FROM internacoes;", FakeSimpleManager())
+
+    with engine.connect() as conn:
+        remaining = conn.execute(text("SELECT COUNT(*) FROM internacoes;")).scalar_one()
+
+    assert str(error).startswith("__GOLD_ERROR__: unsafe gold SQL:")
+    assert remaining == 2
 
 
 def test_ablation_item_checkpoint_round_trip(tmp_path):

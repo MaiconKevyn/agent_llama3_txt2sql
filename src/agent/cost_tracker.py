@@ -11,6 +11,7 @@ Falls back to zeroed dict if langchain_community is unavailable.
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 _EMPTY = {
@@ -21,12 +22,10 @@ _EMPTY = {
     "successful_requests": 0,
 }
 
-try:
-    from langchain_community.callbacks import get_openai_callback as _get_cb
 
-    _CB_AVAILABLE = True
-except ImportError:
-    _CB_AVAILABLE = False
+def _cost_tracking_enabled() -> bool:
+    value = os.getenv("ENABLE_LANGCHAIN_COST_TRACKING", "")
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 class QueryCostTracker:
@@ -38,7 +37,9 @@ class QueryCostTracker:
         self._data: dict[str, Any] = dict(_EMPTY)
 
     def __enter__(self) -> QueryCostTracker:
-        if _CB_AVAILABLE:
+        if _cost_tracking_enabled():
+            from langchain_community.callbacks import get_openai_callback as _get_cb
+
             self._ctx = _get_cb()
             self._handler = self._ctx.__enter__()
         return self

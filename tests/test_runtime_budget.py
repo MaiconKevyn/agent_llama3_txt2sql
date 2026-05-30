@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
@@ -71,11 +69,3 @@ def test_llm_manager_structured_chat_records_runtime_budget():
     assert response.content == "ok"
     assert tracker.as_dict()["usage"]["llm_call_kinds"] == ["structured_chat"]
 
-
-def test_frontend_proxy_uses_abort_controller_for_query_timeout():
-    server_js = Path("frontend/server.js").read_text(encoding="utf-8")
-
-    assert "new AbortController()" in server_js
-    assert "controller.abort()" in server_js
-    assert "signal: controller.signal" in server_js
-    assert "timeout: API_CONFIG.TIMEOUTS.QUERY" not in server_js

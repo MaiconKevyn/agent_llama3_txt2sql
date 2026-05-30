@@ -3,7 +3,6 @@ from src.agent.orchestrator_support import (
     build_application_config,
     build_health_report,
     build_orchestrator_error_result,
-    build_workflow_config,
 )
 from src.application.config.simple_config import ApplicationConfig
 
@@ -33,23 +32,6 @@ def test_build_application_config_preserves_base_settings():
     assert updated.llm_model == "gpt-4o"
     assert updated.llm_temperature == 0.3
     assert updated.llm_timeout == 45
-
-
-def test_build_workflow_config_sets_thread_id():
-    config = build_workflow_config(
-        config={"recursion_limit": 50},
-        session_id="session-42",
-    )
-
-    assert config["configurable"]["thread_id"] == "session-42"
-    assert config["recursion_limit"] == 50
-
-
-def test_build_workflow_config_no_extra_config():
-    config = build_workflow_config(config=None, session_id="abc")
-
-    assert config["configurable"]["thread_id"] == "abc"
-    assert set(config.keys()) == {"configurable"}
 
 
 def test_build_health_report():

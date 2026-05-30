@@ -1,7 +1,7 @@
 """
 FastAPI REST API for Text-to-SQL Agent
 
-Uses LangGraphOrchestrator directly — no subprocess overhead.
+Uses the simple SQL orchestrator directly, with no subprocess overhead.
 """
 
 import sys
@@ -152,8 +152,8 @@ class DatabaseQueryResponse(BaseModel):
 
 
 SAFE_INTERNAL_AGENT_ERROR = (
-    "Não foi possível processar sua consulta com segurança. "
-    "Tente refinar o recorte ou peça o gráfico de outra forma."
+    "Nao foi possivel processar sua consulta com seguranca. "
+    "Tente refinar o recorte ou peca a resposta de outra forma."
 )
 
 INTERNAL_ERROR_MARKERS = (
@@ -181,14 +181,14 @@ def _contains_internal_error(text: str | None) -> bool:
 def _sanitize_user_response(text: str | None) -> str:
     if _contains_internal_error(text):
         return SAFE_INTERNAL_AGENT_ERROR
-    return text or "Resposta não disponível"
+    return text or "Resposta nao disponivel"
 
 
 def _build_query_response(
     result: dict[str, Any], started_at: float, session_id: str | None
 ) -> QueryResponse:
     success = bool(result.get("success"))
-    raw_answer = result.get("response") or result.get("error_message") or "Resposta não disponível"
+    raw_answer = result.get("response") or result.get("error_message") or "Resposta nao disponivel"
     answer = _sanitize_user_response(raw_answer)
     sql_query = result.get("sql_query")
     metadata = result.get("metadata", {}) or {}
@@ -387,15 +387,14 @@ def _latest_stream_error(updates: list[dict[str, Any]]) -> str | None:
 def _build_debug_result_from_updates(
     user_query: str, updates: list[dict[str, Any]]
 ) -> dict[str, Any]:
-    from src.agent.state_helpers import state_to_legacy_format
+    for update in reversed(updates):
+        simple_state = update.get("simple_agent") if isinstance(update, dict) else None
+        if isinstance(simple_state, dict) and isinstance(simple_state.get("simple_result"), dict):
+            result = dict(simple_state["simple_result"])
+            result["debug"] = _build_debug_payload_from_updates(updates)
+            return result
 
-    final_state = _last_workflow_state(updates)
     debug_payload = _build_debug_payload_from_updates(updates)
-    if final_state is not None:
-        result = state_to_legacy_format(final_state)
-        result["debug"] = debug_payload
-        return result
-
     error_message = _latest_stream_error(updates) or "Debug execution did not return workflow state"
     return {
         "success": False,
@@ -405,7 +404,7 @@ def _build_debug_result_from_updates(
         "row_count": 0,
         "execution_time": 0.0,
         "error_message": error_message,
-        "response": f"Não foi possível processar sua consulta: {error_message}",
+        "response": f"Nao foi possivel processar sua consulta: {error_message}",
         "timestamp": datetime.now().isoformat(),
         "metadata": {},
         "debug": debug_payload,
@@ -418,37 +417,8 @@ def _attach_visualization_to_debug_result(
     result: dict[str, Any],
     user_query: str,
 ) -> dict[str, Any]:
-    """Run the normal chart attachment step for debug/streaming responses."""
-
-    metadata = result.get("metadata") or {}
-    from src.visualization import build_chart_plan, detect_visualization_intent
-    from src.visualization.schema import ChartPlan, VisualizationIntent
-
-    try:
-        visualization_intent = VisualizationIntent.model_validate(
-            metadata.get("visualization_intent") or {}
-        )
-    except Exception:
-        visualization_intent = detect_visualization_intent(user_query)
-
-    try:
-        chart_plan = ChartPlan.model_validate(metadata.get("chart_plan") or {})
-    except Exception:
-        chart_plan = build_chart_plan(user_query, visualization_intent)
-
-    if not visualization_intent.requested:
-        return result
-
-    attach_visualization = getattr(orchestrator, "_attach_visualization_if_requested", None)
-    if attach_visualization is None:
-        return result
-
-    return attach_visualization(
-        result=result,
-        user_query=user_query,
-        visualization_intent=visualization_intent,
-        chart_plan=chart_plan,
-    )
+    """Visualization was intentionally removed from the simple runtime."""
+    return result
 
 
 def _format_table_schema(table_name: str, info: dict[str, Any]) -> str:

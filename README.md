@@ -87,18 +87,22 @@ The production graph is defined in [`src/agent/workflow.py`](src/agent/workflow.
    - `sql_db_schema` is now an optional live verification/debug path, enabled with `--verify-llamaindex-schema-with-db` or `VERIFY_LLAMAINDEX_SCHEMA_WITH_DB=true`.
 
 4. **Plan Gate and Semantic Plan**
-   - `plan_gate` decides whether the query needs semantic planning or multi-query handling.
+   - `plan_gate` builds the first semantic contract, stores assumptions/invariants, and routes clarification or schema-unavailable cases before SQL generation.
    - [`src/semantic/plan_schema.py`](src/semantic/plan_schema.py) defines the Pydantic `SemanticPlan` contract.
    - [`src/agent/semantic_planner.py`](src/agent/semantic_planner.py) reconciles heuristic and structured LLM semantic plans.
+   - Multi-query planning is opt-in for experiments/ablation; the default chatbot path is single-query.
 
-5. **SQL Reasoning and Generation**
-   - [`src/agent/sql_generation.py`](src/agent/sql_generation.py) generates SQL using schema context, semantic plan guidance, chart plan guidance, and prompt rules.
-   - SQL generation returns a Pydantic `SQLOutput` with `sql`, `reasoning`, and `confidence`.
-   - Optional `llamaindex_mode=sql_draft` can use LlamaIndex for an SQL draft before falling back to the current structured generator.
+5. **SQL Strategy and Generation**
+   - [`src/agent/sql_strategy.py`](src/agent/sql_strategy.py) selects a deterministic compiler when the semantic plan is supported.
+   - [`src/agent/sql_compilers/`](src/agent/sql_compilers/) defines the SQL compiler boundary.
+   - [`src/agent/sql_generation.py`](src/agent/sql_generation.py) still owns orchestration, but deterministic SQL, fallback prompt construction, and strategy routing are separated.
+   - LLM SQL generation is the fallback path, not the default for shapes already covered by deterministic compilers.
+   - `reasoning_node` is an opt-in diagnostic/ablation node and is disabled in the default runtime path.
 
 6. **Validation**
    - [`src/agent/validation.py`](src/agent/validation.py) validates SQL using SQLDatabaseToolkit query checking plus semantic and contract validators.
    - Validation targets common semantic failures: wrong denominators, wrong output shape, invalid top-N grouping, wrong filters, and unsafe SQL.
+   - Semantic validation returns structured findings with severity. Blocking invariants live in [`src/semantic/invariant_validator.py`](src/semantic/invariant_validator.py).
 
 7. **Execution**
    - [`src/agent/execution.py`](src/agent/execution.py) executes validated SQL through `sql_db_query`.
@@ -107,10 +111,20 @@ The production graph is defined in [`src/agent/workflow.py`](src/agent/workflow.
 8. **Repair Loop**
    - If validation or execution fails, repair can route back to SQL generation or validation.
    - Semantic repair guidance is stored in [`src/semantic/repair_guidance.yml`](src/semantic/repair_guidance.yml).
+   - Repair is intentionally narrow: syntax, binder, missing table/column, and similar repairable SQL failures can retry; semantic invariant failures are blocked instead of repeatedly rewritten.
 
 9. **Compose Answer**
-   - Generates the final answer in natural language.
+   - [`src/agent/answer_contract.py`](src/agent/answer_contract.py) records the executed SQL, rows, answer type, assumptions, warnings, and formatted numeric fields.
+   - [`src/agent/response_renderers/`](src/agent/response_renderers/) formats common result shapes deterministically without an extra LLM call.
    - If the user explicitly requested a chart, the response may also include a structured chart payload.
+
+Default simplification summary:
+
+- `intent_planning` is not part of the runtime graph.
+- `query_planner` and multi-query execution remain available for experiments but are not on the default path.
+- CoT-style `reasoning_node` is disabled by default.
+- Schema knowledge is centralized in SchemaCards and the semantic catalog instead of long duplicated prompt snippets.
+- Validation is a guardrail over explicit invariants, not a second planner.
 
 ## AI Engineering Design
 
@@ -171,13 +185,19 @@ The semantic layer is the main generalization mechanism. It is not intended to m
 
 Key files:
 
+- [`src/application/schema/schema_cards.py`](src/application/schema/schema_cards.py)
+- [`src/application/schema/schema_context_renderer.py`](src/application/schema/schema_context_renderer.py)
 - [`src/semantic/catalog.yml`](src/semantic/catalog.yml)
 - [`src/semantic/catalog.py`](src/semantic/catalog.py)
 - [`src/semantic/planner.py`](src/semantic/planner.py)
+- [`src/semantic/resolvers/`](src/semantic/resolvers/)
 - [`src/semantic/plan_reconciler.py`](src/semantic/plan_reconciler.py)
 - [`src/semantic/contract_validator.py`](src/semantic/contract_validator.py)
+- [`src/semantic/invariant_validator.py`](src/semantic/invariant_validator.py)
 - [`src/semantic/sql_ast.py`](src/semantic/sql_ast.py)
 - [`src/semantic/profiles/generated_profile.json`](src/semantic/profiles/generated_profile.json)
+
+When adding a new database metric, start with `src/semantic/catalog.yml`, then add resolver/planner behavior only if the catalog contract is not enough. SQL generation should prefer adding or extending a compiler in `src/agent/sql_compilers/` over adding another prompt-only rule.
 
 ### Explicit Chart Generation
 
@@ -523,6 +543,7 @@ The evaluation system is designed for scientific error analysis, not only leader
 | Regression | `evaluation.runners.run_regression` | CI or targeted quality gates |
 | Table selection | `evaluation.runners.run_table_selection_eval` | Isolated LlamaIndex table-selection quality |
 | Chart evaluation | `evaluation.runners.run_chart_evaluation` | Visualization intent and chart spec quality |
+| Quality gates | `evaluation.quality_gates` | Release-readiness checks across safety, EX, latency/tokens, and fallback boundaries |
 | Rich prompt baseline | `evaluation/run_rich_prompt_baseline.py` | Single-shot baseline comparison |
 
 ### Metrics
@@ -534,6 +555,18 @@ The evaluation system is designed for scientific error analysis, not only leader
 | `EM` | Exact Match: SQL string-level equivalence |
 
 The project also produces failure lists, detailed outputs, ablation reports, chart evaluation artifacts, and logs. These are used to identify semantic error classes such as wrong output shape, wrong aggregation grain, missing anti-condition, wrong temporal comparison, and incorrect denominator.
+
+### Evaluation Suites
+
+The project keeps fast iteration, regression stress, and holdout evidence separate:
+
+| Suite | File | Purpose |
+|---|---|---|
+| `dev_smoke` | [`evaluation/dev_smoke.json`](evaluation/dev_smoke.json) | 10 quick checks for local iteration and runtime sanity |
+| `regression_failure_focused` | [`evaluation/regression_set.json`](evaluation/regression_set.json) | failure-enriched historical regressions; useful for stress but not an unbiased product score |
+| `holdout_generalization` | [`evaluation/holdout_generalization.json`](evaluation/holdout_generalization.json) | independent generalization cases that should not drive hand-written rules |
+
+Use [`evaluation/suites.py`](evaluation/suites.py) when a runner or test needs a normalized case contract with `family`, `difficulty`, `expected_behavior`, `expected_tables`, and optional `gold_sql`.
 
 ### Ablation Tracking
 
@@ -698,6 +731,15 @@ The v1 gate currently enforces:
 - answerable median latency <= 12 seconds;
 - answerable p95 latency <= 30 seconds.
 
+Operational release gates are checked separately from the benchmark threshold file:
+
+```bash
+python -m evaluation.quality_gates evaluation/results/release_v1/gate_summary_<run_id>.json \
+  --report evaluation/results/release_v1/quality_gates_<run_id>.md
+```
+
+The quality-gate summary is a compact JSON assembled from runner outputs. It checks SQL read-only rate, missing-table rate, schema-unavailable score, table-selection accuracy, dev-smoke runtime success, regression EX and baseline drop, latency or token reduction, and whether LLM fallback was used outside its intended boundary.
+
 Compatibility note:
 
 - `evaluation/run_dag_evaluation.py` is kept as a wrapper.
@@ -720,7 +762,10 @@ evaluation/logs/                              # Evaluation runner logs
 Ground-truth and regression datasets:
 
 - [`evaluation/ground_truth.json`](evaluation/ground_truth.json)
+- [`evaluation/dev_smoke.json`](evaluation/dev_smoke.json)
 - [`evaluation/regression_set.json`](evaluation/regression_set.json)
+- [`evaluation/holdout_generalization.json`](evaluation/holdout_generalization.json)
+- [`evaluation/benchmarks/v1/manifest.yml`](evaluation/benchmarks/v1/manifest.yml)
 - [`evaluation/table_selection/table_selection_gold.json`](evaluation/table_selection/table_selection_gold.json)
 - [`evaluation/visualization/chart_gold.json`](evaluation/visualization/chart_gold.json)
 

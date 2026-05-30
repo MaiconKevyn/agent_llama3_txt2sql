@@ -1,7 +1,4 @@
 """Tests for mlflow_tracker — uses a local file-store, no mock needed."""
-import os
-import tempfile
-
 import pytest
 
 
@@ -22,7 +19,6 @@ class TestLogQueryRunNoOp:
     def test_noop_when_tracking_uri_missing(self, monkeypatch):
         monkeypatch.delenv("MLFLOW_TRACKING_URI", raising=False)
         # Re-import so the module-level _TRACKING_URI is re-evaluated
-        import importlib
         import src.agent.mlflow_tracker as tracker_mod
         monkeypatch.setattr(tracker_mod, "_TRACKING_URI", "")
 
@@ -43,6 +39,7 @@ class TestLogQueryRunWithMLflow:
         pytest.importorskip("mlflow")
 
         import mlflow
+
         import src.agent.mlflow_tracker as tracker_mod
 
         tracking_uri = (tmp_path / "mlruns").as_uri()
@@ -77,6 +74,7 @@ class TestLogAblationRun:
         pytest.importorskip("mlflow")
 
         import mlflow
+
         import src.agent.mlflow_tracker as tracker_mod
 
         tracking_uri = (tmp_path / "mlruns").as_uri()
@@ -120,10 +118,11 @@ class TestLogAblationRun:
 
 
 class TestQueryCostTracker:
-    def test_noop_when_callback_unavailable(self, monkeypatch):
-        import src.agent.cost_tracker as ct
-        monkeypatch.setattr(ct, "_CB_AVAILABLE", False)
-        with ct.QueryCostTracker() as tracker:
+    def test_noop_when_cost_tracking_disabled(self, monkeypatch):
+        from src.agent.cost_tracker import QueryCostTracker
+
+        monkeypatch.delenv("ENABLE_LANGCHAIN_COST_TRACKING", raising=False)
+        with QueryCostTracker() as tracker:
             pass
         d = tracker.as_dict()
         assert d["total_tokens"] == 0

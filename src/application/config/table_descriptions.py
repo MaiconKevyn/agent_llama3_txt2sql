@@ -88,7 +88,7 @@ TABLE_DESCRIPTIONS = {
     },
     "internacao_procedimento": {
         "title": "Internação-Procedimento — Procedimentos por Internação (JUNCTION TABLE)",
-        "description": "Tabela de ligação entre internacoes e procedimentos. Cada registro representa um procedimento realizado durante uma internação. Uma internação pode ter múltiplos procedimentos (37M+ registros). Use esta tabela sempre que precisar relacionar internações com procedimentos.",
+        "description": "Tabela de ligação entre internacoes e procedimentos. Cada registro representa um procedimento realizado durante uma internação. Uma internação pode ter múltiplos procedimentos (187.957.888 registros no snapshot gerado). Use esta tabela sempre que precisar relacionar internações com procedimentos.",
         "purpose": "Ligar internações a procedimentos médicos realizados",
         "use_cases": [
             "Quais procedimentos foram realizados em uma internação",
@@ -450,7 +450,7 @@ DUCKDB TABLE SELECTION GUIDE (banco sihrd5):
 COMPREHENSIVE DUCKDB TABLE RELATIONSHIPS (banco sihrd5):
 
 FLUXO PRINCIPAL DE DADOS:
-internacoes (tabela central, 18.5M registros)
+internacoes (tabela central, 183.877.219 registros no snapshot gerado)
 ├── hospital (via "CNES") — Estabelecimento de saúde
 ├── cid (via "DIAG_PRINC", "DIAG_SECUN"; causa/motivo de morte analítico = "DIAG_PRINC" + "MORTE"=true; "CID_MORTE" é auditável) — Diagnósticos CID-10
 ├── municipios (via "MUNIC_RES" = CO_MUNICIPIO_6D) — Município de residência
@@ -467,7 +467,7 @@ internacoes (tabela central, 18.5M registros)
 hospital → municipios (via "MUNIC_MOV" = CO_MUNICIPIO_6D)
 municipios ← socioeconomico (via CO_MUNICIPIO_6D)
 
-REGRAS CRÍTICAS DE SQL POSTGRESQL:
+REGRAS CRÍTICAS DE SQL DUCKDB:
 - Nomes de colunas DEVEM usar aspas duplas: "SEXO", "IDADE", "DESCRICAO"
 - MORTE É BOOLEAN: WHERE "MORTE" = true (não existe tabela mortes separada)
 - IND_VDRL É BOOLEAN: WHERE "IND_VDRL" = true

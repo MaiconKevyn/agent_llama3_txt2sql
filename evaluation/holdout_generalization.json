@@ -1,0 +1,122 @@
+[
+  {
+    "id": "HOLDOUT001",
+    "family": "volume_temporal",
+    "difficulty": "easy",
+    "question": "Quantas internacoes foram registradas em 2019?",
+    "expected_behavior": "answer_with_sql",
+    "expected_tables": ["internacoes"],
+    "gold_sql": "SELECT COUNT(*) AS total_internacoes FROM internacoes WHERE EXTRACT(YEAR FROM \"DT_INTER\") = 2019;",
+    "notes": "Holdout scalar count using default admission date."
+  },
+  {
+    "id": "HOLDOUT002",
+    "family": "time_series",
+    "difficulty": "medium",
+    "question": "Mostre a evolucao anual de internacoes por pneumonia.",
+    "expected_behavior": "answer_with_sql",
+    "expected_tables": ["internacoes"],
+    "gold_sql": "SELECT EXTRACT(YEAR FROM \"DT_INTER\") AS ano, COUNT(*) AS total_internacoes FROM internacoes WHERE \"DIAG_PRINC\" LIKE 'J12%' OR \"DIAG_PRINC\" LIKE 'J13%' OR \"DIAG_PRINC\" LIKE 'J14%' OR \"DIAG_PRINC\" LIKE 'J15%' OR \"DIAG_PRINC\" LIKE 'J16%' OR \"DIAG_PRINC\" LIKE 'J17%' OR \"DIAG_PRINC\" LIKE 'J18%' GROUP BY ano ORDER BY ano;",
+    "notes": "Uses versioned pneumonia CID concept and temporal grain."
+  },
+  {
+    "id": "HOLDOUT003",
+    "family": "mortalidade",
+    "difficulty": "medium",
+    "question": "Qual a taxa de mortalidade hospitalar por UF de residencia em 2020?",
+    "expected_behavior": "answer_with_sql",
+    "expected_tables": ["internacoes", "municipios"],
+    "gold_sql": "SELECT m.\"SG_UF\" AS uf_residencia, COUNT(*) AS total_internacoes, SUM(CASE WHEN i.\"MORTE\" THEN 1 ELSE 0 END) AS total_mortes, 100.0 * SUM(CASE WHEN i.\"MORTE\" THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0) AS taxa_mortalidade FROM internacoes i LEFT JOIN municipios m ON i.\"MUNIC_RES\" = m.\"CO_MUNICIPIO_6D\" WHERE EXTRACT(YEAR FROM i.\"DT_INTER\") = 2020 GROUP BY m.\"SG_UF\" ORDER BY taxa_mortalidade DESC;",
+    "notes": "Rate denominator must not filter MORTE in WHERE."
+  },
+  {
+    "id": "HOLDOUT004",
+    "family": "geografia",
+    "difficulty": "medium",
+    "question": "Quais municipios de residencia tiveram mais obitos em 2021?",
+    "expected_behavior": "answer_with_sql",
+    "expected_tables": ["internacoes", "municipios"],
+    "gold_sql": "SELECT i.\"MUNIC_RES\", m.\"NO_MUNICIPIO\" AS municipio_residencia, COUNT(*) AS total_obitos FROM internacoes i LEFT JOIN municipios m ON i.\"MUNIC_RES\" = m.\"CO_MUNICIPIO_6D\" WHERE i.\"MORTE\" = true AND EXTRACT(YEAR FROM i.\"DT_INTER\") = 2021 GROUP BY i.\"MUNIC_RES\", m.\"NO_MUNICIPIO\" ORDER BY total_obitos DESC LIMIT 10;",
+    "notes": "Default geography is patient residence."
+  },
+  {
+    "id": "HOLDOUT005",
+    "family": "procedimentos",
+    "difficulty": "medium",
+    "question": "Quais foram os 10 procedimentos mais realizados em internacoes por diabetes?",
+    "expected_behavior": "answer_with_sql",
+    "expected_tables": ["internacoes", "internacao_procedimento", "procedimentos"],
+    "gold_sql": "SELECT ip.\"PROC_REA\", p.\"NOME_PROC\" AS procedimento, COUNT(*) AS total_procedimentos FROM internacoes i JOIN internacao_procedimento ip ON i.\"N_AIH\" = ip.\"N_AIH\" LEFT JOIN procedimentos p ON ip.\"PROC_REA\" = p.\"PROC_REA\" WHERE i.\"DIAG_PRINC\" LIKE 'E10%' OR i.\"DIAG_PRINC\" LIKE 'E11%' OR i.\"DIAG_PRINC\" LIKE 'E12%' OR i.\"DIAG_PRINC\" LIKE 'E13%' OR i.\"DIAG_PRINC\" LIKE 'E14%' GROUP BY ip.\"PROC_REA\", p.\"NOME_PROC\" ORDER BY total_procedimentos DESC LIMIT 10;",
+    "notes": "Procedure questions must use the procedure fact table."
+  },
+  {
+    "id": "HOLDOUT006",
+    "family": "custos_permanencia",
+    "difficulty": "medium",
+    "question": "Qual a media de dias de permanencia por sexo?",
+    "expected_behavior": "answer_with_sql",
+    "expected_tables": ["internacoes"],
+    "gold_sql": "SELECT \"SEXO\" AS sexo, AVG(\"DIAS_PERM\") AS media_dias_permanencia FROM internacoes GROUP BY \"SEXO\" ORDER BY sexo;",
+    "notes": "Length of stay must use DIAS_PERM."
+  },
+  {
+    "id": "HOLDOUT007",
+    "family": "custos",
+    "difficulty": "medium",
+    "question": "Quais hospitais tiveram maior valor medio de internacao?",
+    "expected_behavior": "answer_with_sql",
+    "expected_tables": ["internacoes", "hospital"],
+    "gold_sql": "SELECT i.\"CNES\", h.\"NOME\" AS hospital, AVG(i.\"VAL_TOT\") AS valor_medio FROM internacoes i LEFT JOIN hospital h ON i.\"CNES\" = h.\"CNES\" GROUP BY i.\"CNES\", h.\"NOME\" ORDER BY valor_medio DESC LIMIT 10;",
+    "notes": "Hospital joins through CNES and value uses VAL_TOT."
+  },
+  {
+    "id": "HOLDOUT008",
+    "family": "socioeconomico",
+    "difficulty": "medium",
+    "question": "Quais municipios tinham mais medicos por 1000 habitantes em 2021?",
+    "expected_behavior": "answer_with_sql",
+    "expected_tables": ["socioeconomico", "municipios"],
+    "gold_sql": "SELECT s.\"CO_MUNICIPIO_6D\", m.\"NO_MUNICIPIO\" AS municipio, s.\"VL_MEDICOS_1000\" AS valor_indicador FROM socioeconomico s LEFT JOIN municipios m ON s.\"CO_MUNICIPIO_6D\" = m.\"CO_MUNICIPIO_6D\" WHERE s.\"NU_ANO\" = 2021 ORDER BY valor_indicador DESC LIMIT 10;",
+    "notes": "Socioeconomic grain is municipality/year."
+  },
+  {
+    "id": "HOLDOUT009",
+    "family": "qualidade_dados",
+    "difficulty": "hard",
+    "question": "Quantos diagnosticos principais nao encontraram descricao no catalogo CID?",
+    "expected_behavior": "answer_with_sql",
+    "expected_tables": ["internacoes", "cid"],
+    "gold_sql": "SELECT COUNT(*) AS diagnosticos_sem_catalogo FROM internacoes i LEFT JOIN cid c ON i.\"DIAG_PRINC\" = c.\"CID\" WHERE i.\"DIAG_PRINC\" IS NOT NULL AND c.\"CID\" IS NULL;",
+    "notes": "Catalog coverage should be explicit and use left join."
+  },
+  {
+    "id": "HOLDOUT010",
+    "family": "perfil_demografico",
+    "difficulty": "medium",
+    "question": "Qual a distribuicao de internacoes por raca/cor incluindo valores desconhecidos?",
+    "expected_behavior": "answer_with_sql",
+    "expected_tables": ["internacoes"],
+    "gold_sql": "SELECT COALESCE(CAST(\"RACA_COR\" AS VARCHAR), 'Nao informado') AS raca_cor, COUNT(*) AS total_internacoes FROM internacoes GROUP BY raca_cor ORDER BY total_internacoes DESC;",
+    "notes": "Unknown buckets must not be dropped."
+  },
+  {
+    "id": "HOLDOUT011",
+    "family": "fora_do_schema",
+    "difficulty": "easy",
+    "question": "Qual bairro teve mais internacoes por asma?",
+    "expected_behavior": "safe_refusal",
+    "expected_tables": [],
+    "gold_sql": null,
+    "notes": "Neighborhood is not available in the current schema."
+  },
+  {
+    "id": "HOLDOUT012",
+    "family": "ambiguidade",
+    "difficulty": "medium",
+    "question": "Qual municipio teve maior mortalidade?",
+    "expected_behavior": "requires_clarification",
+    "expected_tables": [],
+    "gold_sql": null,
+    "notes": "Municipality can mean patient residence or hospital location, and mortality can be count or rate."
+  }
+]
