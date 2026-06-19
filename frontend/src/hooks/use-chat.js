@@ -38,6 +38,8 @@ export function useChat({ debugEnabled = false, onServerStatusChange } = {}) {
   const [sessionId, setSessionId] = useState(ensureSessionId);
   const [messages, setMessages] = useState(readInitialMessages);
   const messagesRef = useRef(messages);
+  const requestSequenceRef = useRef(0);
+  const submittingRef = useRef(false);
 
   const hasMessages = messages.length > 0;
   const canSend = input.trim().length > 0 && input.length <= MAX_MESSAGE_LENGTH && !isLoading;
@@ -68,6 +70,9 @@ export function useChat({ debugEnabled = false, onServerStatusChange } = {}) {
   const clearChat = useCallback(() => {
     const nextSessionId = createSessionId();
 
+    requestSequenceRef.current += 1;
+    submittingRef.current = false;
+    setIsLoading(false);
     replaceMessages([]);
     setSessionId(nextSessionId);
     writeStorage(STORAGE_KEYS.sessionId, nextSessionId);
@@ -77,16 +82,23 @@ export function useChat({ debugEnabled = false, onServerStatusChange } = {}) {
   const submitMessage = useCallback(async () => {
     const question = input.trim();
 
-    if (!question || isLoading || input.length > MAX_MESSAGE_LENGTH) {
+    if (!question || submittingRef.current || input.length > MAX_MESSAGE_LENGTH) {
       return;
     }
 
+    const requestId = requestSequenceRef.current + 1;
+    requestSequenceRef.current = requestId;
+    submittingRef.current = true;
     setIsLoading(true);
     setInput("");
     addMessage(createMessage(question, { type: "user" }));
 
     try {
       const response = await sendQuery({ question, sessionId, debug: debugEnabled });
+
+      if (requestSequenceRef.current !== requestId) {
+        return;
+      }
 
       if (response?.session_id) {
         setSessionId(response.session_id);
@@ -102,13 +114,20 @@ export function useChat({ debugEnabled = false, onServerStatusChange } = {}) {
       );
       onServerStatusChange?.("online");
     } catch (error) {
+      if (requestSequenceRef.current !== requestId) {
+        return;
+      }
+
       onServerStatusChange?.("offline");
       addMessage(createMessage(buildUserFacingError(error), { type: "error" }));
       toast.error("Nao foi possivel concluir a consulta. Verifique o agent e tente novamente.");
     } finally {
-      setIsLoading(false);
+      if (requestSequenceRef.current === requestId) {
+        submittingRef.current = false;
+        setIsLoading(false);
+      }
     }
-  }, [addMessage, debugEnabled, input, isLoading, onServerStatusChange, sessionId]);
+  }, [addMessage, debugEnabled, input, onServerStatusChange, sessionId]);
 
   return useMemo(
     () => ({

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { getSchema } from "../lib/api";
@@ -11,6 +11,7 @@ export function useSchemaExplorer() {
   const [schema, setSchema] = useState("");
   const [status, setStatus] = useState("empty");
   const [error, setError] = useState("");
+  const schemaRequestSequenceRef = useRef(0);
 
   const loadTables = useCallback(async () => {
     try {
@@ -33,14 +34,23 @@ export function useSchemaExplorer() {
   }, [loadTables]);
 
   const loadSelectedSchema = useCallback(async () => {
+    const requestId = schemaRequestSequenceRef.current + 1;
+    const tableSnapshot = selectedTable;
+    schemaRequestSequenceRef.current = requestId;
     setStatus("loading");
     setError("");
 
     try {
-      const payload = await getSchema(selectedTable);
+      const payload = await getSchema(tableSnapshot);
+      if (schemaRequestSequenceRef.current !== requestId) {
+        return;
+      }
       setSchema(normalizeSchemaText(payload?.schema));
       setStatus("loaded");
     } catch (loadError) {
+      if (schemaRequestSequenceRef.current !== requestId) {
+        return;
+      }
       const message = loadError?.message || String(loadError);
       setError(`Erro ao carregar schema: ${message}`);
       setStatus("error");
