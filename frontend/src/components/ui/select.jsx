@@ -117,6 +117,8 @@ export {
   SelectValue,
   SelectTrigger,
   SelectContent,
+  SelectScrollUpButton,
+  SelectScrollDownButton,
   SelectLabel,
   SelectItem,
   SelectSeparator
