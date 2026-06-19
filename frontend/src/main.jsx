@@ -1,13 +1,13 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import "./index.css";
+import { Toaster } from "sonner";
 
-function ScaffoldSmoke() {
-  return <div className="p-6 text-foreground">DataVisSUS Agent</div>;
-}
+import App from "./App";
+import "./index.css";
 
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <ScaffoldSmoke />
+    <App />
+    <Toaster richColors closeButton position="top-right" />
   </React.StrictMode>,
 );
