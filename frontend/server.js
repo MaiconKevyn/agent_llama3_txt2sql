@@ -25,6 +25,10 @@ const LEGACY_PUBLIC_PATH = path.join(__dirname, 'public');
 const STATIC_PATH = fs.existsSync(path.join(DIST_PATH, 'index.html'))
     ? DIST_PATH
     : LEGACY_PUBLIC_PATH;
+const USING_LEGACY_PUBLIC = STATIC_PATH === LEGACY_PUBLIC_PATH;
+const LEGACY_STYLE_SOURCES = USING_LEGACY_PUBLIC ? ["https://cdnjs.cloudflare.com"] : [];
+const LEGACY_FONT_SOURCES = USING_LEGACY_PUBLIC ? ["https://cdnjs.cloudflare.com"] : [];
+const LEGACY_SCRIPT_SOURCES = USING_LEGACY_PUBLIC ? ["https://cdn.jsdelivr.net"] : [];
 const SAFE_AGENT_ERROR_MESSAGE = 'Nao foi possivel processar sua consulta com seguranca. Tente refinar o recorte ou pedir o grafico de outra forma.';
 const INTERNAL_AGENT_ERROR_PATTERNS = [
     /SEMANTIC PLAN ERROR/i,
@@ -52,9 +56,9 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-            fontSrc: ["'self'", "https://fonts.gstatic.com"],
-            scriptSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", ...LEGACY_STYLE_SOURCES],
+            fontSrc: ["'self'", "https://fonts.gstatic.com", ...LEGACY_FONT_SOURCES],
+            scriptSrc: ["'self'", ...LEGACY_SCRIPT_SOURCES],
             imgSrc: ["'self'", "data:", "https:"],
             connectSrc: ["'self'", `http://localhost:${PORT}`, `http://127.0.0.1:${PORT}`, API_CONFIG.BASE_URL]
         },
@@ -128,20 +132,29 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Static Files with correct headers
 app.use(express.static(STATIC_PATH, {
-    maxAge: process.env.NODE_ENV === 'production' ? '1y' : '0',
+    maxAge: '0',
     etag: true,
     lastModified: true,
     setHeaders: (res, filePath) => {
+        const distAssetsPath = path.join(DIST_PATH, 'assets') + path.sep;
+        const isDistAsset = STATIC_PATH === DIST_PATH && filePath.startsWith(distAssetsPath);
+
         if (filePath.endsWith('.css')) {
             res.setHeader('Content-Type', 'text/css; charset=utf-8');
-            res.setHeader('Cache-Control', 'no-cache');
         }
         if (filePath.endsWith('.js')) {
             res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
         }
         if (filePath.endsWith('.html')) {
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            res.setHeader('Cache-Control', 'no-cache');
+            return;
         }
+        if (isDistAsset) {
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+            return;
+        }
+        res.setHeader('Cache-Control', 'no-cache');
     }
 }));
 
