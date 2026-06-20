@@ -12,8 +12,8 @@ export function getSchemaTables(data) {
 export function isHtmlSchema(schema) {
   const text = String(schema == null ? "" : schema);
   return (
-    /\bclass=["'][^"']*\bsample-data-table\b/.test(text) ||
-    /\bclass=["'][^"']*\bschema-table\b/.test(text)
+    /\bid=["']schema-data-table["']/.test(text) ||
+    /\bclass=["'][^"']*\bcolumn-filter\b/.test(text)
   );
 }
 

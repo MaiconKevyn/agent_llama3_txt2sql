@@ -138,7 +138,11 @@ function SchemaBody({ schema, htmlPanelRef }) {
 
   if (schema.status === "loading") {
     return (
-      <div className="flex min-h-40 items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 text-sm text-muted-foreground">
+      <div
+        role="status"
+        aria-live="polite"
+        className="flex min-h-40 items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 text-sm text-muted-foreground"
+      >
         Carregando schema...
       </div>
     );
@@ -146,7 +150,10 @@ function SchemaBody({ schema, htmlPanelRef }) {
 
   if (schema.status === "error") {
     return (
-      <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive">
+      <div
+        role="alert"
+        className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive"
+      >
         {schema.error}
       </div>
     );
@@ -187,7 +194,7 @@ export function SchemaExplorer({ schema }) {
   const selectedTable = schema.selectedTable ?? "";
 
   useEffect(() => {
-    if (schema.status !== "loaded" || !isHtmlSchema(schema.schema)) {
+    if (!schema.open || schema.status !== "loaded" || !isHtmlSchema(schema.schema)) {
       return undefined;
     }
 
@@ -195,7 +202,7 @@ export function SchemaExplorer({ schema }) {
     if (!root) return undefined;
 
     return attachLegacyTableFilters(root);
-  }, [schema.status, schema.schema]);
+  }, [schema.open, schema.status, schema.schema]);
 
   return (
     <Dialog open={schema.open} onOpenChange={schema.setOpen}>

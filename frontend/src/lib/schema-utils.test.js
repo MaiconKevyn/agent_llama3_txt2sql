@@ -9,9 +9,10 @@ describe("schema-utils", () => {
     expect(getSchemaTables({})).toEqual([]);
   });
 
-  it("detects HTML schemas with sample data or schema table markup", () => {
-    expect(isHtmlSchema('<div class="sample-data-table"><table></table></div>')).toBe(true);
-    expect(isHtmlSchema('<table class="schema-table"></table>')).toBe(true);
+  it("detects HTML schemas with explicit legacy table/filter markers", () => {
+    expect(isHtmlSchema('<table id="schema-data-table"></table>')).toBe(true);
+    expect(isHtmlSchema('<input class="column-filter" />')).toBe(true);
+    expect(isHtmlSchema('<table class="schema-table"></table>')).toBe(false);
     expect(isHtmlSchema("CREATE TABLE tb_cid (id text);")).toBe(false);
   });
 
