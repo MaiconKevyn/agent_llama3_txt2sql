@@ -20,6 +20,11 @@ const API_CONFIG = require('./config/api');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
+const DIST_PATH = path.join(__dirname, 'dist');
+const LEGACY_PUBLIC_PATH = path.join(__dirname, 'public');
+const STATIC_PATH = fs.existsSync(path.join(DIST_PATH, 'index.html'))
+    ? DIST_PATH
+    : LEGACY_PUBLIC_PATH;
 const SAFE_AGENT_ERROR_MESSAGE = 'Nao foi possivel processar sua consulta com seguranca. Tente refinar o recorte ou pedir o grafico de outra forma.';
 const INTERNAL_AGENT_ERROR_PATTERNS = [
     /SEMANTIC PLAN ERROR/i,
@@ -47,9 +52,9 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
-            fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            scriptSrc: ["'self'"],
             imgSrc: ["'self'", "data:", "https:"],
             connectSrc: ["'self'", `http://localhost:${PORT}`, `http://127.0.0.1:${PORT}`, API_CONFIG.BASE_URL]
         },
@@ -122,7 +127,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Static Files with correct headers
-app.use(express.static(path.join(__dirname, 'public'), {
+app.use(express.static(STATIC_PATH, {
     maxAge: process.env.NODE_ENV === 'production' ? '1y' : '0',
     etag: true,
     lastModified: true,
@@ -389,7 +394,7 @@ app.get('/api/agent-health', async (req, res) => {
 
 // Serve main page
 app.get('/', (req, res) => {
-    const htmlPath = path.join(__dirname, 'public', 'index.html');
+    const htmlPath = path.join(STATIC_PATH, 'index.html');
 
     if (!fs.existsSync(htmlPath)) {
         console.error('❌ HTML file not found:', htmlPath);
@@ -401,11 +406,10 @@ app.get('/', (req, res) => {
 
 // Debug endpoint to check configuration
 app.get('/debug/config', (req, res) => {
-    const publicPath = path.join(__dirname, 'public');
     const files = {
-        'index.html': fs.existsSync(path.join(publicPath, 'index.html')),
-        'app.js': fs.existsSync(path.join(publicPath, 'app.js')),
-        'styles.css': fs.existsSync(path.join(publicPath, 'styles.css'))
+        'dist/index.html': fs.existsSync(path.join(DIST_PATH, 'index.html')),
+        'public/index.html': fs.existsSync(path.join(LEGACY_PUBLIC_PATH, 'index.html')),
+        static_path: STATIC_PATH
     };
 
     res.json({
@@ -414,11 +418,22 @@ app.get('/debug/config', (req, res) => {
             api_base_url: API_CONFIG.BASE_URL,
             port: PORT,
             host: HOST,
-            public_path: publicPath,
+            dist_path: DIST_PATH,
+            public_path: LEGACY_PUBLIC_PATH,
+            static_path: STATIC_PATH,
             environment: process.env.NODE_ENV || 'development'
         },
         timestamp: new Date().toISOString()
     });
+});
+
+// SPA fallback for client-side routes
+app.get(/^\/(?!api\/|debug\/).*/, (req, res) => {
+    const htmlPath = path.join(STATIC_PATH, 'index.html');
+    if (fs.existsSync(htmlPath)) {
+        return res.sendFile(htmlPath);
+    }
+    return res.status(404).json({ error: 'Endpoint not found', path: req.originalUrl, timestamp: new Date().toISOString() });
 });
 
 // 404 handler
@@ -499,24 +514,35 @@ app.listen(PORT, HOST, () => {
     console.log(`📍 Web Interface: http://${HOST}:${PORT}`);
     console.log(`🔗 Agent API: ${API_CONFIG.BASE_URL}`);
     console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`📁 Static files: ${path.join(__dirname, 'public')}`);
+    console.log(`📁 Static files: ${STATIC_PATH}`);
+    console.log(`📦 Vite dist: ${DIST_PATH}`);
+    console.log(`📂 Legacy public: ${LEGACY_PUBLIC_PATH}`);
     console.log(`🔍 Debug config: http://${HOST}:${PORT}/debug/config`);
     console.log('⏹️  Press Ctrl+C to stop');
     console.log('='.repeat(50));
 
-    // Check critical files
-    const publicPath = path.join(__dirname, 'public');
-    const criticalFiles = ['index.html', 'app.js', 'styles.css'];
-    
-    console.log('\n📋 Checking critical files:');
-    criticalFiles.forEach(file => {
-        const filePath = path.join(publicPath, file);
-        if (fs.existsSync(filePath)) {
-            console.log(`✅ ${file} found`);
-        } else {
-            console.error(`❌ ${file} NOT FOUND at ${filePath}`);
+    // Check frontend files without requiring legacy assets when a Vite build exists.
+    const distIndexPath = path.join(DIST_PATH, 'index.html');
+    const publicIndexPath = path.join(LEGACY_PUBLIC_PATH, 'index.html');
+    const hasDistIndex = fs.existsSync(distIndexPath);
+
+    console.log('\n📋 Checking frontend files:');
+    if (hasDistIndex) {
+        console.log(`✅ dist/index.html found at ${distIndexPath}`);
+        if (fs.existsSync(publicIndexPath)) {
+            console.log(`ℹ️  public/index.html fallback available at ${publicIndexPath}`);
         }
-    });
+    } else {
+        console.warn(`⚠️  dist/index.html not found at ${distIndexPath}`);
+        ['index.html', 'app.js', 'styles.css'].forEach(file => {
+            const filePath = path.join(LEGACY_PUBLIC_PATH, file);
+            if (fs.existsSync(filePath)) {
+                console.log(`✅ public/${file} found`);
+            } else {
+                console.error(`❌ public/${file} NOT FOUND at ${filePath}`);
+            }
+        });
+    }
 
     console.log('\n🔌 Testing Agent API connection...');
     forwardToAgentAPI(API_CONFIG.ENDPOINTS.HEALTH)
