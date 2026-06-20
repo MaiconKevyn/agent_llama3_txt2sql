@@ -428,7 +428,7 @@ app.get('/debug/config', (req, res) => {
 });
 
 // SPA fallback for client-side routes
-app.get(/^\/(?!api\/|debug\/).*/, (req, res) => {
+app.get(/^\/(?!(api|debug)(\/|$)).*/, (req, res) => {
     const htmlPath = path.join(STATIC_PATH, 'index.html');
     if (fs.existsSync(htmlPath)) {
         return res.sendFile(htmlPath);
