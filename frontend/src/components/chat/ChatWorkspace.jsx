@@ -6,7 +6,7 @@ export function ChatWorkspace({ chat, debugEnabled }) {
   return (
     <section
       aria-label="Workspace de chat"
-      className="workspace-panel flex min-h-[620px] min-w-0 flex-col overflow-hidden border-l border-t lg:min-h-[calc(100vh-9rem)]"
+      className="workspace-panel order-1 flex h-[calc(100vh-14rem)] min-h-[560px] min-w-0 flex-col overflow-hidden border-l border-t lg:order-2 lg:h-auto lg:min-h-[calc(100vh-9rem)]"
     >
       <div className="thin-scrollbar min-h-0 flex-1 overflow-y-auto">
         {chat.hasMessages ? (

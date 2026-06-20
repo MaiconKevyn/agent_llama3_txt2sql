@@ -5,7 +5,7 @@ import { EXAMPLE_QUESTIONS } from "@/lib/constants";
 
 export function Sidebar({ onQuestionSelect, onOpenSchema }) {
   return (
-    <aside className="workspace-panel order-first h-fit p-4 lg:sticky lg:top-4 lg:order-none">
+    <aside className="workspace-panel order-2 h-fit p-4 lg:sticky lg:top-4 lg:order-1">
       <div className="space-y-5">
         <section aria-labelledby="starter-questions-title" className="space-y-3">
           <div>
