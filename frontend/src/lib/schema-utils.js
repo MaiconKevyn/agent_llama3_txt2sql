@@ -1,4 +1,5 @@
 export const SCHEMA_UNAVAILABLE_MESSAGE = "Schema indisponivel para esta selecao.";
+export const FULL_SCHEMA_SELECT_VALUE = "__datavissus_full_schema__";
 
 export function getSchemaTables(data) {
   if (Array.isArray(data)) return data;
@@ -20,4 +21,12 @@ export function isHtmlSchema(schema) {
 export function normalizeSchemaText(schema, fallback = SCHEMA_UNAVAILABLE_MESSAGE) {
   const text = String(schema == null ? "" : schema).trim();
   return text || fallback;
+}
+
+export function getSchemaTableSelectValue(tableName = "") {
+  return tableName ? tableName : FULL_SCHEMA_SELECT_VALUE;
+}
+
+export function getSchemaTableNameFromSelectValue(selectValue = "") {
+  return selectValue === FULL_SCHEMA_SELECT_VALUE ? "" : selectValue;
 }

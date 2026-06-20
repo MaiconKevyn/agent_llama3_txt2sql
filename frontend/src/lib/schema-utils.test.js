@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { getSchemaTables, isHtmlSchema, normalizeSchemaText } from "./schema-utils";
+import {
+  FULL_SCHEMA_SELECT_VALUE,
+  getSchemaTableNameFromSelectValue,
+  getSchemaTables,
+  getSchemaTableSelectValue,
+  isHtmlSchema,
+  normalizeSchemaText
+} from "./schema-utils";
 
 describe("schema-utils", () => {
   it("returns schema table names from common response shapes", () => {
@@ -20,5 +27,13 @@ describe("schema-utils", () => {
     expect(normalizeSchemaText("")).toBe("Schema indisponivel para esta selecao.");
     expect(normalizeSchemaText(null)).toBe("Schema indisponivel para esta selecao.");
     expect(normalizeSchemaText("  CREATE TABLE tb_cid (id text);  ")).toBe("CREATE TABLE tb_cid (id text);");
+  });
+
+  it("uses a non-empty select value while preserving empty API table names for the full schema", () => {
+    expect(FULL_SCHEMA_SELECT_VALUE).not.toBe("");
+    expect(getSchemaTableSelectValue("")).toBe(FULL_SCHEMA_SELECT_VALUE);
+    expect(getSchemaTableSelectValue("tb_cid")).toBe("tb_cid");
+    expect(getSchemaTableNameFromSelectValue(FULL_SCHEMA_SELECT_VALUE)).toBe("");
+    expect(getSchemaTableNameFromSelectValue("tb_cid")).toBe("tb_cid");
   });
 });

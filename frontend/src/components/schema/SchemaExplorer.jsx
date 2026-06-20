@@ -16,7 +16,12 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
-import { isHtmlSchema } from "@/lib/schema-utils";
+import {
+  FULL_SCHEMA_SELECT_VALUE,
+  getSchemaTableNameFromSelectValue,
+  getSchemaTableSelectValue,
+  isHtmlSchema
+} from "@/lib/schema-utils";
 
 const EMPTY_SCHEMA_MESSAGE = "Selecione uma tabela e clique em Carregar schema.";
 const LEGACY_HTML_PANEL_CLASS_NAME = [
@@ -221,15 +226,15 @@ export function SchemaExplorer({ schema }) {
                 Tabela
               </label>
               <Select
-                value={selectedTable}
-                onValueChange={schema.setSelectedTable}
+                value={getSchemaTableSelectValue(selectedTable)}
+                onValueChange={(value) => schema.setSelectedTable(getSchemaTableNameFromSelectValue(value))}
                 disabled={loading}
               >
                 <SelectTrigger id="schema-table-select">
                   <SelectValue placeholder="Esquema completo" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Esquema completo</SelectItem>
+                  <SelectItem value={FULL_SCHEMA_SELECT_VALUE}>Esquema completo</SelectItem>
                   {tables.map((table, index) => {
                     const value = getTableValue(table, index);
                     return (
