@@ -1,0 +1,120 @@
+version: 1
+description: >
+  Generic semantic repair guidance for Text-to-SQL failures. Guidance is keyed
+  by semantic error category and must not reference benchmark questions or
+  expected answers.
+
+guidance:
+  top_n_scope:
+    title: Top-N por grupo
+    instruction: >
+      Reescreva a consulta usando ROW_NUMBER, RANK ou DENSE_RANK com OVER
+      (PARTITION BY dimensao_do_grupo ORDER BY metrica DESC). A particao deve
+      conter apenas a dimensao do grupo, nao a entidade ranqueada. No SELECT
+      final, projete primeiro a dimensao do grupo, depois a entidade ranqueada,
+      depois as metricas. Para top-1 por grupo, use ROW_NUMBER, nao RANK, a
+      menos que a pergunta peca explicitamente empates. Filtre o rank para o N
+      solicitado fora da subquery/CTE. Nao use LIMIT global.
+    contract_focus:
+      - answer_shape.top_n
+      - answer_shape.top_n_scope
+      - answer_shape.required_dimensions
+      - answer_shape.partition_dimensions
+      - answer_shape.ranked_dimensions
+    preserve_scope_filters: true
+
+  rate_denominator:
+    title: Denominador de taxa
+    instruction: >
+      Remova filtros de desfecho do WHERE quando eles forem o numerador da
+      taxa. Calcule o numerador com SUM(CASE WHEN desfecho THEN 1 ELSE 0 END)
+      e preserve COUNT(*) no denominador com todos os filtros de escopo da
+      pergunta.
+    contract_focus:
+      - metrics.denominator_scope
+      - constraints.rate_denominator_must_preserve_full_scope
+      - filters
+    preserve_scope_filters: true
+
+  absence_condition:
+    title: Ausencia ou nunca
+    instruction: >
+      Para perguntas com nunca, sem registro ou nenhuma ocorrencia, use NOT
+      EXISTS, LEFT JOIN ... IS NULL, ou GROUP BY/HAVING com soma condicional
+      igual a zero. Nao substitua por WHERE condicao = 0, pois isso seleciona
+      ocorrencias negativas em vez de ausencia da ocorrencia.
+    contract_focus:
+      - constraints.absence_condition_requires_antijoin_or_aggregate_zero
+      - answer_shape.required_dimensions
+      - filters
+    preserve_scope_filters: true
+
+  unknown_bucket:
+    title: Bucket sem informacao
+    instruction: >
+      Preserve linhas sem correspondencia usando LEFT JOIN e rotule valores
+      nulos/desconhecidos com COALESCE ou CASE. Nao use INNER JOIN quando a
+      pergunta pedir casos sem informacao.
+    contract_focus:
+      - null_policy.include_unknown_bucket_with_left_join_or_coalesce
+      - answer_shape.include_unknown_bucket
+    preserve_scope_filters: true
+
+  grouping_dimension:
+    title: Dimensao de agrupamento
+    instruction: >
+      Inclua todas as dimensoes obrigatorias da resposta no SELECT e no GROUP
+      BY, exceto quando o padrao correto for anti-join por entidade sem
+      agregacao. Nao remova filtros de escopo ao corrigir o agrupamento.
+    contract_focus:
+      - answer_shape.required_dimensions
+      - answer_shape.row_grain
+      - answer_shape.requires_group_by
+    preserve_scope_filters: true
+
+  join_path:
+    title: Caminho de join semantico
+    instruction: >
+      Reescreva os JOINs para seguir o caminho declarado no catalogo semantico.
+      Use as chaves do contrato violado e nao substitua uma dimensao por outra
+      semanticamente diferente, como residencia do paciente versus localizacao
+      do hospital. Preserve filtros de escopo e o padrao de anti-condicao, se
+      houver.
+    contract_focus:
+      - answer_shape.required_dimensions
+      - dimensions
+      - filters
+      - constraints
+    preserve_scope_filters: true
+
+  temporal_grain:
+    title: Grao temporal
+    instruction: >
+      Preserve a dimensao temporal solicitada. Para series temporais, agrupe
+      pelo periodo pedido e nao filtre periodos com metrica zero a menos que a
+      pergunta peca explicitamente um threshold ou apenas valores positivos.
+    contract_focus:
+      - answer_shape.row_grain
+      - answer_shape.required_dimensions
+      - filters
+    preserve_scope_filters: true
+
+  sql_validity:
+    title: Validade SQL
+    instruction: >
+      Corrija sintaxe, nomes de colunas, aliases e tipos mantendo a mesma
+      intencao semantica, joins e filtros de escopo.
+    contract_focus:
+      - selected_tables
+      - schema_context
+    preserve_scope_filters: true
+
+  unknown:
+    title: Erro semantico desconhecido
+    instruction: >
+      Reescreva a SQL para satisfazer explicitamente o SemanticPlan. Preserve
+      metricas, dimensoes, filtros de escopo, granularidade e formato da
+      resposta.
+    contract_focus:
+      - semantic_plan
+    preserve_scope_filters: true
