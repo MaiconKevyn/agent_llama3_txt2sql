@@ -419,6 +419,10 @@ def build_temporal_condition_trend_sql(
         return None
     scope_conditions = _scope_conditions_from_plan(plan, "i")
     scope_where = f" AND {' AND '.join(scope_conditions)}" if scope_conditions else ""
+    case_conditions = list(scope_conditions)
+    if _requires_death_case_filter(plan):
+        case_conditions.append('i."MORTE" = true')
+    case_scope_where = f" AND {' AND '.join(case_conditions)}" if case_conditions else ""
 
     return f"""
 WITH diagnosticos_alvo("CID") AS (
@@ -436,7 +440,7 @@ WITH diagnosticos_alvo("CID") AS (
     SELECT EXTRACT(YEAR FROM i."DT_INTER") AS ano, COUNT(*) AS total_internacoes
     FROM internacoes i
     JOIN diagnosticos_alvo d ON i."DIAG_PRINC" = d."CID"
-    WHERE i."DT_INTER" IS NOT NULL{scope_where}
+    WHERE i."DT_INTER" IS NOT NULL{case_scope_where}
     GROUP BY ano
 ), serie AS (
     SELECT
@@ -660,7 +664,35 @@ def _scope_conditions_from_plan(plan: SemanticPlan, alias: str) -> list[str]:
             conditions.append(
                 f'EXTRACT(YEAR FROM {alias}."DT_INTER") BETWEEN {values[0]} AND {values[1]}'
             )
+        elif semantic_filter.field == "recent_years_available" and values:
+            try:
+                years = max(1, int(values[0]))
+            except ValueError:
+                continue
+            latest_year = (
+                'SELECT MAX(EXTRACT(YEAR FROM y."DT_INTER")) '
+                "FROM internacoes y "
+                'WHERE y."DT_INTER" IS NOT NULL'
+            )
+            conditions.append(
+                f'EXTRACT(YEAR FROM {alias}."DT_INTER") BETWEEN '
+                f"({latest_year}) - {years - 1} AND ({latest_year})"
+            )
     return conditions
+
+
+def _requires_death_case_filter(plan: SemanticPlan) -> bool:
+    if any(
+        required_filter.strip().lower() == "morte = true"
+        for metric in plan.metrics
+        for required_filter in metric.required_filters
+    ):
+        return True
+    return any(
+        semantic_filter.field == "desfecho"
+        and any("morte" in str(value).lower() for value in semantic_filter.values)
+        for semantic_filter in plan.filters
+    )
 
 
 def _denominator_label_from_plan(plan: SemanticPlan) -> str:

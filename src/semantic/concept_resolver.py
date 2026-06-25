@@ -62,6 +62,24 @@ _CONCEPTS: tuple[_ConceptDefinition, ...] = (
         expanded_terms=("prostata", "neopl malig da prostata"),
     ),
     _ConceptDefinition(
+        canonical_name="neoplasias malignas",
+        aliases=(
+            "cancer",
+            "câncer",
+            "canceres",
+            "cânceres",
+            "neoplasia maligna",
+            "neoplasias malignas",
+            "tumor maligno",
+            "tumores malignos",
+        ),
+        resolved_codes=(),
+        resolved_prefixes=("C%",),
+        labels=("CID C00-C97 - Neoplasias malignas (cancer)",),
+        default_denominator_filters={},
+        expanded_terms=("cancer", "neoplasia maligna", "tumor maligno", "cid c"),
+    ),
+    _ConceptDefinition(
         canonical_name="covid",
         aliases=(
             "covid",

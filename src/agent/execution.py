@@ -186,6 +186,30 @@ def _sql_description_filter(alias: str, terms: list[str]) -> str:
     return "(" + " OR ".join(clauses) + ")" if clauses else ""
 
 
+def _latest_available_year_expr() -> str:
+    return (
+        'SELECT MAX(EXTRACT(YEAR FROM y."DT_INTER")) '
+        "FROM internacoes y "
+        'WHERE y."DT_INTER" IS NOT NULL'
+    )
+
+
+def _recent_year_condition(plan: SemanticPlan, alias: str = "i") -> str:
+    for semantic_filter in plan.filters:
+        if semantic_filter.field != "recent_years_available" or not semantic_filter.values:
+            continue
+        try:
+            years = max(1, int(str(semantic_filter.values[0]).strip()))
+        except ValueError:
+            return ""
+        latest_year = _latest_available_year_expr()
+        return (
+            f'EXTRACT(YEAR FROM {alias}."DT_INTER") BETWEEN '
+            f"({latest_year}) - {years - 1} AND ({latest_year})"
+        )
+    return ""
+
+
 def _evaluate_repair_candidates(
     candidates: list[_RepairCandidate | None],
     *,
@@ -439,12 +463,15 @@ def _build_death_cause_description_count_sql(
     description_filter = _sql_description_filter("c", terms)
     if not description_filter:
         return None
+    time_conditions = _death_cause_time_conditions(plan)
+    time_clause = " ".join(f"AND {condition}" for condition in time_conditions)
     return (
         "SELECT COUNT(*) AS total_internacoes "
         "FROM internacoes i "
         'JOIN cid c ON i."DIAG_PRINC" = c."CID" '
         'WHERE i."MORTE" = true '
-        f"AND {description_filter};"
+        f"AND {description_filter} "
+        f"{time_clause};"
     )
 
 
@@ -462,6 +489,10 @@ def _death_cause_time_conditions(plan: SemanticPlan, alias: str = "i") -> list[s
             conditions.append(
                 f'EXTRACT(YEAR FROM {alias}."DT_INTER") BETWEEN {values[0]} AND {values[1]}'
             )
+        elif semantic_filter.field == "recent_years_available":
+            recent_condition = _recent_year_condition(plan, alias)
+            if recent_condition:
+                conditions.append(recent_condition)
     return conditions
 
 
@@ -800,6 +831,9 @@ def _year_where_clause(plan: SemanticPlan, alias: str = "i") -> str:
     if ranges:
         start_year, end_year = str(ranges[0][0]), str(ranges[0][1])
         return f' AND EXTRACT(YEAR FROM {alias}."DT_INTER") BETWEEN {start_year} AND {end_year}'
+    recent_condition = _recent_year_condition(plan, alias)
+    if recent_condition:
+        return f" AND {recent_condition}"
     return ""
 
 

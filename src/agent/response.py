@@ -1,5 +1,6 @@
 """Response generation node and formatting helpers."""
 
+import re
 import time
 from typing import Any
 
@@ -343,7 +344,7 @@ def _format_analytic_response_from_package(user_query: str, package: dict[str, A
     if analysis_type == "geographic_condition_rate":
         return _format_geographic_condition_response_from_package(package)
     if analysis_type == "temporal_condition_trend":
-        return _format_temporal_condition_response_from_package(package)
+        return _format_temporal_condition_response_from_package(user_query, package)
     return ""
 
 
@@ -502,7 +503,10 @@ def _format_geographic_condition_response_from_package(package: dict[str, Any]) 
     return "\n".join(lines)
 
 
-def _format_temporal_condition_response_from_package(package: dict[str, Any]) -> str:
+def _format_temporal_condition_response_from_package(
+    user_query: str,
+    package: dict[str, Any],
+) -> str:
     concept = _humanize_clinical_label(str(package.get("resolved_concept") or "diagnóstico informado"))
     total = _format_int(package.get("total_internacoes"))
     denominator = _humanize_denominator(str(package.get("denominador") or "internacoes"))
@@ -516,18 +520,20 @@ def _format_temporal_condition_response_from_package(package: dict[str, Any]) ->
     peak_period = _format_period(package.get("peak_period"))
     peak_total = _format_int(package.get("peak_total"))
     warnings = _humanize_warning(str(package.get("warnings") or ""))
+    measure_label = "mortes" if _query_requests_deaths(user_query) else "internações"
+    measure_header = "Mortes" if measure_label == "mortes" else "Internações"
 
     lines = [
         "Há uma tendência temporal observada no recorte solicitado.",
         "",
         f"Escopo usado: {concept}; denominador: {denominator}.",
-        f"Resumo: {total} internações no diagnóstico resolvido ao longo da série.",
+        f"Resumo: {total} {measure_label} no diagnóstico resolvido ao longo da série.",
     ]
     if series:
         lines.extend(
             [
                 "",
-                "| Ano | Internações | Denominador | Taxa por 100 mil |",
+                f"| Ano | {measure_header} | Denominador | Taxa por 100 mil |",
                 "|---|---:|---:|---:|",
             ]
         )
@@ -540,8 +546,8 @@ def _format_temporal_condition_response_from_package(package: dict[str, Any]) ->
             "",
             (
                 f"Leitura objetiva: de {first_period} ({first_total}) a {last_period} "
-                f"({last_total}), a variação absoluta foi {delta_absolute} internações "
-                f"({delta_percent}%). O pico foi em {peak_period}, com {peak_total} internações."
+                f"({last_total}), a variação absoluta foi {delta_absolute} {measure_label} "
+                f"({delta_percent}%). O pico foi em {peak_period}, com {peak_total} {measure_label}."
             ),
         ]
     )
@@ -551,6 +557,10 @@ def _format_temporal_condition_response_from_package(package: dict[str, Any]) ->
         "Limite: isto descreve evolução observada nos registros, não causalidade."
     )
     return "\n".join(lines)
+
+
+def _query_requests_deaths(user_query: str) -> bool:
+    return bool(re.search(r"\b(?:mortes?|[óo]bitos?|obitos?|mortalidade)\b", user_query or "", re.I))
 
 
 def _parse_age_band_distribution(value: str) -> list[dict[str, str]]:

@@ -11,6 +11,7 @@ import re
 
 from ..utils.temporal import explicit_year_list_is_temporal_dimension
 from ..visualization.intent import detect_visualization_intent
+from .clinical_spans import ClinicalSpanNormalization, normalize_clinical_span
 from .concept_resolver import find_clinical_concepts
 from .plan_schema import (
     AnswerShape,
@@ -492,7 +493,10 @@ def _extract_age_filters(query_lower: str) -> list[SemanticFilter]:
     return filters
 
 
-def _extract_death_cause_description_term(query_lower: str) -> str | None:
+def _extract_death_cause_description_term(
+    query_lower: str,
+    normalizations: list[ClinicalSpanNormalization] | None = None,
+) -> str | None:
     patterns = [
         r"\binterna[cç][oõ]es\s+por\s+(.+?)\s+ocasionaram\s+em\s+morte\b",
         rf"\b(?:morte|mortes|mortalidade|[óo]bitos?|obitos?|letalidade)\s+(?:por|de|da|do)\s+(.+?){_CLINICAL_CONDITION_STOP}",
@@ -509,6 +513,10 @@ def _extract_death_cause_description_term(query_lower: str) -> str | None:
         )
         term = re.sub(r"[^\wÀ-ÿ -]", " ", term)
         term = re.sub(r"\s+", " ", term).strip()
+        normalized = normalize_clinical_span(term)
+        if normalized.changed and normalizations is not None:
+            normalizations.append(normalized)
+        term = normalized.normalized
         if term and not _is_grouping_or_temporal_term(term):
             return term
     return None
@@ -557,6 +565,7 @@ def _looks_like_non_diagnosis_description_term(term: str) -> bool:
 
 def _expand_diagnosis_description_terms(term: str) -> list[str]:
     cleaned = _clean_diagnosis_description_term(term)
+    cleaned = normalize_clinical_span(cleaned).normalized
     if not cleaned or _is_grouping_or_temporal_term(cleaned):
         return []
     has_known_synonym = _has_known_diagnosis_synonym(cleaned)
@@ -580,7 +589,10 @@ def _expand_diagnosis_description_terms(term: str) -> list[str]:
     return result
 
 
-def _extract_diagnosis_description_terms(query_lower: str) -> list[str]:
+def _extract_diagnosis_description_terms(
+    query_lower: str,
+    normalizations: list[ClinicalSpanNormalization] | None = None,
+) -> list[str]:
     scope_stop = (
         r"(?=\s+(?:em|no|na|nos|nas)\s+(?:19|20)\d{2}\b"
         r"|\s+(?:no|na|nos|nas)\s+(?:estado|munic[ií]pio|uf)\b"
@@ -605,7 +617,11 @@ def _extract_diagnosis_description_terms(query_lower: str) -> list[str]:
         match = re.search(pattern, query_lower, re.I)
         if not match:
             continue
-        terms = _expand_diagnosis_description_terms(match.group(1))
+        raw_term = match.group(1)
+        normalized = normalize_clinical_span(raw_term)
+        if normalized.changed and normalizations is not None:
+            normalizations.append(normalized)
+        terms = _expand_diagnosis_description_terms(normalized.normalized)
         if terms:
             return terms
     return []
@@ -1790,7 +1806,11 @@ def _unsupported_schema_metrics(query_lower: str) -> list[str]:
     return unsupported
 
 
-def _infer_filters(query: str, query_lower: str) -> list[SemanticFilter]:
+def _infer_filters(
+    query: str,
+    query_lower: str,
+    normalizations: list[ClinicalSpanNormalization] | None = None,
+) -> list[SemanticFilter]:
     filters: list[SemanticFilter] = []
     ufs = sorted({m.group(1).upper() for m in _UF_RE.finditer(query) if m.group(1).isupper()})
     for state_name, uf in sorted(
@@ -1912,7 +1932,7 @@ def _infer_filters(query: str, query_lower: str) -> list[SemanticFilter]:
             )
         )
     filters.extend(_extract_age_filters(query_lower))
-    death_cause_term = _extract_death_cause_description_term(query_lower)
+    death_cause_term = _extract_death_cause_description_term(query_lower, normalizations)
     if death_cause_term:
         death_cause_terms = _expand_diagnosis_description_terms(death_cause_term)
         filters.append(
@@ -1923,7 +1943,7 @@ def _infer_filters(query: str, query_lower: str) -> list[SemanticFilter]:
             )
         )
     else:
-        diagnosis_terms = _extract_diagnosis_description_terms(query_lower)
+        diagnosis_terms = _extract_diagnosis_description_terms(query_lower, normalizations)
         if diagnosis_terms:
             filters.append(
                 SemanticFilter(
@@ -2015,8 +2035,12 @@ def build_semantic_plan(
     explicit_min_group_count = _extract_min_group_count(q)
     raw_dimensions = _infer_dimensions(q)
     metrics = _infer_metrics(q)
-    filters = _infer_filters(query, q)
-    resolved_clinical_concepts = find_clinical_concepts(q)
+    clinical_span_normalizations: list[ClinicalSpanNormalization] = []
+    filters = _infer_filters(query, q, clinical_span_normalizations)
+    clinical_concept_search_text = " ".join(
+        [q, *(normalization.normalized for normalization in clinical_span_normalizations)]
+    )
+    resolved_clinical_concepts = find_clinical_concepts(clinical_concept_search_text)
     association_concept = resolved_clinical_concepts[0] if resolved_clinical_concepts else None
     has_clinical_condition_filter = any(
         semantic_filter.field
@@ -2655,6 +2679,15 @@ def build_semantic_plan(
     elif "procedimento" in q:
         base_grain = "procedimento_ocorrencia"
 
+    ambiguities = [
+        f"unsupported_metric:{metric_name}" for metric_name in unsupported_schema_metrics
+    ]
+    for normalization in clinical_span_normalizations:
+        ambiguities.append(
+            "normalized_clinical_span: "
+            f"{normalization.original} -> {normalization.normalized}"
+        )
+
     plan = SemanticPlan(
         intent=intent,
         base_grain=base_grain,
@@ -2664,9 +2697,7 @@ def build_semantic_plan(
         answer_shape=answer_shape,
         constraints=constraints,
         null_policy=null_policy,
-        ambiguities=[
-            f"unsupported_metric:{metric_name}" for metric_name in unsupported_schema_metrics
-        ],
+        ambiguities=ambiguities,
     )
     if profile_store is not None:
         _enrich_plan_with_profile(plan, query, profile_store)

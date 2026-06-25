@@ -36,6 +36,41 @@ def _sql_mentions_column(sql_lower: str, column: str) -> bool:
     return bool(re.search(rf'(?<!\w)"?{re.escape(column)}"?\b', sql_lower, re.I))
 
 
+def _sql_satisfies_recent_year_window(sql_lower: str, value: str) -> bool:
+    if not ("dt_inter" in sql_lower and "year" in sql_lower):
+        return False
+    try:
+        years = max(1, int(str(value).strip()))
+    except ValueError:
+        return False
+
+    has_available_year_anchor = bool(
+        re.search(
+            r"max\s*\(\s*extract\s*\(\s*year\s+from[\s\S]{0,160}dt_inter",
+            sql_lower,
+            re.I,
+        )
+    )
+    if not has_available_year_anchor:
+        return False
+    if years == 1:
+        return True
+    window_width = years - 1
+    has_bounded_window = bool(
+        re.search(
+            rf"\bbetween\b[\s\S]{{0,220}}-\s*{window_width}\b[\s\S]{{0,220}}\band\b",
+            sql_lower,
+            re.I,
+        )
+        or re.search(
+            rf">=\s*[\s\S]{{0,180}}-\s*{window_width}\b",
+            sql_lower,
+            re.I,
+        )
+    )
+    return has_bounded_window
+
+
 def _has_group_by_dimension(inspector: SQLInspector, dimension: str) -> bool:
     group_by_lower = inspector.clause_lower("GROUP BY")
     search_space = group_by_lower
@@ -1251,7 +1286,7 @@ def _validate_required_filters(
                     "year available in internacoes.DT_INTER, not CURRENT_DATE/NOW(), because "
                     "the dataset can lag behind the wall-clock date."
                 )
-            if not ("dt_inter" in text and "year" in text):
+            if not _sql_satisfies_recent_year_window(text, values[0]):
                 return False, (
                     "SEMANTIC PLAN ERROR: SQL does not apply the requested recent-year window "
                     "using internacoes.DT_INTER."

@@ -29,6 +29,14 @@ def test_resolves_respiratory_phrase_variants_to_cid_j_prefix():
         assert concept.resolved_prefixes == ["J%"]
 
 
+def test_resolves_generic_cancer_to_malignant_neoplasm_prefix():
+    concept = resolve_clinical_concept("cancer")
+
+    assert concept is not None
+    assert concept.canonical_name == "neoplasias malignas"
+    assert concept.resolved_prefixes == ["C%"]
+
+
 def test_non_respiratory_clinical_phrases_do_not_resolve_to_respiratory_concept():
     for phrase in [
         "causa externa",
