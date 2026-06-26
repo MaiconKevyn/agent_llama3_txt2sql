@@ -131,6 +131,11 @@ def validate_sql_against_chart_plan(
         if column and not _sql_outputs_column(text, column)
     ]
     if missing_columns:
+        if (
+            plan.expected_result_shape in {"time_metric", "time_series_metric"}
+            and _sql_outputs_temporal_analytic_package(text)
+        ):
+            return True, None
         return False, (
             "CHART PLAN ERROR: SQL does not output chart required columns: "
             f"{', '.join(missing_columns)}."
@@ -171,6 +176,14 @@ def _normalize(text: str) -> str:
     normalized = unicodedata.normalize("NFKD", text or "")
     ascii_text = "".join(char for char in normalized if not unicodedata.combining(char))
     return re.sub(r"\s+", " ", ascii_text.lower()).strip()
+
+
+def _sql_outputs_temporal_analytic_package(text: str) -> bool:
+    return (
+        "analysis_type" in text
+        and "temporal_condition_trend" in text
+        and "time_series" in text
+    )
 
 
 def _infer_metric(normalized_query: str) -> str:

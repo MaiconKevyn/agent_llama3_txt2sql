@@ -508,7 +508,7 @@ def _format_temporal_condition_response_from_package(
     package: dict[str, Any],
 ) -> str:
     concept = _humanize_clinical_label(str(package.get("resolved_concept") or "diagnóstico informado"))
-    total = _format_int(package.get("total_internacoes"))
+    total = _format_int(package.get("total_internacoes") or package.get("total_mortes"))
     denominator = _humanize_denominator(str(package.get("denominador") or "internacoes"))
     series = _parse_time_series(str(package.get("time_series") or ""))
     first_period = _format_period(package.get("first_period"))
@@ -522,12 +522,17 @@ def _format_temporal_condition_response_from_package(
     warnings = _humanize_warning(str(package.get("warnings") or ""))
     measure_label = "mortes" if _query_requests_deaths(user_query) else "internações"
     measure_header = "Mortes" if measure_label == "mortes" else "Internações"
+    scope_phrase = (
+        "no escopo solicitado"
+        if concept.lower() in {"todos os diagnosticos", "todos os diagnósticos"}
+        else "no diagnóstico resolvido"
+    )
 
     lines = [
         "Há uma tendência temporal observada no recorte solicitado.",
         "",
         f"Escopo usado: {concept}; denominador: {denominator}.",
-        f"Resumo: {total} {measure_label} no diagnóstico resolvido ao longo da série.",
+        f"Resumo: {total} {measure_label} {scope_phrase} ao longo da série.",
     ]
     if series:
         lines.extend(

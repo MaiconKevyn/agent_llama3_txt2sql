@@ -107,6 +107,22 @@ def test_temporal_condition_trend_sql_applies_death_and_recent_year_scope():
     assert " - 2" in sql_lower
 
 
+def test_total_death_trend_sql_uses_available_year_window_without_llm_dialect():
+    sql = build_analytic_sql_package(
+        build_semantic_plan("me mostra a evolucao de mortes totais nos ultimos 5 anos")
+    )
+
+    assert sql is not None
+    sql_lower = sql.lower()
+    assert "temporal_condition_trend" in sql_lower
+    assert 'i."morte" = true' in sql_lower
+    assert "max(extract(year" in sql_lower
+    assert " - 4" in sql_lower
+    assert "current_date" not in sql_lower
+    assert "dateadd" not in sql_lower
+    assert "row_number" not in sql_lower
+
+
 def test_validator_accepts_normalized_cancer_repair_and_rejects_missing_death_filter():
     plan = _cancer_death_trend_plan()
     valid_sql = """
@@ -179,3 +195,27 @@ def test_temporal_death_trend_response_labels_metric_as_deaths():
     assert "200.744 mortes" in response
     assert "892 mortes" in response
     assert "68.572 mortes" in response
+
+
+def test_temporal_death_trend_response_accepts_total_mortes_package_alias():
+    response = _format_analytic_response_from_package(
+        "me mostre um grafico de mortes respiratorias em 2021, 2022 e 2023",
+        {
+            "analysis_type": "temporal_condition_trend",
+            "resolved_concept": "CID J00-J99 - Doencas do aparelho respiratorio",
+            "total_mortes": 305988,
+            "denominador": "internacoes por ano no mesmo escopo",
+            "time_series": "2021:92714:11566528:801.57 | 2022:111033:12363889:898.04 | 2023:102241:12450724:821.17",
+            "first_period": 2021,
+            "first_total": 92714,
+            "last_period": 2023,
+            "last_total": 102241,
+            "delta_absolute": 9527,
+            "delta_percent": 10.28,
+            "peak_period": 2022,
+            "peak_total": 111033,
+        },
+    )
+
+    assert "Resumo: 305.988 mortes" in response
+    assert "Resumo: - mortes" not in response

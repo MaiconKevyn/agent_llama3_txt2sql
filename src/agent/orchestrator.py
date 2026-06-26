@@ -109,6 +109,52 @@ def build_tracing_context(
     )
 
 
+def _rows_from_temporal_package_time_series(
+    value: Any,
+    y_column: str,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for item in str(value or "").split(" | "):
+        parts = item.split(":")
+        if len(parts) != 4:
+            continue
+        period, total, _denominator, _rate = parts
+        try:
+            period_value: Any = int(float(period))
+        except ValueError:
+            period_value = period
+        try:
+            total_value: Any = int(float(total))
+        except ValueError:
+            try:
+                total_value = float(total)
+            except ValueError:
+                total_value = total
+        rows.append({"ano": period_value, y_column: total_value})
+    return rows
+
+
+def _temporal_analytic_package_from_result(result: dict[str, Any]) -> dict[str, Any] | None:
+    rows = result.get("results") or []
+    if len(rows) != 1:
+        return None
+
+    from .response import _analytic_package_from_row
+    from ..visualization.data import normalize_result_rows
+
+    candidates: list[dict[str, Any]] = []
+    if isinstance(rows[0], dict):
+        candidates.append(rows[0])
+    normalized_rows, _columns = normalize_result_rows(rows, result.get("sql_query"))
+    candidates.extend(row for row in normalized_rows if isinstance(row, dict))
+
+    for candidate in candidates:
+        package = _analytic_package_from_row(candidate)
+        if package and package.get("analysis_type") == "temporal_condition_trend":
+            return package
+    return None
+
+
 @dataclass
 class ModelConfig:
     """Configuration for OpenAI model"""
@@ -505,6 +551,12 @@ class LangGraphOrchestrator:
                 chart_type="table",
                 reason="Sem resultado tabular validado para gerar grafico.",
             )
+        analytic_chart = self._chart_from_temporal_analytic_package(
+            result=result,
+            chart_plan=chart_plan,
+        )
+        if analytic_chart:
+            return analytic_chart
         try:
             planning_input = build_chart_planning_input(
                 user_query=user_query,
@@ -524,6 +576,38 @@ class LangGraphOrchestrator:
                 data=[],
                 reason=f"Nao foi possivel gerar grafico validado: {exc}",
             )
+
+    def _chart_from_temporal_analytic_package(
+        self,
+        *,
+        result: dict[str, Any],
+        chart_plan: ChartPlan | None,
+    ) -> ChartSpec | None:
+        if not chart_plan or not chart_plan.requested:
+            return None
+        if chart_plan.expected_result_shape not in {"time_metric", "time_series_metric"}:
+            return None
+        package = _temporal_analytic_package_from_result(result)
+        if not package:
+            return None
+        y_column = chart_plan.y_column or "valor"
+        data = _rows_from_temporal_package_time_series(package.get("time_series"), y_column)
+        if not data:
+            return None
+        chart_type = "line" if chart_plan.chart_type == "auto" else chart_plan.chart_type
+        if chart_type not in {"line", "area", "bar"}:
+            chart_type = "line"
+        return ChartSpec(
+            chartable=True,
+            chart_type=chart_type,
+            title="Evolucao temporal",
+            x=chart_plan.x_dimension or "ano",
+            y=y_column,
+            series=None,
+            encoding={"x_type": "temporal", "y_type": "quantitative"},
+            data=data,
+            reason="Grafico gerado a partir do pacote analitico temporal.",
+        )
 
     def _remember_result_if_available(self, *, session_id: str, result: dict[str, Any]) -> None:
         if not result.get("success") or not result.get("results"):

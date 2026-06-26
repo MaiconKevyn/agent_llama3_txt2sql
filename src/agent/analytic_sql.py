@@ -407,7 +407,7 @@ FROM (SELECT 1) AS analytic_singleton;
 def build_temporal_condition_trend_sql(
     semantic_plan: SemanticPlan | dict | None,
 ) -> str | None:
-    """Build a one-row package for annual trends of a resolved diagnosis condition."""
+    """Build a one-row package for annual trends, optionally scoped to diagnosis."""
     plan = _coerce_semantic_plan(semantic_plan)
     if plan is None or plan.answer_shape.row_grain != "time_series":
         return None
@@ -415,8 +415,23 @@ def build_temporal_condition_trend_sql(
         return None
 
     target_sql, resolved_concept_sql = _diagnosis_target_sql_from_plan(plan)
-    if not target_sql:
+    diagnosis_ctes = ""
+    diagnosis_join = ""
+    if target_sql:
+        diagnosis_ctes = f"""
+diagnosticos_alvo("CID") AS (
+    {target_sql}
+), diagnosticos_resolvidos AS (
+    SELECT d."CID", COALESCE(c."DESCRICAO", '') AS "DESCRICAO"
+    FROM diagnosticos_alvo d
+    LEFT JOIN cid c ON c."CID" = d."CID"
+), """.lstrip()
+        diagnosis_join = '\n    JOIN diagnosticos_alvo d ON i."DIAG_PRINC" = d."CID"'
+    elif not _requires_death_case_filter(plan):
         return None
+    else:
+        resolved_concept_sql = "'todos os diagnosticos'"
+
     scope_conditions = _scope_conditions_from_plan(plan, "i")
     scope_where = f" AND {' AND '.join(scope_conditions)}" if scope_conditions else ""
     case_conditions = list(scope_conditions)
@@ -425,21 +440,14 @@ def build_temporal_condition_trend_sql(
     case_scope_where = f" AND {' AND '.join(case_conditions)}" if case_conditions else ""
 
     return f"""
-WITH diagnosticos_alvo("CID") AS (
-    {target_sql}
-), diagnosticos_resolvidos AS (
-    SELECT d."CID", COALESCE(c."DESCRICAO", '') AS "DESCRICAO"
-    FROM diagnosticos_alvo d
-    LEFT JOIN cid c ON c."CID" = d."CID"
-), denominador_ano AS (
+WITH {diagnosis_ctes}denominador_ano AS (
     SELECT EXTRACT(YEAR FROM i."DT_INTER") AS ano, COUNT(*) AS total_denominador
     FROM internacoes i
     WHERE i."DT_INTER" IS NOT NULL{scope_where}
     GROUP BY ano
 ), casos_ano AS (
     SELECT EXTRACT(YEAR FROM i."DT_INTER") AS ano, COUNT(*) AS total_internacoes
-    FROM internacoes i
-    JOIN diagnosticos_alvo d ON i."DIAG_PRINC" = d."CID"
+    FROM internacoes i{diagnosis_join}
     WHERE i."DT_INTER" IS NOT NULL{case_scope_where}
     GROUP BY ano
 ), serie AS (
